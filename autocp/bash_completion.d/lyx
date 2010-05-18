@@ -1,0 +1,22 @@
+# lyx(1) completion 
+# Modified inkscape template of allali@univ-mlv.fr
+# by cengique@users.sf.net
+
+have lyx &&
+_lyx()
+{
+        local cur
+
+        COMPREPLY=()
+        cur=${COMP_WORDS[COMP_CWORD]}
+
+        if [[ "$cur" == -* ]]; then
+                COMPREPLY=( $( compgen -W '-help -userdir -sysdir \
+				-geometry -dbg -x --execute -e --export \
+ 				-i --import -version' -- $cur ) ) 
+        else
+                _filedir '@(lyx)'
+        fi
+
+}
+[ "${have:-}" ] && complete -F _lyx $filenames lyx

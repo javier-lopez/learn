@@ -1,0 +1,24 @@
+_test()
+{
+    cur=`_get_cword`
+#_get_cword
+#_filedir
+#_signals
+#_configured_interfaces
+#_available_interfaces
+#_expand
+#_pids
+#_uids
+#_services
+#_modules
+_installed_modules "$cur"
+#_count_args
+#_alias
+#_function
+#_complete
+#_service
+_man
+return 0
+}
+
+complete -F _test test

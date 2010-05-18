@@ -1,0 +1,40 @@
+# VBoxHeadless completion by P.L. Francisco chilicuil@gmail.com
+_vboxheadless()
+{
+    local cur prev opts
+    COMPREPLY=()
+    cur=`_get_cword`
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+
+    #=======================================================
+    #                  General options
+    #=======================================================
+    COMMANDS=""
+    OPTS="-s -startvm --startvm -v -vrdp --vrdp\
+          -p -vrdpport --vrdpport -a -vrdpaddress\
+          --vrdpaddress -c -capture --capture -w\
+          --width -h --height -r --bitrate -f --filename"
+
+    #=======================================================
+    #                   Nested options
+    #=======================================================
+    vrdp_opts="on off config"
+
+    case $prev in
+        @(-v|-vrdp|--vrdp))
+            COMPREPLY=( $( compgen -W "$vrdp_opts" -- $cur ))
+            return 0
+            ;;
+        @(-s|-startvm|--startvm))
+            COMPREPLY=( $( compgen -W `ls ~/.VirtualBox/Machines/` -- $cur ))
+            return 0
+            ;;
+    esac
+
+    if [[ "$cur" == -* ]]; then
+        # relevant options completion
+        COMPREPLY=( $( compgen -W "$OPTS" -- $cur ) )
+    fi
+}
+
+complete -F _vboxheadless VBoxHeadless

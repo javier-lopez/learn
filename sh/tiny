@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+if [[ ! $1 ]]; then
+        echo "$0: You must specify an url"
+        exit 1
+fi
+
+tiny_url=`curl -s "http://tinyurl.com/api-create.php?url=$1"`
+
+if [[ xclip ]]; then
+    echo $tiny_url|tee /dev/fd/2|xclip
+else
+    echo $tiny_url
+fi

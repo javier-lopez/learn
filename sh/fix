@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+
+VERSION="0.0.1"
+
+st()
+{
+    if [ $? -ne 0 ]; then
+            echo -e "$LIGHT_RED[FAILED]$DEFAULT"
+            exit 1
+        else
+            echo -e "$LIGHT_GREEN[DONE]$DEFAULT"
+    fi
+}
+#===================================================
+
+#Don't forget update this when adding new functions
+usage()
+{
+  echo -e "$0: Fix my common problems"
+  echo -e "  -h  or --help     List available arguments and usage (this message)."
+  echo -e "  -v  or --version  Print version."
+  echo -e
+  echo -e "  apache            Moves /etc/init.d/apache2.1 to apache2."
+  echo -e "  wifi              Restart the ipw2200 module."
+  echo -e
+  echo -e "Logs are saved in /tmp/fix.log"
+}
+
+apache ()
+{
+    echo -ne "$LIGHT_RED[*]$DEFAULT sudo mv -v /etc/init.d/apache2.1 /etc/init.d/apache2 "
+    sudo mv -v /etc/init.d/apache2.1 /etc/init.d/apache2 >> /tmp/fix.log 2>&1
+    st
+
+    echo -ne "$LIGHT_RED[*]$DEFAULT sudo /etc/init.d/apache2 start "
+    sudo /etc/init.d/apache2 start >> /tmp/fix.log 2>&1
+    st
+}
+
+wifi ()
+{
+    echo -ne "$LIGHT_RED[*]$DEFAULT sudo rmmod ipw2200 "
+    sudo rmmod ipw2200 >> /tmp/fix.log 2>&1
+    st
+
+    echo -ne "$LIGHT_RED[*]$DEFAULT sudo modprobe ipw2200 "
+    sudo modprobe ipw2200 >> /tmp/fix.log 2>&1
+    st
+}
+
+if [ $# != 0 ]; then
+    case $1 in
+        apache)
+        apache
+        exit 1
+        ;;
+        wifi)
+        wifi
+        exit 1
+        ;;
+        -h | --help)
+        usage
+        exit 0
+        ;;
+        -v | --version)
+        echo $VERSION
+        exit 0
+        ;;
+        *)
+        echo -e "Error, unknown option: \"$1\""
+        usage
+        exit 1
+        ;;
+    esac
+else
+    usage
+    exit 0
+fi

@@ -1,0 +1,51 @@
+# Debian GNU/Linux pon/poff(1) completion
+# Copyright 2002 Baruch Even <baruch@debian.org>
+# License: GNU GPL v2 or later
+
+have pon &&
+_pon()
+{
+	local cur conns
+    
+	[ -r /etc/ppp/peers/ ] || return 0
+
+	COMPREPLY=()
+	cur=${COMP_WORDS[COMP_CWORD]}
+	conns=$(\ls --color=none /etc/ppp/peers | egrep -v '(\.bak|~)$')
+
+	if [ $COMP_CWORD -eq 1 ]; then
+		COMPREPLY=( $(compgen -o filenames -W "$conns" $cur) )
+	fi
+
+	return 0
+}
+[ "$have" ] && complete -F _pon pon
+
+have poff &&
+_poff()
+{
+	local prev cur conns
+
+	[ -r /etc/ppp/peers/ ] || return 0
+
+	COMPREPLY=()
+	prev=${COMP_WORDS[COMP_CWORD-1]}
+	cur=${COMP_WORDS[COMP_CWORD]}
+	conns=$(\ls --color=none /etc/ppp/peers | egrep -v '(\.bak|~)$')
+
+	if [[ "$cur" == -* ]]; then
+		COMPREPLY=( $(compgen -W '-r -d -c -a -h -v' -- $cur) )
+		return 0
+	fi
+
+	# first parameter on line or first since an option?
+	if [ $COMP_CWORD -eq 1 ] && [[ "$cur" != -* ]] || \
+	  [[ "$prev" == -* ]]; then
+		COMPREPLY=( $(compgen -o filenames -W "$conns" $cur) )
+	fi
+
+	return 0
+}
+[ "$have" ] && complete -F _poff poff
+
+# vim:ft=sh:

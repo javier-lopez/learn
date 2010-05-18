@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+
+# ======= Initial checks ============
+if [[ ! -e /usr/bin/html2text ]]; then
+    echo "You need install html2text before using $0"
+    echo "    In Ubuntu/Debian use: \$apt-get install html2text"
+    exit 0
+fi
+
+if [[ "${#@}" -eq "1" ]]; then
+    case "$1" in
+        u)
+        curl -s http://mononeurona.org/waydings/addwayd | html2text
+        exit 0
+        ;;
+        up)
+        curl -s http://mononeurona.org/waydings/addwayd | html2text
+        exit 0
+        ;;
+        update)
+        curl -s http://mononeurona.org/waydings/addwayd | html2text
+        exit 0
+        ;;
+        -u)
+        curl -s http://mononeurona.org/waydings/addwayd | html2text
+        exit 0
+        ;;
+        -up)
+        curl -s http://mononeurona.org/waydings/addwayd | html2text
+        exit 0
+        ;;
+        -update)
+        curl -s http://mononeurona.org/waydings/addwayd | html2text
+        exit 0
+        ;;
+        --update)
+        curl -s http://mononeurona.org/waydings/addwayd | html2text
+        exit 0
+        ;;
+    esac
+fi
+# ============ Settings =============
+#Avoid writing user/password every time
+MNron=disco299@gmail.com
+MNpwd=vimuswal
+MNtask="$@"
+# ===================================
+
+if [[ -z "${MNron}" ]]; then
+    echo -n "User: "
+    read -e MNron
+fi
+
+if [[ -z "${MNpwd}" ]]; then
+    echo -n "Password: "
+    read -e MNpwd
+fi
+
+if [[ -z "${MNtask}" ]]; then
+    echo -n "k estas haciendo?: "
+    read -e MNtask
+fi
+
+curl -s -c /tmp/MNc -d "_method=POST&data[User][email]=$MNron&data[User][pwd]=$MNpwd" http://mononeurona.org/users/login > /tmp/MN.log
+
+SIZE_log=`ls -l /tmp/MN.log | awk '{ print $5 }'`
+
+if [[ $SIZE_log -gt 0 ]]; then
+    echo "$0: user or password incorrect"
+    exit 0
+fi
+
+curl -s -b /tmp/MNc  -d "_method=POST&data[Wayding][task]=$MNtask" http://mononeurona.org/waydings/addwayd | html2text
+
+#====Clean up variables=====
+unset MNron
+unset MNpwd
+unset MNtask
+rm /tmp/MN.log

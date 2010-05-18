@@ -1,0 +1,26 @@
+_fix()
+{
+    local cur prev opts
+    COMPREPLY=()
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+
+    COMMANDS="apache wifi\
+             "
+
+    OPTS="-h --help -v --version"
+
+    case "${cur}" in
+        -*)
+            completions="$OPTS"
+            ;;
+        *)
+            completions="$COMMANDS"
+            ;;
+    esac
+
+    COMPREPLY=( $( compgen -W "$completions" -- $cur ))
+    return 0
+}
+
+complete -F _fix fix

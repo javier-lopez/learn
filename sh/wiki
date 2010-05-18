@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+if [[ ! $1 ]]; then
+        echo "$0: You must specify an article to create."
+        exit 1
+fi
+
+article=`echo $1 | cut -d/ -f5`
+
+if [[ -e /usr/bin/xclip ]]; then
+    echo "http://en.wikipedia.org/w/index.php?title=Special:Book&bookcmd=render_article&arttitle="$article|tee /dev/fd/2|xclip
+else
+    echo "http://en.wikipedia.org/w/index.php?title=Special:Book&bookcmd=render_article&arttitle="$article
+fi
+
+exit 0

@@ -1,0 +1,35 @@
+# pbuilder-dist completion
+#
+# Copyright 2008 Stephan Hermann <sh@sourcecode.de>, created for
+# the Ubuntu MOTU Team.
+#
+# Released under the GNU General Public License, version 2
+#
+# Based upon cobwuilder's autocompletion, Copyright 2007 Cyril
+# Brulebois <cyril.brulebois@enst-bretagne.fr>
+
+have pbuilder-dist &&
+_pbuilder-dist()
+{
+    local cur prev options
+
+    COMPREPLY=()
+    cur=${COMP_WORDS[COMP_CWORD]}
+    prev=${COMP_WORDS[COMP_CWORD-1]}
+
+    options='create update build clean login execute'
+
+    case $prev in
+        build)
+            COMPREPLY=( $( compgen -o filenames -G "$cur*.dsc" ) )
+            ;;
+        *)
+            COMPREPLY=( $( compgen -W "$options" | grep "^$cur" ) )
+            ;;
+    esac
+
+    return 0
+}
+[ "$have" ] && complete -F _pbuilder-dist -o filenames \
+{pbuilder,cowbuilder}-{dist,dapper,edgy,feisty,gutsy,hardy,intrepid,jaunty,sarge,etch,lenny,sid}
+# Make it pbuilder-* if you know how to do it

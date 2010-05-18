@@ -1,0 +1,12 @@
+# desktop-file-validate(1) completion
+# put this file in /etc/bash_completion.d/
+# siggi.gevatter@ubuntu.cat
+
+have desktop-file-validate &&
+_desktop_file_validate()
+{
+	COMPRELY=()
+	cur=${COMP_WORDS[COMP_CWORD]}
+	_filedir '@(desktop)'
+}
+[ "${have:-}" ] && complete -F _desktop_file_validate $filenames desktop-file-validate

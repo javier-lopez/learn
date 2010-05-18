@@ -1,0 +1,308 @@
+#-*- mode: shell-script;-*-
+
+# Programmed completion for bash to use quilt
+# Copyright 2003-2004 Martin Quinson (martin quinson#debian org)
+
+# This file is part of the distribution of quilt, and is distributed under
+# the same licence than quilt itself
+
+if type quilt &> /dev/null ; then
+
+if ! type _expand &> /dev/null ; then
+    # This function expands tildes in pathnames
+    #
+    _expand()
+    {
+	[ "$cur" != "${cur%\\}" ] && cur="$cur"'\'
+
+	# expand ~username type directory specifications
+	if [[ "$cur" == \~*/* ]]; then
+	    eval cur=$cur
+	elif [[ "$cur" == \~* ]]; then
+	    cur=${cur#\~}
+	    COMPREPLY=( $( compgen -P '~' -u $cur ) )
+	    return ${#COMPREPLY[@]}
+	fi
+    }
+fi
+
+if ! type _filedir &> /dev/null ; then
+    # This function performs file and directory completion. It's better than
+    # simply using 'compgen -f', because it honours spaces in filenames
+    #
+    _filedir()
+    {
+	local IFS=$'\t\n'
+
+	_expand || return 0
+
+	if [ "$1" = -d ]; then
+	    COMPREPLY=( ${COMPREPLY[@]} $( compgen -d -- $cur ) )
+	    return 0
+	fi
+	COMPREPLY=( ${COMPREPLY[@]} $( eval compgen -f -- \"$cur\" ) )
+    }
+fi
+
+if ! type _longopt &> /dev/null ; then
+    _longopt()
+    {
+	local cur opt
+
+	cur=${COMP_WORDS[COMP_CWORD]}
+
+	if [[ "$cur" == "--*=*" ]]; then
+	    opt=${cur%%=*}
+	    # cut backlash that gets inserted before '=' sign
+	    opt=${opt%\\*}
+	    cur=${cur#*=}
+	    _filedir
+	    COMPREPLY=( $( compgen -P "$opt=" -W '${COMPREPLY[@]}' -- $cur))
+	    return 0
+	fi
+
+	if [[ "$cur" == "-*" ]]; then
+	    COMPREPLY=( $( $1 --help 2>&1 | sed  -e '/--/!d' \
+			    -e 's/.*\(--[-A-Za-z0-9]\+=\?\).*/\1/' | \
+			   grep "^$cur" | sort -u ) )
+	elif [[ "$1" == "@(mk|rm)dir" ]]; then
+	    _filedir -d
+	else
+	    _filedir
+	fi
+    }
+fi
+
+# Complete on files, not on directories
+#
+# Directories are shown in completion, but with their trailing / so that
+#  user can go in them. It ought to be a more standard way to achieve this.
+#
+_quilt_comfile()
+{
+	COMPREPLY=( ${COMPREPLY[@]:-} $( compgen -f -- "$cur" ) )
+	echo $( compgen -d -- "$cur" ) | while read d ; do 
+ 	  COMPREPLY=( ${COMPREPLY[@]:-} "$d/" )
+        done
+}
+
+_quilt_completion()
+{
+    local cur prev cmds command_matches
+
+    COMPREPLY=()
+    cur=${COMP_WORDS[COMP_CWORD]}
+    prev=${COMP_WORDS[COMP_CWORD-1]}
+
+    # quilt sub commands 
+    cmds='add annotate applied delete diff edit files fold fork graph \
+          grep header import mail new next patches pop previous push refresh \
+	  remove rename series setup snapshot top unapplied'
+
+    # if no command were given, complete on commands
+    if [[ $COMP_CWORD -eq 1 ]] ; then
+	COMPREPLY=( $( compgen -W "$cmds -h" -- $cur ) )
+	return 0
+    fi
+	
+    # if we're completing for 'quilt -h', then just 
+    # complete on any valid command
+    if [ ${COMP_WORDS[1]} == -h ] ; then
+	    COMPREPLY=( $( compgen -W "$cmds" -- $cur ) )
+            return 0
+    fi
+    
+    # Accept a partial command if it's unique, because quilt will accept it.
+    command_matches=( $(compgen -W "$cmds" -- ${COMP_WORDS[1]}) )
+    if [ ${#command_matches[@]} -ne 1 ] ; then
+	return 0
+    fi
+
+    # Complete depending on options
+    case ${command_matches[0]} in
+	add)
+	   case $prev in
+	     -P)
+ 	        COMPREPLY=( $( compgen -W "$(quilt applied)" -- $cur ) )
+		;;
+	     *)
+	        _quilt_comfile
+	        COMPREPLY=( ${COMPREPLY[@]:-} $( compgen -W "-P -h" -- $cur ) )
+	        ;;
+	   esac
+	   ;;
+	annotate)
+	   case $prev in
+	     -P)
+ 	        COMPREPLY=( $( compgen -W "$(quilt applied)" -- $cur ) )
+		;;
+	     *)
+	        _quilt_comfile
+	        COMPREPLY=( ${COMPREPLY[@]:-} $( compgen -W "-P -h" -- $cur ) )
+	        ;;
+	   esac
+	   ;;
+	applied) 
+	   COMPREPLY=( $( compgen -W "-h $(quilt applied)" -- $cur ) )
+	   ;;
+	delete) 
+	   COMPREPLY=( $( compgen -W "-n -r -h --backup $(quilt series)" -- $cur ) )
+	   ;;
+	diff) 
+	   case $prev in
+	     -p)
+ 	        COMPREPLY=( $( compgen -W "0 1" -- $cur ) )
+		;;
+	     -P|--combine)
+	     	COMPREPLY=( $( compgen -W "$(quilt applied)" -- $cur ) )
+		;;
+	     --diff|-U|-C)
+		;;
+	     *)
+	        _filedir 
+	        COMPREPLY=( ${COMPREPLY[@]:-} $( compgen -W "-p -P -u -U -c -C -R -z -h --snapshot --diff --no-timestamps --no-index --combine --sort" -- $cur ) )
+	        ;;
+	   esac
+	   ;;
+	edit)
+	   _quilt_comfile
+	   COMPREPLY=( ${COMPREPLY[@]:-} $( compgen -W "-h" -- $cur ) )
+	   ;;
+	files)
+	   case $prev in
+	     --combine)
+		COMPREPLY=( $( compgen -W "$(quilt applied)" -- $cur ) )
+		;;
+	     *)
+		COMPREPLY=( $( compgen -W "-a -l -v -h --combine $(quilt applied)" -- $cur ) )
+		;;
+	   esac
+	   ;;
+	fold)
+	   case $prev in
+	     -p)
+	        COMPREPLY=( $( compgen -W "0 1" -- $cur ) )
+		;;
+	     *)
+	        COMPREPLY=( ${COMPREPLY[@]:-} $( compgen -W "-p" -- $cur ) )
+	        ;;
+	   esac
+	   ;;
+	graph)
+	   case $prev in
+	     -T)
+	     	COMPREPLY=( $( compgen -W "ps" -- $cur ) )
+		;;
+	     --edge-labels)
+	        COMPREPLY=( $( compgen -W "files" -- $cur ) )
+		;;
+	     *)
+		COMPREPLY=( $( compgen -W "-T -h --all --reduce --lines --edge-labels $(quilt applied)" -- $cur ) )
+		;;
+	   esac
+	   ;;
+	grep)
+	   _longopt grep
+	   COMPREPLY=( ${COMPREPLY[@]:-} $( compgen -W "-h" -- $cur ) )
+	   ;;
+	header)
+	   COMPREPLY=( $( compgen -W "-a -e -h -r --backup --strip-diffstat --strip-trailing-whitespace $(quilt series)" -- $cur ) )
+	   ;;
+	import)
+	   case $prev in
+	     -p)
+ 	        COMPREPLY=( $( compgen -W "0 1 2 3 4 5 6 7 8 9 10" -- $cur ) )
+		;;
+	     -P)
+		;;
+	     -d)
+		COMPREPLY=( $( compgen -W "o a n" -- $cur ) )
+		;;
+	     *)
+	        _quilt_comfile 
+	        COMPREPLY=( ${COMPREPLY[@]:-} $( compgen -W "-p -P -f -d -h" -- $cur ) )
+	        ;;
+	   esac
+	   ;;
+	mail)
+	   COMPREPLY=( $( compgen -W "-m --prefix --mbox --send --sender --from --subject --to --cc --bcc" -- $cur ) )
+	   ;;
+	next|previous)
+	   COMPREPLY=( $( compgen -W "$(quilt series)" -- $cur ) )
+	   ;;
+	patches)
+	   _quilt_comfile 
+	   COMPREPLY=( ${COMPREPLY[@]:-} $( compgen -W "-v -h" -- $cur ) )
+	   ;;
+	pop)
+	   COMPREPLY=( $( compgen -W "-a -f -R -q -v -h $(quilt applied)" -- $cur ) )
+	   ;;
+	push)
+	   COMPREPLY=( $( compgen -W "-a -f -q -v -h --leave-rejects --interactive --color $(quilt unapplied)" -- $cur ) )
+	   ;;
+	refresh)
+	   case $prev in
+	     -p)
+ 	        COMPREPLY=( $( compgen -W "0 1" -- $cur ) )
+		;;
+	     -U|-C)
+		;;
+	     *)
+	     	COMPREPLY=( $( compgen -W "-p -u -U -c -C -f -h $(quilt applied) --no-timestamps --no-index --diffstat --sort --backup --strip-trailing-whitespace" -- $cur ) )
+		;;
+	   esac
+	   ;;
+	remove)
+	   case $prev in
+	     -P)
+ 	        COMPREPLY=( $( compgen -W "$(quilt applied)" -- $cur ) )
+		;;
+	     *)
+	        _quilt_comfile 
+	        COMPREPLY=( ${COMPREPLY[@]:-} $( compgen -W "-P -h" -- $cur ) )
+		;;
+	   esac
+	   ;;
+	rename)
+	   case $prev in
+	     -P)
+		COMPREPLY=( $( compgen -W "$(quilt series)" -- $cur ) )
+		;;
+	     *)
+		COMPREPLY=( $( compgen -W "-P -h" -- $cur ) )
+		;;
+	   esac
+	   ;;
+	series)
+	   COMPREPLY=( $( compgen -W "-v -h" -- $cur ) )
+	   ;;
+	setup)
+	   case $prev in
+	     -d)
+	     	_filedir -d
+		;;
+	     *)
+	        _quilt_comfile
+	        COMPREPLY=( ${COMPREPLY[@]:-} $( compgen -W "-d -v -h" -- $cur ) )
+		;;
+	   esac
+	   ;;
+	snapshot)
+	   COMPREPLY=( $( compgen -W "-d -h" -- $cur ) )
+	   ;;
+	unapplied)
+	   COMPREPLY=( $( compgen -W "-h $(quilt series)" -- $cur ) )
+	   ;;
+	fork|new|top|upgrade)
+	   ;;
+    esac
+    return 0
+}
+
+[ ${BASH_VERSINFO[0]} '>' 2 -o \
+  ${BASH_VERSINFO[0]}  =  2 -a ${BASH_VERSINFO[1]} '>' 04 ] \
+&& _quilt_complete_opt="-o filenames"
+complete -F _quilt_completion $_quilt_complete_opt quilt
+unset -v _quilt_complete_opt
+
+fi

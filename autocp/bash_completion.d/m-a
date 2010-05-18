@@ -1,0 +1,78 @@
+#-*- mode: shell-script;-*-
+# Inputs:
+#   $1 -- name of the command whose arguments are being completed
+#   $2 -- word being completed
+#   $3 -- word preceding the word being completed
+#   $COMP_LINE  -- current command line
+#   $COMP_PONT  -- cursor position
+#   $COMP_WORDS -- array containing individual words in the current
+#                  command line
+#   $COMP_CWORD -- index into ${COMP_WORDS} of the word containing the
+#                  current cursor position
+# Output:
+#   COMPREPLY array variable contains possible completions
+
+#
+# Syntax (simple:
+#   module-assistant  [options] command module [module ...]
+
+have module-assistant &&
+_module_assistant() {
+
+   local cur prev special i options commands
+
+   options='-h -v -q -n -i -o -s -f -u -k -l \
+   --help --verbose --quiet --no-rebuild --non-inter --unpack-once \
+   --apt-search --force --userdir --kernel-dir --kvers-list'
+
+   commands='update unpack get fakesource build list install auto-install prepare clean purge la li a-i'
+
+	COMPREPLY=()
+	cur=${COMP_WORDS[COMP_CWORD]}
+	prev=${COMP_WORDS[COMP_CWORD-1]}
+
+	for (( i=0; i < ${#COMP_WORDS[@]}-1; i++ )); do
+		if [[ ${COMP_WORDS[i]} == @(update|fakesource|unpack|get|build|list|install|auto-install|clean|purge|la|list-available|li|list-installed|a-i) ]]; then
+			special=${COMP_WORDS[i]}
+		fi
+	done
+
+	if [ -n "$special" ]; then
+		case $special in
+		clean|purge)
+			COMPREPLY=( $( module-assistant -q compi $cur 2> /dev/null ) )
+			return 0
+			;;
+		*)
+			COMPREPLY=( $( module-assistant -q comp $cur 2> /dev/null ) )
+			return 0
+			;;
+
+		esac
+	fi
+
+	case "$prev" in
+	    -@(u|k|-kernel-dir|-kernel-dirs))
+ 		     _filedir
+		     return 0
+		     ;;
+
+	    -@(l|-kver-list))
+		     COMPREPLY=( $( module-assistant -q compv $cur ) )
+		     return 0
+		     ;;
+	esac
+
+	if [[ "$cur" == -* ]]; then
+		COMPREPLY=( $( compgen -W "$options" -- $cur ) )
+	else
+		COMPREPLY=( $( compgen -W "$commands" -- $cur ) )
+	fi
+
+	return 0
+
+}
+[ "$have" ] && complete -F _module_assistant $filenames module-assistant
+[ "$have" ] && complete -F _module_assistant $filenames m-a
+
+

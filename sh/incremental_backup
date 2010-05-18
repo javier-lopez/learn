@@ -1,0 +1,76 @@
+#!/bin/bash 
+# ---------------------------------------------------------------------- 
+# script de respaldos incrementales    Carlos Escutia 2009
+# ---------------------------------------------------------------------- 
+
+unset PATH # avoid accidental use of $PATH 
+
+# ------------- system commands used by this script -------------------- 
+ID=/usr/bin/id; 
+ECHO=/bin/echo; 
+RM=/bin/rm; 
+MV=/bin/mv; 
+CP=/bin/cp; 
+TOUCH=/usr/bin/touch; 
+RSYNC=/usr/bin/rsync; 
+DATE=/bin/date 
+PGPATH=/usr/bin 
+FECHA=`DATE +\%m.\%d.\%Y` 
+DBNAME='DBMONO' 
+DBUSER='mononeuras' 
+
+# ------------- file locations ----------------------------------------- 
+SOURCE=/var/chipotle/sites/cakephp/centauro 
+EXCLUDES=/usr/local/etc/excludes 
+TARGET=/var/chipotle/backups 
+ 
+# numero de respaldos a conservar 
+MAX_BACKUPS=5 
+ 
+# ------------- the script itself -------------------------------------- 
+# make sure we're running as root 
+if (( `$ID -u` != 0 )); then { $ECHO "Sorry, must be root. Exiting..."; exit; } 
+fi 
+ 
+# rotating snapshots 
+ 
+# step 1: delete the oldest snapshot, if it exists: 
+if [[ -d $TARGET/resp.$MAX_BACKUPS ]] ; then \ 
+ $RM -rf $TARGET/resp.$MAX_BACKUPS ; \ 
+fi ; 
+ 
+# step 2: rename backup 1 as backup 2 and so on 
+for ((a=MAX_BACKUPS; a &gt;= 2 ; a--)) # Double parentheses, and 
+"MAX_BACKUPS" with no "$". 
+do 
+    # step 2: shift the middle snapshots(s) back by one, if they exist 
+    let "b=a-1" 
+    if [[ -d $TARGET/resp.$b ]] ; then \ 
+       $MV $TARGET/resp.$b $TARGET/resp.$a ; \ 
+    fi; 
+done # A construct borrowed from 'ksh93'. 
+ 
+# step 3: make a hard-link-only (except for dirs) copy of the latest snapshot, 
+# if that exists 
+if [[ -d $TARGET/resp.0 ]] ; then \ 
+ $CP -al $TARGET/resp.0 $TARGET/resp.1 ; \ 
+fi; 
+ 
+# step 4: rsync from source into backup 0 (so only differences get updated) 
+$RSYNC \ 
+ -rmvzh --delete --ignore-existing \ 
+ --exclude-from $EXCLUDES \ 
+ --progress \ 
+ $SOURCE $TARGET/resp.0 ; 
+ 
+# step 5: update the mtime of resp.0 to reflect the snapshot time 
+$TOUCH $TARGET/resp.0 ; 
+ 
+# step 6: backup the site database 
+echo 'Backing up database...' 
+sleep 2s 
+echo "$PGPATH/pg_dump $DBNAME -U $DBUSER | gzip -c &gt; $TARGET/$DBNAME-$FECHA.gz" 
+$PGPATH/pg_dump $DBNAME -U $DBUSER | gzip -c &gt; $TARGET/$DBNAME-$FECHA.gz 
+echo 'DB saved..' 
+ 
+echo 'Backup finished!!' 

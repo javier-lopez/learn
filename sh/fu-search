@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+
+# This is a Free (as in freedom) Software licenced under the last GPL.
+# Se the licence at http://www.gnu.org/licenses/gpl.html
+# Copyright (C) 2009 Aurélio A. Heckert <aurium(a)gmail-dot-com>
+
+search="$@"
+
+if [[ -z "$search" ]]; then
+  echo "
+$(basename $0) - A command line interface to search at commandlinefu.com
+
+Usage:
+  \$ $(basename $0) <search words>
+
+Example:
+  \$ $(basename $0) history uniq
+  Searching...
+
+  history | awk '{print \$2}' | sort | uniq -c | sort -rn | head
+  List of commands you use most often
+
+  history|awk '{print \$2}'|awk 'BEGIN {FS=\"|\"} {print \$1}'|sort|uniq -c|sort -r
+  See most used commands
+  "
+  exit 0
+fi
+
+search_file=$( mktemp )
+
+echo -e "\e[01;33mSearching...\e[m"
+wget --post-data "q=$search" \
+     -O $search_file \
+     http://www.commandlinefu.com/search/autocomplete 2>/dev/null
+
+echo -e "$(
+grep --invert-match '<div class="autocomplete-description">\|<a style\|<\/\?ul>\|<\/\?li>\|[0-9]\+ comments\?)' $search_file |
+sed -r '
+  s/\\/\\\\/g;
+  s/<strong>/\\e[1m/g;
+  s/<\/strong>/\\e[m\\e[32m/g;
+  s/^\s*<div class="autocomplete-command">(.*)<\/div>\s*$/\\e[32m\1\\e[m/g;
+  s/^\s*<\/div>\s*$//g;
+  s/\s*\([0-9]+ votes?,\s*$//g;
+  s/^\s*//g;
+  ')"
+echo ""
+
+rm $search_file

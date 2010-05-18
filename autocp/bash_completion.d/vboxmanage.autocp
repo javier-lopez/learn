@@ -1,0 +1,116 @@
+# VBoxManage completion by P.L. Francisco chilicuil@gmail.com
+_vboxmanage()
+{
+    local cur prev opts
+    COMPREPLY=()
+    cur=`_get_cword`
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+
+    #=======================================================
+    #                  General options
+    #=======================================================
+    COMMANDS="list showvminfo registervm unregistervm\
+    createvm modifyvm import export startvm\
+    controlvm discardstate adoptstate snapshot\
+    openmedium closemedium storageattach\
+    storagectl showhdinfo createhd modifyhd\
+    clonehd convertfromraw convertfromraw\
+    addiscsidisk getextradata setextradata\
+    setproperty usbfilter sharedfolder\
+    vmstatistics guestproperty\
+    metrics hostonlyif dhcpserver"
+
+    OPTS="-q --nologo -v --version"
+
+    #=======================================================
+    #                   Nested options
+    #=======================================================
+    vmachines="`ls ~/.VirtualBox/Machines/`"
+    list_opts="--long -l vms runningvms ostypes hostdvds hostfloppies\
+              bridgedifs hostonlyifs dhcpservers hostinfo hostcpuids\
+              hddbackends hdds dvds floppies usbhost usbfilters systemproperties"
+    showvminfo_opts="--details --statistics --machinereadable $vmachines"
+    unregistervm_opts="--delete $vmachines"
+    createvm_opts="--name --ostype --register --basefolder --settingsfile\
+                   --uuid"
+    modifyvm_opts="--name --ostype --memory --vram --acpi --ioapic\
+   --pae --hwvirtex --nestedpaging --vtxvpid --cpuidset --cpuidremove\
+   --cpuidremoveall --cpus --monitorcount --accelerate3d --accelerate2dvideo\
+   --firmware --bioslogofadein --bioslogofadeout --bioslogodisplaytime\
+   --bioslogoimagepath --biosbootmenu --biossystemtimeoffset --biospxedebug\
+   --boot --boot<1-4> --nic --nic<1-4> --nictype --nictype<1-4> --cableconnected\
+   --cableconnected<1-4> --nictrace --nictrace<1-4> --nictracefile\
+   --nictracefile<1-4> --nicspeed --nicspeed<1-4> --bridgeadapter --bridgeadapter<1-4>\
+   --hostonlyadapter --hostonlyadapter<1-4> --hostonlyadapter --hostonlyadapter<1-4>\
+   --intnet --intnet<1-4> --natnet --natnet<1-4> --macaddress --macaddress<1-4> --uart\
+   --uart<1-4> --uartmode --uartmode<1-4> --gueststatisticsinterval --audio\
+   --audiocontroller --clipboard --vrdp --vrdpport --vrdpaddress --vrdpauthtype\
+   --vrdpmulticon --vrdpreusecon --usb --usbehci --snapshotfolder --teleporter\
+   --teleporterport --teleporteraddress --teleporterpassword --hardwareuuid"
+    import_opts="-n --dry-run"
+    export_opts="--output -o --legacy09 --vsys --product --producturl --vendor
+                 --vendorurl --version --eula --eulafile"
+    sartvm_opts="--type"
+    controlvm_opts="pause resume reset poweroff savestate acpipowerbutton acpisleepbutton\
+   keyboardputscancode injectnmi setlinkstate setlinkstate<1-4> nic nic<1-4> nictrace\
+   nictrace<1-4> nictracefile nictracefile<1-4> usbattach usbdetach vrdp vrdpport setvideomodehint\
+   setcredentials teleport"
+    snapshot_opts="take delete restore edit showvminfo"
+    openmedium_opts="disk dvd floppy"
+    closemedium_opts="disk dvd floppy"
+    storageattach_opts="--storagectl --port --device --type --medium --passthrough\
+                        --forceunmount"
+    storagectl_opts="--name --add --controller --sataideemulation --sataideemulation<1-30>\
+                --sataportcount --sataportcount<1-30> --remove"
+    createhd_opts="--filename --size --format --variant --type --comment --remember"
+    modifyhd_opts="--type --autoreset --compact"
+    clonehd_opts="--format --variant --type --remember --existing"
+    convertfromraw_opts="--format --variant"
+    addiscsidisk_opts="--server --target --port --lun --encodedlun --username --password --type\
+                        --intnet2"
+    setproperty_opts="hdfolder machinefolder vrdpauthlibrary websrvauthlibrary loghistorycount"
+    usbfilter_opts="add --target --name --action --active --vendorid --productid --revision\
+                    --manufacturer --productid --remote --serialnumber --maskedinterfaces"
+    sharedfolder_opts="add" 
+    vmstatistics_opts="--reset --pattern --descriptions"
+    guestproperty_opts="get enumerate set wait --verbose --flags --timeout --fail-on-timeout"
+    metrics_opts="list setup query collect --period --samples --list --detach"
+    hostonlyif_opts="ipconfig --dhcp --ip --netmask --ipv6 --netmasklengthv6"
+    dhcpserver_opts="add modifyvm remove --netname --ifname --ip --netmask --lowerip --upperip\
+                        --enable --disable"
+    #=======================================================
+    #=======================================================
+
+    case $prev in
+        list)
+            COMPREPLY=( $( compgen -W "$list_opts" -- $cur ))
+            return 0
+            ;;
+        showvminfo)
+            COMPREPLY=( $( compgen -W "$showvminfo_opts" -- $cur ))
+            return 0
+            ;;
+        #$vmachines) #todo:there must be a way to call this completion depending on context...
+            #COMPREPLY=( $( compgen -W "$showvminfo_opts" -- $cur ))
+            #return 0
+            #;;
+        unregistervm)
+            COMPREPLY=( $( compgen -W "$unregistervm_opts" -- $cur ))
+            return 0
+            ;;
+        createvm)
+            COMPREPLY=( $( compgen -W "$createvm_opts" -- $cur ))
+            return 0
+            ;;
+    esac
+
+    if [[ "$cur" == -* ]]; then
+        # relevant options completion
+        COMPREPLY=( $( compgen -W "$OPTS" -- $cur ) )
+    else
+        COMPREPLY=( $( compgen -W "$COMMANDS" -- $cur ) )
+         
+    fi
+}
+
+complete -F _vboxmanage VBoxManage

@@ -1,0 +1,37 @@
+_setup()
+{
+    local cur prev opts
+    COMPREPLY=()
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+
+    COMMANDS="autocp cake script\
+             "
+
+    OPTS="-h --help -v --version"
+
+    case "${cur}" in
+        -*)
+            completions="$OPTS"
+            ;;
+        *)
+            completions="$COMMANDS"
+            ;;
+    esac
+
+    case "${prev}" in
+        script)
+           _filedir
+          return 0 
+          ;;
+        autocp)
+            _filedir
+            return 0
+            ;;
+    esac
+
+    COMPREPLY=( $( compgen -W "$completions" -- $cur ))
+    return 0
+}
+
+complete -F _setup setup st

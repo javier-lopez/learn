@@ -1,0 +1,112 @@
+#!/usr/bin/env bash
+
+VERSION="0.0.1"
+
+st()
+{
+    if [ $? -ne 0 ]; then
+            echo "$LIGHT_RED[FAILED]$DEFAULT"
+            exit 1
+        else
+            echo "$LIGHT_GREEN[DONE]$DEFAULT"
+    fi
+}
+#===================================================
+
+#Don't forget update this when adding new functions
+usage()
+{
+  echo -e "$0: Setup my common tasks"
+  echo -e "  -h  or --help     List available arguments and usage (this message)."
+  echo -e "  -v  or --version  Print version."
+  echo -e
+  echo -e "  autocp            Setup custom autocomplete file"
+  echo -e "  cake              Setup cake"
+  echo -e "  script            Setup a custom script"
+  echo -e
+  echo -e "Logs are saved in /tmp/setup.log"
+}
+
+script()
+{
+    if [[ -z "$1" ]]; then
+        echo -e "$0: Missing parameter"
+        exit 1
+    fi
+
+    echo -ne "$LIGHT_RED[*]$DEFAULT chmod +x $1 "
+    chmod +x $1 >> /tmp/setup.log 2>&1
+    st
+
+    echo -ne "$LIGHT_RED[*]$DEFAULT sudo cp $1 /usr/local/bin "
+    sudo cp $1 /usr/local/bin >> /tmp/setup.log 2>&1
+    st
+}
+
+autocp()
+{
+    if [[ -z "$1" ]]; then
+        echo -e "$0: Missing parameter"
+        exit 1
+    fi
+
+    echo -ne "$LIGHT_RED[*]$DEFAULT sudo cp $1 /etc/bash_completion.d/ "
+    sudo cp $1 /etc/bash_completion.d/ >> /tmp/setup.log 2>&1
+    st
+}
+
+cake()
+{
+echo -ne "$LIGHT_RED[*]$DEFAULT tar zxvf cake_1.2.5.tar.gz "
+tar zxvf cake_1.2.5.tar.gz >> /tmp/init_cake.log 2>&1
+st
+
+echo -ne "$LIGHT_RED[*]$DEFAULT chmod -R 777 cake_1.2.5/app/tmp/ "
+chmod -R 777 cake_1.2.5/app/tmp/ >> /tmp/init_cake.log 2>&1
+st
+
+echo -ne "$LIGHT_RED[*]$DEFAULT cp cake_1.2.5/app/config/{database.php.default,database.php} "
+cp cake_1.2.5/app/config/{database.php.default,database.php} >> /tmp/init_cake.log 2>&1
+st
+
+echo -ne "$LIGHT_RED[*]$DEFAULT cd cake_1.2.5 "
+cd cake_1.2.5 >> /tmp/init_cake.log 2>&1
+st
+
+echo -ne "$LIGHT_RED[*]$DEFAULT vim app/config/{core.php,database.php} -o "
+vim app/config/{core.php,database.php} -o
+st
+}
+
+if [[ $# != 0 ]]; then
+    case $1 in
+        cake)
+        cake
+        exit 1
+        ;;
+        script)
+        script $2
+        exit 1
+        ;;
+        autocp)
+        autocp $2
+        exit
+        ;;
+        -h | --help)
+        usage
+        exit 0
+        ;;
+        -v | --version)
+        echo $VERSION
+        exit 0
+        ;;
+        *)
+        echo -e "Error, unknown option: \"$1\""
+        usage
+        exit 1
+        ;;
+    esac
+else
+    usage
+    exit 1
+fi

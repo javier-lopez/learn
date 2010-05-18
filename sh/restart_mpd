@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+st()
+{
+    if [ $? -ne 0 ]; then
+            echo "$LIGHT_RED[FAILED]$DEFAULT"
+            exit 1
+        else
+            echo "$LIGHT_GREEN[DONE]$DEFAULT"
+    fi
+}
+
+echo -ne "$LIGHT_RED[*]$DEFAULT mpc clear "
+mpc clear >> /tmp/restart_mpd.log 2>&1
+st
+
+echo -e "$LIGHT_RED[*]$DEFAULT sudo killall mpd "
+sudo killall mpd
+
+echo -e "$LIGHT_RED[*]$DEFAULT sudo /etc/init.d/mpd start "
+sudo /etc/init.d/mpd start
+
+echo -e "$LIGHT_RED[*]$DEFAULT mpc add /"
+mpc add / >> /tmp/restart_mpd.log 2>&1
+st

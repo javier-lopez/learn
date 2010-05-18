@@ -1,0 +1,54 @@
+# bash completion for Debian apache2 configuration tools
+# $Id: apache2,v 1.1 2005/03/16 22:51:19 guillaume Exp $
+
+_apache2_modsites()
+{
+       COMPREPLY=( $( compgen -W '$( command ls /etc/apache2/$1 2>/dev/null \
+               | sed -e 's/\.load//' -e 's/\.conf//' )' -- $cur  ) )
+}
+
+_a2enmod()
+{
+       local cur
+
+       COMPREPLY=()
+       cur=${COMP_WORDS[COMP_CWORD]}
+
+       _apache2_modsites mods-available
+}
+complete -F _a2enmod a2enmod
+
+_a2ensite()
+{
+       local cur
+
+       COMPREPLY=()
+       cur=${COMP_WORDS[COMP_CWORD]}
+
+       _apache2_modsites sites-available
+
+}
+complete -F _a2ensite a2ensite
+
+_a2dismod()
+{
+       local cur
+
+       COMPREPLY=()
+       cur=${COMP_WORDS[COMP_CWORD]}
+
+       _apache2_modsites mods-enabled
+}
+complete -F _a2dismod a2dismod
+
+_a2dissite()
+{
+       local cur
+
+       COMPREPLY=()
+       cur=${COMP_WORDS[COMP_CWORD]}
+
+       _apache2_modsites sites-enabled
+
+}
+complete -F _a2dissite a2dissite

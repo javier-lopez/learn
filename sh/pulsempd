@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+st()
+{
+    if [ $? -ne 0 ]; then
+            echo "$LIGHT_RED[FAILED]$DEFAULT"
+            exit 1
+        else
+            echo "$LIGHT_GREEN[DONE]$DEFAULT"
+    fi
+}
+
+echo -ne "$LIGHT_RED[*]$DEFAULT killall pulseaudio"
+killall pulseaudio >> /tmp/ini.log 2>&1
+st
+
+echo -e "$LIGHT_RED[*]$DEFAULT /etc/init.d/pulseaudio start"
+/etc/init.d/pulseaudio start
+
+echo -e "$LIGHT_RED[*]$DEFAULT /etc/init.d/mpd restart"
+/etc/init.d/mpd restart

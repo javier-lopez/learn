@@ -1,0 +1,962 @@
+#!/bin/bash
+# Compiz-Check -- script to test if your system is able to run Compiz
+#
+# Copyright (c) 2008 Nick Bauermeister <Forlong@gmx.de>
+#
+# This program is free software. Feel free to redistribute and/or
+# modify it under the terms of the GNU General Public License v3
+# as published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful
+# but comes WITHOUT ANY WARRANTY; without even the implied warranty
+# of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the GNU General Public License for more details.
+
+VERSION="0.4.5-4"
+
+usage()
+{
+  printf "\nAbout:\n"
+  printf "%6s Compiz-Check will check if your system satisfies all requirements to\n"
+  printf "%6s run Compiz properly.\n"
+  printf "%6s It will also help you trace back the problem(s) you may be facing.\n\n"
+  printf "%6s Visit\033[1m http://forlong.blogage.de/article/pages/Compiz-Check \033[0m\n"
+  printf "%6s for further information.\n\n"
+  printf "Usage:\n"
+  printf "%6s Run this script without any arguments.\n\n"
+  printf "Available arguments:\n"
+  printf "  -h  or --help %8s List available arguments and usage (this message).\n"
+  printf "  -v  or --version %5s Print version of Compiz-Check in use.\n\n"
+}
+
+banana()
+{
+  printf "//\\ \nV%2s\\ \n \\%2s\\ \n%2s\\ \033[1;33m.\`-.\n%3s|\\ \`. \`.\n%3s( \\%2s\`. \`-.%24s_,.-:\\ \n%4s\\ \\%3s\`.%2s\`-._%13s__..--' ,-';/\n%5s\\ \`.%3s\`-.%3s\`-..___..---'%3s_.--' ,'/\n%6s\`. \`.%4s\`-._%8s__..--'%4s,' /\n%8s\`. \`-_%4s \`\`--..''%6s _.-' ,'\n%10s\`-_ \`-.___%8s__,--'%3s,'\n%13s\`-.__%2s\`----'''%4s__.-'\n%18s\`--..____..--'\033[0m\n\n"
+}
+
+if [ $# != 0 ]; then
+  case $1 in
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    -v | --version)
+      echo $VERSION
+      exit 0
+      ;;
+    --banana)
+      banana
+      exit 0
+      ;;
+    *)
+      printf "Error, unknown option: \"$1\"\nRun \033[1m$0 --help\033[0m for details.\n"
+      exit 1
+      ;;
+  esac
+fi
+
+# Exit when running as root
+if [ "$(whoami)" = root ]; then
+  printf "\n Do not run this script as root, because it might distort its outcome.\n Aborting.\n\n"
+  exit 0
+fi
+
+# Needed for lspci, because it's not in the $PATH of every distro
+export PATH=$PATH:/sbin:/usr/sbin
+
+# Can't handle more than one graphics card or X server at a time
+if [ $(lspci | grep VGA -c) -gt 1 ]; then
+  ERROR_DEVICE="graphics chip"
+elif [ $(xdpyinfo | grep -i dimensions: -c) -gt 1 ]; then
+  ERROR_DEVICE="running X server"
+fi
+
+if [ ! -z "$ERROR_DEVICE" ]; then
+  printf "\n More than one $ERROR_DEVICE detected -- sorry, the script can not handle that.\n Aborting.\n\n"
+  exit 0
+fi
+
+# Skip system checks if they are harmful or useless
+SKIP=yes
+
+# Coloured output (there are other emphases hardcoded in the script, so
+# it would  be pretty useless changing those here)
+UNKNOWN="\033[1;31mUnknown\033[0m"
+OK=" \033[1;32mOK\033[0m "
+FAIL="\033[1;31mFAIL\033[0m"
+SKIPPING="\033[33mSKIP\033[0m"
+WARN="\033[33mWARN\033[0m"
+
+# General distribution info file
+DIST_INFO="/etc/lsb-release"
+
+# Detect distribution
+# If your distro is not on this list, contact me.
+detect_distro()
+{
+  if [ -d /etc/linuxmint ]; then
+    DISTRIB_ID="Linux Mint"
+    return 0
+  elif [ -r $DIST_INFO ]; then
+    . $DIST_INFO
+  fi
+    
+  if [ -z $DISTRIB_ID ]; then
+    unset DISTRIB_RELEASE
+    if [ -f /etc/arch-release ]; then
+      DISTRIB_ID="Arch Linux"
+    elif [ -r /etc/knoppix-version ]; then
+      DISTRIB_ID="Knoppix"
+      DISTRIB_RELEASE="($(cat /etc/knoppix_version))"
+    elif [ -r /etc/sidux-version ]; then
+      DISTRIB_ID="Sidux"
+      DISTRIB_RELEASE="($(cat /etc/sidux-version | awk '{print $4}'))"
+    elif [ -r /etc/debian_version ]; then
+      DISTRIB_ID="Debian GNU/Linux"
+      DISTRIB_RELEASE="($(cat /etc/debian_version))"
+    elif [ -r /etc/fedora-release ]; then
+      DISTRIB_ID="$(cat /etc/redhat-release)"
+    elif [ -r /etc/gentoo-release ]; then
+      DISTRIB_ID="Gentoo"
+      DISTRIB_RELEASE="($(cat /etc/gentoo-release | awk '{print $5}'))"
+    elif [ -f /etc/lfs-version ]; then
+      DISTRIB_ID="Linux from scratch"
+    elif [ -r /etc/pclinuxos-release ]; then
+      DISTRIB_ID="PCLinuxOS"
+    elif [ -f /etc/mandriva-release ] || [ -f /etc/mandrake-release ]; then
+      DISTRIB_ID="Mandriva"
+    elif [ -f /etc/redhat-release ]; then
+      DISTRIB_ID="RedHat"
+    elif [ -r /etc/vector-version ]; then
+      DISTRIB_ID="VectorLinux"
+      DISTRIB_RELEASE="($(cat /etc/vector-version))"
+    elif [ -r /etc/slackware-version ]; then
+      DISTRIB_ID="$(cat /etc/slackware-version)"
+    elif [ -f /etc/release ]; then
+      DISTRIB_ID="Solaris"
+    elif [ -r /etc/SuSE-release ]; then
+      DISTRIB_ID="$(grep -i suse /etc/SuSE-release)"
+    elif [ -f /etc/yellowdog-release ]; then
+      DISTRIB_ID="YellowDog Linux"
+    elif [ -f /etc/zenwalk-version  ]; then
+      DISTRIB_ID="Zenwalk"
+    else
+      DISTRIB_ID="Unknown"
+    fi
+  fi
+}
+
+# Detect desktop environment in use
+detect_de()
+{
+  if [ ! -z $GNOME_DESKTOP_SESSION_ID ]; then
+    DE=GNOME
+  elif [ "$KDE_SESSION_VERSION" = 4 ]; then
+    DE=KDE4
+  elif [ "$KDE_FULL_SESSION" = true ]; then
+    DE=KDE
+  elif xprop -root _DT_SAVE_MODE | grep ' = \"xfce4\"$' >/dev/null 2>&1 ; then
+    DE=Xfce
+  else
+    DE=Unknown
+  fi
+}
+
+# Detect graphics card
+detect_video()
+{
+  if lspci | grep -q VGA ; then
+    VIDEO=$(lspci | grep VGA | sed 's/.*: //')
+  else
+    VIDEO=$UNKNOWN # TODO abort?
+  fi
+}
+
+XSET=$(command -v xset)
+
+# Detect location of the Xorg log file
+if [ ! -z $XSET ]; then
+  XORG_LOG=$($XSET q | grep "Log file" | awk '{print $3}')
+fi
+
+# Fallback Xorg log
+if [ -z $XORG_LOG ]; then
+  if [ -f /var/log/Xorg.0.log ]; then
+    XORG_LOG=/var/log/Xorg.0.log
+  fi
+fi
+
+# advise to look for proprietary drivers in Ubuntu
+detect_driver_manager()
+{
+  if [ $(echo "$DISTRIB_RELEASE" | sed 's/\.//g') -gt 710 ] && [ $DE = GNOME ] || [ $DE = Xfce ]; then
+    DRVS_MNGR=hardy-gtk
+  elif [ $(echo "$DISTRIB_RELEASE" | sed 's/\.//g') -gt 710 ] && [ $DE = KDE ]; then
+    DRVS_MNGR=hardy-kde
+  elif [ "$DISTRIB_RELEASE" = "7.10" ] && [ $DE = GNOME ] || [ $DE = Xfce ]; then
+    DRVS_MNGR=gutsy-gtk
+  elif [ "$DISTRIB_RELEASE" = "7.10" ] && [ $DE = KDE ]; then
+    DRVS_MNGR=gutsy-kde
+  elif [ "$DISTRIB_RELEASE" = "7.04" ] && [ $DE = GNOME ] || [ $DE = Xfce ]; then
+    DRVS_MNGR=feisty-gtk
+  fi
+}
+
+# Drivers known to work with Compiz
+WHITELIST="nvidia intel i810 ati radeon fglrx"
+
+# Drivers taken from Hardy's /usr/lib/xorg/modules/drivers/ directory
+# plus radeonhd, vboxvideo, nouveau and the proprietary one's.
+# Contact me, if your driver is not on this list.
+KNOWN_DRIVERS="$WHITELIST apm ark chips cirrus cyrix fbdev glint i128
+               i740 imstt mga mtx neomagic newport nsc nv openchrome
+               rendition s3virge savage siliconmotion sis sisusb tdfx
+               tga trident tseng vesa vga via vmware vboxvideo voodoo
+               radeonhd s3 nouveau"
+
+# Detect driver in use.
+# TODO not really satisfied with this. Just because the module is
+# loaded doesn't necessarily mean the driver is properly working.
+detect_driver()
+{
+  if [ -z $XORG_LOG ]; then
+    DRV=$SKIPPING
+    CHECKS=$SKIP
+    SKIP_MESSAGE="Unable to locate your Xorg log"
+    return 1
+  elif [ ! -r $XORG_LOG ]; then
+    DRV=$SKIPPING
+    CHECKS=$SKIP
+    SKIP_MESSAGE="No permission to read $XORG_LOG"
+    return 1
+  fi
+
+  for i in $KNOWN_DRIVERS ; do
+    if grep Loading $XORG_LOG | grep -q "${i}_drv\.so" &&
+       ! grep Unloading $XORG_LOG | grep -q "${i}_drv\.so" ; then
+      DRV=$i
+    fi
+  done
+
+  if [ -z $DRV ]; then
+    DRV=$UNKNOWN
+    return 0
+  fi
+
+# glxinfo might kill X if vesa or vga are in use (LP#119341)
+# 'LIBGL_ALWAYS_INDIRECT=1 glxinfo' kills X on openchrome driver
+# according to user feedback (same for unichrome)
+# nv driver blocks AIGLX
+  case $DRV in
+    vesa | vga | nv)
+      CHECKS=$SKIP
+      SKIP_MESSAGE="$DRV driver in use"
+      ERROR_MESSAGE="The $DRV driver is not capable of running Compiz, you need to install\n the proper driver for your graphics card."
+      if [ "$DISTRIB_ID" = Ubuntu ]; then
+        detect_driver_manager
+      fi
+      ;;
+    unichrome | openchrome)
+      CHECKS=$SKIP
+      SKIP_MESSAGE="$DRV driver in use" #TODO ERROR_MESSAGE
+      ;;
+  esac
+}
+
+# Detect rendering method
+detect_rendering()
+{
+  XVINFO=$(command -v xvinfo)
+
+  if [ ! -z $XVINFO ]; then
+    if $XVINFO | grep -q Xgl ; then
+      RENDER=Xgl
+      return 0
+    fi
+  fi    
+
+  if xdpyinfo | grep -q NV-GLX ; then
+    RENDER=Nvidia
+    return 0
+  fi
+
+  AIGLX_STAT="AIGLX enabled\|AIGLX disabled"
+
+  if [ -z $XORG_LOG ] || [ ! -r $XORG_LOG ]; then
+    RENDER=$SKIPPING
+    return 1
+  elif grep "$AIGLX_STAT" $XORG_LOG | tail -1 | grep -q "AIGLX enabled" ; then
+    RENDER=AIGLX
+    return 0
+  fi
+
+  if [ -z $XVINFO ]; then
+    RENDER=$SKIPPING
+    CHECKS=$SKIP
+    SKIP_MESSAGE="Unable to check for Xgl, could not run xvinfo"
+  else
+    RENDER="\033[31mNone\033[0m"
+    CHECKS=$SKIP # Checks can be OK nonetheless
+    SKIP_MESSAGE="No rendering method in use (AIGLX, Xgl or Nvidia)"
+  fi
+}
+
+GLXINFO=$(command -v glxinfo)
+
+# Check for texture_from_pixmap
+check_tfp()
+{
+  if [ "$RENDER" = Xgl ]; then
+    TFP=$SKIPPING
+    return 0
+  elif [ -z $GLXINFO ]; then
+    TFP=$SKIPPING
+    SKIP_MESSAGE="glxinfo not installed"
+    ERROR_MESSAGE="The program glxinfo is needed to perform a number of crucial tests."
+    if [ -e /etc/debian_version ]; then
+    DIST_HELP="You need to install the package \033[1mmesa-utils\033[0m\n Type e.g. \033[1msudo apt-get install mesa-utils\033[0m to install it."
+    elif [ -e /etc/mandriva-release ]; then
+    DIST_HELP="You need to install \033[1mmesa-demos\033[0m\n"
+    fi
+    return 0
+  fi
+
+  if [ $(glxinfo 2>/dev/null | grep GLX_EXT_texture_from_pixmap -c) -gt 2 ]; then
+    TFP=$OK
+  elif [ $(LIBGL_ALWAYS_INDIRECT=1 glxinfo 2>/dev/null | grep GLX_EXT_texture_from_pixmap -c) -gt 2 ]; then
+    TFP=$OK
+  else
+    TFP=$FAIL
+  fi
+}
+
+# Check for non power of two texture support
+check_npo2()
+{
+  if [ "$RENDER" = Xgl ] || [ -z $GLXINFO ]; then
+    NPO2=$SKIPPING
+  elif glxinfo 2>/dev/null | egrep -q '(GL_ARB_texture_non_power_of_two|GL_NV_texture_rectangle|GL_EXT_texture_rectangle|GL_ARB_texture_rectangle)' ; then
+    NPO2=$OK
+  else
+    NPO2=$FAIL
+  fi
+}
+
+# Check for composite extension
+check_composite()
+{
+  if xdpyinfo -queryExtensions | grep -q Composite ; then
+    COMP=$OK
+  else
+    COMP=$FAIL
+  fi
+}
+
+# Check for FBConfig
+check_fbconfig()
+{
+  if [ -z $GLXINFO ]; then
+    FBC=$SKIPPING
+  elif glxinfo 2>/dev/null | grep -q GLX.*fbconfig ; then
+    FBC=$OK
+  elif [ "$DRV" = via ]; then
+    FBC=$SKIPPING # 'glxinfo -i' kills X on some setups using the via driver
+  elif glxinfo -i 2>/dev/null | grep -q GLX.*fbconfig ; then
+    FBC=$OK
+  else
+    FBC=$FAIL
+  fi
+}
+
+# Check if fglrx driver supports composite
+check_fglrx()
+{
+  if [ "$DRV" = fglrx ]; then
+    FGLRXINFO=$(command -v fglrxinfo)
+    if [ ! -z "$FGLRXINFO" ]; then
+      if $FGLRXINFO | grep -q mesa ; then
+        STATUS=$FAIL
+        ERROR="Fglrx driver not properly installed, you are using the Mesa driver."
+        return 0
+      else
+        DIGITS=$($FGLRXINFO | grep version | sed 's/[a-Z:(.)]//g')
+        for i in $DIGITS ; do
+          if [ $i -gt 100000 ]; then
+            FGLRX_VERSION=$i
+          fi
+        done
+        FGLRX_COMPOSITE=206958 # 2.0.6958 first release to support AIGLX
+        if [ ! -z $FGLRX_VERSION ]; then
+          if [ $FGLRX_VERSION -lt $FGLRX_COMPOSITE ] && [ "$RENDER" != Xgl ]; then
+            STATUS=$FAIL
+            ERROR="The version of fglrx in use needs Xgl to work with Compiz."
+            ERROR_MESSAGE="Older versions of fglrx do not support AIGLX, so you have to use Xgl in order\n to make Compiz run with this driver.\n You can either install Xgl or a newer version of the fglrx driver."
+            if [ "$DISTRIB_ID" = Ubuntu ]; then
+              if [ $(echo "$DISTRIB_RELEASE" | sed 's/\.//g') -gt 704 ]; then
+                DIST_HELP="Type \033[1msudo apt-get install xserver-xgl\033[0m to install Xgl."
+              fi
+            fi
+            return 0
+          fi
+          return 1
+        fi
+        STATUS=$SKIPPING
+        SKIP_MESSAGE="Unable to detect fglrx driver version in use."
+        return 0
+      fi
+    fi
+    STATUS=$FAIL
+    ERROR="Fglrx driver not properly installed. Could not run fglrxinfo."
+    return 0
+  fi
+  
+  return 1
+}
+
+if [ -z $XDG_CONFIG_DIRS ]; then
+  XDG_CONFIG_DIRS=/etc/xdg
+fi
+
+if [ -z $XDG_CONFIG_HOME ]; then
+  XDG_CONFIG_HOME=$HOME/.config
+fi
+
+COMPIZ_MNGR_HOME=$XDG_CONFIG_HOME/compiz/compiz-manager
+
+# Check if checks are skipped (by compiz-manager, not here!)
+check_skip()
+{
+  OLD_IFS=$IFS
+  IFS=:
+  for m in $XDG_CONFIG_DIRS
+  do
+    test -r $m/compiz/compiz-manager && . $m/compiz/compiz-manager
+  done
+  IFS=$OLD_IFS
+  unset OLD_IFS
+
+  if [ -r $COMPIZ_MNGR_HOME ]; then
+    . $COMPIZ_MNGR_HOME
+  fi
+
+  if [ "$SKIP_CHECKS" = yes ]; then
+    return 1
+  fi
+  
+  return 0
+}
+
+# Check max texture size compared to resolution in use
+check_resolution()
+{
+  if [ -z $GLXINFO ]; then
+    STATUS=$SKIPPING
+    return 0
+  fi
+
+  TEXTURE_LIMIT=$(glxinfo -l 2>/dev/null | grep GL_MAX_TEXTURE_SIZE | sed 's/.*=[^0-9]//g')
+  RESOLUTION=$(xdpyinfo | grep -i dimensions: | sed 's/[^0-9]*pixels.*(.*).*//' | sed 's/[^0-9x]*//')
+  VRES=$(echo $RESOLUTION | sed 's/.*x//')
+  HRES=$(echo $RESOLUTION | sed 's/x.*//')
+
+  if [ -z $TEXTURE_LIMIT ]; then
+    STATUS=$SKIPPING
+    SKIP_MESSAGE="Unable to detect maximum 3D texture size"
+    return 0
+  elif [ $VRES -gt $TEXTURE_LIMIT ] || [ $HRES -gt $TEXTURE_LIMIT ]; then
+    STATUS=$FAIL
+    ERROR="Your current resolution is too high to run Compiz."
+    ERROR_MESSAGE="Your resolution is \033[1m${RESOLUTION}\033[0m but the maximum 3D texture size that your\n graphics card is capable of is \033[1m${TEXTURE_LIMIT}x${TEXTURE_LIMIT}\033[0m. Thus Compiz will not be able to run\n on this setup. You have to decrease the resolution first (in case you are\n using a dual-head setup, try disabling one monitor and run the script again)."
+    return 0
+  fi
+  
+  return 1
+}
+
+
+# Check if there is already another compositing manager running 
+check_compositor()
+{
+  XCOMPMGR_PID=$(ps -o pid= -C xcompmgr)
+  METACITY_PID=$(ps -o pid= -C metacity)
+  XFWM_PID=$(ps -o pid= -C xfwm4)
+
+  if [ ! -z $XCOMPMGR_PID ]; then
+    OTHER_COMP=true
+    COMP_MSG="It has been detected, that you are currently running \033[1mxcompmgr\033[0m, which is a\n standalone compositing manager."
+    QUERY_XCOMPMGR=yes
+  elif [ ! -z $METACITY_PID ]; then
+    METACITY=$(command -v metacity)
+    if [ ! -z $METACITY ]; then
+      if [ $($METACITY --version | grep metacity | awk '{print $2}' | sed 's/\.//g') -gt 2200 ]; then
+        GCONFTOOL=$(command -v gconftool-2)
+        if [ ! -z $GCONFTOOL ]; then
+          if $GCONFTOOL -a /apps/metacity/general | grep -q compositing_manager &&
+             [ "$($GCONFTOOL -g /apps/metacity/general/compositing_manager)" = true ]; then
+            OTHER_COMP=true
+            WM_COMP=GNOME
+            QUERY_METACITY=yes
+          fi
+        fi
+      fi
+    fi
+  elif [ ! -z $XFWM_PID ]; then
+    if [ -r $XDG_CONFIG_HOME/xfce4/mcs_settings/wmtweaks.xml ]; then
+      if grep UseCompositing $XDG_CONFIG_HOME/xfce4/mcs_settings/wmtweaks.xml | grep -q 'value="1"' &&
+        ! ps -ef | grep xfwm4 | grep -q compositor=off ; then
+        OTHER_COMP=true
+        WM_COMP=Xfce
+        QUERY_XFWM=yes
+      fi
+    fi
+  fi
+
+  if [ ! -z $OTHER_COMP ]; then
+    ERROR="Another compositing manager in use."
+    if [ ! -z $WM_COMP ]; then
+      COMP_MSG="The default window manager of $WM_COMP has its own compositing manager to\n provide basic desktop effects."
+    fi
+    ERROR_MESSAGE="${COMP_MSG}\n If this one is in use, Compiz will not be able to run."
+    return 0
+  fi
+
+  return 1
+}
+
+# Hardy blacklists laptops using ati/radeon driver (LP#201330)
+check_laptop_ati()
+{
+  if [ "$DISTRIB_ID $DISTRIB_RELEASE" = "Ubuntu 8.04" ]; then
+    if [ "$DRV" = ati ] || [ "$DRV" = radeon ] ; then
+      if laptop-detect && check_skip ; then
+        ERROR="Laptop using $DRV driver."
+        ERROR_MESSAGE="It has been detected, that you are running a laptop with an ATI chip.\n The $DRV driver supports Compiz out-of-the-box but because of a nasty bug\n in the driver that causes X to freeze on some cards, this particular\n combination had to be blacklisted in Ubuntu \"Hardy Heron\".\n\n In case you already used Compiz successfully on Ubuntu 7.10 (Gutsy), it is\n safe to skip the blacklist."
+        QUERY_SKIP=yes
+        return 0
+      fi
+    fi
+  fi
+  
+  return 1
+}
+
+# Check if "Composite" has been disabled in the xorg.conf
+check_cmpst_xorg()
+{
+  if [ "$COMP" = "$OK" ]; then
+    return 1
+  fi
+
+  # Detect location of the Xorg log file
+  if [ ! -z $XSET ]; then
+    XORG_CONF=$($XSET q | grep "Config file" | awk '{print $3}')
+  fi
+  
+  # Fallback xorg.conf
+  if [ -z $XORG_CONF ]; then
+    if [ -f /etc/X11/xorg.conf ]; then
+      XORG_CONF=/etc/X11/xorg.conf
+    else
+      return 1
+    fi
+  fi
+
+  if [ ! -r $XORG_CONF ]; then
+    SKIP_MESSAGE="No permission to read $XORG_CONF"
+    return 1
+  else
+    CMPST=$(grep -i "Composite" $XORG_CONF)
+    if echo $CMPST | grep -qi "0" ; then
+      COMPST_STAT='"0"'
+      COMPST_FIX='"1"'
+    elif echo $CMPST | grep -qi "Disable" ; then
+      COMPST_STAT='"Disable"'
+      COMPST_FIX='"Enable"'
+    elif echo $CMPST | grep -qi "false" ; then
+      COMPST_STAT='"false"'
+      COMPST_FIX='"true"'
+    fi
+  fi
+
+  case $DE in
+    GNOME)
+      EDITOR=gedit
+      ;;
+    KDE4 | KDE)
+      EDITOR=kate
+      ;;
+    Xfce)
+      EDITOR=mousepad
+      ;;
+  esac
+
+  if [ ! -z $COMPST_STAT ]; then
+    ERROR="Composite manually disabled"
+    ERROR_MESSAGE="It has been detected that the \"Composite\" option of your ${XORG_CONF}\n has been set to $COMPST_STAT"
+    if [ "$DRV" = fglrx ] && [ $FGLRX_VERSION -lt $FGLRX_COMPOSITE ]; then
+      return 0
+    fi
+    if [ ! -z $EDITOR ] && [ -x $EDITOR ]; then
+        DIST_HELP="Open the file being root, e.g. \033[1msudo $EDITOR $XORG_CONF\033[0m\n Then change $COMPST_STAT to $COMPST_FIX and save. Finally restart X and try again."
+    else
+      DIST_HELP="Open the file being root and change $COMPST_STAT to $COMPST_FIX\n Then restart X and try again."
+    fi
+    return 0
+  fi
+
+  return 1
+}
+
+# Check for Software Rasterizer
+check_rasterizer()
+{
+  if glxinfo 2>/dev/null | grep -q 'OpenGL renderer string: Software Rasterizer' ; then
+    ERROR="Software Rasterizer in use"  #TODO add $ERROR_MESSAGE
+    return 0
+  else
+    return 1
+  fi
+}
+
+DISCLAIMER="You can skip this blacklist -- but keep in mind that you did so.\n Do not complain if you encounter any problems with Compiz afterwards."
+
+# Check if driver in use is on the whitelist
+check_whitelist()
+{
+  for i in $WHITELIST ; do
+    if [ "$DRV" = "$i" ]; then
+      return 1
+    fi
+  done
+
+  if [ "$DRV" = "$UNKNOWN" ]; then
+    DRV_MSG="Unknown driver in use."
+  else
+    DRV_MSG="Detected driver is not on the whitelist."
+  fi
+
+  if [ "$TFP" = "$OK" -o "$SKIPPING" ] && [ "$NPO2" = "$OK" -o "$SKIPPING" ] &&
+     [ "$COMP" = "$OK" ] && [ "$FBC" = "$OK" -o "$SKIPPING" ]; then
+    if ! check_skip ; then
+      return 1
+    fi
+    STATUS=$WARN
+    WARNING=$DRV_MSG
+    ERROR_MESSAGE="Your driver is not widely known to work with Compiz and thus may be\n blacklisted on certain distributions.\n\n $DISCLAIMER"
+    QUERY_SKIP=yes
+    return 0
+  elif [ "$DRV" = vmware ] || [ "$DRV" = vboxvideo ]; then
+    STATUS=$FAIL
+    ERROR="$DRV driver in use"
+    ERROR_MESSAGE="Compiz can not be run in a virtual environment."
+    return 0
+  fi
+
+  STATUS=$FAIL
+  ERROR=$DRV_MSG
+  ERROR_MESSAGE="Your driver is not known (most probably not able) to work with Compiz.\n See http://wiki.compiz-fusion.org/Hardware for details."
+
+  if [ "$DISTRIB_ID" = Ubuntu ]; then
+    detect_driver_manager
+  fi
+  
+  return 0
+}
+
+# PCI IDs that may be blacklist on certain distributions
+# List taken from Gutsy
+GUTSY_BLACKLIST="1002:5954 1002:5854 1002:5955 1002:4153 8086:2982 8086:2992
+                 8086:29a2 8086:2a02 8086:2a12 8086:2972 1002:3152 1002:3150
+                 1002:5462 1002:5653"
+# Blacklisted IDs on Intrepid
+BLACKLISTED_PCIIDS="$GUTSY_BLACKLIST 8086:1132 8086:2e02 8086:3577 8086:2562"
+
+# My own private PCI IDs (added for testing reasons)
+# Please let me know if I really was that stupid to let those in here.
+#BLACKLISTED_PCIIDS="$BLACKLISTED_PCIIDS 1002:4152 1002:4e50"
+
+# Check if PCI ID in use is on the blacklist
+check_pciid()
+{
+  if [ "$DISTRIB_ID" = Ubuntu ] && [ "$DISTRIB_RELEASE" = "8.04" ]; then
+    return 1
+  fi
+
+  for PCIID in $BLACKLISTED_PCIIDS ; do
+    if $(lspci -n | grep -q "$PCIID") && check_skip ; then
+      STATUS=$WARN
+      WARNING="PCI ID \033[1m${PCIID}\033[0m detected."
+      ERROR_MESSAGE="Your particular graphics chip may be blacklisted on certain distributions.\n However that does not necessarily mean you will not be able to run Compiz.\n\n $DISCLAIMER"
+      QUERY_SKIP=yes
+      return 0
+    fi
+  done
+  
+  return 1
+}
+
+# Check for needed xdg files in Ubuntu
+check_xdg()
+{
+  if [ "$DISTRIB_ID" = Ubuntu ]; then
+    if [ $(echo "$DISTRIB_RELEASE" | sed 's/\.//g') -gt 704 ]; then
+      XDG_COMPIZ=/etc/xdg/compiz
+      if [ ! -e $XDG_COMPIZ/compiz-manager ] && [ -e /usr/bin/compiz.real ]; then
+        check_skip
+        if [ "$COMPIZ_BIN_PATH" = /usr/bin/ ] && [ "$COMPIZ_NAME" = compiz.real ] &&
+           [ "$PLUGIN_PATH" = /usr/lib/compiz/ ]; then
+          return 1
+        else
+          STATUS=$WARN
+          WARNING="No path to Compiz found."
+          ERROR_MESSAGE="In case you did not compile Compiz manually, this will result in Compiz\n failing to run."
+          if [ -d $XDG_COMPIZ ]; then
+            BACKUP=$(echo $(ls $XDG_COMPIZ | grep "compiz-manager\.") | awk '{print $1}')
+          fi
+          if [ ! -z $BACKUP ] ; then
+            DIST_HELP="You can try to fix this, by typing the following command in the terminal:\n\033[1msudo mv $XDG_COMPIZ/$BACKUP $XDG_COMPIZ/compiz-manager\033[0m"
+          fi
+          return 0
+        fi
+      fi
+    fi
+  fi
+
+  return 1
+}
+
+# Check if Nvidia card in use has enough memory
+check_nvidia_mem()
+{
+  if [ "$DRV" = nvidia ]; then
+    if [ "$RENDER" = Xgl ]; then
+      STATUS=$SKIPPING
+      SKIP_MESSAGE="Xgl on Nvidia chip."
+      return 0
+    fi
+    NVIDIA_SETTINGS=$(command -v nvidia-settings)
+    if [ ! -z $NVIDIA_SETTINGS ] ; then
+      MEM=$($NVIDIA_SETTINGS -q VideoRam | egrep Attribute\ \'VideoRam\'\ .*: | cut -d: -f3 | sed 's/[^0-9]//g')
+      NVIDIA_MEMORY=65536 # 64MB
+      if [ "$MEM" -lt $NVIDIA_MEMORY ] && check_skip ; then
+        STATUS=$WARN
+        WARNING="Nvidia card has not enough memory ($MEM KB) to run Compiz properly."
+        ERROR_MESSAGE="It is not recommended to run Compiz on a Nvidia chip with such a low amount\n of memory. Because of that, your hardware may be blacklisted on certain\n distributions.\n\n $DISCLAIMER"
+        QUERY_SKIP=yes
+        return 0
+      fi
+      return 1
+    fi
+    STATUS=$SKIPPING
+    SKIP_MESSAGE="Could not check the amount of memory on your Nvidia chip."
+    ERROR_MESSAGE="That does \033[1mnot\033[0m mean, you will not be able to use Compiz.\n If everything else went OK you are most probably fine.\n\n In case you want the script to check this step as well, install the program\n \033[1mnvidia-settings\033[0m on your system."
+    return 0
+  fi
+  
+  return 1
+}
+
+# Check for proprietary driver (Ubuntu only)
+check_prop_driver()
+{
+  printf "Check if there's an alternate (proprietary) driver available? (Y/n) "
+  read REPLY
+  case $REPLY in
+    "" | y | Y | yes | Yes)
+      case $DRVS_MNGR in 
+        hardy-gtk)
+          exec gksu jockey-gtk & exit 0
+          ;;
+        hardy-kde)
+          exec kdesu jockey-kde & exit 0
+          ;;
+        gutsy-gtk)
+          exec gksu restricted-manager & exit 0
+          ;;
+        gutsy-kde)
+          exec kdesu restricted-manager-kde & exit 0
+          ;;
+        feisty-gtk)
+          exec gksu restricted-manager & exit 0
+          ;;
+      esac
+      ;;
+      n | N | no | No)
+      exit 0
+      ;;
+    *)
+      check_prop_driver
+      ;;
+  esac
+}
+
+# Query if the user wants to skip checks in compiz-manager
+query_skip_checks()
+{
+  printf "Do you want to skip blacklist checks by Compiz? (y/N) "
+  read REPLY
+  case $REPLY in
+    y | Y | yes | Yes)
+      mkdir -p $XDG_CONFIG_HOME/compiz
+      echo SKIP_CHECKS=yes >> $COMPIZ_MNGR_HOME
+      ;;
+    "" | n | N | no | No)
+      exit 0
+      ;;
+    *)
+      query_skip_checks
+      ;;
+  esac
+}
+
+# Query if the user wants to kill xcompmgr
+query_xcompmgr()
+{
+  printf "Do you want to disable xcompmgr? (Y/n) "
+  read REPLY
+  case $REPLY in
+    "" | y | Y | yes | Yes)
+      kill $XCOMPMGR_PID
+      ;;
+      n | N | no | No)
+      exit 0
+      ;;
+    *)
+      query_xcompmgr
+      ;;
+  esac
+}
+
+# Query to disable Metacity's compositing manager
+query_metacity_comp()
+{
+  printf "Do you want to disable GNOME's compositing manager? (Y/n) "
+  read REPLY
+  case $REPLY in
+    "" | y | Y | yes | Yes)
+      $GCONFTOOL -s -t bool /apps/metacity/general/compositing_manager false
+      kill -9 $METACITY_PID 2>/dev/null
+      exec $METACITY --replace &
+      ;;
+      n | N | no | No)
+      exit 0
+      ;;
+    *)
+      query_metacity_comp
+      ;;
+  esac
+}
+
+# Query if the user wants to disable Xfwm's compsitor
+query_xfwm_comp()
+{
+  printf "Do you want to disable Xfce's compositing manager? (Y/n) "
+  read REPLY
+  case $REPLY in
+    "" | y | Y | yes | Yes)
+      kill $XFWM_PID
+      sleep 1
+      exec xfwm4 --compositor=off --daemon &
+      exit 0
+      ;;
+      n | N | no | No)
+      exit 0
+      ;;
+    *)
+      query_xfwm_comp
+      ;;
+  esac
+}
+
+# Ask user to print additional info (Starship Troopers style).
+more_info()
+{
+  printf "Would you like to know more? (Y/n) "
+  read REPLY
+  case $REPLY in
+    "" | y | Y | yes | Yes)
+      return 0
+      ;;
+    n | N | no | No)
+      return 1
+      ;;
+    *)
+      more_info
+      ;;
+  esac
+}
+
+# --- Output starts here ---
+
+# System info
+printf "\nGathering information about your system...\n\n"
+detect_distro
+printf " Distribution: %9s\033[1m${DISTRIB_ID} ${DISTRIB_RELEASE}\033[0m\n"
+detect_de
+printf " Desktop environment: %2s\033[1m${DE}\033[0m\n"
+detect_video
+printf " Graphics chip: %8s\033[1m${VIDEO}\033[0m\n"
+detect_driver
+printf " Driver in use: %8s\033[1m${DRV}\033[0m\n"
+detect_rendering
+printf " Rendering method: %5s\033[1m${RENDER}\033[0m\n"
+
+# System checks
+printf "\nChecking if it's possible to run Compiz on your system..."
+if [ "$CHECKS" = yes ]; then
+  printf "%2s[${SKIPPING}]\n\n"
+else
+  printf "\n\n Checking for texture_from_pixmap..."
+  check_tfp
+  printf "%15s[${TFP}]\n"
+  printf " Checking for non power of two support..."
+  check_npo2
+  printf "%10s[${NPO2}]\n"
+  printf " Checking for composite extension..."
+  check_composite
+  printf "%15s[${COMP}]\n"
+  printf " Checking for FBConfig..."
+  check_fbconfig
+  printf "%26s[${FBC}]\n"
+fi
+
+# Hardware checks
+printf " Checking for hardware/setup problems..."
+if [ "$CHECKS" = yes ]; then
+  printf "%11s[${SKIPPING}]\n\n"
+elif check_compositor || check_laptop_ati || check_cmpst_xorg || check_rasterizer ; then
+  printf "%11s[${FAIL}]\n\n"
+elif check_fglrx || check_whitelist || check_resolution || check_xdg || check_pciid || check_nvidia_mem ; then
+  printf "%11s[${STATUS}]\n\n"
+else
+  printf "%11s[${OK}]\n\n"
+fi
+
+# Print error or warning (if any)
+# The $ERROR, $WARNING and $SKIP_MESSAGE outputs are supposed to be a
+# short description of the respective error.
+if [ "x$ERROR" != "x" ]; then
+  printf "There has been (at least) one error detected with your setup:\n \033[31mError:\033[0m $ERROR \n\n"
+elif [ "x$WARNING" != "x" ]; then
+  printf "Something potential problematic has been detected with your setup:\n \033[33mWarning:\033[0m $WARNING \n\n"
+elif [ "x$SKIP_MESSAGE" != "x" ]; then
+  printf "At least one check had to be skipped:\n \033[33mError:\033[0m $SKIP_MESSAGE \n\n"
+fi
+
+# Interactive output begins here
+if [ "x$ERROR_MESSAGE" != "x" ] && more_info ; then
+  printf "\n $ERROR_MESSAGE \n\n"
+  if [ ! -z $QUERY_SKIP ]; then
+    query_skip_checks
+  elif [ ! -z $QUERY_XCOMPMGR ]; then
+    query_xcompmgr
+  elif [ ! -z $QUERY_METACITY ]; then
+    query_metacity_comp
+  elif [ ! -z $QUERY_XFWM ]; then
+    query_xfwm_comp
+  elif [ "x$DRVS_MNGR" != "x" ]; then
+    check_prop_driver
+  elif [ "x$DIST_HELP" != "x" ]; then
+    printf " $DIST_HELP \n\n"
+  fi
+fi

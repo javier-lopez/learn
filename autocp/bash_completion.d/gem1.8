@@ -1,0 +1,297 @@
+# Michael Schuerig, michael@schuerig.de, 2007-02-24
+# [2007-12-21] Updated by Victor Serbin (chepel@hotmail.com) for gem1.8 v1.0
+# Free for all uses.
+
+have gem1.8 &&
+_gem18()
+{
+    local cur prev completions
+
+    COMPREPLY=()
+    cur=${COMP_WORDS[COMP_CWORD]}
+    prev=${COMP_WORDS[COMP_CWORD-1]}
+
+    COMMANDS='build cert check cleanup contents dependency\
+      environment fetch generate_index help install list\
+      lock mirror outdated pristine query rdoc search server\
+      sources specification uninstall unpack update which'
+
+    GEM_OPTIONS='\
+      -h --help\
+      -v --version'
+
+    COMMON_OPTIONS='\
+      -h --help\
+      -V --verbose --no-verbose\
+      -q --quiet\
+      --config-file\
+      --backtrace\
+      --debug'
+
+    CERT_OPTIONS='\
+      -a -add\
+      -l --list\
+      -r --remove\
+      -b --build\
+      -C --certificate\
+      -K --private-key\
+      -s --sign'
+
+    CHECK_OPTIONS='\
+      --verify\
+      -a --alien\
+      -t --test\
+      -v --version'
+
+    CLEANUP_OPTIONS='\
+      -d --dry-run'
+
+    CONTENTS_OPTIONS='\
+      -v --version\
+      -s --spec-dir\
+      -l --lib-only --no-lib-only'
+
+    DEPENDENCY_OPTIONS='\
+      -v --version\
+      --platform\
+      -R --reverse-dependencies --no-reverse-dependencies\
+      -p --pipe'
+
+    ENVIRONMENT_OPTIONS=''
+
+    FETCH_OPTIONS='\
+      -v --version\
+      --platform\
+      -B --bulk-threshold\
+      -p --http-proxy --no-http-proxy\
+      --source'
+
+    GENERATE_INDEX_OPTIONS='\
+      -d --directory'
+
+    HELP_OPTIONS=$COMMANDS
+
+    INSTALL_OPTIONS='\
+      --platform\
+      -v --version\
+      -i --install-dir\
+      -d --rdoc --no-rdoc\
+      --ri --no-ri\
+      -E --env-shebang\
+      -f --force --no-force\
+      -t --test --no-test\
+      -w --wrappers --no-wrappers\
+      -P --trust-policy\
+      --ignore-dependencies\
+      -y --include-dependencies\
+      --format-executable --no-format-executable\
+      -l --local\
+      -r --remote\
+      -b --both\
+      -B --bulk-threshold\
+      --source\
+      -p --http-proxy --no-http-proxy\
+      -u --update-sources --no-update-sources'
+
+    LIST_OPTIONS='\
+      -d --details --no-details\
+      --versions --no-versions\
+      -l --local\
+      -r --remote\
+      -b --both\
+      -B --bulk-threshold\
+      --source\
+      -p --http-proxy --no-http-proxy\
+      -u --update-sources --no-update-sources'
+
+    LOCK_OPTIONS='\
+      -s --strict --no-strict'
+
+    MIRROR_OPTIONS=''
+
+    OUTDATED_OPTIONS='\
+      --platform'
+
+    PRISTINE_OPTIONS='\
+      --all\
+      -v --version'
+
+    QUERY_OPTIONS='\
+      -n --name-matches\
+      -d --details --no-details\
+      --versions --no-versions\
+      -l --local\
+      -r --remote\
+      -b --both\
+      -B --bulk-threshold\
+      --source\
+      -p --http-proxy --no-http-proxy\
+      -u --update-sources --no-update-sources'
+
+    RDOC_OPTIONS='\
+      --all\
+      --rdoc --no-rdoc\
+      --ri --no-ri\
+      -v --version'
+
+    SEARCH_OPTIONS='\
+      -d --details --no-details\
+      --versions --no-versions\
+      -l --local\
+      -r --remote\
+      -b --both\
+      -B --bulk-threshold\
+      --source\
+      -p --http-proxy --no-http-proxy\
+      -u --update-sources --no-update-sources'
+
+    SERVER_OPTIONS='\
+      -p --port\
+      -d --dir\
+      --daemon --no-daemon'
+
+    SOURCES_OPTIONS='\
+      -a --add\
+      -l --list\
+      -r --remove\
+      -u --update\
+      -c --clear-all'
+
+    SPECIFICATION_OPTIONS='\
+      -v --version\
+      --platform\
+      --all\
+      -l --local\
+      -r --remote\
+      -b --both\
+      -B --bulk-threshold\
+      --source\
+      -p --http-proxy --no-http-proxy\
+      -u --update-sources --no-update-sources'
+
+    UNINSTALL_OPTIONS='\
+      -a --all --no-all\
+      -i --ignore-dependencies --no-ignore-dependencies\
+      -x --executables --no-executables\
+      -v --version\
+      --platform'
+
+    UNPACK_OPTIONS='\
+      --target\
+      -v --version'
+
+    UPDATE_OPTIONS='\
+      --system\
+      --platform\
+      -i --install-dir\
+      -d --rdoc --no-rdoc\
+      --ri --no-ri\
+      -E --env-shebang\
+      -f --force --no-force\
+      -t --test --no-test\
+      -w --wrappers --no-wrappers\
+      -P --trust-policy\
+      --ignore-dependencies\
+      -y --include-dependencies\
+      --format-executable --no-format-executable\
+      -l --local\
+      -r --remote\
+      -b --both\
+      -B --bulk-threshold\
+      --source\
+      -p --http-proxy --no-http-proxy\
+      -u --update-sources --no-update-sources'
+
+    WHICH_OPTIONS='\
+      -a --all --no-all\
+      -g --gems-first --no-gems-first'
+
+    case "${prev}" in
+      build)
+        completions="$COMMON_OPTIONS $BUILD_OPTIONS"
+        ;;
+      cert)
+        completions="$COMMON_OPTIONS $CERT_OPTIONS"
+        ;;
+      check)
+        completions="$COMMON_OPTIONS $CHECK_OPTIONS"
+        ;;
+      cleanup)
+        completions="$COMMON_OPTIONS $CLEANUP_OPTIONS"
+        ;;
+      contents)
+        completions="$COMMON_OPTIONS $CONTENTS_OPTIONS"
+        ;;
+      dependency)
+        completions="$COMMON_OPTIONS $DEPENDENCY_OPTIONS"
+        ;;
+      environment)
+        completions="$COMMON_OPTIONS $ENVIRONMENT_OPTIONS"
+        ;;
+      fetch)
+        completions="$COMMON_OPTIONS $FETCH_OPTIONS"
+        ;;
+      generate_index)
+        completions="$COMMON_OPTIONS $GENERATE_INDEX_OPTIONS"
+        ;;
+      help)
+        completions="$COMMON_OPTIONS $HELP_OPTIONS"
+        ;;
+      install)
+        completions="$COMMON_OPTIONS $INSTALL_OPTIONS"
+        ;;
+      list)
+        completions="$COMMON_OPTIONS $LIST_OPTIONS"
+        ;;
+      lock)
+        completions="$COMMON_OPTIONS $LOCK_OPTIONS"
+        ;;
+      mirror)
+        completions="$COMMON_OPTIONS $MIRROR_OPTIONS"
+        ;;
+      outdated)
+        completions="$COMMON_OPTIONS $OUTDATED_OPTIONS"
+        ;;
+      pristine)
+        completions="$COMMON_OPTIONS $PRISTINE_OPTIONS"
+        ;;
+      query)
+        completions="$COMMON_OPTIONS $QUERY_OPTIONS"
+        ;;
+      rdoc)
+        completions="$COMMON_OPTIONS $RDOC_OPTIONS"
+        ;;
+      search)
+        completions="$COMMON_OPTIONS $SEARCH_OPTIONS"
+        ;;
+      server)
+        completions="$COMMON_OPTIONS $SERVER_OPTIONS"
+        ;;
+      sources)
+        completions="$COMMON_OPTIONS $SOURCES_OPTIONS"
+        ;;
+      specification)
+        completions="$COMMON_OPTIONS $SPECIFICATION_OPTIONS"
+        ;;
+      uninstall)
+        completions="$COMMON_OPTIONS $UNINSTALL_OPTIONS"
+        ;;
+      unpack)
+        completions="$COMMON_OPTIONS $UNPACK_OPTIONS"
+        ;;
+      update)
+        completions="$COMMON_OPTIONS $UPDATE_OPTIONS"
+        ;;
+      which)
+        completions="$COMMON_OPTIONS $WHICH_OPTIONS"
+        ;;
+      *)
+        completions="$COMMANDS $GEM_OPTIONS"
+        ;;
+    esac
+
+    COMPREPLY=( $( compgen -W "$completions" -- $cur ))
+    return 0
+}
+
+[ -n "${have:-}" ] && complete -F _gem18 $filenames gem1.8

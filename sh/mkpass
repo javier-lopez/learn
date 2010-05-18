@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+
+if [[ ! $1 ]]; then
+    mkpasswd_length=8
+else
+    mkpasswd_length=$1
+fi
+
+if [[ -e /usr/bin/xclip ]]; then
+    #todo: fix this shit
+    #strings /dev/urandom | grep -o '[[:alnum:]]' | head -n $mkpasswd_length | tr -d '\n' |tee /dev/fd/2| xclip;
+    #for some weird reason it avoids loging out cleanly
+    strings /dev/urandom | grep -o '[[:alnum:]]' | head -n $mkpasswd_length | tr -d '\n'; echo
+else
+    strings /dev/urandom | grep -o '[[:alnum:]]' | head -n $mkpasswd_length | tr -d '\n'; echo
+fi
+
+exit 0

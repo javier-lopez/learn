@@ -1,0 +1,50 @@
+have chdist &&
+_chdist ()
+{
+  local cur=$2 prev=$3
+  local options='--help -h --data-dir -d --arch -a'
+  local commands='create apt-get apt-cache apt-rdepends
+           src2bin bin2src
+	   compare-packages compare-bin-packages
+	   compare-versions compare-bin-versions
+	   grep-dctrl-packages grep-dctrl-sources
+	   list'
+  local archs='i386 amd64 powerpc m68k sparc alpha hppa arm mips mipsel ia64 armel s390 ppc64 sh armeb m32r'
+  local dists=$(ls $HOME/.chdist)
+
+  COMPREPLY=()
+
+
+  case "$prev" in
+     -@(-arch|a))
+        COMPREPLY=( $( compgen -W "$archs" -- $cur ) )
+        return 0
+      ;;
+     -@(-data-dir|d))
+        _filedir
+        return 0
+     ;;
+    -@(-help|h)|list)
+        return 0
+    ;;
+    create|apt-get|apt-cache|apt-rdepends|src2bin|bin2src|compare-packages|compare-bin-packages|compare-versions|compare-bin-versions|grep-dctrl-packages|grep-dctrl-sources)
+        COMPREPLY=( $( compgen -W "$dists" -- $cur ) ) 
+	return 0
+  esac
+
+  if [[ "$cur" == -* ]]; then
+    # return one of the possible options
+    COMPREPLY=( $( compgen -W "$options" -- $cur ) )
+  else
+    # return one of the possible commands
+    COMPREPLY=( $( compgen -W "$commands" -- $cur ) )
+  fi
+
+  return 0
+
+}
+
+
+[ -n "${have:-}" ] && complete -F _chdist $filenames chdist
+
+
