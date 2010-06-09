@@ -2,6 +2,7 @@
 
 # Simple script to list version numbers of critical development tools
 # LFS
+
 bash --version | head -n1 | cut -d" " -f2-4
 echo "/bin/sh -> `readlink -f /bin/sh`"
 echo -n "Binutils: "; ld --version | head -n1 | cut -d" " -f3-

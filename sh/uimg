@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+#
+# upload imgs to your account at mononeurona.org
+
+# ======= Initial checks ============
+if [[ ! -e /usr/bin/html2text ]]; then
+    echo "You need install html2text before using $0"
+    echo "    In Ubuntu/Debian use: \$apt-get install html2text"
+    exit 0
+fi
+
+if [[ ! $1 ]]; then
+    echo "$0: You must specify a file to upload."
+    exit 1
+fi
+
+# ============ Settings =============
+#Avoid writing user/password every time
+MNron=chilicuil@i.am
+MNpwd=vimuswal
+MNimg="$1"
+# ===================================
+
+if [[ -z "${MNron}" ]]; then
+    echo -n "User: "
+    read -e MNron
+fi
+
+if [[ -z "${MNpwd}" ]]; then
+    echo -n "Password: "
+    read -e MNpwd
+fi
+
+curl -s -c /tmp/MNc -d "_method=POST&data[User][email]=$MNron&data[User][pwd]=$MNpwd" http://mononeurona.org/users/login > /tmp/MN.log
+
+SIZE_log=`ls -l /tmp/MN.log | awk '{ print $5 }'`
+
+if [[ $SIZE_log -gt 0 ]]; then
+    echo "$0: user or password incorrect"
+    exit 0
+fi
+
+curl -s -b /tmp/MNc -F "data[Image][file]=@$MNimg;type=image/png"  http://mononeurona.org/admin/images/add | html2text | \
+    grep "final" |awk '{print $3}' | sed -e 's/\"//g' > /tmp/MN.img
+MN_url=`cat /tmp/MN.img`
+
+if [[ -e /usr/bin/xclip ]]; then
+    echo "http://www.mononeurona.org/img/imgusers/"$MN_url | tee /dev/fd/2 | xclip
+else
+    echo "http://www.mononeurona.org/img/imgusers/"$MN_url
+fi
+
+#====Clean up variables=====
+unset MNron
+unset MNpwd
+unset MN_url
+rm /tmp/MN*

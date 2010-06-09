@@ -1,0 +1,29 @@
+#!/bin/sh
+
+# vim: set ts=8 sw=4 tw=0 ft=sh : 
+# http://bbs.archlinux.org/viewtopic.php?pid=484915
+
+# Script to start X on next available display.
+
+if [ $# -eq 0 ]      # check to see if arguements are given (color depth)
+       then a=24    # default color depth
+        else a=$1    # use given arguement
+fi
+
+if [ $a -ne 8 -a $a -ne 16 -a $a -ne 24 ]
+        then
+                echo "Invalid color depth. Use 8, 16, or 24."
+        exit 1
+fi
+
+for display in 0 1 2 3 4 5
+do   # checks for open display, starts X on next available
+    if [ ! -f "/tmp/.X$display-lock" ]
+    then
+        exec startx -- :$display #-depth $a
+        exit0
+    fi
+done
+
+echo "No displays available."
+exit 1

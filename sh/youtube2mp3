@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+#
+# fetch youtube's videos
 
 x=~/.youtube-dl-$RANDOM-$RANDOM.flv
 youtube-dl --output=$x --format=18 "$1"

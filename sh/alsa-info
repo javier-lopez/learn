@@ -1,8 +1,5 @@
 #!/bin/bash
 
-SCRIPT_VERSION=0.4.59
-CHANGELOG="http://www.alsa-project.org/alsa-info.sh.changelog"
-
 #################################################################################
 #Copyright (C) 2007 Free Software Foundation.
 
@@ -25,6 +22,9 @@ CHANGELOG="http://www.alsa-project.org/alsa-info.sh.changelog"
 #The script was written for 2 main reasons:
 # 1. Remove the need for the devs/helpers to ask several questions before we can easily help the user.
 # 2. Allow newer/inexperienced ALSA users to give us all the info we need to help them.
+
+SCRIPT_VERSION=0.4.59
+CHANGELOG="http://www.alsa-project.org/alsa-info.sh.changelog"
 
 #Set the locale (this may or may not be a good idea.. let me know)
 export LC_ALL=C

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+#
+# buils tiny urls
 
 if [[ ! $1 ]]; then
         echo "$0: You must specify an url"
