@@ -41,7 +41,7 @@ if [[ $SIZE_log -gt 0 ]]; then
 fi
 
 curl -s -b /tmp/MNc -F "data[Image][file]=@$MNimg;type=image/png"  http://mononeurona.org/admin/images/add | html2text | \
-    grep "final" |awk '{print $3}' | sed -e 's/\"//g' > /tmp/MN.img
+    grep "final" |awk '{print $3}' | sed -e 's:\"::g' > /tmp/MN.img
 MN_url=`cat /tmp/MN.img`
 
 if [[ -e /usr/bin/xclip ]]; then

@@ -1,49 +1,64 @@
 #!/usr/bin/env bash
+#search in the awesome www.commandlinefu.com site
+#chilicuil <chilicuil@i.am> 2010
 
-# This is a Free (as in freedom) Software licenced under the last GPL.
-# Se the licence at http://www.gnu.org/licenses/gpl.html
-# Copyright (C) 2009 Aurélio A. Heckert <aurium(a)gmail-dot-com>
+PATTERN="$@"
 
-search="$@"
+# I love colors!
+BLUE=$'\E[0;34m'
+DEFAULT=$'\E[0m'
+RED=$'\E[0;31m'
+BROWN=$'\E[0;33m'
+CYAN=$'\E[0;36m'
+DARK_GREY=$'\E[1;30m'
+GREEN=$'\E[0;32m'
+LIGHT_BLUE=$'\E[1;34m'
+LIGHT_CYAN=$'\E[1;36m'
+LIGHT_GREEN=$'\E[1;32m'
+LIGHT_GREY=$'\E[0;37m'
+LIGHT_PURPLE=$'\E[1;35m'
+LIGHT_RED=$'\E[1;31m'
+PURPLE=$'\E[1;35m'
+WHITE=$'\E[1;37m'
+YELLOW=$'\E[0;33m'
 
-if [[ -z "$search" ]]; then
-  echo "
-$(basename $0) - A command line interface to search at commandlinefu.com
+usage()
+{
+    echo "Usage: `basename $0` [-c] pattern"
+    echo
+    echo "          -c     Colorize the output"
+    exit 0
+}
 
-Usage:
-  \$ $(basename $0) <search words>
-
-Example:
-  \$ $(basename $0) history uniq
-  Searching...
-
-  history | awk '{print \$2}' | sort | uniq -c | sort -rn | head
-  List of commands you use most often
-
-  history|awk '{print \$2}'|awk 'BEGIN {FS=\"|\"} {print \$1}'|sort|uniq -c|sort -r
-  See most used commands
-  "
-  exit 0
+if [[ -z "$PATTERN" ]]; then
+    usage
 fi
 
-search_file=$( mktemp )
+while getopts ":c:" option; do
+    case $option in
+        c)
+          CFLAG=yes
+          PATTERN=$OPTARG
+          ;;
+        :)
+          echo "Option -$OPTARG requires an argument"
+          usage
+          ;;
+        \?)
+          echo "Invalid option: -$OPTARG"
+          usage
+          ;;
+    esac
+done
 
-echo -e "\e[01;33mSearching...\e[m"
-wget --post-data "q=$search" \
-     -O $search_file \
-     http://www.commandlinefu.com/search/autocomplete 2>/dev/null
-
-echo -e "$(
-grep --invert-match '<div class="autocomplete-description">\|<a style\|<\/\?ul>\|<\/\?li>\|[0-9]\+ comments\?)' $search_file |
-sed -r '
-  s/\\/\\\\/g;
-  s/<strong>/\\e[1m/g;
-  s/<\/strong>/\\e[m\\e[32m/g;
-  s/^\s*<div class="autocomplete-command">(.*)<\/div>\s*$/\\e[32m\1\\e[m/g;
-  s/^\s*<\/div>\s*$//g;
-  s/\s*\([0-9]+ votes?,\s*$//g;
-  s/^\s*//g;
-  ')"
-echo ""
-
-rm $search_file
+if [[ -z $CFLAG ]]; then
+    curl -s "http://www.commandlinefu.com/commands/matching/$PATTERN/`echo -n $PATTERN |  base64`/plaintext/sort-by-votes" |\
+    grep --invert-match "commandlinefu.com by David Winterbottom" #I wanna keep the output as clean as possible
+else
+    curl -s "http://www.commandlinefu.com/commands/matching/$PATTERN/`echo -n $PATTERN |  base64`/plaintext/sort-by-votes" |\
+    grep --invert-match "commandlinefu.com by David Winterbottom" | sed -e "
+            s:^#.*:$PURPLE&$DEFAULT:g" -e "
+            s:[^#].*:$LIGHT_GREEN&$DEFAULT:g" -e "
+            /#/!s/\<$PATTERN\>/$YELLOW&$LIGHT_GREEN/g" #for some reason if I change / for : it doesn't work
+            # I couldn't find any way to run :#:!s:\<$PATTERN\>/$RED&$LIGHT_GREEN\$/g in only 1 sed, actually I could ^-^
+fi

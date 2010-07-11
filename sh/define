@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 
 keyword="$@"
-curl -sA"Opera" "http://www.google.com/search?q=define:${keyword// /+}"|grep -Eo '<li>[^<]+'|sed 's/<li>//g'|nl|perl -MHTML::Entities -pe 'decode_entities($_)'|head -5 2>/dev/null;
+curl -sA"Opera" "http://www.google.com/search?q=define:${keyword// /+}"|grep -Eo '<li>[^<]+'|sed 's:<li>::g'|nl|perl -MHTML::Entities -pe 'decode_entities($_)'|head -5 2>/dev/null;
