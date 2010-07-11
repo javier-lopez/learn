@@ -1,0 +1,121 @@
+#!/usr/bin/env bash
+
+PORTS="/usr/ports"
+OS=$(uname)
+
+# Colors
+BLUE=$'\E[0;34m'
+DEFAULT=$'\E[0m'
+RED=$'\E[0;31m'
+BROWN=$'\E[0;33m'
+CYAN=$'\E[0;36m'
+DARK_GREY=$'\E[1;30m'
+GREEN=$'\E[0;32m'
+LIGHT_BLUE=$'\E[1;34m'
+LIGHT_CYAN=$'\E[1;36m'
+LIGHT_GREEN=$'\E[1;32m'
+LIGHT_GREY=$'\E[0;37m'
+LIGHT_PURPLE=$'\E[1;35m'
+LIGHT_RED=$'\E[1;31m'
+PURPLE=$'\E[1;35m'
+WHITE=$'\E[1;37m'
+YELLOW=$'\E[0;33m'
+
+if [[ $OS != "OpenBSD" ]]; then
+    echo "OpenBSD was not detected"
+    exit 1
+fi
+
+if [[ ! -d $PORTS ]]; then
+    echo "$PORTS was not found in your system"
+    exit 1
+fi
+
+usage()
+{
+    echo "Usage: $0 [-c] [-p|-w] pattern"
+    echo
+    echo "          -c    Colorize the output"
+    echo "          -p    Search in package's name"
+    echo "          -w    Search in full descriptions"
+    exit 1
+}
+
+# the first ":" disable the getopts warnings
+# -p and -w requires an argument that's why follows the ":" character
+# c is an standalone option
+while getopts ":p:w:c" option; do
+    case $option in
+        p)
+          PFLAG=yes
+          PATTERN=$OPTARG
+          ;;
+        w)
+          WFLAG=yes
+          PATTERN=$OPTARG
+          ;;
+        :)
+          echo "Option -$OPTARG requires an argument"
+          usage
+          ;;
+        c)
+          CFLAG=yes
+          ;;
+        \?)
+          echo "Invalid option: -$OPTARG"
+          usage
+          ;;
+    esac
+done
+
+# use only 1 '[]' if you don't have bash
+if [[ $PFLAG ]] && [[ $WFLAG ]]; then
+    echo "Can't select both options at the same time"
+    usage
+elif [[ -z $PFLAG ]] && [[ -z $WFLAG ]]; then
+    PFLAG=yes
+    if [[ -z $2 ]]; then
+        PATTERN=$1
+    else
+        PATTERN=$2
+    fi
+fi
+
+if [[ $PFLAG ]]; then
+    if [[ $CFLAG ]]; then
+        for PACKAGE in `awk -v PATTERN=$PATTERN -F\| '$1 ~ PATTERN { print $5; }' /usr/ports/INDEX`; do
+            echo "$BLUE Package: $DEFAULT" $RED `echo $PORTS/$PACKAGE | cut -d/ -f1-5` $DEFAULT
+            echo
+            echo "" `cat $PORTS/$PACKAGE`
+            echo;
+            echo $WHITE ======================================================= $DEFAULT; echo;
+        done
+    else
+        for PACKAGE in `awk -v PATTERN=$PATTERN -F\| '$1 ~ PATTERN { print $5; }' /usr/ports/INDEX`; do
+            echo "Package: " `echo $PORTS/$PACKAGE | cut -d/ -f1-5`
+            echo
+            cat $PORTS/$PACKAGE
+            echo; echo =======================================================; echo;
+        done
+    fi
+
+elif [[ $WFLAG ]]; then
+    if [[ $CFLAG ]]; then
+        for PACKAGE in `egrep -i -- $PATTERN /usr/ports/INDEX | awk -F\| '{ print $5; }'`; do
+            echo "$BLUE Package: $DEFAULT" $RED `echo $PORTS/$PACKAGE | cut -d/ -f1-5` $DEFAULT
+            echo
+            echo "" `cat $PORTS/$PACKAGE`
+            echo;
+            echo $WHITE ======================================================= $DEFAULT; echo;
+        done
+    else
+        for PACKAGE in `egrep -i -- $PATTERN /usr/ports/INDEX | awk -F\| '{ print $5; }'`; do
+            echo "Package: " `echo $PORTS/$PACKAGE | cut -d/ -f1-5`
+            echo
+            cat $PORTS/$PACKAGE
+            echo; echo =======================================================; echo;
+        done
+    fi
+fi
+
+exit

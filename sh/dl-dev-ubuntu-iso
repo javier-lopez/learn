@@ -1,0 +1,823 @@
+#!/usr/bin/env bash
+# Use dl-ubuntu-test-iso in the ubuntu-qa-tools package instead
+# chilicuil <chilicuil@i.am> 2010 -- download daily build ubuntu isos
+
+# Some of the most difficult bits have been taken from:
+# https://help.ubuntu.com/community/ZsyncCdImage
+
+# ======================= Settings ==========================
+# Comment the option to disable it
+
+UI_MIRROR="cdimages.ubuntu.com"
+
+#this should always been the latest ubuntu version, 2010-06-29
+UI_RELEASE="maverick"
+
+UI_ARCH_i386=y
+#UI_ARCH_amd64=y
+
+UI_CD=y
+#UI_DVD=y
+
+# Versions
+UI_UBUNTU=y
+#UI_KUBUNTU=y
+#UI_XUBUNTU=y
+#UI_EDUBUNTU=y
+#UI_MYTHBUNTU=y
+#UI_UBUNTUSTUDIO=y
+UI_ALTERNATE=y
+
+# Flavors
+UI_SERVER=y
+UI_DESKTOP=y
+UI_NETBOOK=y
+
+# By default it'll use zsync
+UI_ZSYNC=y
+UI_ZSYNC_OPTS=""
+#UI_RSYNC=y
+#UI_RSYNC_OPTS="-zthhP"
+
+#UI_VERBOSE=y
+
+# ========================================================================
+
+# ========================================================================
+# THE SCRIPT STARTS HERE, DON'T TOUCH IT UNLESS YOU KNOW WHAT YOU'RE DOING
+# ========================================================================
+
+usage()
+{
+    echo "Usage: `basename $0` [OPTIONS]... DIRECTORY"
+    echo
+    echo "    This script will download the latest Ubuntu development CD/DVD images. It should only be used if"
+    echo "    you are interested in helping to debug Ubuntu before it gets released, if you only wanna use Ubuntu"
+    echo "    go to http://www.ubuntu.com/desktop/get-ubuntu/download"
+    echo
+    echo "    By default it will download the latest Ubuntu-desktop (x86, cd) version using zsync, modify the"
+    echo "    settings inside the script or in ~/.ubuntu-iso (see an example http://google.com)"
+    echo
+    echo "          -a   --all      Download all versions (CD, DVD, Desktop, Server, Kubuntu, Xubuntu, etc)"
+    echo "          -z   --zsync    Use zsync to fetch the media (recommended)"
+    echo "          -r   --rsync    Use rsync to fetch the media"
+    echo "          -v   --verbose  Show a verbose output"
+    echo "          -h   --help     Show this help"
+    echo "          --x86           Download the i386 versions"
+    echo "          --x64           Download the amd64 versions"
+    echo "          --cd            Download if available the CD version"
+    echo "          --dvd           Download if available the DVD version"
+    echo "          --release=      Download any release (maverick by default)"
+    echo "          --ubuntu=       Download Ubuntu (desktop by default)"
+    echo "          --kubuntu=      Download kubuntu (desktop by default)"
+    echo "          --xubuntu       Download Xubuntu"
+    echo "          --edubuntu      Download Mythbuntu"
+    echo "          --mythbuntu     Download Mythbuntu"
+    echo "          --ubuntustudio  Download UbuntuStudio"
+    echo "          --alternate     Download Ubuntu Alternate"
+    echo "          --server        Download Ubuntu Server"
+    echo "          --mirror=          cdimage.ubuntu.com by default, don't use http://"
+    echo
+    echo "Examples:"
+    echo
+    echo "         $ `basename $0` --ubuntu --x64 ubuntu/isos"
+    echo "          Download Ubuntu desktop (x64, CD) using zsync, in the ubuntu/isos directory"
+    echo
+    echo "         $ `basename $0` -r --kubuntu=all --dvd ~/isos"
+    echo "          Download Kubuntu (desktop and netbook) using rsync in the ~/isos directory"
+    echo
+    echo "         $ `basename $0` --ubuntu=netbook --alternate."
+    echo "          Download Ubuntu Netbook (x86, CD), and Ubuntu Alternate (x86, CD) in the current directory"
+    echo
+    echo "Note:"
+    echo "        When trying to download very specific versions i.e. ubuntu x64, desktop and kubuntu, x86 netbook"
+    echo "        is better to invoque the script for each download"
+
+
+    exit 0
+}
+#======================================================
+
+#before doing anything else
+if [[ ! $1 ]]; then
+    usage
+fi
+
+var() #changes $vars to something more useful I can use later
+{
+    #some of these vars are different coz they're part of the filename
+    #and I want to use them directly
+    case $1 in
+    UI_ARCH_i386)
+        UI_ARCH_i386="i386"
+        ;;
+    UI_ARCH_amd64)
+        UI_ARCH_amd64="amd64"
+        ;;
+    UI_CD)
+        UI_CD=y
+        ;;
+    UI_DVD)
+        UI_DVD="dvd"
+        ;;
+    UI_UBUNTU)
+        UI_UBUNTU=y
+        ;;
+    UI_KUBUNTU)
+        UI_KUBUNTU=y
+        ;;
+    UI_NETBOOK)
+        UI_NETBOOK="netbook"
+        ;;
+    UI_DESKTOP)
+        UI_DESKTOP="desktop"
+        ;;
+    UI_XUBUNTU)
+        UI_XUBUNTU=y
+        ;;
+    UI_EDUBUNTU)
+        UI_EDUBUNTU=y
+        ;;
+    UI_MYTHBUNTU)
+        UI_MYTHBUNTU=y
+        ;;
+    UI_UBUNTUSTUDIO)
+        UI_UBUNTUSTUDIO=y
+        ;;
+    UI_ALTERNATE)
+        UI_ALTERNATE="alternate"
+        ;;
+    UI_SERVER)
+        UI_SERVER="server"
+        ;;
+    esac
+}
+
+#======================================================
+# http://blog.apokalyptik.com/2008/07/07/command-line-arguments-in-bash-scripts/
+# I use most of the time the getopts build-in command but I think this is worth
+# enough to use at least once
+function getopt()
+{
+  var=""
+  wantarg=0
+  for (( i=1; i<=$#; i+=1 )); do
+    lastvar=$var
+    var=${!i}
+    if [ "$var" = "" ]; then
+        continue
+    fi
+    echo \ $var | grep -q -- '='
+    if [ $? -eq 0 ]; then
+      ## -*param=value
+      var=$(echo \ $var | sed -r s/'^[ ]*-*'/''/)
+      myvar=${var%=*}
+      myval=${var#*=}
+      eval "${myvar}"="'$myval'"
+    else
+      echo \ $var | grep -E -q -- '^[ ]*-'
+      if [ $? -eq 0 ]; then
+        ## -*param$
+        var=$(echo \ $var | sed -r s/'^[ ]*-*'/''/)
+        eval "${var}"=1
+        wantarg=1
+      else
+        echo \ $var | grep -E -- '^[ ]*-'
+        if [ $? -eq 0 ]; then
+          # the current one has a dash, so cannot be
+          # the argument to the last parameter
+          wantarg=0
+        fi
+        if [ $wantarg -eq 1 ]; then
+          # parameter argument
+          val=$var
+          var=$lastvar
+          eval "${var}"="'${val}'"
+          wantarg=0
+        else
+          # parameter
+          if [ "${!var}" = "" ]; then
+            eval "${var}"=1
+          fi
+          wantarg=0
+        fi
+      fi
+    fi
+  done
+}
+
+OIFS=$IFS; IFS=$(echo -e "\n"); getopt $@; IFS=$OIFS
+#======================================================
+
+#opts management
+#======================================================
+if [[ $h ]] || [[ $help ]]; then
+    usage
+fi
+
+if [[ $a ]] || [[ $all ]]; then
+    UI_ALL=y
+fi
+
+if ([[ $z ]] || [[ $zsync ]]) && ([[ $r ]] || [[ $rsync ]]); then
+    UI_BIN_GET_ERROR=y
+elif [[ $z ]] || [[ $zsync ]]; then
+    UI_ZSYNC=y
+    unset UI_RSYNC
+elif [[ $r ]] || [[ $rsync ]]; then
+    UI_RSYNC=y
+    unset UI_ZSYNC
+fi
+
+if [[ $v ]] || [[ $verbose ]]; then
+    UI_VERBOSE=y
+fi
+
+if [[ $x86 ]]; then
+    UI_ARCH_i386=y
+fi
+
+if [[ $x64 ]]; then
+    UI_ARCH_amd64=y
+fi
+
+if [[ $cd ]]; then
+    UI_CD=y
+fi
+
+if [[ $dvd ]]; then
+    UI_DVD=y
+    unset UI_CD
+fi
+
+if [[ $release ]]; then
+    UI_RELEASE=$release
+fi
+
+if [[ $ubuntu ]]; then
+    UI_UBUNTU=$ubuntu
+    if [[ $UI_UBUNTU = "all" ]]; then
+        UI_NETBOOK=y
+        UI_DESKTOP=y
+    elif [[ $UI_UBUNTU = "netbook" ]]; then
+        UI_NETBOOK=y
+    else
+        UI_DESKTOP=y
+    fi
+fi
+
+if [[ $kubuntu ]]; then
+    UI_KUBUNTU=$kubuntu
+    if [[ $UI_KUBUNTU = "all" ]]; then
+        UI_NETBOOK=y
+        UI_DESKTOP=y
+    elif [[ $UI_KUBUNTU = "netbook" ]]; then
+        UI_NETBOOK=y
+    else
+        UI_DESKTOP=y
+    fi
+fi
+
+if [[ $xubuntu ]]; then
+    UI_XUBUNTU=y
+fi
+if [[ $edubuntu ]]; then
+    UI_EDUBUNTU=y
+fi
+
+if [[ $mythbuntu ]]; then
+    UI_MYTHBUNTU=y
+fi
+
+if [[ $ubuntustudio ]]; then
+    UI_UBUNTUSTUDIO=y
+fi
+
+if [[ $alternate ]]; then
+    UI_ALTERNATE=y
+fi
+
+if [[ $server ]]; then
+    UI_SERVER=y
+fi
+
+if [[ $mirror ]]; then
+    UI_MIRROR=$mirror
+fi
+
+#the last parameter, should be the directory, it would be great if there
+#were a way to check if it's a valid directory
+eval "UI_DIRECTORY=\$$#"
+
+#======================================================
+#======================================================
+
+function download()
+{
+    curl -sI "http://$1/$2" | head -1 | grep 200 > /dev/null;
+
+    if [ $? -eq 0 ]; then
+        echo "[+] Location: rsync://$1/$2";
+    else
+        echo "[-] Not Found: http://$1/$2";
+        exit 1;
+    fi;
+
+
+    echo -n "[+] Fetching latest md5sum from the server... "
+    curl -s http://$1/MD5SUMS | grep $2 > $2.md5
+    echo "done"
+
+    echo -n "[+] Comparing local and server MD5SUMs... "
+    md5sum --status -c $2.md5
+
+    if [ $? -eq 0 ]; then
+        echo "[+] Match!"
+        echo "[+] Local copy is up to date."
+        rm $2.md5;
+        exit 0
+    else
+        echo "[-] Mismatch!"
+        echo "[+] Performing rsync..."
+        rsync -avzhhP rsync://$1/$2 .
+    fi
+
+    echo -n "[+] Comparing local and server MD5SUMs one more time... "
+
+    md5sum --status -c $2.md5
+
+    if [ $? -eq 0 ]; then
+        echo "[+] Match!"
+        echo "[+] Success!"
+        rm $2.md5;
+    else
+        echo "[-] Mismatch!"
+        echo "[-] FAILED!"
+        rm $2.md5;
+        exit 2;
+    fi
+}
+
+#======================================================
+#======================================================
+if [[ $UI_VERBOSE ]]; then
+    echo
+    echo "  ,-O  Ubuntu Linux"
+    echo " O   ; http://www.ubuntu.com"
+    echo '  `-O  Linux for Human Beings'
+    echo
+    echo "    This script will download the latest Ubuntu development CD/DVD images. It should only be used for"
+    echo "    people interested in helping to debug Ubuntu before it gets released, if you only want to use Ubuntu"
+    echo "    please go to http://www.ubuntu.com/desktop/get-ubuntu/download"
+    echo
+    echo "    By default it will download the latest Ubuntu-desktop (x86, cd) image using zsync, if you want to change"
+    echo "    this modify the settings inside the script or in the ~/.ubuntu-iso file look an example here"
+    echo "    http://google.com"
+    echo
+    echo "    Don't forget to look at https://wiki.ubuntu.com/Testing and join \\#ubuntu+1 as well as \\#ubuntu-testing"
+    echo "    in freenode if you want to become involved with the Testing team, thanks for helping to make Ubuntu better."
+    echo
+fi
+
+if [[ $UI_BIN_GET_ERROR ]]; then
+    echo "[-] `basename $0`: You can't use zsync and rsync at the same time, see -h"
+    exit 0
+fi
+
+if [[ $UI_ZSYNC ]]; then
+    UI_BIN_GET="/usr/bin/zsync"
+else
+    UI_BIN_GET="/usr/bin/rsync"
+fi
+
+if [[ ! -e $UI_BIN_GET ]]; then
+    echo "[-] You need to install  `basename $UI_BIN_GET`  before using `basename $0`"
+    echo "    In Ubuntu/Debian use: \$ sudo apt-get install `basename $UI_BIN_GET`"
+    exit 0
+fi
+
+if [[ $UI_VERBOSE ]]; then
+    echo "[+] Checking if the mirror is available..."
+fi
+
+curl -s http://cdimage.ubuntu.com/ > /tmp/cdimage.log
+UI_SITE_UPDATE=`grep -ic archive-update-in-progress /tmp/cdimage.log`
+
+if [[ $UI_SITE_UPDATE -gt 0 ]]; then
+    echo "[-] The site is being updated, please wait 10 min or so, then try again"
+    exit 0
+fi
+
+if [[ $UI_ALL ]]; then
+    var UI_ARCH_i386
+    var UI_ARCH_amd64
+    var UI_CD
+    var UI_DVD
+    var UI_UBUNTU
+    var UI_KUBUNTU
+    var UI_NETBOOK
+    var UI_DESKTOP
+    var UI_XUBUNTU
+    var UI_MYTHBUNTU
+    var UI_UBUNTUSTUDIO
+    var UI_ALTERNATE
+    var UI_SERVER
+    echo -n "[+] This option will download every Ubuntu version, most of the times \
+             you don't want to do this, do you want to continue? (y/n): "
+    read -e ANSWER
+    if [[ $ANSWER != "y" ]]; then
+        exit 0
+    fi
+fi
+
+if [[ $UI_UBUNTU ]]; then
+    if [[ $UI_CD ]]; then
+        if [[ $UI_DESKTOP ]]; then
+            if [[ $UI_ARCH_i386]];then
+            fi
+            if [[ $UI_ARCH_amd64 ]]; then
+            fi
+        fi
+        if [[ $UI_NETBOOK ]]; then
+            if [[ $UI_ARCH_i386]];then
+            fi
+            if [[ $UI_ARCH_amd64 ]]; then
+            fi
+        fi
+        if [[ $UI_ALTERNATE ]]; then
+            if [[ $UI_ARCH_i386]];then
+            fi
+            if [[ $UI_ARCH_amd64 ]]; then
+            fi
+        fi
+    fi
+
+    if [[ $UI_DVD ]]; then
+        if [[ $UI_DESKTOP ]]; then
+            if [[ $UI_ARCH_i386 ]];then
+            fi
+            if [[ $UI_ARCH_amd64 ]]; then
+            fi
+        fi
+        if [[ $UI_NETBOOK ]]; then
+            if [[ $UI_ARCH_i386 ]];then
+            fi
+            if [[ $UI_ARCH_amd64 ]]; then
+            fi
+        fi
+        if [[ $UI_ALTERNATE ]]; then
+            if [[ $UI_ARCH_i386 ]];then
+            fi
+            if [[ $UI_ARCH_amd64 ]]; then
+            fi
+        fi
+    fi
+fi
+
+if [[ $UI_KUBUNTU ]]; then
+    if [[ $UI_CD ]]; then
+        if [[ $UI_DESKTOP ]]; then
+            if [[ $UI_ARCH_i386 ]];then
+            fi
+            if [[ $UI_ARCH_amd64 ]]; then
+            fi
+        fi
+        if [[ $UI_NETBOOK ]]; then
+            if [[ $UI_ARCH_i386 ]];then
+            fi
+            if [[ $UI_ARCH_amd64 ]]; then
+            fi
+        fi
+        if [[ $UI_ALTERNATE ]]; then
+            if [[ $UI_ARCH_i386 ]];then
+            fi
+            if [[ $UI_ARCH_amd64 ]]; then
+            fi
+        fi
+    fi
+
+    if [[ $UI_DVD ]]; then
+        if [[ $UI_DESKTOP ]]; then
+            if [[ $UI_ARCH_i386 ]];then
+            fi
+            if [[ $UI_ARCH_amd64 ]]; then
+            fi
+        fi
+        if [[ $UI_NETBOOK ]]; then
+            if [[ $UI_ARCH_i386 ]];then
+            fi
+            if [[ $UI_ARCH_amd64 ]]; then
+            fi
+        fi
+        if [[ $UI_ALTERNATE ]]; then
+            if [[ $UI_ARCH_i386 ]];then
+            fi
+            if [[ $UI_ARCH_amd64 ]]; then
+            fi
+        fi
+    fi
+fi
+
+if [[ $UI_XUBUNTU ]]; then
+    if [[ $UI_CD ]]; then
+        if [[ $UI_DESKTOP ]]; then
+            if [[ $UI_ARCH_i386 ]];then
+            fi
+            if [[ $UI_ARCH_amd64 ]]; then
+            fi
+        fi
+        if [[ $UI_NETBOOK ]]; then
+            if [[ $UI_ARCH_i386 ]];then
+            fi
+            if [[ $UI_ARCH_amd64 ]]; then
+            fi
+        fi
+        if [[ $UI_ALTERNATE ]]; then
+            if [[ $UI_ARCH_i386 ]];then
+            fi
+            if [[ $UI_ARCH_amd64 ]]; then
+            fi
+        fi
+    fi
+
+    if [[ $UI_DVD ]]; then
+        if [[ $UI_DESKTOP ]]; then
+            if [[ $UI_ARCH_i386 ]];then
+            fi
+            if [[ $UI_ARCH_amd64 ]]; then
+            fi
+        fi
+        if [[ $UI_NETBOOK ]]; then
+            if [[ $UI_ARCH_i386 ]];then
+            fi
+            if [[ $UI_ARCH_amd64 ]]; then
+            fi
+        fi
+        if [[ $UI_ALTERNATE ]]; then
+            if [[ $UI_ARCH_i386 ]];then
+            fi
+            if [[ $UI_ARCH_amd64 ]]; then
+            fi
+        fi
+    fi
+fi
+
+if [[ $UI_EDUBUNTU]]; then
+    if [[ $UI_CD ]]; then
+        if [[ $UI_DESKTOP ]]; then
+            if [[ $UI_ARCH_i386 ]];then
+            fi
+            if [[ $UI_ARCH_amd64 ]]; then
+            fi
+        fi
+        if [[ $UI_NETBOOK ]]; then
+            if [[ $UI_ARCH_i386 ]];then
+            fi
+            if [[ $UI_ARCH_amd64 ]]; then
+            fi
+        fi
+        if [[ $UI_ALTERNATE ]]; then
+            if [[ $UI_ARCH_i386 ]];then
+            fi
+            if [[ $UI_ARCH_amd64 ]]; then
+            fi
+        fi
+    fi
+
+    if [[ $UI_DVD ]]; then
+        if [[ $UI_DESKTOP ]]; then
+            if [[ $UI_ARCH_i386 ]];then
+            fi
+            if [[ $UI_ARCH_amd64 ]]; then
+            fi
+        fi
+        if [[ $UI_NETBOOK ]]; then
+            if [[ $UI_ARCH_i386 ]];then
+            fi
+            if [[ $UI_ARCH_amd64 ]]; then
+            fi
+        fi
+        if [[ $UI_ALTERNATE ]]; then
+            if [[ $UI_ARCH_i386 ]];then
+            fi
+            if [[ $UI_ARCH_amd64 ]]; then
+            fi
+        fi
+    fi
+fi
+
+if [[ $UI_MYTHBUNTU ]]; then
+    if [[ $UI_CD ]]; then
+        if [[ $UI_DESKTOP ]]; then
+            if [[ $UI_ARCH_i386 ]];then
+            fi
+            if [[ $UI_ARCH_amd64 ]]; then
+            fi
+        fi
+        if [[ $UI_NETBOOK ]]; then
+            if [[ $UI_ARCH_i386 ]];then
+            fi
+            if [[ $UI_ARCH_amd64 ]]; then
+            fi
+        fi
+        if [[ $UI_ALTERNATE ]]; then
+            if [[ $UI_ARCH_i386 ]];then
+            fi
+            if [[ $UI_ARCH_amd64 ]]; then
+            fi
+        fi
+    fi
+
+    if [[ $UI_DVD ]]; then
+        if [[ $UI_DESKTOP ]]; then
+            if [[ $UI_ARCH_i386 ]];then
+            fi
+            if [[ $UI_ARCH_amd64 ]]; then
+            fi
+        fi
+        if [[ $UI_NETBOOK ]]; then
+            if [[ $UI_ARCH_i386 ]];then
+            fi
+            if [[ $UI_ARCH_amd64 ]]; then
+            fi
+        fi
+        if [[ $UI_ALTERNATE ]]; then
+            if [[ $UI_ARCH_i386 ]];then
+            fi
+            if [[ $UI_ARCH_amd64 ]]; then
+            fi
+        fi
+    fi
+fi
+
+if [[ $UI_SERVER ]]; then
+    if [[ $UI_CD ]]; then
+        if [[ $UI_DESKTOP ]]; then
+            if [[ $UI_ARCH_i386 ]];then
+            fi
+            if [[ $UI_ARCH_amd64 ]]; then
+            fi
+        fi
+        if [[ $UI_NETBOOK ]]; then
+            if [[ $UI_ARCH_i386 ]];then
+            fi
+            if [[ $UI_ARCH_amd64 ]]; then
+            fi
+        fi
+        if [[ $UI_ALTERNATE ]]; then
+            if [[ $UI_ARCH_i386 ]];then
+            fi
+            if [[ $UI_ARCH_amd64 ]]; then
+            fi
+        fi
+    fi
+
+    if [[ $UI_DVD ]]; then
+        if [[ $UI_DESKTOP ]]; then
+            if [[ $UI_ARCH_i386 ]];then
+            fi
+            if [[ $UI_ARCH_amd64 ]]; then
+            fi
+        fi
+        if [[ $UI_NETBOOK ]]; then
+            if [[ $UI_ARCH_i386 ]];then
+            fi
+            if [[ $UI_ARCH_amd64 ]]; then
+            fi
+        fi
+        if [[ $UI_ALTERNATE ]]; then
+            if [[ $UI_ARCH_i386 ]];then
+            fi
+            if [[ $UI_ARCH_amd64 ]]; then
+            fi
+        fi
+    fi
+fi
+
+if [[ $UI_UBUNTUSTUDIO ]]; then
+    if [[ $UI_CD ]]; then
+        if [[ $UI_DESKTOP ]]; then
+            if [[ $UI_ARCH_i386 ]];then
+            fi
+            if [[ $UI_ARCH_amd64 ]]; then
+            fi
+        fi
+        if [[ $UI_NETBOOK ]]; then
+            if [[ $UI_ARCH_i386 ]];then
+            fi
+            if [[ $UI_ARCH_amd64 ]]; then
+            fi
+        fi
+        if [[ $UI_ALTERNATE ]]; then
+            if [[ $UI_ARCH_i386 ]];then
+            fi
+            if [[ $UI_ARCH_amd64 ]];
+           fi
+        fi
+    fi
+
+    if [[ $UI_DVD ]]; then
+        if [[ $UI_DESKTOP ]]; then
+            if [[ $UI_ARCH_i386 ]];then
+            fi
+            if [[ $UI_ARCH_amd64 ]]; then
+            fi
+        fi
+        if [[ $UI_NETBOOK ]]; then
+            if [[ $UI_ARCH_i386 ]];then
+            fi
+            if [[ $UI_ARCH_amd64 ]]; then
+            fi
+        fi
+        if [[ $UI_ALTERNATE ]]; then
+            if [[ $UI_ARCH_i386 ]];then
+            fi
+            if [[ $UI_ARCH_amd64 ]]; then
+            fi
+        fi
+    fi
+fi
+
+    download $UI_MIRROR/ubuntu-netbook/daily-live/current/  $UI_RELEASE-netbook-
+
+#→
+
+#ubuntu → desktop → amd64 → i386
+#http://cdimage.ubuntu.com/daily-live/current/maverick-desktop-amd64.iso
+#http://cdimage.ubuntu.com/daily-live/current/maverick-desktop-amd64.iso.zsync
+#http://cdimage.ubuntu.com/daily-live/current/maverick-desktop-i386.iso
+#http://cdimage.ubuntu.com/daily-live/current/maverick-desktop-i386.iso.zsync
+
+#ubuntu → netbook → i386
+#http://cdimage.ubuntu.com/ubuntu-netbook/daily-live/current/maverick-netbook-i386.iso
+#http://cdimage.ubuntu.com/ubuntu-netbook/daily-live/current/maverick-netbook-i386.iso.zsync
+
+#ubuntu → alternate → amd64 → i386
+#http://cdimage.ubuntu.com/daily/current/maverick-alternate-amd64.iso
+#http://cdimage.ubuntu.com/daily/current/maverick-alternate-amd64.iso.zsync
+#http://cdimage.ubuntu.com/daily/current/maverick-alternate-i386.iso
+#http://cdimage.ubuntu.com/daily/current/maverick-alternate-i386.iso.zsync
+
+#ubuntu → dvd → amd64 → i386 
+#http://cdimage.ubuntu.com/dvd/current/maverick-dvd-amd64.iso
+#http://cdimage.ubuntu.com/dvd/current/maverick-dvd-amd64.iso.zsync
+#http://cdimage.ubuntu.com/dvd/current/maverick-dvd-i386.iso
+#http://cdimage.ubuntu.com/dvd/current/maverick-dvd-i386.iso.zsync
+
+#kubuntu → desktop → amd64 → i386
+#http://cdimage.ubuntu.com/kubuntu/daily-live/current/maverick-desktop-amd64.iso
+#http://cdimage.ubuntu.com/kubuntu/daily-live/current/maverick-desktop-amd64.iso.zsync
+#http://cdimage.ubuntu.com/kubuntu/daily-live/current/maverick-desktop-i386.iso
+#http://cdimage.ubuntu.com/kubuntu/daily-live/current/maverick-desktop-i386.iso.zsync
+
+##kubuntu → netbook → i386
+#http://cdimage.ubuntu.com/kubuntu-netbook/daily-live/current/maverick-netbook-i386.iso
+#http://cdimage.ubuntu.com/kubuntu-netbook/daily-live/current/maverick-netbook-i386.iso.zsync
+
+#kubuntu → alternate → amd64 → i386
+#http://cdimage.ubuntu.com/kubuntu/daily/current/maverick-alternate-amd64.iso
+#http://cdimage.ubuntu.com/kubuntu/daily/current/maverick-alternate-amd64.iso.zsync
+#http://cdimage.ubuntu.com/kubuntu/daily/current/maverick-alternate-i386.iso
+#http://cdimage.ubuntu.com/kubuntu/daily/current/maverick-alternate-i386.iso.zsync
+
+#kubuntu → dvd → amd64 → i386 
+#http://cdimage.ubuntu.com/kubuntu/dvd/current/maverick-dvd-amd64.iso
+#http://cdimage.ubuntu.com/kubuntu/dvd/current/maverick-dvd-amd64.iso.zsync
+#http://cdimage.ubuntu.com/kubuntu/dvd/current/maverick-dvd-i386.iso
+#http://cdimage.ubuntu.com/kubuntu/dvd/current/maverick-dvd-i386.iso.zsync
+
+#xubuntu → desktop → amd64 → i386
+#http://cdimage.ubuntu.com/xubuntu/daily-live/current/maverick-desktop-amd64.iso
+#http://cdimage.ubuntu.com/xubuntu/daily-live/current/maverick-desktop-amd64.iso.zsync
+#http://cdimage.ubuntu.com/xubuntu/daily-live/current/maverick-desktop-i386.iso
+#http://cdimage.ubuntu.com/xubuntu/daily-live/current/maverick-desktop-i386.iso.zsync
+
+#xubuntu → alternate → amd64 → i386
+#http://cdimage.ubuntu.com/xubuntu/daily/current/maverick-alternate-amd64.iso
+#http://cdimage.ubuntu.com/xubuntu/daily/current/maverick-alternate-amd64.iso.zsync
+#http://cdimage.ubuntu.com/xubuntu/daily/current/maverick-alternate-i386.iso
+#http://cdimage.ubuntu.com/xubuntu/daily/current/maverick-alternate-i386.iso.zsync
+
+#edubuntu → dvd → amd64 → i386
+#http://cdimage.ubuntu.com/edubuntu/dvd/current/maverick-dvd-amd64.iso
+#http://cdimage.ubuntu.com/edubuntu/dvd/current/maverick-dvd-amd64.iso.zsync
+#http://cdimage.ubuntu.com/edubuntu/dvd/current/maverick-dvd-i386.iso
+#http://cdimage.ubuntu.com/edubuntu/dvd/current/maverick-dvd-i386.iso.zsync
+
+#mythbuntu → desktop → amd64 → i386
+#http://cdimage.ubuntu.com/mythbuntu/daily-live/current/maverick-desktop-amd64.iso
+#http://cdimage.ubuntu.com/mythbuntu/daily-live/current/maverick-desktop-amd64.iso.zsync
+#http://cdimage.ubuntu.com/mythbuntu/daily-live/current/maverick-desktop-i386.iso
+#http://cdimage.ubuntu.com/mythbuntu/daily-live/current/maverick-desktop-i386.iso.zsync
+
+#server → amd64 → i386
+#http://cdimage.ubuntu.com/ubuntu-server/daily/current/maverick-server-amd64.iso
+#http://cdimage.ubuntu.com/ubuntu-server/daily/current/maverick-server-amd64.iso.zsync
+#http://cdimage.ubuntu.com/ubuntu-server/daily/current/maverick-server-i386.iso
+#http://cdimage.ubuntu.com/ubuntu-server/daily/current/maverick-server-i386.iso.zsync
+
+#ubuntustudio → alternate → amd64 → x86 
+#http://cdimage.ubuntu.com/ubuntustudio/daily/current/maverick-alternate-amd64.iso
+#http://cdimage.ubuntu.com/ubuntustudio/daily/current/maverick-alternate-amd64.iso.zsync
+#http://cdimage.ubuntu.com/ubuntustudio/daily/current/maverick-alternate-i386.iso
+#http://cdimage.ubuntu.com/ubuntustudio/daily/current/maverick-alternate-i386.iso.zsync
