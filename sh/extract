@@ -1,0 +1,133 @@
+#!/usr/bin/env bash
+# extract function, http://bashscripts.org/forum/viewtopic.php?f=7&t=367
+
+FILE=$1
+
+while getopts ":s:" option; do
+    case $option in
+        s)
+          SFLAG=yes
+          FILE=$OPTARG
+          ;;
+        :)
+          echo "Option -$OPTARG requires an argument"
+          usage
+          ;;
+        \?)
+          echo "Invalid option: -$OPTARG"
+          usage
+          ;;
+    esac
+done
+
+if [[ -z $SFLAG ]]; then
+    if [ -f "$FILE" ] ; then
+        case "$FILE" in
+            *.tar.bz2)
+                echo "[+] tar jxvf $FILE"
+                tar jxvf "$FILE"
+                ;;
+            *.tar.gz)
+                echo "[+] tar zxvf $FILE"
+                tar zxvf "$FILE"
+                ;;
+            *.bz2)
+                echo "[+] bunzip2 -v $FILE"
+                bunzip2 -v "$FILE"
+                ;;
+            *.rar)
+                echo "[+] rar x $FILE"
+                rar x "$FILE"
+                ;;
+            *.gz)
+                echo "[+] gunzip -v $FILE"
+                gunzip -v "$FILE"
+                ;;
+            *.tar)
+                echo "[+] tar xvf $FILE"
+                tar xvf "$FILE"
+                ;;
+            *.tbz2)
+                echo "[+] tar jxvf $FILE"
+                tar jxvf "$FILE"
+                ;;
+            *.tgz)
+                echo "[+] tar zxvf $FILE"
+                tar zxvf "$FILE"
+                ;;
+            *.zip)
+                echo "[+] unzip $FILE"
+                unzip "$FILE"
+                ;;
+            *.Z)
+                echo "[+] uncompress $FILE"
+                uncompress "$FILE"
+                ;;
+            *.7z)
+                echo "[+] 7z x $FILE"
+                7z x "$FILE"
+                ;;
+            *)
+                echo "'$FILE' is not a valid compress file"
+                ;;
+        esac
+    else
+        echo -e "Usage: `basename $0` [-s] FILE"
+        echo -e "           -s       quiet mode"
+    fi
+else
+    if [ -f "$FILE" ] ; then
+        case "$FILE" in
+            *.tar.bz2)
+                echo "[+] tar jxf $FILE"
+                tar jxf "$FILE"
+                ;;
+            *.tar.gz)
+                echo "[+] tar zxf $FILE"
+                tar zxf "$FILE"
+                ;;
+            *.bz2)
+                echo "[+] bunzip2 $FILE"
+                bunzip2 "$FILE"
+                ;;
+            *.rar)
+                echo "[+] rar x $FILE"
+                rar x "$FILE"
+                ;;
+            *.gz)
+                echo "[+] gunzip $FILE"
+                gunzip "$FILE"
+                ;;
+            *.tar)
+                echo "[+] tar xvf $FILE"
+                tar xvf "$FILE"
+                ;;
+            *.tbz2)
+                echo "[+] tar jxf $FILE"
+                tar jxf "$FILE"
+                ;;
+            *.tgz)
+                echo "[+] tar zxf $FILE"
+                tar zxf "$FILE"
+                ;;
+            *.zip)
+                echo "[+] unzip $FILE"
+                unzip "$FILE"
+                ;;
+            *.Z)
+                echo "[+] uncompress $FILE"
+                uncompress "$FILE"
+                ;;
+            *.7z)
+                echo "[+] 7z x $FILE"
+                7z x "$FILE"
+                ;;
+            *)
+                echo "'$FILE' is not a valid compress file"
+                ;;
+        esac
+    else
+        echo -e "Usage: `basename $0` [-s] FILE"
+        echo -e "           -s       quiet mode"
+    fi
+fi

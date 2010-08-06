@@ -1,0 +1,31 @@
+[user]
+    name = chilicuil
+    email = chilicuil@i.am
+
+[alias]
+    cm = commit
+    cmv = commit -v
+    st = status
+    br = branch
+    unstage = reset HEAD --
+    last = log -1 HEAD
+    praise = blame
+
+[core]
+    editor = vim
+
+[merge]
+    tool = vimdiff
+
+[branch "master"]
+    remote = origin
+    merge  = refs/heads/master
+
+    ;http://tinyurl.com/yeevhcr
+    ;This tells Git 2 things:
+
+   ;1. When you're on the master branch, the default remote is origin. 
+   
+   ;2. When using git pull on the master branch, with no remote and
+      ;branch specified, use the default remote (origin) and merge in
+      ;the changes from the master branch.

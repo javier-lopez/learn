@@ -1,0 +1,125 @@
+#!/bin/bash
+# http://tinyurl.com/246hm8f
+# movietime - disables power savings to watch movies.
+
+# Movietime options
+#  Resume time - resume normal display pm and suspend after set time.
+# 0 = disabled, time in minutes
+resumetime=0
+if [ $resumetime = 0 ]; then 
+  resumetime=1440 # Re-enable resume after a full day
+fi
+
+# Check that values for 'resumetime' are numbers
+if [ $(echo $resumetime | sed 's/^[-+0-9][0-9]*//' | wc -c) != 1 ]; then
+  echo "$warn variable 'resumetime' is not a number.  Exiting."
+  exit
+fi
+
+# Name of suspend script
+tmploc="/tmp"
+suspinhscript="$tmploc"/"movietime-suspend-inhibit"
+
+# Program name from it's filename.
+prog=${0##*/}
+
+# Text color variables
+txtund=$(tput sgr 0 1)          # Underline
+txtbld=$(tput bold)             # Bold
+bldblu=${txtbld}$(tput setaf 4) #  blue
+bldwht=${txtbld}$(tput setaf 7) #  white
+bldred=${txtbld}$(tput setaf 1) #  red
+txtrst=$(tput sgr0)             # Reset
+info=${bldwht}*${txtrst}        # Feedback
+pass=${bldblu}*${txtrst}
+warn=${bldred}*${txtrst}
+
+# Check that Xorg server is running
+if [[ -z $(ps aux | grep /usr/bin/X) ]]; then
+  echo "$warn The Xorg server is not running."
+  exit
+fi
+
+# Check if user is regular user
+if [ $(whoami) == "root" ]; then
+  echo "$warn You are the root user, must be a regular user."
+  exit
+fi
+
+# Current DPMS times (in minutes)
+dispdpms=$(xset -q | grep "DPMS is" | awk '{ printf $3 }') # Enab. or Disb.
+dispstand=$(xset -q | grep "^  Standby: " | awk '{ printf $2/60 }')
+dispsusp=$(xset -q | grep "^  Standby: " | awk '{ printf $4/60 }')
+dispoff=$(xset -q | grep "^  Standby: " | awk '{ printf $6/60 }')
+dispblank=$(xset -q | grep "^  timeout:  " | awk '{ printf $2/60 }')
+
+# Resume time in hours
+resumetimehr=$(echo "scale=1;${resumetime}/60" | bc)
+
+# Display help
+case $1 in
+  -h | --help | h | help )
+    # Help message.
+    echo
+    echo "  $prog disables screen blanking and screensaver to allow viewing a video.  Running the program again will enable them.  If the 'resumetime' variable is set after that time $prog will resume normal powersaving values." | fmt -c -w 76
+    echo
+
+    # Display current values of power management and movietime.
+    suspinhtest=$(ps aux | grep -v grep | grep $suspinhscript)
+    suspinhval=$([ -n "$suspinhtest" ] && echo "Disabled" || echo "Desktop settings")
+    
+    # DPMS disabled information
+    echo "   ${txtbld}Current settings ${txtrst}(in minutes, 0 = disabled):"
+    if [[ "$dispdpms" == "Disabled" ]]; then
+      echo "   DPMS:         $dispdpms"
+      echo "   Suspend:      $suspinhval"
+    fi
+
+    # DPMS enabled information
+    if [[ "$dispdpms" == "Enabled" ]]; then
+      echo "   DPMS:         $dispdpms"
+      echo "   DPMS times:   Blank: ${dispblank}; Standby: ${dispstand}; Suspend: ${dispsusp}; Offtime: ${dispoff}"
+      echo "   Suspend:      $suspinhval"
+    fi
+    echo
+    echo "   ${txtbld}$prog settings${txtrst}:"
+    echo "   Resume after: $resumetimehr hours"
+    echo
+    exit
+    ;;
+  [a-g,i-z,A-G,I-Z,0-9,-]* )
+    echo " Use '-h' for help"
+    exit
+    ;;
+esac
+
+# Suspend inhibit script (must be run as seperate process)
+suspinhibit () {
+    echo '#!/bin/bash
+    for time in $(seq 1 '$resumetime'); do
+    # Simulate user activity every minute
+    dbus-send --print-reply --type=method_call --dest=org.freedesktop.ScreenSaver /ScreenSaver org.freedesktop.ScreenSaver.SimulateUserActivity
+    sleep 60
+    done'
+}
+
+# Toggle powersaving
+if [[ "$dispdpms" == "Enabled" ]] && [ -z "$suspinhtest" ]; then
+  # Disable blanking, screen power saving
+  xset s off; xset -dpms
+  # Create script in tmp
+  suspinhibit > "$suspinhscript"
+  # Make script executable
+  chmod u+x "$suspinhscript"
+  # Run script
+  nohup "$suspinhscript" &> /dev/null &
+  echo "$pass $prog started, powersaving disabled."
+else
+  # Enable blanking, screen power saving
+  xset s on; xset +dpms
+  # Kill script
+  if [ -n $suspinhtest ]; then
+    echo "$info $prog stopped, powersaving enabled."
+    kill -s 9 $(pgrep movietime-susp) &> /dev/null
+  fi
+fi
