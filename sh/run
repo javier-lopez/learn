@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# notifies when a command finish
+# http://tinyurl.com/6zkt93
+
+"$@"
+error=$?
+
+if [[ $error -eq 0 ]]; then
+    notify-send "`hostname -s` | terminated:" "$1 $2" -i finish -t 0
+else
+    notify-send "`hostname -s` | aborted:" "$1 $2" -u critical -i undo -t 0
+fi

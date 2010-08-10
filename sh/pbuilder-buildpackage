@@ -1,0 +1,177 @@
+#! /bin/bash
+#   pbuilder -- personal Debian package builder
+#   Copyright (C) 2001-2007 Junichi Uekawa
+#
+#   This program is free software; you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published by
+#   the Free Software Foundation; either version 2 of the License, or
+#   (at your option) any later version.
+#
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
+#
+#   You should have received a copy of the GNU General Public License
+#   along with this program; if not, write to the Free Software
+#   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
+
+
+export LANG=C
+export LC_ALL=C
+set -e
+
+. /usr/lib/pbuilder/pbuilder-checkparams
+. /usr/lib/pbuilder/pbuilder-runhooks
+. /usr/lib/pbuilder/pbuilder-buildpackage-funcs
+
+PACKAGENAME="$1"
+if [ ! -f "$PACKAGENAME" ]; then
+    log "E: Command line parameter [$PACKAGENAME] is not a valid .dsc file name"
+    exit 1;
+fi;
+
+if [ -n "$BUILDUSERNAME" -a -n "$BUILDUSERID" ]; then
+    SUTOUSER="env LOGNAME=$BUILDUSERNAME su -p $BUILDUSERNAME"
+    DEBBUILDOPTS="${DEBBUILDOPTS:+$DEBBUILDOPTS }-rfakeroot"
+    EXTRAPACKAGES="${EXTRAPACKAGES} fakeroot"
+    log "I: using fakeroot in build."
+else
+    # run the build in root
+    SUTOUSER="su -p "
+    BUILDUSERID=0
+    BUILDUSERNAME=root
+fi
+
+
+# created files should have these UID/GIDs outside of chroot.
+BUILDRESULTUID="${BUILDRESULTUID:-${SUDO_UID:-0}}"
+BUILDRESULTGID="${BUILDRESULTGID:-${SUDO_GID:-0}}"
+
+export HOME="/tmp/buildd"
+
+echobacktime
+extractbuildplace 
+trap umountproc_cleanbuildplace_trap exit sighup sigpipe
+loadhooks
+
+if [ ! -d "${BUILDRESULT}" ]; then
+    if [ -n "${BUILDRESULT}" ] ; then
+	mkdir -p "${BUILDRESULT}"
+        chown -R "${BUILDRESULTUID}:${BUILDRESULTGID}" "${BUILDRESULT}"../../
+        chgrp -R "${BUILDRESULTGID}" "${BUILDRESULT}"../../
+    fi
+    if [ -d "${BUILDRESULT}" ]; then
+	log "I: created buildresult dir: ${BUILDRESULT}"
+    else
+	log "E: failed creating buildresult dir: ${BUILDRESULT}"
+	exit 1
+    fi
+fi
+
+if [ -z "${PBUILDER_BUILD_LOGFILE}" ]; then
+    if [ "${PKGNAME_LOGFILE}" = "yes" ]; then
+	PBUILDER_BUILD_LOGFILE="${BUILDRESULT}/"$(basename "${PACKAGENAME}" .dsc)"${PKGNAME_LOGFILE_EXTENTION}"
+	exec > >(tee "${PBUILDER_BUILD_LOGFILE}") 2>&1
+	PBUILDER_BUILD_LOGFILE=$(readlink -f "${PBUILDER_BUILD_LOGFILE}")
+	log "I: Using pkgname logfile"
+	echobacktime
+    fi
+fi
+
+# make logfile have the permissions, logfiles should already be created in all cases
+if [ -f "${PBUILDER_BUILD_LOGFILE}" ]; then
+    chown "${BUILDRESULTUID}:${BUILDRESULTGID}" "${PBUILDER_BUILD_LOGFILE}"
+    chgrp "${BUILDRESULTGID}" "${PBUILDER_BUILD_LOGFILE}"
+fi
+
+
+recover_aptcache
+createbuilduser
+log "I: Installing the build-deps"
+executehooks "D"
+trap saveaptcache_umountproc_cleanbuildplace_trap exit sighup sigpipe
+checkbuilddep "$PACKAGENAME"
+save_aptcache
+trap umountproc_cleanbuildplace_trap exit sighup sigpipe
+
+log "I: Copying source file"
+copydsc "$PACKAGENAME" "$BUILDPLACE/tmp/buildd"
+copyinputfile "$BUILDPLACE/tmp/buildd"
+
+log "I: Extracting source"
+if echo "chown $BUILDUSERNAME:$BUILDUSERNAME /tmp/buildd /tmp/buildd/*" | $CHROOTEXEC /bin/bash; then
+    : # success
+else
+    log "E: pbuilder: Failed chowning to $BUILDUSERNAME:$BUILDUSERNAME"
+    exit 1;
+fi
+if echo "( cd tmp/buildd; /usr/bin/dpkg-source -x $(basename $PACKAGENAME) )" | $CHROOTEXEC $SUTOUSER ; then
+    : # success
+else
+    log "E: pbuilder: Failed extracting the source"
+    exit 1;
+fi
+
+log "I: Building the package"
+
+executehooks "A"
+
+DPKG_COMMANDLINE="dpkg-buildpackage -us -uc ${DEBEMAIL:+\"-e$DEBEMAIL\"} $DEBBUILDOPTS"
+
+(
+    : Build process
+    if [ -n "$TWICE" ]; then
+        DPKG_COMMANDLINE="$DPKG_COMMANDLINE && $DPKG_COMMANDLINE"
+    fi
+    DPKG_COMMANDLINE="cd tmp/buildd/*/ && $DPKG_COMMANDLINE"
+    log "I: Running $DPKG_COMMANDLINE"
+    echo "$DPKG_COMMANDLINE" | $CHROOTEXEC $SUTOUSER
+) &
+BUILD_PID=$!
+if [ -n "${TIMEOUT_TIME}" ]; then
+    ( 
+	: Timeout process
+	sleep "${TIMEOUT_TIME}"
+	log "I: Terminating build process due to timeout "
+	kill ${BUILD_PID} || true
+    ) & # timeout process
+    KILL_WAIT_PID="kill "$!" || true; echo \"I: Terminate timeout process\"; "
+else
+    KILL_WAIT_PID=""
+fi
+
+if ! wait ${BUILD_PID}; then
+    trap umountproc_cleanbuildplace_trap exit sighup sigpipe
+    eval "${KILL_WAIT_PID}"
+    log "E: Failed autobuilding of package"
+    executehooks "C"
+    exit 1;
+else
+    eval ${KILL_WAIT_PID}
+    # build was successful
+fi
+
+trap umountproc_cleanbuildplace_trap exit sighup sigpipe
+executehooks "B"
+save_aptcache
+trap cleanbuildplace_trap exit sighup sigpipe
+umountproc
+
+if [ -d "${BUILDRESULT}" ]; then
+    chown "${BUILDRESULTUID}:${BUILDRESULTGID}" "${BUILDPLACE}"/tmp/buildd/*
+    chgrp "${BUILDRESULTGID}" "${BUILDPLACE}"/tmp/buildd/*
+    for FILE in "${BUILDPLACE}"/tmp/buildd/*; do
+	if [ -f "${FILE}" ]; then
+	    cp -p ${FILE} "${BUILDRESULT}" || true
+	fi
+    done
+else
+    log "E: BUILDRESULT=[$BUILDRESULT] is not a directory."
+fi
+
+:
+cleanbuildplace
+trap - exit sighup sigpipe
+echobacktime
+exit 0

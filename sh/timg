@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+#
+# upload tmp imgs to http://imgur.com
+
+if [[ ! $1 ]]; then
+    echo "$0: You must specify a file to upload."
+    exit 1
+fi
+
+img=$1
+curl -s -F "image=@$img" -F "key=486690f872c678126a2c09a9e196ce1b" http://imgur.com/api/upload.xml | grep -E -o "<original_image>(.)*</original_image>" | grep -E -o "http://i.imgur.com/[^<]*" | tee /dev/fd/2 | xclip 

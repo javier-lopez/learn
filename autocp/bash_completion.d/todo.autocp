@@ -28,3 +28,4 @@ _todo()
 #[ -n "${have:-}" ] && complete -F _todo $filename todo
 
 complete -F _todo todo t
+# vim: set ts=8 sw=4 tw=0 ft=sh : 
