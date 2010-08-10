@@ -23,6 +23,10 @@ done
 if [[ -z $SFLAG ]]; then
     if [ -f "$FILE" ] ; then
         case "$FILE" in
+            *.deb)
+                echo "[+] ar xv $FILE"
+                ar xv "$FILE"
+                ;;
             *.tar.bz2)
                 echo "[+] tar jxvf $FILE"
                 tar jxvf "$FILE"
@@ -78,6 +82,10 @@ if [[ -z $SFLAG ]]; then
 else
     if [ -f "$FILE" ] ; then
         case "$FILE" in
+            *.deb)
+                echo "[+] ar x $FILE"
+                ar x "$FILE"
+                ;;
             *.tar.bz2)
                 echo "[+] tar jxf $FILE"
                 tar jxf "$FILE"
