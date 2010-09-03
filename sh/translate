@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+PHRASE="$@"
+#echo $PHRASE
+
+usage()
+{
+    echo "Usage: `basename $0` [-s|-e] phrase"
+    echo
+    echo "          -s     Spanish-English (default)"
+    echo "          -e     English-Spanish"
+    exit 0
+}
+
+if [[ -z "$PHRASE" ]]; then
+    usage
+fi
+
+while getopts ":s:e:" option; do
+    case $option in
+        s)
+          lng1="es";
+          lng2="en";
+          PHRASE=$OPTARG
+          ;;
+        e)
+          lng1="en";
+          lng2="es";
+          PHRASE=$OPTARG
+          ;;
+        :)
+          echo "Option -$OPTARG requires an argument"
+          usage
+          ;;
+        \?)
+          echo "Invalid option: -$OPTARG"
+          usage
+          ;;
+    esac
+done
+
+if [[ -z "$lng1" ]]; then
+    lng1="es";
+    lng2="en";
+fi
+
+shift;shift;
+#echo $PHRASE
+wget -qO- "http://ajax.googleapis.com/ajax/services/language/translate?v=1.0&q=${PHRASE}&langpair=$lng1|$lng2" | sed 's/.*"translatedText":"\([^"]*\)".*}/\1\n/';
+#wget -qO- "http://ajax.googleapis.com/ajax/services/language/translate?v=1.0&q=${@// /+}&langpair=$lng1|$lng2" | sed 's/.*"translatedText":"\([^"]*\)".*}/\1\n/';

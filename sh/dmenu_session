@@ -12,9 +12,11 @@ case "$choice" in
         ;;
     restart) i3-msg restart &
         ;;
-    shutdown) gksudo shutdown -h now &
+    shutdown) dbus-send --system --print-reply --dest="org.freedesktop.ConsoleKit" /org/freedesktop/ConsoleKit/Manager org.freedesktop.ConsoleKit.Manager.Stop
+        #gksudo shutdown -h now &
         ;;
-    reboot) gksudo shutdown -r now &
+    reboot) dbus-send --system --print-reply --dest="org.freedesktop.ConsoleKit" /org/freedesktop/ConsoleKit/Manager org.freedesktop.ConsoleKit.Manager.Restart
+        #gksudo shutdown -r now & (if u don't have ConsoleKit running)
         ;;
     suspend) gksudo pm-suspend &
         ;;

@@ -9,16 +9,16 @@ st()
     fi
 }
 
-echo -ne "$LIGHT_RED[*]$DEFAULT mpc clear "
-mpc clear >> /tmp/restart_mpd.log 2>&1
-st
+#echo -ne "$LIGHT_RED[*]$DEFAULT mpc clear "
+#mpc clear >> /tmp/restart_mpd.log 2>&1
+#st
 
-echo -e "$LIGHT_RED[*]$DEFAULT sudo killall mpd "
-sudo killall mpd
+echo -e "$LIGHT_RED[*]$DEFAULT sudo alsa force-reload "
+sudo alsa force-reload
 
-echo -e "$LIGHT_RED[*]$DEFAULT sudo /etc/init.d/mpd start "
-sudo /etc/init.d/mpd start
+echo -e "$LIGHT_RED[*]$DEFAULT sudo service mpd start "
+sudo service mpd start
 
-echo -e "$LIGHT_RED[*]$DEFAULT mpc add /"
-mpc add / >> /tmp/restart_mpd.log 2>&1
+echo -e "$LIGHT_RED[*]$DEFAULT conky |/home/chilicuil/code/dzen/dzen2 -dock -fn -xos4-terminus-medium-r-*-*-12-*-*-*-*-*-iso10646-1 -ta r -fg "#999999" -bg "#000000" & "
+conky |/home/chilicuil/code/dzen/dzen2 -dock -fn -xos4-terminus-medium-r-*-*-12-*-*-*-*-*-iso10646-1 -ta r -fg "#999999" -bg "#000000" &
 st
