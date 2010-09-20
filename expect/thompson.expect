@@ -1,0 +1,15 @@
+#!/usr/bin/env expect
+
+set timeout 10
+spawn telnet 192.168.1.254
+expect "Username*"
+send "TELMEX\r"
+expect "Password*"
+send "EE0A364C83\r"
+expect "*=>"
+send "ppp ifdetach intf=Internet\r"
+expect "*=>"
+send "ppp ifattach intf=Internet\r"
+expect "*=>"
+send "exit\r"
+exit

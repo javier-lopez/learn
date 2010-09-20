@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+# ======= Initial checks ============
+if [[ ! -e /usr/bin/expect ]]; then
+    echo "You need install expect before using $0"
+    echo "    In Ubuntu/Debian use: \$ sudo apt-get install expect"
+    exit 0
+fi
+
+echo "Resetting router..."
+echo "[+] old ip      -> `curl -s ifconfig.me`"
+thompson.expect > /dev/null
+sleep 1
+echo "[+] current ip  -> `curl -s ifconfig.me`"
