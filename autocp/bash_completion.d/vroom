@@ -1,0 +1,19 @@
+# Last review            Mon 04 Oct 2010 02:42:48 PM CDT
+
+have vroom &&
+_vroom()
+{
+    local cur options
+
+    COMPREPLY=()
+    cur=${COMP_WORDS[COMP_CWORD]}
+    options='-new -vroom -compile -html -text -skip -input -clean -help'
+
+    if [ $COMP_CWORD -eq 1 ]; then
+        COMPREPLY=( $( compgen -W "$options" | grep "^$cur" ) )
+    fi
+
+    return 0
+}
+[ "$have" ] && complete -F _vroom -o filenames vroom
+# vim: set ts=8 sw=4 tw=0 ft=sh :
