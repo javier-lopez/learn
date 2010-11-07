@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+program="$1"
+
+usage()
+{
+    echo "Usage: `basename $0` foo_program"
+    exit 0
+}
+
+if [[ -z "$program" ]]; then
+    usage
+fi
+
+less `whereis $1|awk '{print $2}'`

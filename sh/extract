@@ -71,6 +71,10 @@ if [[ -z $SFLAG ]]; then
                 echo "[+] 7z x $FILE"
                 7z x "$FILE"
                 ;;
+            *.tar.lzma)
+                echo "[+] tar --lzma -xvf $FILE"
+                tar --lzma -xvf "$FILE"
+                ;;
             *)
                 echo "'$FILE' is not a valid compress file"
                 ;;
@@ -129,6 +133,10 @@ else
             *.7z)
                 echo "[+] 7z x $FILE"
                 7z x "$FILE"
+                ;;
+            *.tar.lzma)
+                echo "[+] tar --lzma -xvf $FILE"
+                tar --lzma -xf "$FILE"
                 ;;
             *)
                 echo "'$FILE' is not a valid compress file"

@@ -5,7 +5,7 @@ _fix()
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
 
-    COMMANDS="apache wifi\
+    COMMANDS="apache ipw2200 wl mpd\
              "
 
     OPTS="-h --help -v --version"

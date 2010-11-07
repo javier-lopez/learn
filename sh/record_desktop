@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+
+keyword="$@"
+
+if [[ -z "$keyword" ]]; then
+    keyword=/tmp/`</dev/urandom tr -dc A-Za-z0-9 | head -c 8`.mkv
+fi
+
+if [[ $TERM == "linux" ]]; then
+    notify-send -t 3000 "[+] Recording desktop" "press Ctrl-+ to finish..."
+    #notify-send -t 3000 "[+] Recording desktop" "press <Ctrl><+> to finish..."
+else
+    echo "[+] Recording desktop, press <Ctrl><+> to finish..."
+fi
+
+mplayer ~/data/music/Sounds/num3.ogg >> /dev/null 2>&1
+sleep .5
+mplayer ~/data/music/Sounds/num2.ogg >> /dev/null 2>&1
+sleep .5
+mplayer ~/data/music/Sounds/num1.ogg >> /dev/null 2>&1
+sleep .5
+#mplayer ~/data/music/Sounds/num0.wav
+#sleep 1
+
+ffmpeg -f alsa -ac 2 -i hw:0,0 -f x11grab -r 20 -s $(xwininfo -root | grep 'geometry' | awk '{print $2;}') -i :0.0 -acodec pcm_s16le -vcodec libx264 -vpre lossless_ultrafast -threads 0 -y $keyword
+
+if [[ $TERM == "linux" ]]; then
+    notify-send -t 10000 "[+] Complete" "$keyword"
+else
+    echo
+    echo "[+] Complete $keyword"
+    echo
+fi
