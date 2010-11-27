@@ -41,6 +41,7 @@ usage()
   echo -e "  autocp            Setup custom autocomplete file"
   echo -e "  cake              Setup cake"
   echo -e "  script            Setup a custom script"
+  echo -e "  intalio           Setup intalio"
   echo -e
   echo -e "Logs are saved in /tmp/setup.log"
   exit 0
@@ -53,11 +54,11 @@ script()
         exit 1
     fi
 
-    echo -ne "$LIGHT_RED[*]$DEFAULT chmod +x $1 "
+    echo -ne "$LIGHT_RED[*]$DEFAULT chmod +x $1\t\t\t\t\t\t "
     chmod +x $1 >> /tmp/setup.log 2>&1
     st
 
-    echo -ne "$LIGHT_RED[*]$DEFAULT sudo cp $1 /usr/local/bin "
+    echo -ne "$LIGHT_RED[*]$DEFAULT sudo cp $1 /usr/local/bin\t\t\t\t\t\t "
     sudo cp $1 /usr/local/bin >> /tmp/setup.log 2>&1
     st
     exit 0
@@ -70,7 +71,7 @@ autocp()
         exit 1
     fi
 
-    echo -ne "$LIGHT_RED[*]$DEFAULT sudo cp $1 /etc/bash_completion.d/ "
+    echo -ne "$LIGHT_RED[*]$DEFAULT sudo cp $1 /etc/bash_completion.d/\t\t\t\t\t\t "
     sudo cp $1 /etc/bash_completion.d/ >> /tmp/setup.log 2>&1
     st
     exit 0
@@ -78,25 +79,66 @@ autocp()
 
 cake()
 {
-    echo -ne "$LIGHT_RED[*]$DEFAULT tar zxvf cake_1.2.5.tar.gz "
-    tar zxvf cake_1.2.5.tar.gz >> /tmp/init_cake.log 2>&1
+    echo -ne "$LIGHT_RED[*]$DEFAULT tar zxvf cake*.tar.gz\t\t\t\t\t\t "
+    tar zxvf cake*.tar.gz >> /tmp/init_cake.log 2>&1
     st
 
-    echo -ne "$LIGHT_RED[*]$DEFAULT chmod -R 777 cake_1.2.5/app/tmp/ "
-    chmod -R 777 cake_1.2.5/app/tmp/ >> /tmp/init_cake.log 2>&1
+    echo -ne "$LIGHT_RED[*]$DEFAULT chmod -R 777 cake_*/app/tmp/\t\t\t\t\t\t "
+    chmod -R 777 cake_*/app/tmp/ >> /tmp/init_cake.log 2>&1
     st
 
-    echo -ne "$LIGHT_RED[*]$DEFAULT cp cake_1.2.5/app/config/{database.php.default,database.php} "
-    cp cake_1.2.5/app/config/{database.php.default,database.php} >> /tmp/init_cake.log 2>&1
+    echo -ne "$LIGHT_RED[*]$DEFAULT cp cake_*/app/config/{database.php.default,database.php}\t\t\t\t\t\t "
+    cp cake_*/app/config/{database.php.default,database.php} >> /tmp/init_cake.log 2>&1
     st
 
-    echo -ne "$LIGHT_RED[*]$DEFAULT cd cake_1.2.5 "
-    cd cake_1.2.5 >> /tmp/init_cake.log 2>&1
+    echo -ne "$LIGHT_RED[*]$DEFAULT cd cake_*\t\t\t\t\t\t "
+    cd cake_* >> /tmp/init_cake.log 2>&1
     st
 
-    echo -ne "$LIGHT_RED[*]$DEFAULT vim app/config/{core.php,database.php} -o "
+    echo -ne "$LIGHT_RED[*]$DEFAULT vim app/config/{core.php,database.php} -o\t\t\t\t\t\t "
     vim app/config/{core.php,database.php} -o
     st
+    exit 0
+}
+
+intalio()
+{
+    IS_INTALIO=(intalio-bpms*.zip)
+
+    if [[ ! -e ${IS_INTALIO[0]} ]]; then
+        echo -e "$LIGHT_RED[*]$DEFAULT ./intalio-bpms*.zip was not found"
+        exit 1
+    fi
+
+    echo -ne "$LIGHT_RED[*]$DEFAULT extract ${IS_INTALIO[0]}\t\t\t\t\t\t "
+    extract ${IS_INTALIO[0]} >> /tmp/setup.log 2>&1
+    st
+
+    echo -e "$LIGHT_RED[*]$DEFAULT setting up JAVA_HOME\t\t\t\t\t\t "
+
+    if [[ -z $JAVA_HOME ]]; then
+        echo -ne "$LIGHT_RED[+]$DEFAULT echo export JAVA_HOME=/usr/lib/jvm/java-6-sun > $HOME/.bashrc\t\t\t\t\t\t "
+        echo "export JAVA_HOME=/usr/lib/jvm/java-6-sun" > $HOME/.bashrc
+        st
+    else
+        echo -e "$LIGHT_RED[+]$DEFAULT JAVA_HOME is set to $JAVA_HOME, nothing to do..."
+    fi
+
+    echo -ne "$LIGHT_RED[*]$DEFAULT groovy.sh change_http_port "
+    cd ./intalio-bpms*/extras/; ./groovy.sh change_http_port.groovy
+
+    echo -ne "$LIGHT_RED[*]$DEFAULT Wanna start intalio now? y/n: "
+    read -e BOOT_INTALIO
+
+    if [[ "{$BOOT_INTALIO}" == "y" ]]; then
+        echo -ne "$LIGHT_RED[*]$DEFAULT ../bin/startup.sh "
+        ../bin/startup.sh
+        echo -e "$LIGHT_RED[*]$DEFAULT Please be patient, tomcat may take some time to initializate... " 
+        echo -e "$LIGHT_RED[*]$DEFAULT Go to http://localhost:8080/bpms-console to start, have fun ^_^ "
+    fi
+
+    echo -e "$LIGHT_RED[*]$DEFAULT Intalio has been setup but has not been booted, have fun ^_^" 
+
     exit 0
 }
 
@@ -104,6 +146,9 @@ if [[ $# != 0 ]]; then
     case $1 in
         cake)
         cake
+        ;;
+        intalio)
+        intalio
         ;;
         script)
         script $2

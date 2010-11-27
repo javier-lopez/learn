@@ -1,9 +1,28 @@
 #!/usr/bin/env bash
+#P.L. Javier <fco.plj@gmail.com> 2010
 
-keyword="$@"
+keyword=$1
+
+if [[ $keyword == "stop" ]]; then
+     kill `pidof ffmpeg | awk '{print $1}'`
+     exit 0
+fi
+
+downcount ()
+{
+    #http://pmx.keldenauto.com/dws/sounds.tar.gz
+    mplayer ~/data/music/Sounds/num3.ogg >> /dev/null 2>&1
+    sleep .5
+    mplayer ~/data/music/Sounds/num2.ogg >> /dev/null 2>&1
+    sleep .5
+    mplayer ~/data/music/Sounds/num1.ogg >> /dev/null 2>&1
+    sleep .5
+    #mplayer ~/data/music/Sounds/num0.wav
+    #sleep 1
+}
 
 if [[ -z "$keyword" ]]; then
-    keyword=/tmp/`</dev/urandom tr -dc A-Za-z0-9 | head -c 8`.mkv
+    keyword=$HOME/`</dev/urandom tr -dc A-Za-z0-9 | head -c 8`.mkv
 fi
 
 if [[ $TERM == "linux" ]]; then
@@ -11,18 +30,23 @@ if [[ $TERM == "linux" ]]; then
     #notify-send -t 3000 "[+] Recording desktop" "press <Ctrl><+> to finish..."
 else
     echo "[+] Recording desktop, press <Ctrl><+> to finish..."
+    echo
 fi
 
-mplayer ~/data/music/Sounds/num3.ogg >> /dev/null 2>&1
-sleep .5
-mplayer ~/data/music/Sounds/num2.ogg >> /dev/null 2>&1
-sleep .5
-mplayer ~/data/music/Sounds/num1.ogg >> /dev/null 2>&1
-sleep .5
-#mplayer ~/data/music/Sounds/num0.wav
-#sleep 1
+downcount
+ffmpeg -f alsa -ac 2 -i hw:0,0 -f x11grab -r 30 -s $(xwininfo -root | grep 'geometry' | awk '{print $2;}') -i :0.0 -acodec pcm_s16le -vcodec libx264 -vpre lossless_ultrafast -threads 0 -y $keyword
 
-ffmpeg -f alsa -ac 2 -i hw:0,0 -f x11grab -r 20 -s $(xwininfo -root | grep 'geometry' | awk '{print $2;}') -i :0.0 -acodec pcm_s16le -vcodec libx264 -vpre lossless_ultrafast -threads 0 -y $keyword
+if [[ $? == "1" ]]; then
+    if [[ $TERM == "linux" ]]; then
+        notify-send -t 3000 "[+] No mic available" "recording video only..."
+    else
+        echo "[+] No mic available, recording video only..."
+        echo
+    fi
+
+    downcount
+    ffmpeg -f x11grab -r 30 -s $(xwininfo -root | grep 'geometry' | awk '{print $2;}') -i :0.0 -acodec pcm_s16le -vcodec libx264 -vpre lossless_ultrafast -threads 0 -y $keyword
+fi
 
 if [[ $TERM == "linux" ]]; then
     notify-send -t 10000 "[+] Complete" "$keyword"

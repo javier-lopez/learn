@@ -5,7 +5,7 @@ _setup()
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
 
-    COMMANDS="autocp cake script\
+    COMMANDS="autocp cake script intalio\
              "
 
     OPTS="-h --help -v --version"
