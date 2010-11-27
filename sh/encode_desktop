@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+
+BASENAME=`basename $1 .mkv`
+
+usage()
+{
+    echo "Usage: `basename $0` [-c] pattern"
+    echo
+    echo "          -v     Change the volume from the screencast [0-2048] (ffmpeg -vol)"
+    echo "          -m     Add soundtrack (mix)"
+    #echo "          -x     Add soundtrack"
+    exit 0
+}
+
+while getopts ":v:m:" option; do
+    case $option in
+        v)
+          VFLAG=yes
+          VOLUME=$OPTARG
+          ;;
+        m)
+          MFLAG=yes
+          SOUNDTRACK=$OPTARG
+          ;;
+        :)
+          echo "Option -$OPTARG requires an argument"
+          usage
+          ;;
+        \?)
+          echo "Invalid option: -$OPTARG"
+          usage
+          ;;
+    esac
+done
+
+if [[ ! -d $BASENAME ]]; then
+    echo "[+] mkdir $BASENAME"
+    mkdir $BASENAME
+fi
+echo "[+] ffmpeg -i $1 -acodec libvorbis -ab 192k -ac 2 -vcodec libx264 -vpre max -crf 22 -threads 0 $BASENAME/$BASENAME_optimized.mkv"
+echo "[-] Be patient this may take a while..."
+echo
+ffmpeg -i $1 -acodec libvorbis -ab 192k -ac 2 -vcodec libx264 -vpre max -crf 22 -threads 0 "$BASENAME/$BASENAME_optimized.mkv"
+
+if [[ $? == "1" ]]; then
+    exit 1
+else
+    echo
+    echo "[+] Complete $BASENAME/$BASENAME_optimized.mkv"
+    echo
+fi
+
+if [[ -z $VFLAG ]] && [[ -z $MFLAG ]]; then
+
+elif [[ -z $MFLAG ]]; then
+    #statements
+elif [[ -z $VFLAG ]]; then
+    echo
+    echo "[+] ffmpeg -i $1 -acodec libvorbis -ab 192k -vn -y -ac 2 -vol $VOLUME $BASENAME/$BASENAME_audio[$VOLUME].ogg"
+    ffmpeg -i $1 -acodec libvorbis -ab 192k -vn -y -ac 2 -vol $VOLUME $BASENAME/$BASENAME_audio[$VOLUME].ogg
+    echo
+    echo "[+] mkvmerge -o $BASENAME/$BASENAME_optimized[$VOLUME].mkv -A $1 $BASENAME/$BASENAME_audio[$VOLUME].ogg"
+    mkvmerge -o $BASENAME/$BASENAME_optimized[$VOLUME].mkv -A $1 $BASENAME/$BASENAME_audio[$VOLUME].ogg
+fi
