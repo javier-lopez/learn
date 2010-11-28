@@ -1,10 +1,10 @@
 #!/bin/bash
-# http://tinyurl.com/246hm8f
-# movietime - disables power savings to watch movies.
+#http://tinyurl.com/246hm8f
+#movietime - disables power savings to watch movies.
 
-# Movietime options
-#  Resume time - resume normal display pm and suspend after set time.
-# 0 = disabled, time in minutes
+#Movietime options
+#Resume time - resume normal display pm and suspend after set time.
+#0 = disabled, time in minutes
 resumetime=0
 if [ $resumetime = 0 ]; then 
   resumetime=1440 # Re-enable resume after a full day

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-#P.L. Javier <fco.plj@gmail.com> 2010
+#chilicuil <chilicuil@gmail.com> 2010
+#records screecasts using ffmpeg
 
 keyword=$1
 

@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
+#chilicuil <chilicuil@gmail.com> 2010
+#a primitive 'eix' for Obsd
 
 PORTS="/usr/ports"
 OS=$(uname)
 
-# Colors
+#I love colors!
 BLUE=$'\E[0;34m'
 DEFAULT=$'\E[0m'
 RED=$'\E[0;31m'

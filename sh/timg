@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-#
-# upload tmp imgs to http://imgur.com
+#upload tmp imgs to http://imgur.com
 
 if [[ ! $1 ]]; then
     echo "$0: You must specify a file to upload."

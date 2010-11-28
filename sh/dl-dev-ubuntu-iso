@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
-# Use dl-ubuntu-test-iso in the ubuntu-qa-tools package instead
-# chilicuil <chilicuil@i.am> 2010 -- download daily build ubuntu isos
+#chilicuil <chilicuil@i.am> 2010
+#download daily build ubuntu isos
 
-# Some of the most difficult bits have been taken from:
-# https://help.ubuntu.com/community/ZsyncCdImage
+#============================================================
+#UPDATE 2010-11-28 DEPRECATED
+#Use dl-ubuntu-test-iso in the ubuntu-qa-tools package instead
+#============================================================
+
+#Some of the most difficult bits have been taken from:
+#https://help.ubuntu.com/community/ZsyncCdImage
 
 # ======================= Settings ==========================
 # Comment the option to disable it

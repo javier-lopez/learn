@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+#chilicuil <chilicuil@gmail.com> 2010
+#helps to edit custom scripts right away
 
 program="$1"
 

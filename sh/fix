@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
+#chilicuil <chilicuil@gmail.com> 2010
+#fixes common problems in my system
 
+#===================================================
 VERSION="0.0.1"
-
-# Colors
+#I love colors!
 BLUE=$'\E[0;34m'
 DEFAULT=$'\E[0m'
 RED=$'\E[0;31m'
@@ -20,9 +22,20 @@ PURPLE=$'\E[1;35m'
 WHITE=$'\E[1;37m'
 YELLOW=$'\E[0;33m'
 
+#fancy output, taken mainly from /etc/lsb-base-logging.sh
+COLS=`tput cols`
+if [ "$COLS" ] && [ "$COLS" -gt 6 ]; then
+    COL=`expr $COLS - 8`
+else
+    COLS=80
+    COL=72
+fi
+
 st()
 {
-    if [ $? -ne 0 ]; then
+    printf "\r"
+    tput hpa $COL
+    if [ $1 -ne 0 ]; then
             echo -e "$LIGHT_RED[FAILED]$DEFAULT"
             exit 1
         else
@@ -50,60 +63,60 @@ apache ()
 {
     echo -ne "$LIGHT_RED[*]$DEFAULT sudo mv -v /etc/init.d/apache2.1 /etc/init.d/apache2 "
     sudo mv -v /etc/init.d/apache2.1 /etc/init.d/apache2 >> /tmp/fix.log 2>&1
-    st
+    st $?
 
     echo -ne "$LIGHT_RED[*]$DEFAULT sudo /etc/init.d/apache2 start "
     sudo /etc/init.d/apache2 start >> /tmp/fix.log 2>&1
-    st
+    st $?
 }
 
 ipw2200 ()
 {
     echo -ne "$LIGHT_RED[*]$DEFAULT sudo rmmod ipw2200 "
     sudo rmmod ipw2200 >> /tmp/fix.log 2>&1
-    st
+    st $?
 
     echo -ne "$LIGHT_RED[*]$DEFAULT sudo modprobe ipw2200 "
     sudo modprobe ipw2200 >> /tmp/fix.log 2>&1
-    st
+    st $?
 }
 
 wl ()
 {
     echo -ne "$LIGHT_RED[*]$DEFAULT sudo rmmod wl "
     sudo rmmod wl >> /tmp/fix.log 2>&1
-    st
+    st $?
 
     echo -ne "$LIGHT_RED[*]$DEFAULT sudo service wicd stop "
     sudo service wicd stop >> /tmp/fix.log 2>&1
-    st
+    st $?
 
     echo -ne "$LIGHT_RED[*]$DEFAULT sleep 3s "
     sleep 3s >> /tmp/fix.log 2>&1
-    st
+    st $?
 
     echo -ne "$LIGHT_RED[*]$DEFAULT sudo service wicd start "
     sudo service wicd start >> /tmp/fix.log 2>&1
-    st
+    st $?
 
     echo -ne "$LIGHT_RED[*]$DEFAULT sudo modprobe wl "
     sudo modprobe wl  >> /tmp/fix.log 2>&1
-    st
+    st $?
 }
 
 mpd()
 {
     echo -ne "$LIGHT_RED[*]$DEFAULT sudo alsa force-reload"
     sudo alsa force-reload  >> /tmp/fix.log 2>&1
-    #st
+    #st $?
 
     echo -ne "$LIGHT_RED[*]$DEFAULT sudo service mpd start"
     sudo service mpd start >> /tmp/fix.log 2>&1
-    st
+    st $?
 
     echo -ne "$LIGHT_RED[*]$DEFAULT conky |/home/chilicuil/code/dzen/dzen2 -dock -fn -xos4-terminus-medium-r-*-*-12-*-*-*-*-*-iso10646-1 -ta r -fg "#999999" -bg "#000000" & "
     conky |/home/chilicuil/code/dzen/dzen2 -dock -fn -xos4-terminus-medium-r-*-*-12-*-*-*-*-*-iso10646-1 -ta r -fg "#999999" -bg "#000000" &
-    st
+    st $?
 }
 
 if [ $# != 0 ]; then

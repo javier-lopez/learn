@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
-# chilicuil <chilicuil@i.am> 2010
-
-# send and watch messages in your "ke estas haciendo?" at
-# mononeurona.org
+#chilicuil <chilicuil@gmail.com> 2010
+#send and watch messages in your "ke estas haciendo?"
 
 # ======= Initial checks ============
 if [[ ! -e /usr/bin/html2text ]]; then

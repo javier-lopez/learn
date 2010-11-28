@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
+#chilicuil <chilicuil@gmail.com> 2010
 #search in the awesome www.commandlinefu.com site
-#chilicuil <chilicuil@i.am> 2010
 
 PATTERN="$@"
 

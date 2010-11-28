@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-#
-# upload imgs to your account at mononeurona.org
+#chilicuil <chilicuil@gmail.com> 2010
+#uploads imgs to your account at mononeurona.org
 
 # ======= Initial checks ============
 if [[ ! -e /usr/bin/html2text ]]; then

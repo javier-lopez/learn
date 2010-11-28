@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+#chilicuil <chilicuil@gmail.com> 2010
+#show script code
 
 program="$1"
 

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
+#chilicuil <chilicuil@gmail.com> 2010
+#setup custom services
 
-VERSION="0.0.1"
-
-# Colors
+#I love colors!
 BLUE=$'\E[0;34m'
 DEFAULT=$'\E[0m'
 RED=$'\E[0;31m'
@@ -20,13 +20,24 @@ PURPLE=$'\E[1;35m'
 WHITE=$'\E[1;37m'
 YELLOW=$'\E[0;33m'
 
+#fancy output, taken mainly from /etc/lsb-base-logging.sh
+COLS=`tput cols`
+if [ "$COLS" ] && [ "$COLS" -gt 6 ]; then
+    COL=`expr $COLS - 8`
+else
+    COLS=80
+    COL=72
+fi
+
 st()
 {
-    if [ $? -ne 0 ]; then
-            echo "$LIGHT_RED[FAILED]$DEFAULT"
+    printf "\r"
+    tput hpa $COL
+    if [ $1 -ne 0 ]; then
+            echo -e "$LIGHT_RED[FAILED]$DEFAULT"
             exit 1
         else
-            echo "$LIGHT_GREEN[DONE]$DEFAULT"
+            echo -e "$LIGHT_GREEN[DONE]$DEFAULT"
     fi
 }
 #===================================================
@@ -43,24 +54,24 @@ usage()
   echo -e "  script            Setup a custom script"
   echo -e "  intalio           Setup intalio"
   echo -e
-  echo -e "Logs are saved in /tmp/setup.log"
+  echo -e "Logs are saved to /tmp/setup.log"
   exit 0
 }
 
 script()
 {
     if [[ -z "$1" ]]; then
-        echo -e "$0: Missing parameter"
+        echo -e "$0: Missing argument"
         exit 1
     fi
 
-    echo -ne "$LIGHT_RED[*]$DEFAULT chmod +x $1\t\t\t\t\t\t "
+    echo -ne "$LIGHT_RED[*]$DEFAULT chmod +x $1"
     chmod +x $1 >> /tmp/setup.log 2>&1
-    st
+    st $?
 
-    echo -ne "$LIGHT_RED[*]$DEFAULT sudo cp $1 /usr/local/bin\t\t\t\t\t\t "
+    echo -ne "$LIGHT_RED[*]$DEFAULT sudo cp $1 /usr/local/bin"
     sudo cp $1 /usr/local/bin >> /tmp/setup.log 2>&1
-    st
+    st $?
     exit 0
 }
 
@@ -71,33 +82,33 @@ autocp()
         exit 1
     fi
 
-    echo -ne "$LIGHT_RED[*]$DEFAULT sudo cp $1 /etc/bash_completion.d/\t\t\t\t\t\t "
+    echo -ne "$LIGHT_RED[*]$DEFAULT sudo cp $1 /etc/bash_completion.d/"
     sudo cp $1 /etc/bash_completion.d/ >> /tmp/setup.log 2>&1
-    st
+    st $?
     exit 0
 }
 
 cake()
 {
-    echo -ne "$LIGHT_RED[*]$DEFAULT tar zxvf cake*.tar.gz\t\t\t\t\t\t "
+    echo -ne "$LIGHT_RED[*]$DEFAULT tar zxvf cake*.tar.gz"
     tar zxvf cake*.tar.gz >> /tmp/init_cake.log 2>&1
-    st
+    st $?
 
-    echo -ne "$LIGHT_RED[*]$DEFAULT chmod -R 777 cake_*/app/tmp/\t\t\t\t\t\t "
+    echo -ne "$LIGHT_RED[*]$DEFAULT chmod -R 777 cake_*/app/tmp/"
     chmod -R 777 cake_*/app/tmp/ >> /tmp/init_cake.log 2>&1
-    st
+    st $?
 
-    echo -ne "$LIGHT_RED[*]$DEFAULT cp cake_*/app/config/{database.php.default,database.php}\t\t\t\t\t\t "
+    echo -ne "$LIGHT_RED[*]$DEFAULT cp cake_*/app/config/{database.php.default,database.php}"
     cp cake_*/app/config/{database.php.default,database.php} >> /tmp/init_cake.log 2>&1
-    st
+    st $?
 
-    echo -ne "$LIGHT_RED[*]$DEFAULT cd cake_*\t\t\t\t\t\t "
+    echo -ne "$LIGHT_RED[*]$DEFAULT cd cake_*"
     cd cake_* >> /tmp/init_cake.log 2>&1
-    st
+    st $?
 
-    echo -ne "$LIGHT_RED[*]$DEFAULT vim app/config/{core.php,database.php} -o\t\t\t\t\t\t "
+    echo -ne "$LIGHT_RED[*]$DEFAULT vim app/config/{core.php,database.php} -o"
     vim app/config/{core.php,database.php} -o
-    st
+    st $?
     exit 0
 }
 
@@ -106,35 +117,37 @@ intalio()
     IS_INTALIO=(intalio-bpms*.zip)
 
     if [[ ! -e ${IS_INTALIO[0]} ]]; then
-        echo -e "$LIGHT_RED[*]$DEFAULT ./intalio-bpms*.zip was not found"
+        echo -ne "$LIGHT_RED[*]$DEFAULT ./intalio-bpms*.zip was not found"
+        false
+        st $?
         exit 1
     fi
 
-    echo -ne "$LIGHT_RED[*]$DEFAULT extract ${IS_INTALIO[0]}\t\t\t\t\t\t "
+    echo -ne "$LIGHT_RED[*]$DEFAULT extract ${IS_INTALIO[0]}"
     extract ${IS_INTALIO[0]} >> /tmp/setup.log 2>&1
-    st
+    st $?
 
-    echo -e "$LIGHT_RED[*]$DEFAULT setting up JAVA_HOME\t\t\t\t\t\t "
+    echo -e "$LIGHT_RED[*]$DEFAULT setting up JAVA_HOME"
 
     if [[ -z $JAVA_HOME ]]; then
-        echo -ne "$LIGHT_RED[+]$DEFAULT echo export JAVA_HOME=/usr/lib/jvm/java-6-sun > $HOME/.bashrc\t\t\t\t\t\t "
+        echo -ne "$LIGHT_RED[+]$DEFAULT echo export JAVA_HOME=/usr/lib/jvm/java-6-sun > $HOME/.bashrc"
         echo "export JAVA_HOME=/usr/lib/jvm/java-6-sun" > $HOME/.bashrc
-        st
+        st $?
     else
         echo -e "$LIGHT_RED[+]$DEFAULT JAVA_HOME is set to $JAVA_HOME, nothing to do..."
     fi
 
-    echo -ne "$LIGHT_RED[*]$DEFAULT groovy.sh change_http_port "
+    echo -ne "$LIGHT_RED[*]$DEFAULT groovy.sh change_http_port"
     cd ./intalio-bpms*/extras/; ./groovy.sh change_http_port.groovy
 
     echo -ne "$LIGHT_RED[*]$DEFAULT Wanna start intalio now? y/n: "
     read -e BOOT_INTALIO
 
     if [[ "{$BOOT_INTALIO}" == "y" ]]; then
-        echo -ne "$LIGHT_RED[*]$DEFAULT ../bin/startup.sh "
+        echo -ne "$LIGHT_RED[*]$DEFAULT ../bin/startup.sh"
         ../bin/startup.sh
-        echo -e "$LIGHT_RED[*]$DEFAULT Please be patient, tomcat may take some time to initializate... " 
-        echo -e "$LIGHT_RED[*]$DEFAULT Go to http://localhost:8080/bpms-console to start, have fun ^_^ "
+        echo -e "$LIGHT_RED[*]$DEFAULT Please be patient, tomcat may take some time to initializate..." 
+        echo -e "$LIGHT_RED[*]$DEFAULT Go to http://localhost:8080/bpms-console to start, have fun ^_^"
     fi
 
     echo -e "$LIGHT_RED[*]$DEFAULT Intalio has been setup but has not been booted, have fun ^_^" 

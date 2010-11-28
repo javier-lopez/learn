@@ -1,8 +1,6 @@
-#!/bin/bash
-#
-# a simple dmenu session script 
-#
-###
+#!/usr/bin/env bash
+#chilicuil <chilicuil@gmail.com> 2010
+#a simple dmenu session script 
 
 DMENU='dmenu -p ">" -i -nb #000000 -nf #999999 -sb #999999 -sf #000000'
 choice=$(echo -e "logout\nrestart\nshutdown\nreboot\nsuspend\nhibernate" | $DMENU)

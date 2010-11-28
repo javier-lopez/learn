@@ -1,10 +1,7 @@
 #!/usr/bin/env bash
-#
-# chilicuil <chilicuil@i.am> 2010
-#
-# create a secure password with 8 chars by default
-#
-##
+#chilicuil <chilicuil@gmail.com> 2010
+#create a secure password with 8 chars by default
+#people may want to use $RANDOM to create tmp files
 
 if [[ ! $1 ]]; then
     mkpasswd_length=8

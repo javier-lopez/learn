@@ -1,9 +1,6 @@
 #!/bin/sh
-
-# vim: set ts=8 sw=4 tw=0 ft=sh : 
-# http://bbs.archlinux.org/viewtopic.php?pid=484915
-
-# Script to start X on the next available display.
+#http://bbs.archlinux.org/viewtopic.php?pid=484915
+#script to start X on the next available display.
 
 if [ $# -eq 0 ]      # check to see if arguements are given (color depth)
        then a=24    # default color depth

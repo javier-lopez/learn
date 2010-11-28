@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# extract function, http://bashscripts.org/forum/viewtopic.php?f=7&t=367
+#extract function, http://bashscripts.org/forum/viewtopic.php?f=7&t=367
 
 FILE=$1
 
