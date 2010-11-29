@@ -1,0 +1,123 @@
+#!/usr/bin/env bash
+#chilicuil <chilicuil@gmail.com> 2010
+#encode screencasts
+
+BASENAME=`basename ${!#} .mkv`
+ORIGINAL=${!#}
+
+usage()
+{
+    echo "Usage: `basename $0` [-v vol][-s soundtrack][-k] screencast.mkv"
+    echo
+    echo "          -v     Change the volume from the screencast [0-2048] (ffmpeg -vol)"
+    echo "          -s     Add soundtrack"
+    echo "          -k     Keep tmp files"
+    exit 0
+}
+
+cleanup ()
+{
+    rm "$BASENAME".audio*
+    rm "$SOUNDTRACK".vol*
+}
+
+_status ()
+{
+    if [[ $? == "1" ]]; then
+        echo
+        echo  "[-] Failed to build $1"
+        exit 1
+    else
+        echo
+        echo "[+] Complete $1"
+    fi
+}
+
+while getopts ":v:s:k" option; do
+    case $option in
+        v)
+          VFLAG=yes
+          VOLUME=$OPTARG
+          ;;
+        s)
+          SFLAG=yes
+          SOUNDTRACK=$OPTARG
+          ;;
+        k)
+          KFLAG=yes
+          ;;
+        :)
+          echo "Option -$OPTARG requires an argument"
+          usage
+          ;;
+        \?)
+          echo "Invalid option: -$OPTARG"
+          usage
+          ;;
+    esac
+done
+
+if [[ ! -z $VFLAG ]] && [[ ! -z $SFLAG ]]; then
+    echo "[+] ffmpeg -i "$ORIGINAL" -acodec libvorbis -ab 192k -vn -y -ac 2 -vol $VOLUME "$BASENAME".audio[volume_$VOLUME].ogg"
+    echo "[-] Be patient this may take a while..."
+    ffmpeg -i "$ORIGINAL" -acodec libvorbis -ab 192k -vn -y -ac 2 -vol $VOLUME "$BASENAME".audio[volume_$VOLUME].ogg
+    _status "$BASENAME".audio[volume_$VOLUME].ogg
+
+    #TODO 28-11-2010 20:15 => make soundtrack vol an option
+    echo
+    echo "[+] ffmpeg -i "$SOUNDTRACK" -vol 20 -acodec libvorbis -ab 192k "$SOUNDTRACK".vol[20].ogg"
+    ffmpeg -i "$SOUNDTRACK" -vol 20 -acodec libvorbis -ab 192k "$SOUNDTRACK".vol[20].ogg
+    _status "$SOUNDTRACK".vol[20].ogg
+
+    echo
+    echo "[+] sox -S -m "$BASENAME".audio[volume_$VOLUME].ogg "$SOUNDTRACK".vol[20].ogg -r192k "$BASENAME".audio_mixed.ogg"
+    sox -S -m "$BASENAME".audio[volume_$VOLUME].ogg "$SOUNDTRACK".vol[20].ogg -r192k "$BASENAME".audio_mixed.ogg
+    _status "$BASENAME".audio_mixed.ogg
+
+    echo
+    echo "[+] mkvmerge -o "$BASENAME".optimized[$VOLUME].mkv -A $ORIGINAL "$BASENAME".audio[volume_$VOLUME].ogg"
+    mkvmerge -o "$BASENAME".optimized.mkv -A $ORIGINAL "$BASENAME".audio_mixed.ogg
+    _status "$BASENAME".optimized.mkv
+
+elif [[ ! -z $SFLAG ]]; then
+    echo "[+] ffmpeg -i "$ORIGINAL" -acodec libvorbis -ab 192k -vn -y -ac 2 "$BASENAME".audio.ogg"
+    echo "[-] Be patient this may take a while..."
+    ffmpeg -i "$ORIGINAL" -acodec libvorbis -ab 192k -vn -y -ac 2 "$BASENAME".audio.ogg
+    _status "$BASENAME".audio.ogg
+
+    #TODO 28-11-2010 20:15 => make soundtrack vol an option
+    echo
+    echo "[+] ffmpeg -i "$SOUNDTRACK" -vol 20 -acodec libvorbis -ab 192k "$SOUNDTRACK".vol[20].ogg"
+    ffmpeg -i "$SOUNDTRACK" -vol 20 -acodec libvorbis -ab 192k "$SOUNDTRACK".vol[20].ogg
+    _status "$SOUNDTRACK".vol[20].ogg
+
+    echo
+    echo "[+] sox -S -m "$BASENAME".audio.ogg "$SOUNDTRACK".vol[20].ogg -r192k "$BASENAME".audio_mixed.ogg"
+    sox -S -m "$BASENAME".audio.ogg "$SOUNDTRACK".vol[20].ogg -r192k "$BASENAME".audio_mixed.ogg
+    _status "$BASENAME".audio_mixed.ogg
+
+    echo
+    echo "[+] mkvmerge -o "$BASENAME".optimized[$VOLUME].mkv -A $ORIGINAL "$BASENAME".audio[volume_$VOLUME].ogg"
+    mkvmerge -o "$BASENAME".optimized.mkv -A $ORIGINAL "$BASENAME".audio_mixed.ogg
+    _status "$BASENAME".optimized.mkv
+
+elif [[ ! -z $VFLAG ]]; then
+    echo "[+] ffmpeg -i "$ORIGINAL" -acodec libvorbis -ab 192k -vn -y -ac 2 -vol $VOLUME "$BASENAME".audio[volume_$VOLUME].ogg"
+    echo "[-] Be patient this may take a while..."
+    ffmpeg -i "$ORIGINAL" -acodec libvorbis -ab 192k -vn -y -ac 2 -vol $VOLUME "$BASENAME".audio[volume_$VOLUME].ogg
+    _status "$BASENAME".audio[volume_$VOLUME].ogg
+
+    echo
+    echo "[+] mkvmerge -o "$BASENAME".optimized[$VOLUME].mkv -A $ORIGINAL "$BASENAME".audio[volume_$VOLUME].ogg"
+    mkvmerge -o "$BASENAME".optimized[$VOLUME].mkv -A $ORIGINAL "$BASENAME".audio[volume_$VOLUME].ogg
+    _status "$BASENAME".optimized[$VOLUME].mkv
+else
+    echo "[+] ffmpeg -i "$ORIGINAL" -acodec libvorbis -ab 192k -ac 2 -vcodec libx264 -vpre max -crf 22 -threads 0 "$BASENAME".optimized.mkv"
+    echo
+    ffmpeg -i "$ORIGINAL" -acodec libvorbis -ab 192k -ac 2 -vcodec libx264 -vpre max -crf 22 -threads 0 "$BASENAME".optimized.mkv
+    _status "$BASENAME".optimized.mkv
+fi
+
+if [[ -z $KFLAG ]]; then
+    cleanup
+fi

@@ -44,7 +44,6 @@ if [[ $? == "1" ]]; then
         echo "[+] No mic available, recording video only..."
         echo
     fi
-
     downcount
     ffmpeg -f x11grab -r 30 -s $(xwininfo -root | grep 'geometry' | awk '{print $2;}') -i :0.0 -acodec pcm_s16le -vcodec libx264 -vpre lossless_ultrafast -threads 0 -y $keyword
 fi
