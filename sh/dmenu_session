@@ -3,7 +3,7 @@
 #a simple dmenu session script 
 
 DMENU='dmenu -p ">" -i -nb #000000 -nf #999999 -sb #999999 -sf #000000'
-choice=$(echo -e "logout\nrestart\nshutdown\nreboot\nsuspend\nhibernate" | $DMENU)
+choice=$(echo -e "logout\nrestart\nshutdown\nreboot\nsuspend\nhibernate\nlock" | $DMENU)
 
 case "$choice" in
     logout) i3-msg exit &
@@ -19,6 +19,9 @@ case "$choice" in
     suspend) gksudo pm-suspend &
         ;;
     hibernate) gksudo hibernate &
+        # requires the hibernate package in ubuntu
+        ;;
+    lock) gnome-screensaver-command --lock &
         # requires the hibernate package in ubuntu
         ;;
 esac
