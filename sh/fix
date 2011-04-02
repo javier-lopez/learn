@@ -47,16 +47,18 @@ st()
 #Don't forget update this when adding new functions
 usage()
 {
-  echo -e "$0: Fix my common problems"
-  echo -e "  -h  or --help     List available arguments and usage (this message)."
-  echo -e "  -v  or --version  Print version."
+  echo -e "Usage: `basename $0` module" >&2
   echo -e
-  echo -e "  apache            Moves /etc/init.d/apache2.1 to apache2."
-  echo -e "  ipw2200           Restart the ipw2200 module."
-  echo -e "  wl                Restart the wl module."
-  echo -e "  mpd               Restart mpd."
+  echo -e "  -h  or --help     List available arguments and usage (this message)." >&2
+  echo -e "  -v  or --version  Print version." >&2
   echo -e
-  echo -e "Logs are saved in /tmp/fix.log"
+  echo -e "  apache            Moves /etc/init.d/apache2.1 to apache2." >&2
+  echo -e "  ipw2200           Restart the ipw2200 module." >&2
+  echo -e "  wl                Restart the wl module." >&2
+  echo -e "  mpd               Restart mpd." >&2
+  echo -e
+  echo -e "Logs are saved in /tmp/fix.log" >&2
+  exit 1
 }
 
 apache ()

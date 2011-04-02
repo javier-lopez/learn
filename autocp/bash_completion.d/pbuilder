@@ -11,6 +11,15 @@
 have pbuilder &&
 _pbuilder()
 {
+    #When the function or command is invoked, the first argument is the name of
+    #the command whose arguments are being completed, the second argument is the
+    #word being completed, and the third argument is the word preceding the word
+    #being  completed on  the current command line.
+
+    #program_name=$1
+    #cur=$2
+    #prev=$3
+
     local cur options
 
     COMPREPLY=()

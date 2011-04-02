@@ -100,7 +100,7 @@ detect_distro()
   elif [ -r $DIST_INFO ]; then
     . $DIST_INFO
   fi
-    
+
   if [ -z $DISTRIB_ID ]; then
     unset DISTRIB_RELEASE
     if [ -f /etc/arch-release ]; then

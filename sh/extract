@@ -3,6 +3,13 @@
 
 FILE=$1
 
+usage()
+{
+    echo -e "Usage: `basename $0` [-s] FILE" >&2
+    echo -e "           -s       quiet mode" >&2
+    exit 1
+}
+
 while getopts ":s:" option; do
     case $option in
         s)
@@ -75,13 +82,16 @@ if [[ -z $SFLAG ]]; then
                 echo "[+] tar --lzma -xvf $FILE"
                 tar --lzma -xvf "$FILE"
                 ;;
+            *.jar)
+                echo "[+] jar xvf $FILE"
+                jar xvf "$FILE"
+                ;;
             *)
                 echo "'$FILE' is not a valid compress file"
                 ;;
         esac
     else
-        echo -e "Usage: `basename $0` [-s] FILE"
-        echo -e "           -s       quiet mode"
+        usage
     fi
 else
     if [ -f "$FILE" ] ; then
@@ -111,8 +121,8 @@ else
                 gunzip "$FILE"
                 ;;
             *.tar)
-                echo "[+] tar xvf $FILE"
-                tar xvf "$FILE"
+                echo "[+] tar xf $FILE"
+                tar xf "$FILE"
                 ;;
             *.tbz2)
                 echo "[+] tar jxf $FILE"
@@ -138,12 +148,15 @@ else
                 echo "[+] tar --lzma -xvf $FILE"
                 tar --lzma -xf "$FILE"
                 ;;
+            *.jar)
+                echo "[+] jar xf $FILE"
+                jar xf "$FILE"
+                ;;
             *)
                 echo "'$FILE' is not a valid compress file"
                 ;;
         esac
     else
-        echo -e "Usage: `basename $0` [-s] FILE"
-        echo -e "           -s       quiet mode"
+        usage
     fi
 fi

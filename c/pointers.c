@@ -28,7 +28,7 @@ int main(int argc, char const* argv[])
 
     printf("l = &j;\n");
     l=&j;
-    printf("l = %i;\n", l);
+    printf("l = %p;\n", l);
 
     printf("*l = m;\n");
     *l=m;

@@ -24,10 +24,10 @@ YELLOW=$'\E[0;33m'
 
 usage()
 {
-    echo "Usage: `basename $0` [-c] pattern"
-    echo
-    echo "          -c     Colorize the output"
-    exit 0
+    echo "Usage: `basename $0` [-c] pattern" >&2
+    echo >&2
+    echo "          -c     Colorize the output" >&2
+    exit 1
 }
 
 if [[ -z "$PATTERN" ]]; then
@@ -37,9 +37,7 @@ fi
 while getopts ":c:" option; do
     case $option in
         c)
-          CFLAG=yes
-          PATTERN=$OPTARG
-          ;;
+          CFLAG=yes PATTERN=$OPTARG ;;
         :)
           echo "Option -$OPTARG requires an argument"
           usage

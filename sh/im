@@ -4,9 +4,9 @@
 
 # ======= Initial checks ============
 if [[ ! -e /usr/bin/html2text ]]; then
-    echo "You need install html2text before using $0"
-    echo "    In Ubuntu/Debian use: \$apt-get install html2text"
-    exit 0
+    echo "You need install html2text before using $0" 1>&2
+    echo "    In Ubuntu/Debian use: \$apt-get install html2text" 1>&2
+    exit 1
 fi
 
 if [[ "${#@}" -eq "1" ]]; then

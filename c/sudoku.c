@@ -7,7 +7,7 @@
 
 /*****************************INCLUDES********************************/
 #include <stdio.h>  /* printf, scanf, fflush, getchar, etc */
-#include <stdlib.h> /* system, rand, exit, etc */
+#include <stdlib.h> /* system, rand, exit, qsort */
 #include <time.h>   /* time */
 
 /*****************************DEFINES********************************/
@@ -55,7 +55,6 @@ const char *logo="\n\n\n\
 
 int main (int argc, char const* argv[])
 {
-
     int i, debug=0, arg_actual, sudoku [largo] [ancho], quiera_jugar=1;
     int resultado=0, marcador_usuario=0, marcador_maq=0;
     char nombre[100];

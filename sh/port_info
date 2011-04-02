@@ -35,11 +35,11 @@ fi
 
 usage()
 {
-    echo "Usage: $0 [-c] [-p|-w] pattern"
-    echo
-    echo "          -c    Colorize the output"
-    echo "          -p    Search in package's name"
-    echo "          -w    Search in full descriptions"
+    echo "Usage: $0 [-c] [-p|-w] pattern" >&2
+    echo >&2
+    echo "          -c    Colorize the output" >&2
+    echo "          -p    Search in package's name" >&2
+    echo "          -w    Search in full descriptions" >&2
     exit 1
 }
 

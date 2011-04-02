@@ -7,12 +7,12 @@ ORIGINAL=${!#}
 
 usage()
 {
-    echo "Usage: `basename $0` [-v vol][-s soundtrack][-k] screencast.mkv"
-    echo
-    echo "          -v     Change the volume from the screencast [0-2048] (ffmpeg -vol)"
-    echo "          -s     Add soundtrack"
-    echo "          -k     Keep tmp files"
-    exit 0
+    echo "Usage: `basename $0` [-v vol][-s soundtrack][-k] screencast.mkv" >&2
+    echo >&2
+    echo "          -v     Change the volume from the screencast [0-2048] (ffmpeg -vol)" >&2
+    echo "          -s     Add soundtrack" >&2
+    echo "          -k     Keep tmp files" >&2
+    exit 1
 }
 
 cleanup ()

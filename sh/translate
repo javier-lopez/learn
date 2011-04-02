@@ -8,26 +8,38 @@ PHRASE="$@"
 usage()
 {
     #TODO 28-11-2010 16:57 => portuguese
-    echo "Usage: `basename $0` [-s|-e] phrase"
-    echo
-    echo "          -s     Spanish-English (default)"
-    echo "          -e     English-Spanish"
-    exit 0
+    echo "Usage: `basename $0` [-s|-e] phrase" >&2
+    echo >&2
+    echo "          -s     Spanish-English (default)" >&2
+    echo "          -o     Spanish-Portuguese" >&2
+    echo "          -e     English-Spanish" >&2
+    echo "          -p     Portugese-Spanish" >&2
+    exit 1
 }
 
 if [[ -z "$PHRASE" ]]; then
     usage
 fi
 
-while getopts ":s:e:" option; do
+while getopts ":s:o:e:p:" option; do
     case $option in
         s)
           lng1="es";
           lng2="en";
           PHRASE=$OPTARG
           ;;
+        o)
+          lng1="es";
+          lng2="pt";
+          PHRASE=$OPTARG
+          ;;
         e)
           lng1="en";
+          lng2="es";
+          PHRASE=$OPTARG
+          ;;
+        p)
+          lng1="pt";
           lng2="es";
           PHRASE=$OPTARG
           ;;

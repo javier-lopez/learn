@@ -7,8 +7,7 @@ int main (void)
     char string;
     while (true)
     {
-	(void)scanf("%c", &string);
-	printf("%c", string);
+        (void)scanf("%c", &string);
+        printf("%c", string);
     }
-    
 }

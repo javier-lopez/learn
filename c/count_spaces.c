@@ -3,7 +3,7 @@
 
 int main (void)
 
-{ 
+{
     char ch;
     short count = 0;
 
@@ -11,10 +11,10 @@ int main (void)
 
     while ((ch = getchar()) != '\n')
     {
-	if (ch == ' ')
-	{
-	    count++;
-	}
+        if (ch == ' ')
+        {
+            count++;
+        }
     }
 
     printf ("Number of space = %d\n",count);

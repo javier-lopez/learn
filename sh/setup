@@ -45,17 +45,17 @@ st()
 #Don't forget update this when adding new functions
 usage()
 {
-  echo -e "$0: Setup my common tasks"
-  echo -e "  -h  or --help     List available arguments and usage (this message)."
-  echo -e "  -v  or --version  Print version."
-  echo -e
-  echo -e "  autocp            Setup custom autocomplete file"
-  echo -e "  cake              Setup cake"
-  echo -e "  script            Setup a custom script"
-  echo -e "  intalio           Setup intalio"
-  echo -e
-  echo -e "Logs are saved to /tmp/setup.log"
-  exit 0
+  echo -e "$0: Setup my common tasks" >&2
+  echo -e "  -h  or --help     List available arguments and usage (this message)." >&2
+  echo -e "  -v  or --version  Print version." >&2
+  echo -e >&2
+  echo -e "  autocp            Setup custom autocomplete file" >&2
+  echo -e "  cake              Setup cake" >&2
+  echo -e "  script            Setup a custom script" >&2
+  echo -e "  intalio           Setup intalio" >&2
+  echo -e >&2
+  echo -e "Logs are saved to /tmp/setup.log" >&2
+  exit 1
 }
 
 script()

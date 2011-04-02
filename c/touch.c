@@ -7,9 +7,6 @@
  *donde lei no es posible, hay varios programas en packetstorm.org (o com?) que
  *te podrian servir de inspiracion, touch*.
  *
- *he modificado tu codigo para que veas como seria, tengo que quejarme que me
- *costo un poco entender el snippet inicial, no ma, pon comentarios!
- *
  * $ rm tmp; touch tmp; stat tmp
  * $ sudo ./test
  * $ stat tmp
@@ -26,7 +23,6 @@
 /* Modulo Modificar fecha y weas solo ls -la , un ls -lc y caga :S  */
 /* Por p0fk! */
 
-/*tambien he modificado el nombre de las variables, para segun yo hacerlo mas claro*/
 int main(void){
     char *file= "tmp";
     time_t t_old, t_new;
