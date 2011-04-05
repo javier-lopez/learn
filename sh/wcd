@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+#chilicuil <chilicuil@gmail.com> 2011
+#cd wrapper function
+
+#due to cd & subshells nature this script only works if it's sourced
+#alias cd=". this_script"
+
+WICD_BIN="/usr/lib/wcd/wcd.exec"
+WICD_OPTIONS="-j -GN -c -i"
+#-j     just go mode
+#-GN    do not creat go script ($HOME/bin/wicd.go)
+#-c     direct cd mode
+#-i     case insensitve
+
+#not sure why $@ looks like this if no param is given
+if [[ $@ == "completion-ignore-case on" ]]; then
+    \cd `$WICD_BIN $WICD_OPTIONS`
+else
+    \cd `$WICD_BIN $WICD_OPTIONS $@`
+fi

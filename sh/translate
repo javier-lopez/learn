@@ -7,7 +7,6 @@ PHRASE="$@"
 
 usage()
 {
-    #TODO 28-11-2010 16:57 => portuguese
     echo "Usage: `basename $0` [-s|-e] phrase" >&2
     echo >&2
     echo "          -s     Spanish-English (default)" >&2
