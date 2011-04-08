@@ -17,11 +17,11 @@ case "$choice" in
         #gksudo shutdown -r now & (if u don't have ConsoleKit running)
         ;;
     suspend) gksudo pm-suspend &
+        # requires the hibernate package in ubuntu
         ;;
     hibernate) gksudo hibernate &
         # requires the hibernate package in ubuntu
         ;;
     lock) gnome-screensaver-command --lock &
-        # requires the hibernate package in ubuntu
         ;;
 esac

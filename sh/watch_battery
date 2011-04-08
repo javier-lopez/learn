@@ -1,0 +1,92 @@
+#!/usr/bin/env bash
+#add it as a cronjob (every 3 min)
+#*/3 * * * * /path/to/this/script
+
+# ======= Initial checks ============
+if [[ ! -e /usr/bin/notify-send || ! -e /usr/sbin/pm-suspend || ! -e /usr/bin/acpi ]]; then
+    if [[ $TERM != "rxvt-unicode" ]]; then #X
+        xmessage "[+] You need install acpi, notify-send and pm-suspend before using this script
+        In Ubuntu/Debian use: \$ sudo apt-get install acpi libnotify-bin pm-utils"
+    else
+        echo "[+] You need install acpi, notify-send and pm-suspend before using this script"
+        echo "    In Ubuntu/Debian use: \$ sudo apt-get install acpi libnotify-bin pm-utils"
+    fi
+    exit 1
+fi
+
+#=====VARS=====
+# Current battery status (Charging/Discharging/AC/Unknown)
+STAT=$(acpi -b | awk '{print $3}' | awk 'sub(".$", "")')
+# Battery percentage
+BATT=$(acpi -b | awk '{print $4}' | awk 'sub("..$", "")')
+# Actions
+SUSPEND="pm-suspend"
+WATCH_BATTERY_CURRENT=$(cat /tmp/watch_battery_current 2>/dev/null)
+
+if [[ $TERM != "rxvt-unicode" ]]; then
+    SUDO=gksudo
+else
+    SUDO=sudo
+fi
+
+# If Discharging...
+if [[ "$STAT" = "Discharging" ]]; then
+    # Battery under 5% -> force to suspend
+    if [[ $BATT -lt "5" ]]; then
+        WATCH_BATTERY_CURRENT="5"
+        if [[ $TERM != "rxvt-unicode" ]]; then
+            DISPLAY=:0.0 notify-send -u critical -t 3000 "[-] Critical"\
+            "Battery under 5%, the system will be suspended in 30 seconds, unless you plugin the computer"
+        else
+            echo "[-] Critical, battery under 5%, the system will be suspended in 30 seconds, unless you plugin the computer"
+        fi
+
+        for (( i = 0; i < 30; i++ )); do
+            sleep 1
+            STAT=$(acpi -b | awk '{print $3}' | awk 'sub(".$", "")')
+            if [[ "$STAT" != "Discharging" ]]; then
+                if [[ $TERM != "rxvt-unicode" ]]; then
+                    DISPLAY=:0.0 notify-send -t 1000 "[+] Charging" "Charging now..."
+                else
+                    echo "[+] Charging"
+                fi
+                break
+            fi
+        done
+
+        #check a last time if nobody has pluged in the machine, if not suspend it
+        STAT=$(acpi -b | awk '{print $3}' | awk 'sub(".$", "")')
+
+        if [[ "$STAT" = "Discharging" ]]; then
+            if [[ -e /usr/bin/mpc ]]; then
+                mpc stop
+            fi
+            $SUDO $SUSPEND
+        fi
+
+    elif [[ $BATT -lt "7" && $BATT -gt "4" && $WATCH_BATTERY_CURRENT != "7" ]]; then
+        WATCH_BATTERY_CURRENT="7"
+        if [[ $TERM != "rxvt-unicode" ]]; then
+            DISPLAY=:0.0 notify-send -t 5000 "[-] Warning" "Battery under 7%"
+        else
+            echo "[-] Warning, battery under 7%"
+        fi
+    elif [[ $BATT -lt "10" && $BATT -gt "6" && $WATCH_BATTERY_CURRENT != "10" ]]; then
+        WATCH_BATTERY_CURRENT="10"
+        if [[ $TERM != "rxvt-unicode" ]]; then
+            DISPLAY=:0.0 notify-send -t 5000 "[-] Warning" "Battery under 10%"
+        else
+            echo "[-] Warning, battery under 10%"
+        fi
+    elif [[ $BATT -lt "15" && $BATT -gt "9" && $WATCH_BATTERY_CURRENT != "15" ]]; then
+        WATCH_BATTERY_CURRENT="15"
+        if [[ $TERM != "rxvt-unicode" ]]; then
+            DISPLAY=:0.0 notify-send -t 5000 "[-] Warning" "Battery under 15%"
+        else
+            echo "[-] Warning, battery under 15%"
+        fi
+    fi
+fi
+
+echo $WATCH_BATTERY_CURRENT > /tmp/watch_battery_current
+exit 0
