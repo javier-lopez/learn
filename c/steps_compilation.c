@@ -12,9 +12,7 @@
  *      gcc program.object -o program
  *          ld ....
  *
- *
- *       gcc -v program.c -o program --To see a verbose output showing the
- *       steps
+ *       gcc -v program.c -o program --verbose output showing the process
  *********************************************************************/
 
 #include <stdio.h>
