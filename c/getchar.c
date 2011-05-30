@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <termios.h>
 
+int tty_break(struct termios *stable);
+int tty_fix(struct termios *stable);
 //static struct termio savemodes;
 //static int havemodes = 0;
 
@@ -31,7 +33,7 @@ int tty_getchar()
 }*/
 
 struct termios stable;
-main()
+int main()
 {
         int i;
 //        system("stty -echo");
@@ -57,7 +59,6 @@ int tty_fix() { return 0; }
 int tty_break(struct termios *stable)
 {
     struct termios new;
-    char ch;
 
     tcgetattr(fileno(stdin), stable);
     new=*stable;

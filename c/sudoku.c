@@ -17,23 +17,23 @@
 #define No_frases  10
 
 #ifdef _WIN32
-    #include <windows.h> 
+    #include <windows.h>
     #include <conio.h>
-    #define clear  "cls"
-    #define sleep(x)  Sleep((x)*1000)
-    #define sin_eco()  
-    #define con_echo() 
-    #define get_char()  get_charWin()
-    int get_charWin (void) { return getche();}
-#else 
+    #define clear               "cls"
+    #define sleep(x)            Sleep((x)*1000)
+    #define without_echo()
+    #define with_echo()
+    #define get_char()          get_charWin()
+    int get_charWin (void)      { return getche();}
+#else
     #include <unistd.h>
-    #define sleep(x) usleep((x)*1000000)
-    #define clear   "clear"
-    #define sin_eco()  system("/bin/stty cbreak")
-    #define con_echo()  system("/bin/stty -cbreak")
-    #define get_char()  get_charLin()
-    int get_charLin (void) { return getchar();}
-#endif 
+    #define clear               "clear"
+    #define sleep(x)            usleep((x)*1000000)
+    #define without_echo()      system("/bin/stty cbreak")
+    #define with_echo()         system("/bin/stty -cbreak")
+    #define get_char()          get_charLin()
+    int get_charLin (void)      { return getchar();}
+#endif
 
 /* Definicion de funciones */
 void generando (void);
@@ -262,7 +262,7 @@ int jugar(int sudoku[largo][ancho], int debug)
     if (!debug) {system(clear);printf("%s", logo); printf("\t\tBuena suerte!\n");}
     imprimir_sudoku(sudoku);
     printf("\n\t\t> ");
-    sin_eco();/*para producir un efecto de respuesta inmediata*/
+    without_echo();/*para producir un efecto de respuesta inmediata*/
 
     for (i = 0; i < largo; i++)
     {
@@ -294,7 +294,7 @@ int jugar(int sudoku[largo][ancho], int debug)
             if (i==(largo-1)&&j==(ancho-1))printf("\n\n"); /*ayuda a limpiar la pantalla*/
         }
     }
-    con_echo();/*se regresa la consola a su estado normal*/
+    with_echo();/*se regresa la consola a su estado normal*/
     
     frase= 1+ rand() / (RAND_MAX / (No_frases) + 1);/*se genera una frase aleatoria*/
     if (debug) printf("frase = %d\n", frase);

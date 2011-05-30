@@ -2,6 +2,9 @@
 # virn, Copyright (C) 2007-2010 by Jonas Kramer. All rights reserved.
 # Published under the terms of the GNU General Public License (GPL).
 
+# Rename lots of files using your favorite text editor.
+# https://github.com/jkramer/virn
+
 # This is a more portable BASH remake of my old script "vimove" which depended
 # on ZSH.
 
@@ -45,5 +48,3 @@ if $EDITOR $TARGETS; then
 fi
 
 rm $TARGETS
-
-

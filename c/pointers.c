@@ -16,7 +16,7 @@
 
 int main(int argc, char const* argv[])
 {
-    int j=1, k, *l, m=4;
+    int j=1, k=2, *l=NULL, m=4;
     printf("j = %i\n", j);
     printf("k = %i\n", k);
     printf("*l = %i\n", *l);

@@ -88,4 +88,6 @@ int main ()           /* A criminally long main program! */
         }
     }
     printf("\n");
+
+    return 0;
 }

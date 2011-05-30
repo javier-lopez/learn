@@ -4,6 +4,9 @@
 
 #include <stdio.h>
 #include <termio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
 
 #define ON    0
 #define OFF   1
@@ -13,7 +16,9 @@
 #define ETX 0x03
 #define EOT 0x04
 
-main()
+int hitkey(int select);
+
+int main()
 {
     int c;
 
@@ -28,9 +33,7 @@ main()
     exit(0);
 }
 
-int hitkey(select)
-int select;
-{
+int hitkey(int select) {
    static int last = OFF;
    static struct termio org;
    struct termio tmp;
