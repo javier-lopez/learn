@@ -1,0 +1,28 @@
+#!/bin/sh
+#TODO 19-05-2011 10:52 => debug this shit
+CACHE=$HOME/.dmenu_cache
+IFS=:
+
+uptodate() {
+	test -f "$CACHE" &&
+	for dir in $PATH
+	do
+		test ! $dir -nt "$CACHE" || return 1
+	done
+}
+
+if ! uptodate
+then
+	for dir in $PATH
+	do
+		cd "$dir" &&
+		for file in *
+		do
+			#test -x "$file" && echo "$file"
+			test -e "$file" && echo "$file"
+		done
+	done | sort | uniq > "$CACHE".$$ &&
+	mv "$CACHE".$$ "$CACHE"
+fi
+
+cat "$CACHE"

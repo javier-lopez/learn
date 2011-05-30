@@ -1,0 +1,49 @@
+#!/bin/bash
+# virn, Copyright (C) 2007-2010 by Jonas Kramer. All rights reserved.
+# Published under the terms of the GNU General Public License (GPL).
+
+# This is a more portable BASH remake of my old script "vimove" which depended
+# on ZSH.
+
+die () {
+    echo "$@" >&2
+    exit -1
+}
+
+# Verify that there's an $EDITOR defined.
+[ -z "$EDITOR" ] && die '$EDITOR not defined.'
+
+# Exit before doing anything if there are no arguments anyway.
+ARGV=("$@")
+[ $# -eq 0 ] && exit
+
+# Create targets file.
+TARGETS="/tmp/virn-$RANDOM"
+for FILE in "$@"; do echo "$FILE" >> $TARGETS; done
+
+# Start the $EDITOR so we can edit our file names.
+if $EDITOR $TARGETS; then
+	FILENO=0
+	COUNT="`wc -l $TARGETS | grep -o -E '^[0-9]+'`"
+
+	# Exit with error message if number of arguments and line count of
+	# targets file differ.
+	if [ "$COUNT" -ne "$#" ]; then
+		rm $TARGETS
+        die 'Numbers of files mismatch.'
+	fi
+
+	# Read targets file line by line and rename the source
+	# files from ARGV appropriately.
+	while read TARGET; do
+		SOURCE="${ARGV[$FILENO]}"
+		if [ "$SOURCE" != "$TARGET" ]; then
+			mv -f -- "$SOURCE" "$TARGET"
+		fi
+		FILENO=$[$FILENO+1]
+	done < $TARGETS
+fi
+
+rm $TARGETS
+
+
