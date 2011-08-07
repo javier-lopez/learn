@@ -2,7 +2,7 @@ CC=gcc
 CFLAGS=-g -Wall
 LD_FLAGS=`pkg-config elementary --cflags --libs`
 
-all: cat count_spaces endian getchar input opts pointers pwd sSs steps_compilation sudoku sync time_waiting_baton time_waiting_percentaje touch types valid_chars allocating_memory promedios_cruzados
+all: cat count_spaces endian getchar input opts pointers pwd sSs steps_compilation sudoku sync time_waiting_baton time_waiting_percentaje touch types valid_chars allocating_memory promedios_cruzados malloc
 
 cat: cat.c
 	$(CC) $(CFLAGS) $(LD_FLAGS) cat.c -o cat
@@ -61,8 +61,11 @@ allocating_memory: allocating_memory.c
 promedios_cruzados: promedios_cruzados.c
 	$(CC) $(CFLAGS) $(LD_FLAGS) promedios_cruzados.c -o promedios_cruzados
 
+malloc: malloc.c
+	$(CC) $(CFLAGS) $(LD_FLAGS) malloc.c -o malloc.c
+
 clean:
 	find . -type f -a -not -iname "*.c" -a -not -iname "make*" -exec rm -rf '{}' \; -exec echo rm -rf '{}' \;
 
 zipit:
-	zip -r files.zip Makefile cat.c count_spaces.c endian.c getchar.c input.c opts.c pointers.c pwd.c sSs.c steps_compilation.c sudoku.c sync.c time_waiting_baton.c time_waiting_percentaje.c touch.c types.c valid_chars.c allocating_memory.c promedios_cruzados.c
+	zip -r files.zip Makefile cat.c count_spaces.c endian.c getchar.c input.c opts.c pointers.c pwd.c sSs.c steps_compilation.c sudoku.c sync.c time_waiting_baton.c time_waiting_percentaje.c touch.c types.c valid_chars.c allocating_memory.c promedios_cruzados.c malloc.c

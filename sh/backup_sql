@@ -15,14 +15,14 @@ BackupDir="$HOME/misc/conf/ubuntu-netbook/sql"
 LocalMax="5"
 DbHost="localhost"
 DbUser="root"
-DbPasswd="Base100601"
+DbPasswd=""
 CompressBin="/bin/tar -czvf"
 RunDbDump=True
 RunCompress=True
 #RunFtp=True
 #FTP SERVER Login info
 #FtpUser="respaldosaas@ixpan.com.mx"
-#FtpPasswd="SVSv5f54"
+#FtpPasswd=""
 #FtpHost="ftp.ixpan.com.mx"
 #FtpMax="5"
 #FtpDir="e-facts_192.168.1.250_db_backup"

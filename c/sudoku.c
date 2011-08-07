@@ -42,6 +42,10 @@ void imprimir_sudoku (int [largo][ancho]);
 int jugar (int [largo][ancho], int);
 int analizar (int [largo][ancho], int); 
 
+/*
+ *http://patorjk.com/software/taag/
+ *http://www.network-science.de/ascii/
+ */
 const char *logo="\n\n\n\
                   \n\t\t.oPYo.             8        8             \
                   \n\t\t8                  8        8             \

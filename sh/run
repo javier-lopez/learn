@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 #http://tinyurl.com/6zkt93
 #notifies when a command finish
+# $ run commmand
 
 "$@"
 error=$?

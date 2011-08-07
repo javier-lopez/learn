@@ -6,7 +6,7 @@
 #alias cd=". this_script"
 
 WICD_BIN="/usr/lib/wcd/wcd.exec"
-WICD_OPTIONS="-j -GN -c -i"
+WICD_OPTIONS="-j -GN -c -i -f $HOME/.wcd/.treedata.wcd"
 #-j     just go mode
 #-GN    do not creat go script ($HOME/bin/wicd.go)
 #-c     direct cd mode
@@ -14,7 +14,7 @@ WICD_OPTIONS="-j -GN -c -i"
 
 #not sure why $@ looks like this if no param is given
 if [[ $@ == "completion-ignore-case on" ]]; then
-    \cd `$WICD_BIN $WICD_OPTIONS`
+    \cd `$WICD_BIN $WICD_OPTIONS $HOME`
 else
     \cd `$WICD_BIN $WICD_OPTIONS $@`
 fi

@@ -8,6 +8,9 @@
 # This is a more portable BASH remake of my old script "vimove" which depended
 # on ZSH.
 
+# $ virn *
+# $ virn a*
+
 die () {
     echo "$@" >&2
     exit -1
@@ -41,7 +44,7 @@ if $EDITOR $TARGETS; then
 	while read TARGET; do
 		SOURCE="${ARGV[$FILENO]}"
 		if [ "$SOURCE" != "$TARGET" ]; then
-			mv -f -- "$SOURCE" "$TARGET"
+			mv -v -f -- "$SOURCE" "$TARGET"
 		fi
 		FILENO=$[$FILENO+1]
 	done < $TARGETS
