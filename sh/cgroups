@@ -25,7 +25,7 @@ echo ""
 
 # AÃ±adiendo cadenas a .bashrc
 
-# Primero buscamos una cadena "base" para ver si esta o no ya aÃ±adido
+# Primero buscamos una cadena "base" para ver si esta o no ya añadido
 LINEAS=`cat $FICHERO | grep "/dev/cgroup/cpu/user" | wc -l`
 if [ "$LINEAS" == "0" ];
 then
