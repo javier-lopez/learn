@@ -3,9 +3,9 @@
 set timeout 10
 spawn telnet 192.168.1.254
 expect "Username*"
-send "TELMEX\r"
+send "Administrator\r"
 expect "Password*"
-send "EE0A364C83\r"
+send "unangelllora99\r"
 expect "*=>"
 send "ppp ifdetach intf=Internet\r"
 expect "*=>"

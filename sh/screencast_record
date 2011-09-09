@@ -5,7 +5,7 @@
 keyword=$1
 
 if [[ $keyword == "stop" ]]; then
-     kill `pidof ffmpeg | awk '{print $1}'`
+     kill -3 `pidof ffmpeg | awk '{print $1}'`
      exit 0
 fi
 
