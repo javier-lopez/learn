@@ -36,5 +36,5 @@ _pbuilder()
 
     return 0
 }
-[ "$have" ] && complete -F _pbuilder -o filenames pbuilder pbuilder.lucid pbuilder.maverick pbuilder.natty pbuilder.sid pbuilder.unstable
+[ "$have" ] && complete -F _pbuilder -o filenames pbuilder pbuilder.lucid pbuilder.maverick pbuilder.natty pbuilder.oneiric pbuilder.sid pbuilder.unstable
 # vim: set ts=8 sw=4 tw=0 ft=sh : 
