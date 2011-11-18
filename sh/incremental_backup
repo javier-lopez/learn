@@ -40,8 +40,7 @@ if [[ -d $TARGET/resp.$MAX_BACKUPS ]] ; then \
 fi ; 
  
 # step 2: rename backup 1 as backup 2 and so on 
-for ((a=MAX_BACKUPS; a &gt;= 2 ; a--)) # Double parentheses, and 
-"MAX_BACKUPS" with no "$". 
+for ((a=MAX_BACKUPS; a &gt;= 2 ; a--)) # Double parentheses, and "MAX_BACKUPS" with no "$". 
 do 
     # step 2: shift the middle snapshots(s) back by one, if they exist 
     let "b=a-1" 

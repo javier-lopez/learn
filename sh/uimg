@@ -17,7 +17,7 @@ fi
 
 # ============ Settings =============
 #Avoid writing user/password every time
-MNron=chilicuil@i.am
+MNron=chilicuil@gmail.com
 MNpwd=vimuswal
 MNimg="$1"
 # ===================================

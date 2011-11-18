@@ -16,9 +16,9 @@ case "$choice" in
     reboot) dbus-send --system --print-reply --dest="org.freedesktop.ConsoleKit" /org/freedesktop/ConsoleKit/Manager org.freedesktop.ConsoleKit.Manager.Restart
         #gksudo shutdown -r now & (if u don't have ConsoleKit running)
         ;;
-    suspend) gksudo pm-suspend &
+    suspend) sudo pm-suspend &
         ;;
-    hibernate) gksudo hibernate &
+    hibernate) sudo hibernate &
         # requires the hibernate package in ubuntu
         ;;
     lock) gnome-screensaver-command --lock &

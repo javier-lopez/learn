@@ -24,7 +24,7 @@ ACTION="hibernate"
 WATCH_BATTERY_CURRENT=$(cat /tmp/watch_battery_current 2>/dev/null)
 
 if [[ $TERM != "rxvt-unicode" ]]; then
-    SUDO=gksudo
+    SUDO=sudo #¿gksudo?
 else
     SUDO=sudo
 fi
@@ -64,6 +64,7 @@ if [[ "$STAT" = "Discharging" ]]; then
             DISPLAY=:0.0 $SUDO $ACTION
         fi
 
+    # Battery under 7% -> print an alert msg and don't repeat it again
     elif [[ $BATT -lt "7" && $BATT -gt "4" && $WATCH_BATTERY_CURRENT != "7" ]]; then
         WATCH_BATTERY_CURRENT="7"
         if [[ $TERM != "rxvt-unicode" ]]; then
@@ -71,6 +72,7 @@ if [[ "$STAT" = "Discharging" ]]; then
         else
             echo "[-] Warning, battery under 7%"
         fi
+    # Battery under 10% -> print an alert msg and don't repeat it again
     elif [[ $BATT -lt "10" && $BATT -gt "6" && $WATCH_BATTERY_CURRENT != "10" ]]; then
         WATCH_BATTERY_CURRENT="10"
         if [[ $TERM != "rxvt-unicode" ]]; then
@@ -78,6 +80,7 @@ if [[ "$STAT" = "Discharging" ]]; then
         else
             echo "[-] Warning, battery under 10%"
         fi
+    # Battery under 15% -> print an alert msg and don't repeat it again
     elif [[ $BATT -lt "15" && $BATT -gt "9" && $WATCH_BATTERY_CURRENT != "15" ]]; then
         WATCH_BATTERY_CURRENT="15"
         if [[ $TERM != "rxvt-unicode" ]]; then
