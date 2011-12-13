@@ -1,0 +1,79 @@
+#! /usr/bin/env bash
+#! http://www.mononeurona.org/entries/view/chilicuil/17793 
+
+if [[ $EUID -ne 0 ]]; then
+    echo "You must run this program as root" 2>&1
+    exit 1
+fi
+
+# ============ Settings =============
+IP_SERVER=""
+PORT_SERVER="9999"
+DESC="apt-get proxy"
+# ===================================
+
+add ()
+{
+    if [[ -z "${IP_SERVER}" ]]; then
+        echo -n "IP Server: "
+        read -e IP_SERVER
+    fi
+
+    if [[ -z "${PORT_SERVER}" ]]; then
+        echo -n "Port Server (9999): "
+        read -e PORT_SERVER
+    fi
+
+    echo "[+] Creating /etc/apt/apt.conf.d/01apt-cacher-ng-proxy ..."
+    cat > /etc/apt/apt.conf.d/01apt-cacher-ng-proxy <<EOF
+Acquire::http { Proxy "http://${IP_SERVER}:${PORT_SERVER}"; };
+EOF
+
+    if [[ -f /root/.synaptic/synaptic.conf.backup ]]; then
+        echo "[+] Leaving unmodified /root/.synaptic/synaptic.conf ..."
+        exit 0
+    fi
+
+    echo "[+] Modifying /root/.synaptic/synaptic.conf ..."
+    echo "[+] Backing up to /root/.synaptic/synaptic.conf.backup ..."
+
+    cp /root/.synaptic/synaptic.conf /root/.synaptic/synaptic.conf.backup
+    sed -i -e 's/^};//g' /root/.synaptic/synaptic.conf
+    cat >> /root/.synaptic/synaptic.conf <<EOF
+useProxy "1";
+httpProxy "${IP_SERVER}";
+httpProxyPort "${PORT_SERVER}";
+ftpProxy "${IP_SERVER}";
+ftpProxyPort "${PORT_SERVER}";
+noProxy "";
+};
+EOF
+}
+
+remove()
+{
+    echo "[-] Removing /etc/apt/apt.conf.d/01apt-cacher-ng-proxy ..."
+    echo "[-] Removing modifications to /root/.synaptic/synaptic.conf ..."
+    rm /etc/apt/apt.conf.d/01apt-cacher-ng-proxy
+    mv /root/.synaptic/synaptic.conf.backup /root/.synaptic/synaptic.conf
+}
+
+case "$1" in
+        add)
+                echo "Adding $DESC: "
+                add
+                ;;
+
+        remove)
+                echo "Deleting $DESC: "
+                remove
+                ;;
+
+        *)
+                echo "Usage: $(basename $0) {add|remove}" >&2
+                exit 1
+                ;;
+esac
+
+exit 0
+
