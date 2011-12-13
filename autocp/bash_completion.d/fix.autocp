@@ -14,7 +14,7 @@ _fix()
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
 
-    COMMANDS="apache ipw2200 wl mpd\
+    COMMANDS="apache ipw2200 wl iwlagn mpd\
              "
 
     OPTS="-h --help -v --version"

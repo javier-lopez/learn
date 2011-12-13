@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#chilicuil <chilicuil@gmail.com> 2010
+#chilicuil <chilicuil@gmail.com> 2011
 #fixes common problems in my system
 
 #===================================================
@@ -55,6 +55,7 @@ usage()
   echo -e "  apache            Moves /etc/init.d/apache2.1 to apache2." >&2
   echo -e "  ipw2200           Restart the ipw2200 module." >&2
   echo -e "  wl                Restart the wl module." >&2
+  echo -e "  iwlagn            Restart the iwlagn module." >&2
   echo -e "  mpd               Restart mpd." >&2
   echo -e
   echo -e "Logs are saved in /tmp/fix.log" >&2
@@ -106,6 +107,29 @@ wl ()
     st $?
 }
 
+iwlagn()
+{
+    echo -ne "$LIGHT_RED[*]$DEFAULT sudo rmmod iwlagn "
+    sudo rmmod iwlagn >> /tmp/fix.log 2>&1
+    st $?
+
+    echo -ne "$LIGHT_RED[*]$DEFAULT sudo service wicd stop "
+    sudo service wicd stop >> /tmp/fix.log 2>&1
+    st $?
+
+    echo -ne "$LIGHT_RED[*]$DEFAULT sleep 3s "
+    sleep 3s >> /tmp/fix.log 2>&1
+    st $?
+
+    echo -ne "$LIGHT_RED[*]$DEFAULT sudo service wicd start "
+    sudo service wicd start >> /tmp/fix.log 2>&1
+    st $?
+
+    echo -ne "$LIGHT_RED[*]$DEFAULT sudo modprobe iwlagn "
+    sudo modprobe iwlagn >> /tmp/fix.log 2>&1
+    st $?
+}
+
 mpd()
 {
     echo -ne "$LIGHT_RED[*]$DEFAULT sudo alsa force-reload"
@@ -135,6 +159,9 @@ if [ $# != 0 ]; then
         wl
         exit 1
         ;;
+        iwlagn)
+        iwlagn
+        exit 1
         mpd)
         mpd
         exit 1
