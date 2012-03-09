@@ -27,7 +27,7 @@ while getopts ":y" option; do
 done
 
 if [[ ! -e $BACKUP_TO ]]; then
-    echo -n "$BACKUP_TO doesn't exist, pls provide another directory to move the files to: "
+    echo -n "$BACKUP_TO doesn't exist, please provide another directory to move the files to: "
     read -e BACKUP_TO
     if [[ ! -e $BACKUP_TO ]]; then
         echo "Invalid directory"
@@ -38,7 +38,7 @@ else
         echo -n "Is $BACKUP_TO correct? (y/n): "
         read -e ANSWER
         if [[ $ANSWER != "y" ]]; then
-            echo -n "Insert the path: " 
+            echo -n "Insert the path you want to use to backup to: " 
             read -e BACKUP_TO
             if [[ ! -e $BACKUP_TO ]]; then
                 echo "Invalid directory"
@@ -51,49 +51,50 @@ fi
 main()
 {
     echo "Sycronizing main ================================================================"; sleep 3
-    mkdir -p $BACKUP_TO/main
+    sudo mkdir -pv $BACKUP_TO/main
     if [[ -z $YFLAG ]]; then #if not exist
-        sudo rsync -a --progress -n $HOME/data $HOME/code $HOME/downloads $HOME/misc $BACKUP_TO/main/ | less
+        sudo rsync -a --progress --delete -n $HOME/data $HOME/code $HOME/downloads $HOME/misc $BACKUP_TO/main/ | less
         echo -n "Continue? (y/n): "
         read -e ANSWER
         if [[ $ANSWER != "y" ]]; then
             echo "Aborting..."
             exit 1
         fi
-        sudo rsync -a --progress $HOME/data $HOME/code $HOME/downloads $HOME/misc $BACKUP_TO/main/
+        sudo rsync -a --progress --delete $HOME/data $HOME/code $HOME/downloads $HOME/misc $BACKUP_TO/main/
     else
-        sudo rsync -a --progress $HOME/data $HOME/code $HOME/downloads $HOME/misc $BACKUP_TO/main/
+        sudo rsync -a --progress --delete $HOME/data $HOME/code $HOME/downloads $HOME/misc $BACKUP_TO/main/
     fi
-    echo "Writing to $HOME/misc/log/main.log ..."
+    echo "Writing logs: $HOME/misc/log/main.log"
     sudo rsync -a --progress -n $BACKUP_TO/main/ $HOME/ > $HOME/misc/log/main.log
-    DATE=$(date +"%Y-%m-%d"); touch $BACKUP_TO/main/main-$DATE.last
+    sudo rm -rf $BACKUP_TO/main/main*.last
+    DATE=$(date +"%Y-%m-%d"); sudo touch $BACKUP_TO/main/main-$DATE.last
 }
 
-extra()
-{
-    echo "Sycronizing extra ================================================================"; sleep 3
-    mkdir -p $BACKUP_TO/extra
-    if [[ -z $YFLAG ]]; then #if not exist
-        sudo rsync -a --progress -n $HOME/extra $BACKUP_TO/extra/ | less
-        echo -n "Continue? (y/n): "
-        read -e ANSWER
-        if [[ $ANSWER != "y" ]]; then
-            echo "Aborting..."
-            exit 1
-        fi
-        sudo rsync -a --progress $HOME/extra $BACKUP_TO/extra/
-    else
-        sudo rsync -a --progress $HOME/extra $BACKUP_TO/extra/
-    fi
-    echo "Writing to $HOME/misc/log/extra.log ..."
-    sudo rsync -a --progress -n $BACKUP_TO/extra/ $HOME/extra/ > $HOME/misc/log/extra.log
-    DATE=$(date +"%Y-%m-%d"); touch $BACKUP_TO/extra/extra-$DATE.last
-}
+#extra()
+#{
+    #echo "Sycronizing extra ================================================================"; sleep 3
+    #sudo mkdir -p $BACKUP_TO/extra
+    #if [[ -z $YFLAG ]]; then #if not exist
+        #sudo rsync -a --progress -n $HOME/extra $BACKUP_TO/extra/ | less
+        #echo -n "Continue? (y/n): "
+        #read -e ANSWER
+        #if [[ $ANSWER != "y" ]]; then
+            #echo "Aborting..."
+            #exit 1
+        #fi
+        #sudo rsync -a --progress $HOME/extra $BACKUP_TO/extra/
+    #else
+        #sudo rsync -a --progress $HOME/extra $BACKUP_TO/extra/
+    #fi
+    #echo "Writing to $HOME/misc/log/extra.log ..."
+    #sudo rsync -a --progress -n $BACKUP_TO/extra/ $HOME/extra/ > $HOME/misc/log/extra.log
+    #DATE=$(date +"%Y-%m-%d"); touch $BACKUP_TO/extra/extra-$DATE.last
+#}
 
 dotfiles()
 {
     echo "Sycronizing dotfiles ================================================================"; sleep 3
-    mkdir -p $BACKUP_TO/dotfiles/$HOSTNAME 
+    sudo mkdir -p $BACKUP_TO/dotfiles/$HOSTNAME 
     if [[ -z $YFLAG ]]; then #if not exist
         ls $HOME | sudo rsync  -a --progress -n --exclude-from=- --delete $HOME/ $BACKUP_TO/dotfiles/$HOSTNAME/ | less
         echo -n "Continue? (y/n): "
@@ -108,9 +109,8 @@ dotfiles()
     fi
     echo "Writing to $HOME/misc/log/dotfiles_$HOSTNAME.log ..."
     sudo rsync -a --progress -n $BACKUP_TO/dotfiles/$HOSTNAME/ $HOME/ > $HOME/misc/log/dotfiles_$HOSTNAME.log
-    DATE=$(date +"%Y-%m-%d"); touch $BACKUP_TO/dotfiles/$HOSTNAME-$DATE.last
+    DATE=$(date +"%Y-%m-%d"); sudo touch $BACKUP_TO/dotfiles/$HOSTNAME-$DATE.last
 }
 
 main
-extra
 dotfiles

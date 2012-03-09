@@ -132,16 +132,24 @@ iwlagn()
 
 mpd()
 {
+    echo -ne "$LIGHT_RED[*]$DEFAULT mpc clear"
+    mpc clear >> /tmp/fix.log 2>&1
+    st $?
+
     echo -ne "$LIGHT_RED[*]$DEFAULT sudo alsa force-reload"
     sudo alsa force-reload  >> /tmp/fix.log 2>&1
     #st $?
 
-    echo -ne "$LIGHT_RED[*]$DEFAULT sudo service mpd start"
-    sudo service mpd start >> /tmp/fix.log 2>&1
+    echo -ne "$LIGHT_RED[*]$DEFAULT rm -rf /var/lib/mpd/tag_cache"
+    rm -rf /var/lib/mpd/tag_cache
     st $?
 
     echo -ne "$LIGHT_RED[*]$DEFAULT conky |/home/chilicuil/code/dzen/dzen2 -dock -fn -xos4-terminus-medium-r-*-*-12-*-*-*-*-*-iso10646-1 -ta r -fg "#999999" -bg "#000000" & "
     conky |/home/chilicuil/code/dzen/dzen2 -dock -fn -xos4-terminus-medium-r-*-*-12-*-*-*-*-*-iso10646-1 -ta r -fg "#999999" -bg "#000000" &
+    st $?
+
+    echo -ne "$LIGHT_RED[*]$DEFAULT sudo service mpd start-create-db"
+    sudo service mpd start-create-db >> /tmp/fix.log 2>&1
     st $?
 }
 
@@ -162,6 +170,7 @@ if [ $# != 0 ]; then
         iwlagn)
         iwlagn
         exit 1
+        ;;
         mpd)
         mpd
         exit 1
