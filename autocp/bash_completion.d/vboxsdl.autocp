@@ -1,8 +1,8 @@
 #chilicuil <chilicuil@gmail.com> 2011
-# $ sudo cp vboxheadless.autocp /etc/bash_completion.d/
+# $ sudo cp vboxsdl.autocp /etc/bash_completion.d/
 # $ source $HOME/.bashrc
 
-_vboxheadless()
+_vboxsdl()
 {
     #program_name=$1
     #program_name="${COMP_WORDS[0]}"
@@ -20,35 +20,42 @@ _vboxheadless()
     #=======================================================
     #                  General options
     #=======================================================
-    OPTS="-s -startvm --startvm -v -vrde --vrde
-          -e -vrdeproperty --vrdeproperty -c -capture
-          --capture -w --width -h --height -r --bitrate -f
-          --filename"
+    OPTS="--startvm --hda --fda --cdrom --boot --memory
+          --vram --fullscreen --fullscreenresize
+          --fixedmode --nofstoggle --noresize --nohostkey
+          --nohostkeys --nograbonclick --detecthostkey
+          --hostkey --termacpi --vrdp --discardstate
+          --securelabel --seclabelfnt --seclabelsiz
+          --seclabelofs --seclabelfgcol --seclabelbgcol
+          --norawr0 --rawr0 --norawr3 --rawr3 --nopatm
+          --patm --nocsam --csam --nohwvirtex --hwvirtex"
 
     #=======================================================
     #                   Nested options
     #=======================================================
-    vrde_opts="on off config"
-
     case $prev in
-        @(-s|-startvm|--startvm))
+        @(--startvm))
             OLDIFS="$IFS"
             IFS=$'\n'
             COMPREPLY=($(compgen -W "$(vboxmanage list vms | cut -d\" -f2)" -- $cur))
             IFS="$OLDIFS"
             return 0
             ;;
-        @(-v|-vrde|--vrde))
-            COMPREPLY=( $( compgen -W "$vrde_opts" -- $cur ))
+        @(--hda|--fda|--cdrom|--seclabelfnt))
+            COMPREPLY=($(compgen -A file -- $cur))
+            return 0
+            ;;
+        @(--boot))
+            COMPREPLY=($(compgen -W "a c d n" -- $cur))
             return 0
             ;;
     esac
 
     if [[ "$cur" == -* ]]; then
         # relevant options completion
-        COMPREPLY=( $( compgen -W "$OPTS" -- $cur ) )
+        COMPREPLY=($(compgen -W "$OPTS" -- $cur))
     fi
 }
 
-complete -F _vboxheadless VBoxHeadless vboxheadless
+complete -F _vboxsdl VBoxSDL vboxsdl
 # vim: set ts=8 sw=4 tw=80 ft=sh : 

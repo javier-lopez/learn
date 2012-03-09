@@ -1,0 +1,91 @@
+#basic bash completion for recordmydesktop
+#chilicuil <chilicuil@gmail.com> 2012
+
+have recordmydesktop &&
+_recordmydesktop()
+{
+    #When the function or command is invoked, the first argument is the name of
+    #the command whose arguments are being completed, the second argument is the
+    #word being completed, and the third argument is the word preceding the word
+    #being  completed on  the current command line.
+
+    #program_name=$1
+    #cur=$2
+    #prev=$3
+    #$4<---?
+
+    #defining local vars
+    local cur prev opts
+    COMPREPLY=() #clean out last completions
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+    number_of_words=${#COMP_WORDS[@]}
+
+
+    #=======================================================
+    #                  General options
+    #=======================================================
+
+    OPTS="-h --help --version --print-config --windowid --display
+          -x -y --width --heigh --dummy-cursor --no-cursor
+          --no-shared --full-shots --follow-mouse --quick-subsampling
+          --fps --channels --freq --buffer-size --ring-buffer-size
+          --device --use-jack --no-sound --on-the-fly-encoding
+          --v_quality --v_bitrate --s_quality --rescue --no-wm-check
+          --no-frame --pause-shortcut --stop-shortcut --compress-cache
+          --workdir --delay --overwrite -o"
+
+    #=======================================================
+    #                   Nested options <1st layer>
+    #=======================================================
+    dummy_cursor_opts="black white"
+    v_quality_opts="63"
+    s_quality_opts="10"
+
+    ########################################################
+    # -W wordlist
+    # -A action (see bash 'complete' build-in command)
+    # -G globalpath
+    # -C command
+    # -F function
+    # -X filterpath
+    # -P preffix
+    # -S suffix
+
+    case "${prev}" in
+         ##1st layer
+         --dumy-cursor)
+            COMPREPLY=( $( compgen -W "$dummy_cursor_opts" -- $cur ))
+            return 0
+            ;;
+         -v_quality)
+            COMPREPLY=( $( compgen -W "$v_quality_opts" -- $cur ))
+            return 0
+            ;;
+         -s_quality)
+            COMPREPLY=( $( compgen -W "$s_quality_opts" -- $cur ))
+            return 0
+            ;;
+         --workdir)
+            _filedir -d
+            return 0
+            ;;
+         -o)
+            _filedir
+            return 0
+            ;;
+    esac
+
+    #general options
+    case "${cur}" in
+        -*)
+            COMPREPLY=( $( compgen -W "$OPTS" -- $cur ))
+            ;;
+        *)
+            if [[ $number_of_words -lt 3 ]]; then
+                COMPREPLY=( $( compgen -W "-o" -- $cur ))
+            fi
+            ;;
+    esac
+} &&
+complete -F _recordmydesktop recordmydesktop
