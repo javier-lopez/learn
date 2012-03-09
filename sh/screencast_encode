@@ -1,13 +1,10 @@
 #!/usr/bin/env bash
-#chilicuil <chilicuil@gmail.com> 2010
+#chilicuil <chilicuil@gmail.com> 2012
 #encode screencasts
-
-BASENAME=`basename ${!#} .mkv`
-ORIGINAL=${!#}
 
 usage()
 {
-    echo "Usage: `basename $0` [-v vol][-s soundtrack][-k] screencast.mkv" >&2
+    echo "Usage: `basename $0` [-v 0-2048][-s soundtrack.mp3][-k] screencast.mkv" >&2
     echo >&2
     echo "          -v     Change the volume from the screencast [0-2048] (ffmpeg -vol)" >&2
     echo "          -s     Add soundtrack" >&2
@@ -15,21 +12,27 @@ usage()
     exit 1
 }
 
-cleanup ()
+if [[ -z $1 ]]; then
+    usage
+fi
+
+notify ()
 {
-    rm "$BASENAME".audio*
-    rm "$SOUNDTRACK".vol*
+    if [[ $TERM == "linux" ]]; then
+        notify-send -t 3000 "${@}"
+    else
+        echo "${@}"
+        echo
+    fi
 }
 
-_status ()
+cleanup ()
 {
-    if [[ $? == "1" ]]; then
-        echo
-        echo  "[-] Failed to build $1"
-        exit 1
-    else
-        echo
-        echo "[+] Complete $1"
+    if [[ ! -z $VFLAG ]]; then
+        rm "$basename".audio*
+    fi
+    if [[ ! -z $SFLAG ]]; then
+        rm "$(basename $SOUNDTRACK)".vol*
     fi
 }
 
@@ -57,65 +60,136 @@ while getopts ":v:s:k" option; do
     esac
 done
 
+if [[ $# == 0 ]]; then
+    if [[ $1 == *.mkv ]]; then
+        file=$1
+        basename=$(basename $file .mkv)
+    fi
+fi
+
+while [ $# -ne 0 ]; do
+    if [[ $1 == *.mkv ]]; then
+        file=$1
+        basename=$(basename $file .mkv)
+    fi
+    shift
+done
+
+if [[ -z $file ]]; then
+    notify "[-] Error:" "Specify a .mkv file"
+    exit 1
+elif [[ ! -e $file ]]; then
+    notify "[-] Error:" "File doesn't exist"
+    exit 1
+fi
+
 if [[ ! -z $VFLAG ]] && [[ ! -z $SFLAG ]]; then
-    echo "[+] ffmpeg -i "$ORIGINAL" -acodec libvorbis -ab 192k -vn -y -ac 2 -vol $VOLUME "$BASENAME".audio[volume_$VOLUME].ogg"
-    echo "[-] Be patient this may take a while..."
-    ffmpeg -i "$ORIGINAL" -acodec libvorbis -ab 192k -vn -y -ac 2 -vol $VOLUME "$BASENAME".audio[volume_$VOLUME].ogg
-    _status "$BASENAME".audio[volume_$VOLUME].ogg
+    #with -vol and -soundtrack options
+    if [[ $VOLUME == -* ]]; then
+        notify "[-] Error:" "Option -v requires an argument"
+        usage
+        exit 1
+    fi
+    if [[ ! -e $SOUNDTRACK ]]; then
+        notify "[-] Error:" "soundtrack file $SOUNDTRACK doesn't exist"
+        exit 1
+    fi
+
+    notify "[+]" "ffmpeg -i $file -acodec libvorbis -ab 192k -vn -y -ac 2 -vol $VOLUME $basename.audio[volume_$VOLUME].ogg"
+    notify "[-]" "Be patient this may take a while..."
+    ffmpeg -i "$file" -acodec libvorbis -ab 192k -vn -y -ac 2 -vol $VOLUME "$basename".audio[volume_$VOLUME].ogg
+    if [[ $? == "1" ]]; then
+        notify "[-]" "Failed"
+        exit 1
+    fi
 
     #TODO 28-11-2010 20:15 => make soundtrack vol an option
-    echo
-    echo "[+] ffmpeg -i "$SOUNDTRACK" -vol 20 -acodec libvorbis -ab 192k "$SOUNDTRACK".vol[20].ogg"
-    ffmpeg -i "$SOUNDTRACK" -vol 20 -acodec libvorbis -ab 192k "$SOUNDTRACK".vol[20].ogg
-    _status "$SOUNDTRACK".vol[20].ogg
+    notify "[+]" "ffmpeg -i "$SOUNDTRACK" -vol 15 -acodec libvorbis -ab 192k $(basename "$SOUNDTRACK").vol[15].ogg"
+    ffmpeg -i "$SOUNDTRACK" -vol 15 -acodec libvorbis -ab 192k "$(basename "$SOUNDTRACK")".vol[15].ogg
+    if [[ $? == "1" ]]; then
+        notify "[-]" "Failed"
+        exit 1
+    fi
 
-    echo
-    echo "[+] sox -S -m "$BASENAME".audio[volume_$VOLUME].ogg "$SOUNDTRACK".vol[20].ogg -r192k "$BASENAME".audio_mixed.ogg"
-    sox -S -m "$BASENAME".audio[volume_$VOLUME].ogg "$SOUNDTRACK".vol[20].ogg -r192k "$BASENAME".audio_mixed.ogg
-    _status "$BASENAME".audio_mixed.ogg
+    notify "[+]" "sox -S -m $basename.audio[volume_$VOLUME].ogg $(basename "$SOUNDTRACK").vol[15].ogg -r192k $basename.audio_mixed.ogg"
+    sox -S -m "$basename".audio[volume_$VOLUME].ogg "$(basename "$SOUNDTRACK")".vol[15].ogg -r192k "$basename".audio_mixed.ogg
+    if [[ $? == "1" ]]; then
+        notify "[-]" "Failed"
+        exit 1
+    fi
 
-    echo
-    echo "[+] mkvmerge -o "$BASENAME".optimized[$VOLUME].mkv -A $ORIGINAL "$BASENAME".audio[volume_$VOLUME].ogg"
-    mkvmerge -o "$BASENAME".optimized.mkv -A $ORIGINAL "$BASENAME".audio_mixed.ogg
-    _status "$BASENAME".optimized.mkv
+    notify "[+]" "mkvmerge -o $basename.optimized[$VOLUME].mkv -A $file $basename.audio_mixed.ogg"
+    mkvmerge -o "$basename".optimized.mkv -A $file "$basename".audio_mixed.ogg
+    if [[ $? == "1" ]]; then
+        notify "[-]" "Failed"
+        exit 1
+    fi
 
 elif [[ ! -z $SFLAG ]]; then
-    echo "[+] ffmpeg -i "$ORIGINAL" -acodec libvorbis -ab 192k -vn -y -ac 2 "$BASENAME".audio.ogg"
-    echo "[-] Be patient this may take a while..."
-    ffmpeg -i "$ORIGINAL" -acodec libvorbis -ab 192k -vn -y -ac 2 "$BASENAME".audio.ogg
-    _status "$BASENAME".audio.ogg
+    #with -soundtrack option
+    if [[ ! -e $SOUNDTRACK ]]; then
+        notify "[-] Error:" "soundtrack file doesn't exist"
+        exit 1
+    fi
+    notify "[+]" "ffmpeg -i $file -acodec libvorbis -ab 192k -vn -y -ac 2 $basename.audio.ogg"
+    notify "[-]" "Be patient this may take a while..."
+    ffmpeg -i "$file" -acodec libvorbis -ab 192k -vn -y -ac 2 "$basename".audio.ogg
+    if [[ $? == "1" ]]; then
+        notify "[-]" "Failed"
+        exit 1
+    fi
 
     #TODO 28-11-2010 20:15 => make soundtrack vol an option
-    echo
-    echo "[+] ffmpeg -i "$SOUNDTRACK" -vol 20 -acodec libvorbis -ab 192k "$SOUNDTRACK".vol[20].ogg"
-    ffmpeg -i "$SOUNDTRACK" -vol 20 -acodec libvorbis -ab 192k "$SOUNDTRACK".vol[20].ogg
-    _status "$SOUNDTRACK".vol[20].ogg
+    notify "[+]" "ffmpeg -i "$SOUNDTRACK" -vol 15 -acodec libvorbis -ab 192k $(basename "$SOUNDTRACK").vol[15].ogg"
+    ffmpeg -i "$SOUNDTRACK" -vol 15 -acodec libvorbis -ab 192k "$(basename "$SOUNDTRACK")".vol[15].ogg
+    if [[ $? == "1" ]]; then
+        notify "[-]" "Failed"
+        exit 1
+    fi
 
-    echo
-    echo "[+] sox -S -m "$BASENAME".audio.ogg "$SOUNDTRACK".vol[20].ogg -r192k "$BASENAME".audio_mixed.ogg"
-    sox -S -m "$BASENAME".audio.ogg "$SOUNDTRACK".vol[20].ogg -r192k "$BASENAME".audio_mixed.ogg
-    _status "$BASENAME".audio_mixed.ogg
+    notify "[+]" "sox -S -m $basename.audio.ogg $(basename "$SOUNDTRACK").vol[15].ogg -r192k $basename.audio_mixed.ogg"
+    sox -S -m "$basename".audio.ogg "$(basename "$SOUNDTRACK")".vol[15].ogg -r192k "$basename".audio_mixed.ogg
+    if [[ $? == "1" ]]; then
+        notify "[-]" "Failed"
+        exit 1
+    fi
 
-    echo
-    echo "[+] mkvmerge -o "$BASENAME".optimized[$VOLUME].mkv -A $ORIGINAL "$BASENAME".audio[volume_$VOLUME].ogg"
-    mkvmerge -o "$BASENAME".optimized.mkv -A $ORIGINAL "$BASENAME".audio_mixed.ogg
-    _status "$BASENAME".optimized.mkv
+    notify "[+]" "mkvmerge -o $basename.optimized[$VOLUME].mkv -A $file $basename.audio_mixed.ogg"
+    mkvmerge -o "$basename".optimized.mkv -A $file "$basename".audio_mixed.ogg
+    if [[ $? == "1" ]]; then
+        notify "[-]" "Failed"
+        exit 1
+    fi
 
 elif [[ ! -z $VFLAG ]]; then
-    echo "[+] ffmpeg -i "$ORIGINAL" -acodec libvorbis -ab 192k -vn -y -ac 2 -vol $VOLUME "$BASENAME".audio[volume_$VOLUME].ogg"
-    echo "[-] Be patient this may take a while..."
-    ffmpeg -i "$ORIGINAL" -acodec libvorbis -ab 192k -vn -y -ac 2 -vol $VOLUME "$BASENAME".audio[volume_$VOLUME].ogg
-    _status "$BASENAME".audio[volume_$VOLUME].ogg
+    #with -vol option
+    if [[ $VOLUME == -* ]]; then
+        notify "[-] Error:" "Option -v requires an argument"
+        usage
+        exit 1
+    fi
+    notify "[+]" "ffmpeg -i $file -acodec libvorbis -ab 192k -vn -y -ac 2 -vol $VOLUME $basename.audio[volume_$VOLUME].ogg"
+    notify "[-]" "Be patient this may take a while..."
+    ffmpeg -i "$file" -acodec libvorbis -ab 192k -vn -y -ac 2 -vol $VOLUME "$basename".audio[volume_$VOLUME].ogg
+    if [[ $? == "1" ]]; then
+        notify "[-]" "Failed"
+        exit 1
+    fi
 
-    echo
-    echo "[+] mkvmerge -o "$BASENAME".optimized[$VOLUME].mkv -A $ORIGINAL "$BASENAME".audio[volume_$VOLUME].ogg"
-    mkvmerge -o "$BASENAME".optimized[$VOLUME].mkv -A $ORIGINAL "$BASENAME".audio[volume_$VOLUME].ogg
-    _status "$BASENAME".optimized[$VOLUME].mkv
+    notify "[+]" "mkvmerge -o $basename.optimized[$VOLUME].mkv -A $file $basename.audio[volume_$VOLUME].ogg"
+    mkvmerge -o "$basename".optimized[$VOLUME].mkv -A $file "$basename".audio[volume_$VOLUME].ogg
+    if [[ $? == "1" ]]; then
+        notify "[-]" "Failed"
+        exit 1
+    fi
 else
-    echo "[+] ffmpeg -i "$ORIGINAL" -acodec libvorbis -ab 192k -ac 2 -vcodec libx264 -vpre max -crf 22 -threads 0 "$BASENAME".optimized.mkv"
-    echo
-    ffmpeg -i "$ORIGINAL" -acodec libvorbis -ab 192k -ac 2 -vcodec libx264 -vpre max -crf 22 -threads 0 "$BASENAME".optimized.mkv
-    _status "$BASENAME".optimized.mkv
+    #only encode
+    notify "[+]" "ffmpeg -i $file -acodec libvorbis -ab 192k -ac 2 -vcodec libx264 -vpre max -crf 22 -threads 0 $basename.optimized.mkv"
+    ffmpeg -i "$file" -acodec libvorbis -ab 192k -ac 2 -vcodec libx264 -vpre max -crf 22 -threads 0 "$basename".optimized.mkv
+    if [[ $? == "1" ]]; then
+        notify "[-]" "Failed"
+        exit 1
+    fi
 fi
 
 if [[ -z $KFLAG ]]; then
