@@ -2,8 +2,8 @@
 #chilicuil <chilicuil@gmail.com> 2010
 #a simple dmenu session script 
 
-DMENU='dmenu -p ">" -i -nb #000000 -nf #999999 -sb #999999 -sf #000000'
-choice=$(echo -e "logout\nrestart\nshutdown\nreboot\nsuspend\nhibernate\nlock" | $DMENU)
+DMENU='dmenu -p > -i -nb #000000 -nf #FFFFFF -sb #000000 -sf #999999'
+choice=$(echo -e "lock\nlogout\nrestart\nshutdown\nreboot\nsuspend\nhibernate" | $DMENU)
 
 case "$choice" in
     logout) i3-msg exit &

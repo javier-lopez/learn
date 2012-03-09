@@ -1,2 +1,4 @@
 #!/bin/sh
-exe=`dmenu_path | dmenu ${1+"$@"}` && exec $exe
+#exe=`dmenu_path | dmenu ${1+"$@"}` && exec $exe
+DMENU='dmenu -p > -i -nb #000000 -nf #ffffff -sb #000000 -sf #7541B9'
+exe=`dmenu_path | $DMENU` && exec $exe
