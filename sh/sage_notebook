@@ -1,7 +1,0 @@
-#!/usr/bin/env bash
-#No olvidar el espacio entre el [/[[ y el -e
-if [[ -e /tmp/sage_running ]] ; then
-    firefox localhost:8000 
-else
-    echo running > /tmp/sage_running && sage -notebook
-fi

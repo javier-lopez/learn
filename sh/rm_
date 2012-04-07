@@ -241,14 +241,14 @@ verboselist=0
 while getopts ":fluhcry" options
 do
     case $options in
-        f) exec rm -r "$@"                     ;;  # exec lets us exit this script directly.
+        f) exec rm -r "$@"                      ;;  # exec lets us exit this script directly.
         l) verboselist=$(($verboselist+1))      ;;  # list verbose level 1-3
         u) shift $(($OPTIND - 1)); recover "$@" ;;  # remove the -u
         h) usage                                ;;
         c) shift $(($OPTIND - 1)); clean "$@"   ;;
         r)                                      ;;
         y) yflag=yes ;;
-        *) exec rm "$@"                        ;;  # send the rest to rm
+        *) exec rm "$@"                        ;;   # send the rest to rm
     esac
 done
 shift $(($OPTIND - 1))
