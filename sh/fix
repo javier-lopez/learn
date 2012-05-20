@@ -110,7 +110,7 @@ wl ()
 iwlagn()
 {
     echo -ne "$LIGHT_RED[*]$DEFAULT sudo rmmod iwlagn "
-    sudo rmmod iwlagn >> /tmp/fix.log 2>&1
+    sudo rmmod iwlwifi >> /tmp/fix.log 2>&1
     st $?
 
     echo -ne "$LIGHT_RED[*]$DEFAULT sudo service wicd stop "
@@ -126,7 +126,7 @@ iwlagn()
     st $?
 
     echo -ne "$LIGHT_RED[*]$DEFAULT sudo modprobe iwlagn "
-    sudo modprobe iwlagn >> /tmp/fix.log 2>&1
+    sudo modprobe iwlwifi >> /tmp/fix.log 2>&1
     st $?
 }
 

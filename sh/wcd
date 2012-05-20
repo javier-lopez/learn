@@ -4,7 +4,7 @@
 #due to cd & subshells nature this script only works if it's sourced
 #alias cd=". this_script"
 
-WICD_BIN="/usr/lib/wcd/wcd.exec"
+WICD_BIN="/usr/bin/wcd.exec"
 WICD_OPTIONS="-j -GN -c -i -f $HOME/.wcd/.treedata.wcd"
 #-j     just go mode
 #-GN    do not creat go script ($HOME/bin/wicd.go)

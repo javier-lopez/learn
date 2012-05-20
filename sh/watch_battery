@@ -20,7 +20,7 @@ STAT=$(acpi -b | awk '{print $3}' | awk 'sub(".$", "")')
 # Battery percentage
 BATT=$(acpi -b | awk '{print $4}' | awk 'sub("..$", "")')
 # Actions
-ACTION="hibernate"
+ACTION="/usr/sbin/hibernate"
 WATCH_BATTERY_CURRENT=$(cat /tmp/watch_battery_current 2>/dev/null)
 
 if [[ $TERM != "rxvt-unicode" ]]; then

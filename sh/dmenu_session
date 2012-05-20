@@ -16,12 +16,13 @@ case "$choice" in
     reboot) dbus-send --system --print-reply --dest="org.freedesktop.ConsoleKit" /org/freedesktop/ConsoleKit/Manager org.freedesktop.ConsoleKit.Manager.Restart
         #gksudo shutdown -r now & (if u don't have ConsoleKit running)
         ;;
-    suspend) sudo pm-suspend &
+    suspend) sudo /usr/sbin/pm-suspend
         ;;
-    hibernate) sudo hibernate &
+    hibernate) sudo /usr/sbin/hibernate &
         # requires the hibernate package in ubuntu
         ;;
-    lock) gnome-screensaver-command --lock &
+    lock) i3lock -i $HOME/data/images/login/1.png -p win -n &
+        #gnome-screensaver-command --lock &
         # requires the hibernate package in ubuntu
         ;;
 esac

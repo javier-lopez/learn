@@ -36,5 +36,5 @@ _pbuilder()
 
     return 0
 }
-[ "$have" ] && complete -F _pbuilder -o filenames pbuilder pbuilder.lucid.amd64 pbuilder.lucid.i386 pbuilder.natty.amd64 pbuilder.natty.i386 pbuilder.oneiric.amd64 pbuilder.oneiric.i386 pbuilder.precise.amd64 pbuilder.precise.i386 pbuilder.sid.amd64 pbuilder.sid.i386
+[ "$have" ] && complete -F _pbuilder -o filenames pbuilder pbuilder.lucid.amd64 pbuilder.lucid.i386 pbuilder.natty.amd64 pbuilder.natty.i386 pbuilder.oneiric.amd64 pbuilder.oneiric.i386 pbuilder.precise.amd64 pbuilder.precise.i386 pbuilder.quantal.amd64 pbuilder.quantal.i386 pbuilder.sid.amd64 pbuilder.sid.i386
 # vim: set ts=8 sw=4 tw=0 ft=sh : 
