@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+#chilicuil <chilicuil@gmail.com> 2012
+
+PHRASE="$@"
+
+usage()
+{
+    echo "Usage: `basename $0` [-s|-p|-e] phrase" >&2
+    echo >&2
+    echo "          -s     Spanish (default)" >&2
+    echo "          -p     Portuguese" >&2
+    echo "          -e     English" >&2
+    exit 1
+}
+
+if [[ -z "$PHRASE" ]]; then
+    usage
+fi
+
+while getopts ":s:p:e:" option; do
+    case $option in
+        s)
+          lang="es";
+          PHRASE=$OPTARG
+          ;;
+        p)
+          lang="pt";
+          PHRASE=$OPTARG
+          ;;
+        e)
+          lang="en";
+          PHRASE=$OPTARG
+          ;;
+        :)
+          echo "Option -$OPTARG requires an argument"
+          usage
+          ;;
+        \?)
+          echo "Invalid option: -$OPTARG"
+          usage
+          ;;
+    esac
+done
+
+if [[ -z "$lang" ]]; then
+    lang="es";
+fi
+
+shift;shift;
+mplayer -really-quiet "http://translate.google.com/translate_tts?ie=UTF-8&tl=$lang&q=$PHRASE"
