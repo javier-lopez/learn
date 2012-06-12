@@ -9,8 +9,9 @@ _fix()
     #cur=$2
     #prev=$3
 
+    #defining local vars
     local cur prev opts
-    COMPREPLY=()
+    COMPREPLY=() #clean out last completions
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
 

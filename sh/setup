@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-#chilicuil <chilicuil@gmail.com> 2010
-#setup custom services
+#<chilicuil@gmail.com> 2012
+#setup custom tasks
 
 #I love colors!
 BLUE=$'\E[0;34m'
@@ -45,23 +45,23 @@ st()
 #Don't forget update this when adding new functions
 usage()
 {
-  echo -e "$0: Setup my common tasks" >&2
-  echo -e "  -h  or --help     List available arguments and usage (this message)." >&2
-  echo -e "  -v  or --version  Print version." >&2
+  echo -e "$(basename $0): setup my common tasks" >&2
   echo -e >&2
-  echo -e "  autocp            Setup custom autocomplete file" >&2
-  echo -e "  cake              Setup cake" >&2
-  echo -e "  script            Setup a custom script" >&2
-  echo -e "  intalio           Setup intalio" >&2
+  echo -e "  autocp            cp custom autocomplete file" >&2
+  #echo -e "  cake              Setup cake" >&2
+  echo -e "  script            cp custom script to the path system" >&2
+  echo -e "  latex             compile a .tex file -> pdf" >&2
+  #echo -e "  intalio           Setup intalio" >&2
   echo -e >&2
-  echo -e "Logs are saved to /tmp/setup.log" >&2
+  echo -e "All logs are saved to /tmp/setup.log, check it out in case of problems" >&2
   exit 1
 }
 
 script()
 {
+
     if [[ -z "$1" ]]; then
-        echo -e "$0: Missing argument"
+        echo -e "$0: Missing argument, looking for a .sh|.py|.rb|etc script"
         exit 1
     fi
 
@@ -78,7 +78,7 @@ script()
 autocp()
 {
     if [[ -z "$1" ]]; then
-        echo -e "$0: Missing parameter"
+        echo -e "$0: Missing parameter, looking for an .autocp file"
         exit 1
     fi
 
@@ -88,86 +88,113 @@ autocp()
     exit 0
 }
 
-cake()
+latex_()
 {
-    echo -ne "$LIGHT_RED[*]$DEFAULT tar zxvf cake*.tar.gz"
-    tar zxvf cake*.tar.gz >> /tmp/init_cake.log 2>&1
-    st $?
-
-    echo -ne "$LIGHT_RED[*]$DEFAULT chmod -R 777 cake_*/app/tmp/"
-    chmod -R 777 cake_*/app/tmp/ >> /tmp/init_cake.log 2>&1
-    st $?
-
-    echo -ne "$LIGHT_RED[*]$DEFAULT cp cake_*/app/config/{database.php.default,database.php}"
-    cp cake_*/app/config/{database.php.default,database.php} >> /tmp/init_cake.log 2>&1
-    st $?
-
-    echo -ne "$LIGHT_RED[*]$DEFAULT cd cake_*"
-    cd cake_* >> /tmp/init_cake.log 2>&1
-    st $?
-
-    echo -ne "$LIGHT_RED[*]$DEFAULT vim app/config/{core.php,database.php} -o"
-    vim app/config/{core.php,database.php} -o
-    st $?
-    exit 0
-}
-
-intalio()
-{
-    IS_INTALIO=(intalio-bpms*.zip)
-
-    if [[ ! -e ${IS_INTALIO[0]} ]]; then
-        echo -ne "$LIGHT_RED[*]$DEFAULT ./intalio-bpms*.zip was not found"
-        false
-        st $?
+    if [[ -z "$1" ]]; then
+        echo -e "$0: Missing argument, looking for a .tex file"
         exit 1
     fi
 
-    echo -ne "$LIGHT_RED[*]$DEFAULT extract ${IS_INTALIO[0]}"
-    extract ${IS_INTALIO[0]} >> /tmp/setup.log 2>&1
+    file=$(basename $1 .tex)
+    echo -ne "$LIGHT_RED[*]$DEFAULT latex $file.tex"
+    latex $file.tex >> /tmp/setup.log 2>&1
     st $?
 
-    echo -e "$LIGHT_RED[*]$DEFAULT setting up JAVA_HOME"
+    echo -ne "$LIGHT_RED[*]$DEFAULT dvips $file.dvi"
+    dvips $file.dvi >> /tmp/setup.log 2>&1
+    st $?
 
-    if [[ -z $JAVA_HOME ]]; then
-        echo -ne "$LIGHT_RED[+]$DEFAULT echo export JAVA_HOME=/usr/lib/jvm/java-6-sun > $HOME/.bashrc"
-        echo "export JAVA_HOME=/usr/lib/jvm/java-6-sun" > $HOME/.bashrc
-        st $?
-    else
-        echo -e "$LIGHT_RED[+]$DEFAULT JAVA_HOME is set to $JAVA_HOME, nothing to do..."
-    fi
-
-    echo -ne "$LIGHT_RED[*]$DEFAULT groovy.sh change_http_port"
-    cd ./intalio-bpms*/extras/; ./groovy.sh change_http_port.groovy
-
-    echo -ne "$LIGHT_RED[*]$DEFAULT Wanna start intalio now? y/n: "
-    read -e BOOT_INTALIO
-
-    if [[ "{$BOOT_INTALIO}" == "y" ]]; then
-        echo -ne "$LIGHT_RED[*]$DEFAULT ../bin/startup.sh"
-        ../bin/startup.sh
-        echo -e "$LIGHT_RED[*]$DEFAULT Please be patient, tomcat may take some time to initializate..." 
-        echo -e "$LIGHT_RED[*]$DEFAULT Go to http://localhost:8080/bpms-console to start, have fun ^_^"
-    fi
-
-    echo -e "$LIGHT_RED[*]$DEFAULT Intalio has been setup but has not been booted, have fun ^_^" 
+    echo -ne "$LIGHT_RED[*]$DEFAULT ps2pdf $file.ps"
+    ps2pdf $file.ps >> /tmp/setup.log 2>&1
+    st $?
 
     exit 0
 }
 
+#cake()
+#{
+    #echo -ne "$LIGHT_RED[*]$DEFAULT tar zxvf cake*.tar.gz"
+    #tar zxvf cake*.tar.gz >> /tmp/init_cake.log 2>&1
+    #st $?
+
+    #echo -ne "$LIGHT_RED[*]$DEFAULT chmod -R 777 cake_*/app/tmp/"
+    #chmod -R 777 cake_*/app/tmp/ >> /tmp/init_cake.log 2>&1
+    #st $?
+
+    #echo -ne "$LIGHT_RED[*]$DEFAULT cp cake_*/app/config/{database.php.default,database.php}"
+    #cp cake_*/app/config/{database.php.default,database.php} >> /tmp/init_cake.log 2>&1
+    #st $?
+
+    #echo -ne "$LIGHT_RED[*]$DEFAULT cd cake_*"
+    #cd cake_* >> /tmp/init_cake.log 2>&1
+    #st $?
+
+    #echo -ne "$LIGHT_RED[*]$DEFAULT vim app/config/{core.php,database.php} -o"
+    #vim app/config/{core.php,database.php} -o
+    #st $?
+    #exit 0
+#}
+
+#intalio()
+#{
+    #IS_INTALIO=(intalio-bpms*.zip)
+
+    #if [[ ! -e ${IS_INTALIO[0]} ]]; then
+        #echo -ne "$LIGHT_RED[*]$DEFAULT ./intalio-bpms*.zip was not found"
+        #false
+        #st $?
+        #exit 1
+    #fi
+
+    #echo -ne "$LIGHT_RED[*]$DEFAULT extract ${IS_INTALIO[0]}"
+    #extract ${IS_INTALIO[0]} >> /tmp/setup.log 2>&1
+    #st $?
+
+    #echo -e "$LIGHT_RED[*]$DEFAULT setting up JAVA_HOME"
+
+    #if [[ -z $JAVA_HOME ]]; then
+        #echo -ne "$LIGHT_RED[+]$DEFAULT echo export JAVA_HOME=/usr/lib/jvm/java-6-sun > $HOME/.bashrc"
+        #echo "export JAVA_HOME=/usr/lib/jvm/java-6-sun" > $HOME/.bashrc
+        #st $?
+    #else
+        #echo -e "$LIGHT_RED[+]$DEFAULT JAVA_HOME is set to $JAVA_HOME, nothing to do..."
+    #fi
+
+    #echo -ne "$LIGHT_RED[*]$DEFAULT groovy.sh change_http_port"
+    #cd ./intalio-bpms*/extras/; ./groovy.sh change_http_port.groovy
+
+    #echo -ne "$LIGHT_RED[*]$DEFAULT Wanna start intalio now? y/n: "
+    #read -e BOOT_INTALIO
+
+    #if [[ "{$BOOT_INTALIO}" == "y" ]]; then
+        #echo -ne "$LIGHT_RED[*]$DEFAULT ../bin/startup.sh"
+        #../bin/startup.sh
+        #echo -e "$LIGHT_RED[*]$DEFAULT Please be patient, tomcat may take some time to initializate..." 
+        #echo -e "$LIGHT_RED[*]$DEFAULT Go to http://localhost:8080/bpms-console to start, have fun ^_^"
+    #fi
+
+    #echo -e "$LIGHT_RED[*]$DEFAULT Intalio has been setup but has not been booted, have fun ^_^" 
+
+    #exit 0
+#}
+
 if [[ $# != 0 ]]; then
+    echo "<= $(date --rfc-3339=seconds) => $1() <=========================" >> /tmp/setup.log
     case $1 in
-        cake)
-        cake
-        ;;
-        intalio)
-        intalio
-        ;;
+        #cake)
+        #cake
+        #;;
+        #intalio)
+        #intalio
+        #;;
         script)
         script $2
         ;;
         autocp)
         autocp $2
+        ;;
+        latex)
+        latex_ $2
         ;;
         -h | --help)
         usage

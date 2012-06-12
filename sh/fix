@@ -154,6 +154,7 @@ mpd()
 }
 
 if [ $# != 0 ]; then
+    echo "<= $(date --rfc-3339=seconds) => $1() <=========================" >> /tmp/fix.log
     case $1 in
         apache)
         apache
