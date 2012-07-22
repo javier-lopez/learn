@@ -95,19 +95,30 @@ latex_()
         exit 1
     fi
 
-    file=$(basename $1 .tex)
-    echo -ne "$LIGHT_RED[*]$DEFAULT latex $file.tex"
-    latex $file.tex >> /tmp/setup.log 2>&1
-    st $?
+    if [[ -z "$2" ]]; then
+        more_than_one=1
+    fi
 
-    echo -ne "$LIGHT_RED[*]$DEFAULT dvips $file.dvi"
-    dvips $file.dvi >> /tmp/setup.log 2>&1
-    st $?
+    for file
+    do
+        if [ -e "$file" ] ; then
+            current=$(basename $file .tex)
+            echo -ne "$LIGHT_RED[*]$DEFAULT latex $current.tex"
+            latex $current.tex >> /tmp/setup.log 2>&1
+            st $?
 
-    echo -ne "$LIGHT_RED[*]$DEFAULT ps2pdf $file.ps"
-    ps2pdf $file.ps >> /tmp/setup.log 2>&1
-    st $?
+            echo -ne "$LIGHT_RED[*]$DEFAULT dvips $current.dvi"
+            dvips $current.dvi >> /tmp/setup.log 2>&1
+            st $?
 
+            echo -ne "$LIGHT_RED[*]$DEFAULT ps2pdf $current.ps"
+            ps2pdf $current.ps >> /tmp/setup.log 2>&1
+            st $?
+            if [[ -z "$more_than_one" ]]; then
+                echo -e "======================"
+            fi
+        fi
+    done
     exit 0
 }
 
@@ -194,7 +205,7 @@ if [[ $# != 0 ]]; then
         autocp $2
         ;;
         latex)
-        latex_ $2
+        shift; latex_ "$@" # remove the latex
         ;;
         -h | --help)
         usage
