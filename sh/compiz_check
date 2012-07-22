@@ -127,6 +127,8 @@ detect_distro()
       DISTRIB_ID="Mandriva"
     elif [ -f /etc/redhat-release ]; then
       DISTRIB_ID="RedHat"
+    elif [ -f /etc/fedora-release ]; then
+      DISTRIB_ID="Fedora"
     elif [ -r /etc/vector-version ]; then
       DISTRIB_ID="VectorLinux"
       DISTRIB_RELEASE="($(cat /etc/vector-version))"
