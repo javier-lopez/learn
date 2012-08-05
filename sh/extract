@@ -71,6 +71,10 @@ extract()
                         echo "[+] tar --lzma -xvf $FILE"
                         tar --lzma -xvf "$FILE"
                         ;;
+                    *.tar.xz)
+                        echo "[+] tar -Jxvf $FILE"
+                        tar -Jxvf "$FILE"
+                        ;;
                     *.jar)
                         echo "[+] jar xvf $FILE"
                         jar xvf "$FILE"
@@ -137,6 +141,10 @@ extract()
                         echo "[+] tar --lzma -xvf $FILE"
                         tar --lzma -xf "$FILE"
                         ;;
+                    *.tar.xz)
+                        echo "[+] tar -Jxf $FILE"
+                        tar -Jxf "$FILE"
+                        ;;
                     *.jar)
                         echo "[+] jar xf $FILE"
                         jar xf "$FILE"
@@ -156,7 +164,7 @@ while getopts ":s:" option; do
     case $option in
         s)
           SFLAG=yes
-          shift $(($OPTIND - 1)); extract "$@" 
+          shift 1; extract "$@" 
           exit 0
           ;;
         :)
