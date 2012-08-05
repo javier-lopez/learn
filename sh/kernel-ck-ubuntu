@@ -1,0 +1,324 @@
+#!/bin/bash
+
+# script taken and edited from the ubuntu-br.org forums (see below): http://github.com/TODO
+# $ time bash kernel-ck-ubuntu
+#
+# CHANGES
+# - eyecandy (rotate function and printing the process)
+# - test_root
+# - use liquorix's config files as base
+# - make .debs packages instead installing directly to the system
+####################################################################################################################################
+
+####################################################################################################################################
+# script PARA USUARIOS DO UBUNTU 11.10 e 12.04 baixa e compila kernel tudo automaticamente CRIADO PELOS USUÁRIOS DO FORUM UBUNTU BR:
+# http://ubuntuforum-br.org/index.php/topic,95318.0.html
+# http://ubuntuforum-br.org/index.php/topic,29799.3960.html
+#
+# Pagina do projeto:
+# http://sourceforge.net/projects/scriptkernel/
+# totalmente GPL-3
+#
+# script de compilação do kernel 3.3.X para uso no ubuntu 11.10 64 bits, 
+# baixa tudo automaticamente (dependências, compiladores, 
+# kernel e patchs) com patch 3.3.0-ck1(BFS) + BFQ   e usando cflag -march=native + -Ofast.
+#
+# para usa-lo salve ele com o nome de scriptkernel e para executa-lo, utilize um terminal MAXIMIZADO e execute:
+#
+# $ time sudo bash scriptkernel
+#
+# e em 2 minutos aparecerá uma tela do menuconfig, 
+# escolha a sua arquitetura de seu processador na parte PROCESSOR TYPE AND FEATURES e depois clicke em EXIT e em YES,  
+# e logo começará a compilação e no final a instalação automatica.
+#
+# OBS= para maior exito na compilação (certeza que irá ser executado sem erros) 
+# deve ter em seu PC ou NOTEBOOK no mínimo de 2 GB de RAM e ter pelo menos 15 GB livre
+# em seu disco rígido (não é uma regra, mas evita de erro por falta de espaço no disco)
+#
+####################################################################################################################################
+#
+# English translation:
+#
+# Script FOR USERS OF UBUNTU 11.10 and 12.04 low and kernel compiles everything automatically CREATED BY USERS OF THE FORUM BR UBUNTU:
+# http://ubuntuforum-br.org/index.php/topic,95318.0.html
+# http://ubuntuforum-br.org/index.php/topic,29799.3960.html
+# http://sourceforge.net/projects/scriptkernel/
+# Fully GPL-3
+#
+# Build script for use in kernel 3.X ubuntu 11.10 64 bit
+# Low everything automatically (dependencies, compilers,
+# Kernel and patches) with patch 3.3.0-ck1(BFS) + BFQ and cflag using -march=native + -Ofast.
+#
+# Use it to save it with the name of scriptkernel and run it, use a maximized terminal and run:
+#
+# $ time sudo bash scriptkernel
+#
+# 2 minutes and a screen of menuconfig,
+# Choose the architecture of your processor in the "Processor type and features" and then clicke "EXIT" and "YES",
+# And will soon begin to build and end the installation automatically.
+#
+# OBS = for greater success in the compilation (make sure it will run without errors)
+# Must have on your PC or NOTEBOOK at least 2 GB of RAM and at least 15 GB free
+# On your hard drive (not a rule but avoids error due to lack of disk space)
+#
+####################################################################################################################################
+
+#####################################
+#EDIT HERE
+#versão do kernel a ser compilado
+kernel=3.4
+#path de atualização
+patchkernel=3.4.5
+#patch BFQ
+bfq=3.4.0-v3r4
+#patch ck
+patchck=3.4-ck3
+#sufixo
+ckk=ck3
+#arch
+arqt=$(dpkg --print-architecture)
+#####################################
+
+
+####################################################################################################################################
+##############################################DO NOT EDIT BELOW UNLESS YOU KNOW WHAT YOU'RE DOING###################################
+####################################################################################################################################
+
+# people should use a partition with the exec option set, the /tmp partitions usually have noexec
+tmp_path="$HOME/.tmp/kernel-ck-ubuntu-$patchkernel" 
+curr_path=$PWD
+#arquitetura: amd64 ou i386 # criado por Stivekx - forum ubuntu-br #######
+#CL=CONCURRENCY_LEVEL do processador # criado por Stivekx  ############
+CL=$(grep -c processor /proc/cpuinfo)
+
+trap cleanup SIGINT SIGTERM #trap ctrl-c
+
+function logo ()
+{
+    clear
+    echo -e "\033[1m-------------------------------\033[7m $0 $patchkernel \033[0m\033[1m------------------------------\033[0m"
+    echo -e "\033[1m  Original:\033[0m        http://sourceforge.net/projects/scriptkernel/"
+    echo -e "\033[1m  Inspired by:\033[0m     http://omicron.homeip.net/projects/#easy_e17.sh"
+    echo -e "\033[1m  Updates:\033[0m         http://github.com/ , send your push request!"
+    echo
+    echo -e "\033[1m  Patches:\033[0m         -bfq, -ck, -ubuntu"
+    echo -e "\033[1m  Config:\033[0m          http://liquorix.net"
+    echo
+    echo -e "\033[1m----------------\033[7m Current Configuration: edit the script to change them \033[0m\033[1m--------------\033[0m"
+    echo "  build path:         $tmp_path"
+    echo "  kernel:             $patchkernel"
+    echo "  -bfq patchset:      $bfq"
+    echo "  -ck patchset:       $patchck"
+    echo "  -ubuntu patchset:   v$patchkernel"
+    echo "  sufix:              $ckk"
+    echo "  arch:               $arqt"
+    echo -e "\033[1m-------------------------------------------------------------------------------------\033[0m"
+    echo
+}
+
+function rotate ()
+{
+    pid=$1
+    animation_state=1
+
+    while [ "`ps -p $pid -o comm=`" ]; do
+        # rotating star
+        echo -e -n "\b\b\b"
+        case $animation_state in
+            1)
+                echo -n "["
+                echo -n -e "\033[1m|\033[0m"
+                echo -n "]"
+                animation_state=2
+                ;;
+            2)
+                echo -n "["
+                echo -n -e "\033[1m/\033[0m"
+                echo -n "]"
+                animation_state=3
+                ;;
+            3)
+                echo -n "["
+                echo -n -e "\033[1m-\033[0m"
+                echo -n "]"
+                animation_state=4
+                ;;
+            4)
+                echo -n "["
+                echo -n -e "\033[1m"
+                echo -n "\\"
+                echo -n -e "\033[0m"
+                echo -n "]"
+                animation_state=1
+                ;;
+        esac
+        sleep 1
+    done
+}
+
+function test_root()
+{
+    if [ ! "$LOGNAME" == "root" ]; then
+        echo "[+] detecting user $LOGNAME (non-root)"
+        echo "[+] checking if sudo is available ... "
+        sudotest=`type sudo &>/dev/null ; echo $?`
+
+        if [ "$sudotest" == 0 ]; then
+            sudo -K
+            if [ -e "$tmp_path/sudo.test" ]; then
+                rm -f "$tmp_path/sudo.test"
+            fi
+            while [ -z "$sudopwd" ]; do
+                echo -n "   - enter sudo-password: "
+                stty -echo
+                read sudopwd
+                stty echo
+
+                # password check
+                echo "$sudopwd" | sudo -S touch "$tmp_path/sudo.test" &>/dev/null
+                if [ ! -e "$tmp_path/sudo.test" ]; then
+                    sudopwd=""
+                fi
+            done
+
+            SUDO="/usr/bin/sudo -S"
+
+            rm -f "$tmp_path/sudo.test"
+            echo 
+            return 1
+        else
+            error "You're not root and sudo isn't available. Please run this script as root!"
+            return 0
+        fi
+    else
+        SUDO=""
+    fi
+    return 1
+}
+
+function cleanup ()
+{
+    stty echo
+    echo
+    echo "[+] deleting files at $tmp_path ... "
+    echo "$sudopwd" | $SUDO rm -v $tmp_path/patch*
+    echo "$sudopwd" | $SUDO rm -v $tmp_path/*.patch
+    echo "$sudopwd" | $SUDO rm -r $tmp_path/linux-$patchkernel-$ckk
+
+    #echo "$sudopwd" | $SUDO mount -o remount /tmp
+    #rm -rf $tmp_path 2>/dev/null
+    if [ -z $1 ]; then
+        exit
+    fi
+}
+
+mkdir -p "$tmp_path"		2>/dev/null
+
+logo
+test_root
+rooted=$?
+
+if [ ! "$rooted" == "1" ]; then
+    echo "You're not root and sudo isn't available. Please run this script as root!"
+    exit
+fi
+
+echo -e "\033[1m--------------------------------\033[7m Fixing dependencies \033[0m\033[1m--------------------------------\033[0m"
+
+echo "[+] installing packages ...  "
+
+
+########baixando compiladores e dependencias########################################################
+echo "$sudopwd" | $SUDO apt-get update
+echo "$sudopwd" | $SUDO apt-get install kernel-package gcc-4.6 libncurses5 libncurses5-dev build-essential patch -y
+####################################################################################################
+
+echo -e "\033[1m-----------------------------\033[7m Downloading archives \033[0m\033[1m------------------------------\033[0m"
+echo "[+] moving to $tmp_path"
+cd $tmp_path
+echo "[+] downloading the main tree for the vanilla kernel ...    "
+wget -N http://www.kernel.org/pub/linux/kernel/v3.x/linux-$kernel.tar.bz2
+
+echo "[+] downloading the mainstream patches for the vanilla kernel ...    "
+wget -N http://www.kernel.org/pub/linux/kernel/v3.x/patch-$patchkernel.bz2
+
+echo "[+] downloading the -ck patches for the vanilla kernel ...    "
+wget -N http://ck.kolivas.org/patches/3.0/$kernel/$patchck/patch-$patchck.bz2
+
+echo "[+] downloading the bfq patches for the vanilla kernel ...    "
+wget -N http://algo.ing.unimo.it/people/paolo/disk_sched/patches/$bfq/0001-block-cgroups-kconfig-build-bits-for-BFQ-v3r4-$kernel.patch
+wget -N http://algo.ing.unimo.it/people/paolo/disk_sched/patches/$bfq/0002-block-introduce-the-BFQ-v3r4-I-O-sched-for-$kernel.patch
+
+#ubuntu patch
+echo "[+] downloading the ubuntu patches for the vanilla kernel ...    "
+wget -N http://kernel.ubuntu.com/~kernel-ppa/mainline/v$patchkernel-quantal/0001-base-packaging.patch
+wget -N http://kernel.ubuntu.com/~kernel-ppa/mainline/v$patchkernel-quantal/0002-debian-changelog.patch
+wget -N http://kernel.ubuntu.com/~kernel-ppa/mainline/v$patchkernel-quantal/0003-default-configs.patch
+
+echo -e "\033[1m-----------------------------\033[7m Applying the patches \033[0m\033[1m------------------------------\033[0m"
+echo -n "[+] uncomprensing the kernel to $tmp_path/linux-$kernel/ ...    "
+tar -jxpvf $tmp_path/linux-$kernel.tar.bz2 > /dev/null 2>&1 &
+running=$(pidof tar); running=$?
+
+if [ "$running" == "1" ]; then
+    echo -e "\b\b\b ok "
+else
+    rotate $(pidof tar)
+    echo -e "\b\b\b done "
+fi
+
+echo -n "[+] uncomprensing the patches ...    "
+bunzip2 patch-$patchkernel.bz2 patch-$patchck.bz2 > /dev/null 2>&1 &
+running=$(pidof bunzip2); running=$?
+
+if [ "$running" == "1" ]; then
+    echo -e "\b\b\b ok "
+else
+    rotate $(pidof bunzip2)
+    echo -e "\b\b\b done "
+fi
+
+echo "[+] moving to $tmp_path/linux-$patchkernel-$ckk"
+mv linux-$kernel linux-$patchkernel-$ckk
+cd linux-$patchkernel-$ckk
+
+echo "[+] applying patches ...    "
+patch -p1 < ../patch-$patchkernel
+patch -p1 < ../patch-$patchck
+patch -p1 < ../0001-block-cgroups-kconfig-build-bits-for-BFQ-v3r4-$kernel.patch
+patch -p1 < ../0002-block-introduce-the-BFQ-v3r4-I-O-sched-for-$kernel.patch
+patch -p1 < ../0001-base-packaging.patch
+patch -p1 < ../0002-debian-changelog.patch
+patch -p1 < ../0003-default-configs.patch
+
+echo -e "\033[1m-----------------------------\033[7m Configuring the kernel \033[0m\033[1m------------------------------\033[0m"
+#### criado por Stivekx #############
+#config_file=$(locate /boot/config-* | sort -r | head -1)
+
+echo "[+] downloading an optimized config file from http://liquorix.net ...    "
+wget "http://liquorix.net/sources/$kernel/config.$arqt"
+cp config.$arqt .config
+
+#echo "[+] optimizying even more, using streamline_config.pl ...    "
+#chmod +x ./scripts/kconfig/streamline_config.pl && ./scripts/kconfig/streamline_config.pl > config_strip
+##make localmodconfig
+#mv config_strip .config
+
+#echo "[+] running menuconfig ...    "
+#make menuconfig
+
+echo -e "\033[1m-----------------------------\033[7m Compiling the kernel \033[0m\033[1m------------------------------\033[0m"
+
+echo "[+] running make-kpkg ...    "
+CONCURRENCY_LEVEL=$CL
+echo | fakeroot make-kpkg --initrd kernel_image kernel_headers modules_image
+
+echo -e "\033[1m-------------------------------------\033[7m DONE \033[0m\033[1m----------------------------------\033[0m"
+echo "[+] copying the debs files ..."
+cp -v ../linux-*.deb $curr_path
+echo "[+] you may want to install the generated packages and reboot your system, run: $ sudo dpkg -i linux-*.deb"
+echo "[+] have fun ^_^!"
+
+#echo "$sudopwd" | $SUDO dpkg -i ../*.deb
+
+#cleanup 1
