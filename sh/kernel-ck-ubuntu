@@ -3,6 +3,8 @@
 # script taken and edited from the ubuntu-br.org forums (see below): http://github.com/TODO
 # $ time bash kernel-ck-ubuntu
 #
+# TODO 07-08-2012 03:24 >> check status
+#
 # CHANGES
 # - eyecandy (rotate function and printing the process)
 # - test_root
@@ -201,8 +203,8 @@ function cleanup ()
     stty echo
     echo
     echo "[+] deleting files at $tmp_path ... "
-    echo "$sudopwd" | $SUDO rm -v $tmp_path/patch*
-    echo "$sudopwd" | $SUDO rm -v $tmp_path/*.patch
+    #echo "$sudopwd" | $SUDO rm -v $tmp_path/patch*
+    #echo "$sudopwd" | $SUDO rm -v $tmp_path/*.patch
     echo "$sudopwd" | $SUDO rm -r $tmp_path/linux-$patchkernel-$ckk
 
     #echo "$sudopwd" | $SUDO mount -o remount /tmp
