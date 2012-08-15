@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# script taken and edited from the ubuntu-br.org forums (see below): http://github.com/TODO
+# script taken and edited from the ubuntu-br.org forums (see below): https://github.com/chilicuil/learn/blob/master/sh/kernel-ck-ubuntu
 # $ time bash kernel-ck-ubuntu
 #
 # TODO 07-08-2012 03:24 >> check status
@@ -101,7 +101,8 @@ function logo ()
     echo -e "\033[1m-------------------------------\033[7m $0 $patchkernel \033[0m\033[1m------------------------------\033[0m"
     echo -e "\033[1m  Original:\033[0m        http://sourceforge.net/projects/scriptkernel/"
     echo -e "\033[1m  Inspired by:\033[0m     http://omicron.homeip.net/projects/#easy_e17.sh"
-    echo -e "\033[1m  Updates:\033[0m         http://github.com/ , send your push request!"
+    echo -e "\033[1m  Updates:\033[0m         https://github.com/chilicuil/learn/blob/master/sh/kernel-ck-ubuntu"
+    echo    "                                 send your push request!"
     echo
     echo -e "\033[1m  Patches:\033[0m         -bfq, -ck, -ubuntu"
     echo -e "\033[1m  Config:\033[0m          http://liquorix.net"
@@ -300,6 +301,13 @@ echo -e "\033[1m-----------------------------\033[7m Configuring the kernel \033
 echo "[+] downloading an optimized config file from http://liquorix.net ...    "
 wget "http://liquorix.net/sources/$kernel/config.$arqt"
 cp config.$arqt .config
+
+#tmp fix for bug #663474
+#http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=663474
+if [ $arqt == "i386" ]; then
+    sed "/CONFIG_LGUEST_GUEST/d" .config >tmp
+    mv tmp .config
+fi
 
 #echo "[+] optimizying even more, using streamline_config.pl ...    "
 #chmod +x ./scripts/kconfig/streamline_config.pl && ./scripts/kconfig/streamline_config.pl > config_strip
