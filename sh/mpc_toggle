@@ -1,0 +1,6 @@
+#!/bin/sh
+if [ "$(mpc status | grep playing)" ]; then
+    mpc pause 1>/dev/null
+else
+   mpc play 1>/dev/null
+fi

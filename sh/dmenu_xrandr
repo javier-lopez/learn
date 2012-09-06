@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+#chilicuil <chilicuil@gmail.com> 2010
+
+_barstatus.off()
+{
+    killall conky dzen2 > /dev/null 2>&1
+}
+
+_barstatus.on()
+{
+    _barstatus.off
+    conky | $HOME/code/dzen/dzen2  -x 350 -y 749 -fn -xos4-terminus-medium-r-*-*-12-*-*-*-*-*-iso10646-1 -ta r -fg "#999999" -bg "#000000" & 2> /dev/null
+}
+
+DMENU='dmenu -p > -i -nb #000000 -nf #FFFFFF -sb #000000 -sf #999999'
+choice=$(echo -e "above.hdmi_1920x1080\nabove.vga_1600x1200\noff.hdmi\noff.vga\nsame_as.hdmi\nsame_as.vga" | $DMENU)
+case "$choice" in
+    above.hdmi_1920x1080) xrandr --output HDMI1 --mode 1920x1080 --above LVDS1; # _barstatus.on
+        ;;
+    above.vga_1600x1200) xrandr --output VGA1 --mode 1600x1200 --above LVDS1; # _barstatus.on
+        ;;
+    off.hdmi) xrandr --output HDMI1 --off; _barstatus.on
+        ;;
+    off.vga) xrandr --output VGA1 --off; _barstatus.on
+        ;;
+    same_as.hdmi) xrandr --output HDMI1 --auto --same-as LVDS1
+        ;;
+    same_as.vga) xrandr --output VGA1 --auto --same-as LVDS1
+        ;;
+esac

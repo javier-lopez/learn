@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+notify ()
+{
+    if [[ $TERM == "linux" ]]; then
+        notify-send -t 1000 "${@}"
+    else
+        echo "${@}"
+        echo
+    fi
+}
+
+file=$HOME/`</dev/urandom tr -dc A-Za-z0-9 | head -c 8`.png
+notify "[+] Screenshot" "in 3.., 2.., 1.., smile =)!"
+sleep 3
+killall notify-osd 
+sleep .5
+import -window root $file
+notify "[+] Done" "$file"

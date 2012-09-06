@@ -21,15 +21,18 @@ while getopts ":s:p:e:" option; do
     case $option in
         s)
           lang="es";
-          PHRASE=$OPTARG
+          shift
+          PHRASE="$@"
           ;;
         p)
           lang="pt";
-          PHRASE=$OPTARG
+          shift 
+          PHRASE="$@"
           ;;
         e)
           lang="en";
-          PHRASE=$OPTARG
+          shift
+          PHRASE="$@"
           ;;
         :)
           echo "Option -$OPTARG requires an argument"
