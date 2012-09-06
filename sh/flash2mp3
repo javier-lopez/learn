@@ -1,3 +1,0 @@
-#!/usr/bin/env bash
-
-ffmpeg -i $1 -acodec libmp3lame -ac 2 -ab 192k -vn -y "$2"
