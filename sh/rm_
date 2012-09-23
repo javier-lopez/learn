@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
-#chilicuil <chilicuil@gmail.com> 2012
-#rm_, is a wrapper for the existing rm command compatible with nautilus and other
-#trash management tools
+#rm_, is a wrapper for the existing rm command compatible with nautilus|pcman file managers
 
-# -f files are removed and NOT archived
+# -f files are removed NOT archived
 # -l list archived files
 # -c remove permanently archived files
 # -u recover archived files
@@ -12,7 +10,7 @@
 #Taken initially from 'Wicked Cool Shell Scripts: 101 Scripts for Linux, Mac
 #OS X, and Unix Systems'
 
-#If you improve it, please drop me an email, I'll buy you a coffee =)
+#If you improve it, please drop me an email
 
 trash_dir="$HOME/.local/share/Trash"
 
@@ -23,15 +21,17 @@ fi
 usage()
 {
   echo -e "Usage: "$0" [OPTION]... FILE..."
-  echo -e "Wrapper for the rm command, compatible with nautilus and other trash management tools\n"
-  echo -e "  -f         files are removed instead archived, this calls \`rm' directly"
-  echo -e "  -l         list archived files, use -ll and -lll to increase verbosity"
-  echo -e "  -c         remove permanently archived files"
-  echo -e "  -u         recover archived files"
-  echo -e "  -y         say yes to all questions"
-  echo -e "  -h         shows this message, use --help to obtain \`rm' help"
-  echo -e "\n"$0" delete directories and files with no distintion therefore no -r option is needed"
-  
+  echo -e "Wrapper for the \`rm' command, compatible with nautilus|pcmanfm file managers\n"
+  echo -e "  -l [PATTERN]   list archived files, use -ll and -lll to increase verbosity"
+  echo -e "  -c [PATTERN]   remove permanently archived files"
+  echo -e "  -u [PATTERN]   recover archived files"
+  echo -e "  -y             say yes to all questions"
+  echo -e "  -f             remove instead of archive files \`rm' is executed directly"
+  echo -e "  -h             shows this message, use --help to obtain \`rm' help"
+  echo -e "\n"$0" deletes directories and files with no distintion therefore no -r option is needed\n"
+
+  echo -e "Last version is always available in: <https://github.com/chilicuil/learn/tree/master/sh/rm_>"
+  echo -e "Report bugs to chilicuil@gmail.com"
 }
 
 #http://www.makkintosshu.com/journal/a-realpath-implementation-in-bash
@@ -93,9 +93,11 @@ list ()
         echo "$(basename $0): Nothing to list" >&2 ; exit 1
     fi
 
-    for data_in_trashinfo in $(find "$trash_dir"/info -name "*.trashinfo" | sort | xargs grep -A 1 -Hri "path.*$1" \
+    OLDIFS="$IFS"; IFS=$'\n' #fix case where files have spaces
+    for data_in_trashinfo in $(find "$trash_dir"/info -name "*.trashinfo" -print0 | sort -z | xargs -0 grep -A 1 -Hri "path.*$1" \
         | sed -e 's:^:|:g' -e 's:\.trashinfo.*=:|:g' | tr -d '\n'| sed -e 's:--:\n:g'); do
 
+    IFS="$OLDIFS"
     datetime=$(echo "$data_in_trashinfo" | cut -d\| -f5)
     general_date=$(echo "$datetime" | cut -dT -f1)
     detail_date=$(echo "$datetime" | cut -dT -f2)
@@ -178,8 +180,10 @@ recover ()
     if [ ! "$answer" == "y" ]; then
         echo "Nothing done" && exit 0
     else
-        for data_in_trashinfo in $(find "$trash_dir"/info -name "*.trashinfo" | sort | xargs grep -A 1 -Hri "path.*$1" \
+        OLDIFS="$IFS"; IFS=$'\n' #fix case where files have spaces
+        for data_in_trashinfo in $(find "$trash_dir"/info -name "*.trashinfo" -print0 | sort -z | xargs -0 grep -A 1 -Hri "path.*$1" \
             | sed -e 's:^:|:g' -e 's:\.trashinfo.*=:|:g' | tr -d '\n'| sed -e 's:--:\n:g'); do
+        IFS="$OLDIFS"
 
         datetime=$(echo "$data_in_trashinfo" | cut -d\| -f5)
         general_date=$(echo "$datetime" | cut -dT -f1)
@@ -222,8 +226,10 @@ clean ()
     if [ ! "$answer" == "y" ]; then
         echo "Nothing done" && exit 0
     else
-        for data_in_trashinfo in $(find "$trash_dir"/info -name "*.trashinfo" | sort | xargs grep -A 1 -Hri "path.*$1" \
+        OLDIFS="$IFS"; IFS=$'\n' #fix case where files have spaces
+        for data_in_trashinfo in $(find "$trash_dir"/info -name "*.trashinfo" -print0 | sort -z | xargs -0 grep -A 1 -Hri "path.*$1" \
             | sed -e 's:^:|:g' -e 's:\.trashinfo.*=:|:g' | tr -d '\n'| sed -e 's:--:\n:g'); do
+        IFS="$OLDIFS"
 
         real_file=$(echo "$data_in_trashinfo" | cut -d\| -f2)
         info_file="$trash_dir/info/$(basename "$real_file").trashinfo"
@@ -241,11 +247,11 @@ verboselist=0
 while getopts ":fluhcry" options
 do
     case $options in
-        f) exec rm -r "$@"                      ;;  # exec lets us exit this script directly.
+        f) exec rm -r "$@"                      ;;
         l) verboselist=$(($verboselist+1))      ;;  # list verbose level 1-3
         u) shift $(($OPTIND - 1)); recover "$@" ;;  # remove the -u
         h) usage                                ;;
-        c) shift $(($OPTIND - 1)); clean "$@"   ;;
+        c) shift $(($OPTIND - 1)); clean "$@"   ;;  # remove the -c
         r)                                      ;;
         y) yflag=yes ;;
         *) exec rm "$@"                        ;;   # send the rest to rm
