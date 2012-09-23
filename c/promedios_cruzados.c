@@ -23,7 +23,8 @@
     #define with_echo()
     #define get_char()          get_charWin()
     int get_charWin (void)      { return getche();}
-#else
+#endif
+#ifdef __linux__
     #include <unistd.h>
     #define clear               "clear"
     #define sleep(x)            usleep((x)*1000000)
