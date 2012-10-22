@@ -50,4 +50,4 @@ if [[ -z "$lang" ]]; then
 fi
 
 shift;shift;
-mplayer -really-quiet "http://translate.google.com/translate_tts?ie=UTF-8&tl=$lang&q=$PHRASE"
+mplayer -really-quiet "http://translate.google.com/translate_tts?ie=UTF-8&tl=$lang&q=$PHRASE" > /dev/null

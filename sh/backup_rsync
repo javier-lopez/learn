@@ -53,16 +53,16 @@ main()
     echo "Sycronizing main ================================================================"; sleep 3
     sudo mkdir -pv $BACKUP_TO/main
     if [[ -z $YFLAG ]]; then #if not exist
-        sudo rsync -a --progress --delete -n $HOME/data $HOME/code $HOME/downloads $HOME/misc $BACKUP_TO/main/ | less
+        sudo rsync -a --progress --delete -n $HOME/data $HOME/code $HOME/downloads $HOME/misc $HOME/read $HOME/tmp_img $HOME/tmp_music $BACKUP_TO/main/ | less
         echo -n "Continue? (y/n): "
         read -e ANSWER
         if [[ $ANSWER != "y" ]]; then
             echo "Aborting..."
             exit 1
         fi
-        sudo rsync -a --progress --delete $HOME/data $HOME/code $HOME/downloads $HOME/misc $BACKUP_TO/main/
+        sudo rsync -a --progress --delete $HOME/data $HOME/code $HOME/downloads $HOME/misc $HOME/read $HOME/tmp_img $HOME/tmp_music $BACKUP_TO/main/
     else
-        sudo rsync -a --progress --delete $HOME/data $HOME/code $HOME/downloads $HOME/misc $BACKUP_TO/main/
+        sudo rsync -a --progress --delete $HOME/data $HOME/code $HOME/downloads $HOME/misc $HOME/read $HOME/tmp_img $HOME/tmp_music $BACKUP_TO/main/
     fi
     echo "Writing logs: $HOME/misc/log/main.log"
     sudo rsync -a --progress -n $BACKUP_TO/main/ $HOME/ > $HOME/misc/log/main.log
