@@ -57,6 +57,7 @@ usage()
   echo -e "  wl                Restart the wl module." >&2
   echo -e "  iwlagn            Restart the iwlagn module." >&2
   echo -e "  mpd               Restart mpd." >&2
+  echo -e "  webcam            Fix webcam - thinkpad" >&2
   echo -e
   echo -e "Logs are saved in /tmp/fix.log" >&2
   exit 1
@@ -153,6 +154,13 @@ mpd()
     st $?
 }
 
+webcam()
+{
+    echo -ne "$LIGHT_RED[*]$DEFAULT sudo chmod o+rw /dev/video0 "
+    sudo chmod o+rw /dev/video0 >> /tmp/fix.log 2>&1
+    st $?
+}
+
 if [ $# != 0 ]; then
     echo "<= $(date --rfc-3339=seconds) => $1() <=========================" >> /tmp/fix.log
     case $1 in
@@ -174,6 +182,10 @@ if [ $# != 0 ]; then
         ;;
         mpd)
         mpd
+        exit 1
+        ;;
+        webcam)
+        webcam
         exit 1
         ;;
         -h | --help)
