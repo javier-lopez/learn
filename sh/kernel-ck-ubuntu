@@ -249,7 +249,7 @@ echo "[+] installing packages ...  "
 
 ########baixando compiladores e dependencias########################################################
 echo "$sudopwd" | $SUDO apt-get update
-echo "$sudopwd" | $SUDO apt-get install kernel-package gcc-4.6 libncurses5 libncurses5-dev build-essential patch -y
+echo "$sudopwd" | $SUDO apt-get install kernel-package gcc-4.6 libncurses5 libncurses5-dev build-essential patch fakeroot -y
 ####################################################################################################
 
 echo -e "\033[1m-----------------------------\033[7m Downloading archives \033[0m\033[1m------------------------------\033[0m"
