@@ -17,8 +17,18 @@ file=$2
 #-follow_mouse only in the git ffmpeg version
 #common="-f x11grab -follow_mouse 60 -show_region 1 -r 24 -s hd720 -i :0.0 -vcodec libx264 -threads 8 -y"
 
-common="-f x11grab -r 24 -s $(xwininfo -root | grep 'geometry' | awk '{print $2;}') -i :0.0 -vcodec libx264 -vpre lossless_ultrafast -y"
-alsa="-f alsa -ac 2 -i hw:0,0 -acodec pcm_s16le"
+fullscreen="-f x11grab -s $(xwininfo -root | grep 'geometry' | awk '{print $2;}')"
+vga_followscreen="-f x11grab -s vga -follow_mouse 50"
+vga="-f x11grab -s vga"
+fourcif_followscreen="-f x11grab -s 4cif -follow_mouse 100"
+fourcif="-f x11grab -s 4cif"
+xga_followscreen="-f x11grab -s xga -follow_mouse 350"
+xga="-f x11grab -s xga"
+
+common="$xga_followscreen -r 24  -i :0.0 -vcodec libx264 -vpre lossless_ultrafast -y"
+
+alsa="-f alsa -i hw:0,0 -acodec pcm_s16le"
+pulse="-f alsa -i pulse -acodec pcm_s16le"
 
 usage()
 {
