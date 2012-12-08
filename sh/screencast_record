@@ -1,34 +1,36 @@
 #!/usr/bin/env bash
-#chilicuil <chilicuil@gmail.com> 2012
-#records screecasts using ffmpeg
+#chilicuil <chilicuil@gmail.com> 2012 - records screecasts using ffmpeg
+#./screecasts_record start
+#TODO 08-12-2012 07:54 >> different between VM and i3
+#TODO 08-12-2012 07:54 >> find out what is the best for youtube
 
-#options passed to ffmpeg
-#sqcif 128x96, qcif 176x144, cif 352x288, 4cif 704x576
-#16cif 1408x1152, qqvga 160x120, qvga 320x240, vga 640x480
-#svga 800x600, xga 1024x768, uxga 1600x1200, qxga 2048x1536
-#sxga 1280x1024, qsxga 2560x2048, hsxga 5120x4096, wvga 852x480
-#wxga 1366x768, wsxga 1600x1024, wuxga 1920x1200, woxga 2560x1600
-#wqsxga 3200x2048, wquxga 3840x2400, whsxga 6400x4096, whuxga 7680x4800
-#cga 320x200, ega 640x350, hd480 852x480, hd720 1280x720 hd1080 1920x1080
+#####################################################
+#ffmpeg x11grab options
+#####################################################
+#sqcif-128x96, qcif-176x144, cif-352x288, 4cif-704x576
+#16cif-1408x1152, qqvga-160x120, qvga-320x240, vga-640x480
+#svga-800x600, xga-1024x768, uxga-1600x1200, qxga-2048x1536
+#sxga-1280x1024, qsxga-2560x2048, hsxga-5120x4096, wvga-852x480
+#wxga-1366x768, wsxga-1600x1024, wuxga-1920x1200, woxga-2560x1600
+#wqsxga-3200x2048, wquxga-3840x2400, whsxga-6400x4096, whuxga-7680x4800
+#cga-320x200, ega-640x350, hd480-852x480, hd720-1280x720, hd1080-1920x1080
 
-keyword=$1
-file=$2
+#follow_mouse
+#common="-f x11grab -follow_mouse 60 -show_region 1"
+#vcodecs: wmv2, flv, mpeg4, flashsv, zlib
 
-#-follow_mouse only in the git ffmpeg version
-#common="-f x11grab -follow_mouse 60 -show_region 1 -r 24 -s hd720 -i :0.0 -vcodec libx264 -threads 8 -y"
+keyword=$1 #start | stop
+file=$2    #file name
 
 fullscreen="-f x11grab -s $(xwininfo -root | grep 'geometry' | awk '{print $2;}')"
-vga_followscreen="-f x11grab -s vga -follow_mouse 50"
-vga="-f x11grab -s vga"
-fourcif_followscreen="-f x11grab -s 4cif -follow_mouse 100"
-fourcif="-f x11grab -s 4cif"
+svga_followscreen="-f x11grab -s svga -follow_mouse 250"
+svga="-f x11grab -s svga"
 xga_followscreen="-f x11grab -s xga -follow_mouse 350"
 xga="-f x11grab -s xga"
+custom_followscreen="-f x11grab -s 840x680 -follow_mouse 350"
+custom="-f x11grab -s 840x680"
 
-common="$xga_followscreen -r 24  -i :0.0 -vcodec libx264 -vpre lossless_ultrafast -y"
-
-alsa="-f alsa -i hw:0,0 -acodec pcm_s16le"
-pulse="-f alsa -i pulse -acodec pcm_s16le"
+common="$xga_followscreen -r 24  -i :0.0 -vcodec flashsv -y"
 
 usage()
 {
@@ -40,49 +42,78 @@ usage()
     exit 1
 }
 
+countdown ()
+{
+    local i 
+    #https://bugs.launchpad.net/ubuntu/+source/notify-osd/+bug/390508
+    #notify-send -t 3000 "${@}" - using xmessage instead
+    if [[ $TERM == "linux" ]] || [[ $TERM == "dumb" ]]; then
+        if [[ -d $HOME/data/musnd ]]; then
+            mplayer ~/data/musnd/Sounds/num$1.ogg >> /dev/null 2>&1
+            sleep 1
+            for ((i=$1-1; i>=1; i--)); do
+                mplayer ~/data/musnd/Sounds/num$i.ogg >> /dev/null 2>&1
+                sleep 1
+            done
+        else
+            xmessage -center -timeout 1 "$1"
+            sleep 1
+            for ((i=$1-1; i>=1; i--)); do
+                xmessage -center -timeout 1 "$i"
+                sleep 1
+            done
+        fi
+        if [[ ! -z $(pidof notify-osd) ]]; then
+            killall notify-osd
+        fi
+    else
+        echo -n "[+] $1"
+        sleep 1
+        for ((i=$1-1; i>=1; i--)); do
+            printf "\b%d" $i
+            sleep 1
+        done
+    fi
+}
+
+notify ()
+{
+    if [[ $TERM == "linux" ]] || [[ $TERM == "dumb" ]]; then
+        notify-send -t 3000 "${@}"
+    else
+        echo "${@}"
+    fi
+}
+
+if [ -z $(pidof pulseaudio) ]; then
+    mic="-f alsa -i hw:0,0 -acodec pcm_s16le"
+else
+    mic="-f alsa -i pulse -acodec pcm_s16le"
+fi
+
 if [[ ${keyword} == "stop" ]]; then
     ffmpeg_running=`pidof ffmpeg | awk '{print $1}'`
     if [[ ! -z ${ffmpeg_running} ]]; then
-        kill -3 ${ffmpeg_running}
+        kill -2 ${ffmpeg_running}
     fi
     exit 0
 elif [[ ! ${keyword} == "start" ]]; then
     usage
 fi
 
-downcount ()
-{
-    #http://ubuntuone.com/4mQEsOiYgEE3yWfk16MxrY
-    mplayer ~/data/music/Sounds/num3.ogg >> /dev/null 2>&1
-    sleep .5
-    mplayer ~/data/music/Sounds/num2.ogg >> /dev/null 2>&1
-    sleep .5
-    mplayer ~/data/music/Sounds/num1.ogg >> /dev/null 2>&1
-    sleep .5
-}
-
-notify ()
-{
-    if [[ $TERM == "linux" ]]; then
-        notify-send -t 3000 "${@}"
-    else
-        echo "${@}"
-        echo
-    fi
-}
-
 if [[ -z "$file" ]]; then
     file=$HOME/`</dev/urandom tr -dc A-Za-z0-9 | head -c 8`.mkv
 fi
 
-notify "[+] Recording desktop" "press [Ctrl-Alt][+] to finish..."
-downcount
+notify "[+] Recording desktop" "press [Ctrl-Alt][+] to finish or ./screencast_record stop"
+countdown 3
 
-ffmpeg $alsa $common $file
+ffmpeg $mic $common $file
 
 if [[ $? == "1" ]]; then
-    notify "[+] No mic available" "recording video only..."
-    downcount
+    #notify "[+] No mic available" "recording only video..."
+    xmessage -center -timeout 2 "[+] No mic available" "recording only video..."
+    countdown 3
 
     ffmpeg $common $file
 fi
