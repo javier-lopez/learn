@@ -2,100 +2,65 @@
 #<chilicuil@gmail.com> 2012
 #setup custom tasks
 
-#I love colors!
-BLUE=$'\E[0;34m'
-DEFAULT=$'\E[0m'
-RED=$'\E[0;31m'
-BROWN=$'\E[0;33m'
-CYAN=$'\E[0;36m'
-DARK_GREY=$'\E[1;30m'
-GREEN=$'\E[0;32m'
-LIGHT_BLUE=$'\E[1;34m'
-LIGHT_CYAN=$'\E[1;36m'
-LIGHT_GREEN=$'\E[1;32m'
-LIGHT_GREY=$'\E[0;37m'
-LIGHT_PURPLE=$'\E[1;35m'
-LIGHT_RED=$'\E[1;31m'
-PURPLE=$'\E[1;35m'
-WHITE=$'\E[1;37m'
-YELLOW=$'\E[0;33m'
-
-#fancy output, taken mainly from /etc/lsb-base-logging.sh
-COLS=`tput cols`
-if [ "$COLS" ] && [ "$COLS" -gt 6 ]; then
-    COL=`expr $COLS - 8`
-else
-    COLS=80
-    COL=72
-fi
-
-st()
-{
-    printf "\r"
-    tput hpa $COL
-    if [ $1 -ne 0 ]; then
-            echo -e "$LIGHT_RED[FAILED]$DEFAULT"
-            exit 1
-        else
-            echo -e "$LIGHT_GREEN[DONE]$DEFAULT"
-    fi
-}
 #===================================================
 
 #Don't forget update this when adding new functions
 usage()
 {
-  echo -e "$(basename $0): setup my common tasks" >&2
-  echo -e >&2
-  echo -e "  autocp            cp custom autocomplete file" >&2
-  #echo -e "  cake              Setup cake" >&2
-  echo -e "  script            cp custom script to the path system" >&2
-  echo -e "  latex             compile a .tex file -> pdf" >&2
-  #echo -e "  intalio           Setup intalio" >&2
-  echo -e >&2
-  echo -e "All logs are saved to /tmp/setup.log, check it out in case of problems" >&2
-  exit 1
+  echo "$(basename $0): setup my common tasks" >&2
+  echo
+  echo "  autocp            cp custom autocomplete file"
+  #echo "  cake              Setup cake"
+  echo "  script            cp custom script to the path system"
+  echo "  latex             compile a .tex file -> pdf"
+  #echo "  intalio           Setup intalio"
+  echo
+  exit 0
 }
 
-script()
+_exec()
+{
+    status=$?
+    if [ $status != 0 ]; then
+        exit $status
+    fi
+    echo "[+] $@"
+    $@
+}
+
+_script()
 {
 
-    if [[ -z "$1" ]]; then
-        echo -e "$0: Missing argument, looking for a .sh|.py|.rb|etc script"
+    if [ -z "$1" ]; then
+        echo "$0: Missing argument, looking for a .sh|.py|.rb|etc script"
         exit 1
     fi
 
-    echo -ne "$LIGHT_RED[*]$DEFAULT chmod +x $1"
-    chmod +x $1 >> /tmp/setup.log 2>&1
-    st $?
+    _exec chmod +x $1
+    _exec sudo cp $1 /usr/local/bin
 
-    echo -ne "$LIGHT_RED[*]$DEFAULT sudo cp $1 /usr/local/bin"
-    sudo cp $1 /usr/local/bin >> /tmp/setup.log 2>&1
-    st $?
     exit 0
 }
 
-autocp()
+_autocp()
 {
-    if [[ -z "$1" ]]; then
-        echo -e "$0: Missing parameter, looking for an .autocp file"
+    if [ -z "$1" ]; then
+        echo "$0: Missing parameter, looking for an .autocp file"
         exit 1
     fi
 
-    echo -ne "$LIGHT_RED[*]$DEFAULT sudo cp $1 /etc/bash_completion.d/"
-    sudo cp $1 /etc/bash_completion.d/ >> /tmp/setup.log 2>&1
-    st $?
+    _exec sudo cp $1 /etc/bash_completion.d/
     exit 0
 }
 
-latex_()
+_latex()
 {
-    if [[ -z "$1" ]]; then
-        echo -e "$0: Missing argument, looking for a .tex file"
+    if [ -z "$1" ]; then
+        echo "$0: Missing argument, looking for a .tex file"
         exit 1
     fi
 
-    if [[ -z "$2" ]]; then
+    if [ -z "$2" ]; then
         more_than_one=1
     fi
 
@@ -103,18 +68,11 @@ latex_()
     do
         if [ -e "$file" ] ; then
             current=$(basename $file .tex)
-            echo -ne "$LIGHT_RED[*]$DEFAULT latex $current.tex"
-            latex $current.tex >> /tmp/setup.log 2>&1
-            st $?
+            _exec latex $current.tex
+            _exec dvips $current.dvi
+            _exec ps2pdf $current.ps
 
-            echo -ne "$LIGHT_RED[*]$DEFAULT dvips $current.dvi"
-            dvips $current.dvi >> /tmp/setup.log 2>&1
-            st $?
-
-            echo -ne "$LIGHT_RED[*]$DEFAULT ps2pdf $current.ps"
-            ps2pdf $current.ps >> /tmp/setup.log 2>&1
-            st $?
-            if [[ -z "$more_than_one" ]]; then
+            if [ -z "$more_than_one" ]; then
                 echo -e "======================"
             fi
         fi
@@ -190,7 +148,6 @@ latex_()
 #}
 
 if [[ $# != 0 ]]; then
-    echo "<= $(date --rfc-3339=seconds) => $1() <=========================" >> /tmp/setup.log
     case $1 in
         #cake)
         #cake
@@ -199,13 +156,13 @@ if [[ $# != 0 ]]; then
         #intalio
         #;;
         script)
-        script $2
+        _script $2
         ;;
         autocp)
-        autocp $2
+        _autocp $2
         ;;
         latex)
-        shift; latex_ "$@" # remove the latex
+        shift; _latex "$@" # remove the latex
         ;;
         -h | --help)
         usage

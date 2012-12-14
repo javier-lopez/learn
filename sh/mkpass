@@ -3,17 +3,26 @@
 #create a secure password with 8 chars by default
 #people may want to use $RANDOM to create tmp files
 
-if [[ ! $1 ]]; then
+usage()
+{
+    echo "Usage: `basename $0` [LENGHT]"
+    exit 0
+}
+
+if [ ! $1 ]; then
     mkpasswd_length=8
 else
-    mkpasswd_length=$1
+    #isnum?
+    #http://stackoverflow.com/questions/806906/how-do-i-test-if-a-variable-is-a-number-in-bash
+    case $1 in
+        ''|*[!0-9]*) echo Error, not a number:\"$1\";exit 1;;
+        *) mkpasswd_length=$1;; 
+    esac
 fi
 
 if [[ -e /usr/bin/xclip ]]; then
-    #todo: fix this shit
-    #strings /dev/urandom | grep -o '[[:alnum:]]' | head -n $mkpasswd_length | tr -d '\n' |tee /dev/fd/2| xclip;
-    #for some weird reason it avoids loging out cleanly
-    strings /dev/urandom | grep -o '[[:alnum:]]' | head -n $mkpasswd_length | tr -d '\n'; echo
+    #http://unix.stackexchange.com/questions/28503/how-can-i-send-stdout-to-multiple-commands
+    strings /dev/urandom | grep -o '[[:alnum:]]' | head -n $mkpasswd_length | tr -d '\n' | tee >(xclip); echo
 else
     strings /dev/urandom | grep -o '[[:alnum:]]' | head -n $mkpasswd_length | tr -d '\n'; echo
 fi

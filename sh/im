@@ -2,10 +2,22 @@
 #chilicuil <chilicuil@gmail.com> 2010
 #send and watch messages in your "ke estas haciendo?"
 
-# ======= Initial checks ============
+_notify ()
+{
+    if [[ $TERM == "linux" ]] || [[ $TERM == "dumb" ]]; then
+        notify-send -t 3000 "${@}"
+    else
+        echo -n "${1}: "
+        shift
+        while [ -n "$*" ]
+        do
+            echo "${1}"
+            shift
+        done
+    fi
+}
 if [[ ! -e /usr/bin/html2text ]]; then
-    echo "You need install html2text before using $0" 1>&2
-    echo "    In Ubuntu/Debian use: \$apt-get install html2text" 1>&2
+    _notify "You need to install html2text" "\$ sudo apt-get install html2text"
     exit 1
 fi
 
@@ -68,7 +80,7 @@ curl -s -c /tmp/MNc -d "_method=POST&data[User][email]=$MNron&data[User][pwd]=$M
 SIZE_log=`ls -l /tmp/MN.log | awk '{ print $5 }'`
 
 if [[ $SIZE_log -gt 0 ]]; then
-    echo "$0: user or password incorrect"
+    echo "$(basename $0): user or password incorrect"
     exit 0
 fi
 

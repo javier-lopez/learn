@@ -3,8 +3,8 @@
 
 usage()
 {
-    echo -e "Usage: `basename $0` img1 img2 imgN ..." >&2
-    echo -e "        img must be a valid image file: png, jpg" >&2
+    echo "Usage: `basename $0` img1 img2 imgN ..."
+    echo "        img must be a valid image file: png, jpg"
     exit 1
 }
 

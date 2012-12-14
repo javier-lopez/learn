@@ -2,21 +2,21 @@
 #P.L. Javier <fco.plj@gmail.com> 2010
 #translate strings
 
-PHRASE="$@"
+phrase="$@"
 #echo $PHRASE
 
 usage()
 {
-    echo "Usage: `basename $0` [-s|-e] phrase" >&2
-    echo >&2
-    echo "          -s     Spanish-English (default)" >&2
-    echo "          -o     Spanish-Portuguese" >&2
-    echo "          -e     English-Spanish" >&2
-    echo "          -p     Portugese-Spanish" >&2
+    echo "Usage: `basename $0` [-s|-e] phrase"
+    echo
+    echo "          -s     Spanish-English (default)"
+    echo "          -o     Spanish-Portuguese"
+    echo "          -e     English-Spanish"
+    echo "          -p     Portugese-Spanish"
     exit 1
 }
 
-if [[ -z "$PHRASE" ]]; then
+if [[ -z "$phrase" ]]; then
     usage
 fi
 
@@ -25,22 +25,22 @@ while getopts ":s:o:e:p:" option; do
         s)
           lng1="es";
           lng2="en";
-          PHRASE=$OPTARG
+          phrase=$OPTARG
           ;;
         o)
           lng1="es";
           lng2="pt";
-          PHRASE=$OPTARG
+          phrase=$OPTARG
           ;;
         e)
           lng1="en";
           lng2="es";
-          PHRASE=$OPTARG
+          phrase=$OPTARG
           ;;
         p)
           lng1="pt";
           lng2="es";
-          PHRASE=$OPTARG
+          phrase=$OPTARG
           ;;
         :)
           echo "Option -$OPTARG requires an argument"
@@ -59,6 +59,8 @@ if [[ -z "$lng1" ]]; then
 fi
 
 shift;shift;
-#echo $PHRASE
-wget -qO- "http://ajax.googleapis.com/ajax/services/language/translate?v=1.0&q=${PHRASE}&langpair=$lng1|$lng2" | sed 's/.*"translatedText":"\([^"]*\)".*}/\1\n/';
-#wget -qO- "http://ajax.googleapis.com/ajax/services/language/translate?v=1.0&q=${@// /+}&langpair=$lng1|$lng2" | sed 's/.*"translatedText":"\([^"]*\)".*}/\1\n/';
+
+#update 14-12-2012 05:06: thanks to johnraff > http://crunchbang.org/forums/viewtopic.php?id=17034
+result=$(curl -s -i --user-agent "" -d "sl=$lng1" -d "tl=$lng2" --data-urlencode "text=${phrase}" http://translate.google.com)
+encoding=$(awk '/Content-Type: .* charset=/ {sub(/^.*charset=["'\'']?/,""); sub(/[ "'\''].*$/,""); print}' <<<"$result")
+iconv -f $encoding <<<"$result" |  awk 'BEGIN {RS="</div>"};/<span[^>]* id=["'\'']?result_box["'\'']?/' | html2text -utf8

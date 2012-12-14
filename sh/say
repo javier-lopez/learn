@@ -5,11 +5,11 @@ PHRASE="$@"
 
 usage()
 {
-    echo "Usage: `basename $0` [-s|-p|-e] phrase" >&2
-    echo >&2
-    echo "          -s     Spanish (default)" >&2
-    echo "          -p     Portuguese" >&2
-    echo "          -e     English" >&2
+    echo "Usage: `basename $0` [-s|-p|-e] phrase"
+    echo
+    echo "          -s     Spanish (default)"
+    echo "          -p     Portuguese"
+    echo "          -e     English"
     exit 1
 }
 
@@ -50,4 +50,4 @@ if [[ -z "$lang" ]]; then
 fi
 
 shift;shift;
-mplayer -really-quiet "http://translate.google.com/translate_tts?ie=UTF-8&tl=$lang&q=$PHRASE" > /dev/null
+mplayer -really-quiet "http://translate.google.com/translate_tts?ie=UTF-8&tl=$lang&q=$PHRASE" > /dev/null 2>&1

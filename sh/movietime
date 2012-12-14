@@ -6,15 +6,15 @@
 #Resume time - resume normal display pm and suspend after set time.
 #0 = disabled, time in minutes
 resumetime=0
+
 if [ $resumetime = 0 ]; then 
   resumetime=1440 # Re-enable resume after a full day
 fi
 
 # Check that values for 'resumetime' are numbers
-if [ $(echo $resumetime | sed 's/^[-+0-9][0-9]*//' | wc -c) != 1 ]; then
-  echo "$warn variable 'resumetime' is not a number.  Exiting."
-  exit
-fi
+case $resumetime in
+    ''|*[!0-9]*) echo Error, \"$resumetime\" is not a number;exit 1;;
+esac
 
 # Name of suspend script
 tmploc="/tmp"
@@ -33,6 +33,37 @@ txtrst=$(tput sgr0)             # Reset
 info=${bldwht}*${txtrst}        # Feedback
 pass=${bldblu}*${txtrst}
 warn=${bldred}*${txtrst}
+
+usage()
+{
+    # Help message.
+    echo
+    echo "   $prog disables screen blanking and screensaver to allow viewing a video.  Running the program again will enable them.  If the 'resumetime' variable is set after that time $prog will resume normal powersaving values." | fmt -c -w 76
+    echo
+
+    # Display current values of power management and movietime.
+    suspinhtest=$(ps aux | grep -v grep | grep $suspinhscript)
+    suspinhval=$([ -n "$suspinhtest" ] && echo "Disabled" || echo "Desktop settings")
+    
+    # DPMS disabled information
+    echo "   ${txtbld}Current settings ${txtrst}(in minutes, 0 = disabled):"
+    if [[ "$dispdpms" == "Disabled" ]]; then
+      echo "   DPMS:         $dispdpms"
+      echo "   Suspend:      $suspinhval"
+    fi
+
+    # DPMS enabled information
+    if [[ "$dispdpms" == "Enabled" ]]; then
+      echo "   DPMS:         $dispdpms"
+      echo "   DPMS times:   Blank: ${dispblank}; Standby: ${dispstand}; Suspend: ${dispsusp}; Offtime: ${dispoff}"
+      echo "   Suspend:      $suspinhval"
+    fi
+    echo
+    echo "   ${txtbld}$prog settings${txtrst}:"
+    echo "   Resume after: $resumetimehr hours"
+    echo
+    exit 0
+}
 
 # Check that Xorg server is running
 if [[ -z $(ps aux | grep /usr/bin/X) ]]; then
@@ -58,39 +89,8 @@ resumetimehr=$(echo "scale=1;${resumetime}/60" | bc)
 
 # Display help
 case $1 in
-  -h | --help | h | help )
-    # Help message.
-    echo
-    echo "  $prog disables screen blanking and screensaver to allow viewing a video.  Running the program again will enable them.  If the 'resumetime' variable is set after that time $prog will resume normal powersaving values." | fmt -c -w 76
-    echo
-
-    # Display current values of power management and movietime.
-    suspinhtest=$(ps aux | grep -v grep | grep $suspinhscript)
-    suspinhval=$([ -n "$suspinhtest" ] && echo "Disabled" || echo "Desktop settings")
-    
-    # DPMS disabled information
-    echo "   ${txtbld}Current settings ${txtrst}(in minutes, 0 = disabled):"
-    if [[ "$dispdpms" == "Disabled" ]]; then
-      echo "   DPMS:         $dispdpms"
-      echo "   Suspend:      $suspinhval"
-    fi
-
-    # DPMS enabled information
-    if [[ "$dispdpms" == "Enabled" ]]; then
-      echo "   DPMS:         $dispdpms"
-      echo "   DPMS times:   Blank: ${dispblank}; Standby: ${dispstand}; Suspend: ${dispsusp}; Offtime: ${dispoff}"
-      echo "   Suspend:      $suspinhval"
-    fi
-    echo
-    echo "   ${txtbld}$prog settings${txtrst}:"
-    echo "   Resume after: $resumetimehr hours"
-    echo
-    exit
-    ;;
-  [a-g,i-z,A-G,I-Z,0-9,-]* )
-    echo " Use '-h' for help"
-    exit
-    ;;
+  -h | --help | h | help ) usage;;
+  [a-g,i-z,A-G,I-Z,0-9,-]* ) usage;;
 esac
 
 # Suspend inhibit script (must be run as seperate process)
@@ -113,13 +113,13 @@ if [[ "$dispdpms" == "Enabled" ]] && [ -z "$suspinhtest" ]; then
   chmod u+x "$suspinhscript"
   # Run script
   nohup "$suspinhscript" &> /dev/null &
-  echo "$pass $prog started, powersaving disabled."
+  echo "[+] $prog started"
 else
   # Enable blanking, screen power saving
   xset s on; xset +dpms
   # Kill script
   if [ -n $suspinhtest ]; then
-    echo "$info $prog stopped, powersaving enabled."
+    echo "[-] $prog stopped"
     kill -s 9 $(pgrep movietime-susp) &> /dev/null
   fi
 fi

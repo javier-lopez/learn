@@ -24,10 +24,10 @@ YELLOW=$'\E[0;33m'
 
 usage()
 {
-    echo "Usage: `basename $0` [-c] pattern" >&2
-    echo >&2
-    echo "          -c     Colorize the output" >&2
-    exit 1
+    echo "Usage: `basename $0` [-c] pattern"
+    echo
+    echo "          -c     Colorize the output"
+    exit 0
 }
 
 if [[ -z "$PATTERN" ]]; then

@@ -7,7 +7,7 @@ program="$1"
 usage()
 {
     echo "Usage: `basename $0` foo_program" >&2
-    exit 1
+    exit 0
 }
 
 if [[ -z "$program" ]]; then

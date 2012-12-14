@@ -9,9 +9,9 @@ BACKUP_TO="/media/disk"
 
 usage()
 {
-    echo -e "Usage: `basename $0` [-y]" >&2
-    echo -e "           -y       Say yes to all questions" >&2
-    exit 1
+    echo "Usage: `basename $0` [-y]"
+    echo "           -y       Say yes to all questions"
+    exit 0
 }
 
 while getopts ":y" option; do

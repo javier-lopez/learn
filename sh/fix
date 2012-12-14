@@ -3,206 +3,103 @@
 #fixes common problems in my system
 
 #===================================================
-VERSION="0.0.1"
-#I love colors!
-BLUE=$'\E[0;34m'
-DEFAULT=$'\E[0m'
-RED=$'\E[0;31m'
-BROWN=$'\E[0;33m'
-CYAN=$'\E[0;36m'
-DARK_GREY=$'\E[1;30m'
-GREEN=$'\E[0;32m'
-LIGHT_BLUE=$'\E[1;34m'
-LIGHT_CYAN=$'\E[1;36m'
-LIGHT_GREEN=$'\E[1;32m'
-LIGHT_GREY=$'\E[0;37m'
-LIGHT_PURPLE=$'\E[1;35m'
-LIGHT_RED=$'\E[1;31m'
-PURPLE=$'\E[1;35m'
-WHITE=$'\E[1;37m'
-YELLOW=$'\E[0;33m'
-
-#fancy output, taken mainly from /etc/lsb-base-logging.sh
-COLS=`tput cols`
-if [ "$COLS" ] && [ "$COLS" -gt 6 ]; then
-    COL=`expr $COLS - 8`
-else
-    COLS=80
-    COL=72
-fi
-
-st()
-{
-    printf "\r"
-    tput hpa $COL
-    if [ $1 -ne 0 ]; then
-            echo -e "$LIGHT_RED[FAILED]$DEFAULT"
-            exit 1
-        else
-            echo -e "$LIGHT_GREEN[DONE]$DEFAULT"
-    fi
-}
-#===================================================
 
 #Don't forget update this when adding new functions
 usage()
 {
-  echo -e "Usage: `basename $0` module" >&2
-  echo -e
-  echo -e "  -h  or --help     List available arguments and usage (this message)." >&2
-  echo -e "  -v  or --version  Print version." >&2
-  echo -e
-  echo -e "  apache            Moves /etc/init.d/apache2.1 to apache2." >&2
-  echo -e "  ipw2200           Restart the ipw2200 module." >&2
-  echo -e "  wl                Restart the wl module." >&2
-  echo -e "  iwlagn            Restart the iwlagn module." >&2
-  echo -e "  mpd               Restart mpd." >&2
-  echo -e "  webcam            Fix webcam - thinkpad" >&2
-  echo -e
-  echo -e "Logs are saved in /tmp/fix.log" >&2
-  exit 1
+  echo "Usage: `basename $0` module"
+  echo
+  echo "  apache            Moves /etc/init.d/apache2.1 to apache2"
+  echo "  ipw2200           Restart the ipw2200 module"
+  echo "  wl                Restart the wl module"
+  echo "  iwlagn            Restart the iwlagn module"
+  echo "  mpd               Restart mpd"
+  echo "  webcam            Fix webcam - thinkpad"
+  echo
+  exit 0
 }
 
-apache ()
+_exec()
 {
-    echo -ne "$LIGHT_RED[*]$DEFAULT sudo mv -v /etc/init.d/apache2.1 /etc/init.d/apache2 "
-    sudo mv -v /etc/init.d/apache2.1 /etc/init.d/apache2 >> /tmp/fix.log 2>&1
-    st $?
-
-    echo -ne "$LIGHT_RED[*]$DEFAULT sudo /etc/init.d/apache2 start "
-    sudo /etc/init.d/apache2 start >> /tmp/fix.log 2>&1
-    st $?
+    status=$?
+    if [ $status != 0 ]; then
+        exit $status
+    fi
+    echo "[+] $@"
+    $@
 }
 
-ipw2200 ()
-{
-    echo -ne "$LIGHT_RED[*]$DEFAULT sudo rmmod ipw2200 "
-    sudo rmmod ipw2200 >> /tmp/fix.log 2>&1
-    st $?
 
-    echo -ne "$LIGHT_RED[*]$DEFAULT sudo modprobe ipw2200 "
-    sudo modprobe ipw2200 >> /tmp/fix.log 2>&1
-    st $?
+_apache ()
+{
+    _exec sudo mv -v /etc/init.d/apache2.1 /etc/init.d/apache2
+    _exec sudo /etc/init.d/apache2 start
 }
 
-wl ()
+_ipw2200 ()
 {
-    echo -ne "$LIGHT_RED[*]$DEFAULT sudo rmmod wl "
-    sudo rmmod wl >> /tmp/fix.log 2>&1
-    st $?
-
-    echo -ne "$LIGHT_RED[*]$DEFAULT sudo service wicd stop "
-    sudo service wicd stop >> /tmp/fix.log 2>&1
-    st $?
-
-    echo -ne "$LIGHT_RED[*]$DEFAULT sleep 3s "
-    sleep 3s >> /tmp/fix.log 2>&1
-    st $?
-
-    echo -ne "$LIGHT_RED[*]$DEFAULT sudo service wicd start "
-    sudo service wicd start >> /tmp/fix.log 2>&1
-    st $?
-
-    echo -ne "$LIGHT_RED[*]$DEFAULT sudo modprobe wl "
-    sudo modprobe wl  >> /tmp/fix.log 2>&1
-    st $?
+    _exec sudo rmmod ipw2200
+    _exec sudo modprobe ipw2200
 }
 
-iwlagn()
+_wl ()
 {
-    echo -ne "$LIGHT_RED[*]$DEFAULT sudo rmmod iwlagn "
-    sudo rmmod iwlwifi >> /tmp/fix.log 2>&1
-    st $?
-
-    echo -ne "$LIGHT_RED[*]$DEFAULT sudo service wicd stop "
-    sudo service wicd stop >> /tmp/fix.log 2>&1
-    st $?
-
-    echo -ne "$LIGHT_RED[*]$DEFAULT sleep 3s "
-    sleep 3s >> /tmp/fix.log 2>&1
-    st $?
-
-    echo -ne "$LIGHT_RED[*]$DEFAULT sudo service wicd start "
-    sudo service wicd start >> /tmp/fix.log 2>&1
-    st $?
-
-    echo -ne "$LIGHT_RED[*]$DEFAULT sudo modprobe iwlagn "
-    sudo modprobe iwlwifi >> /tmp/fix.log 2>&1
-    st $?
+    _exec sudo rmmod wl
+    _exec sudo service wicd stop
+    _exec sleep 3s
+    _exec sudo service wicd start
+    _exec sudo modprobe wl
 }
 
-mpd()
+_iwlagn()
 {
-    echo -ne "$LIGHT_RED[*]$DEFAULT mpc clear"
-    mpc clear >> /tmp/fix.log 2>&1
-    st $?
-
-    echo -ne "$LIGHT_RED[*]$DEFAULT sudo alsa force-reload"
-    sudo alsa force-reload  >> /tmp/fix.log 2>&1
-    #st $?
-
-    echo -ne "$LIGHT_RED[*]$DEFAULT rm -rf /var/lib/mpd/tag_cache"
-    rm -rf /var/lib/mpd/tag_cache
-    st $?
-
-    echo -ne "$LIGHT_RED[*]$DEFAULT conky |/home/chilicuil/code/dzen/dzen2 -dock -fn -xos4-terminus-medium-r-*-*-12-*-*-*-*-*-iso10646-1 -ta r -fg "#999999" -bg "#000000" & "
-    conky |/home/chilicuil/code/dzen/dzen2 -dock -fn -xos4-terminus-medium-r-*-*-12-*-*-*-*-*-iso10646-1 -ta r -fg "#999999" -bg "#000000" &
-    st $?
-
-    echo -ne "$LIGHT_RED[*]$DEFAULT sudo service mpd start-create-db"
-    sudo service mpd start-create-db >> /tmp/fix.log 2>&1
-    st $?
+    _exec sudo rmmod iwlagn
+    _exec sudo service wicd stop
+    _exec sleep 3s
+    _exec sudo service wicd start
+    _exec sudo modprobe iwlagn
 }
 
-webcam()
+_mpd()
 {
-    echo -ne "$LIGHT_RED[*]$DEFAULT sudo chmod o+rw /dev/video0 "
-    sudo chmod o+rw /dev/video0 >> /tmp/fix.log 2>&1
-    st $?
+    _exec mpc clear
+    _exec rm -rf /var/lib/mpd/tag_cache
+    _exec sudo service mpd start-create-db
+}
+
+_webcam()
+{
+    _exec sudo chmod o+rw /dev/video0
 }
 
 if [ $# != 0 ]; then
-    echo "<= $(date --rfc-3339=seconds) => $1() <=========================" >> /tmp/fix.log
     case $1 in
         apache)
-        apache
-        exit 1
+        _apache
         ;;
         ipw2200)
-        ipw2200
-        exit 1
+        _ipw2200
         ;;
         wl)
-        wl
-        exit 1
+        _wl
         ;;
         iwlagn)
-        iwlagn
-        exit 1
+        _iwlagn
         ;;
         mpd)
-        mpd
-        exit 1
+        _mpd
         ;;
         webcam)
-        webcam
-        exit 1
+        _webcam
         ;;
         -h | --help)
         usage
-        exit 0
-        ;;
-        -v | --version)
-        echo $VERSION
-        exit 0
         ;;
         *)
         echo -e "Error, unknown option: \"$1\""
         usage
-        exit 1
         ;;
     esac
 else
     usage
-    exit 0
 fi

@@ -1,11 +1,25 @@
 #!/usr/bin/env bash
 #resets ip on thompson routers
+#TODO 14-12-2012 03:52 >> add color, status
 
-# ======= Initial checks ============
+_notify ()
+{
+    if [[ $TERM == "linux" ]] || [[ $TERM == "dumb" ]]; then
+        notify-send -t 3000 "${@}"
+    else
+        echo -n "${1}: "
+        shift
+        while [ -n "$*" ]
+        do
+            echo "${1}"
+            shift
+        done
+    fi
+}
+
 if [[ ! -e /usr/bin/expect ]]; then
-    echo "You need install expect before using $0"
-    echo "    In Ubuntu/Debian use: \$ sudo apt-get install expect"
-    exit 0
+    _notify "You need to install expect" "\$ sudo apt-get install expect"
+    exit 1
 fi
 
 echo "Resetting router..."

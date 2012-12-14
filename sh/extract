@@ -3,14 +3,24 @@
 
 usage()
 {
-    echo -e "Usage: `basename $0` [-s] FILES ..." >&2
-    echo -e "           -s       quiet mode" >&2
-    exit 1
+    echo "Usage: `basename $0` [-s] FILES ..."
+    echo "           -s       quiet mode"
+    exit 0
 }
 
 if [ $# -eq 0 ] ; then # no files to extract
     usage
 fi
+
+_exec()
+{
+    status=$?
+    if [ $status != 0 ]; then
+        exit $status
+    fi
+    echo "[+] $@"
+    $@
+}
 
 extract()
 {
@@ -20,64 +30,49 @@ extract()
             if [ -f "$FILE" ] ; then
                 case "$FILE" in
                     *.deb)
-                        echo "[+] ar xv $FILE"
-                        ar xv "$FILE"
+                        _exec ar xv $FILE
                         ;;
                     *.tar.bz2)
-                        echo "[+] tar jxvf $FILE"
-                        tar jxvf "$FILE"
+                        _exec tar jxvf $FILE
                         ;;
                     *.tar.gz)
-                        echo "[+] tar zxvf $FILE"
-                        tar zxvf "$FILE"
+                        _exec tar zxvf $FILE
                         ;;
                     *.bz2)
-                        echo "[+] bunzip2 -v $FILE"
-                        bunzip2 -v "$FILE"
+                        _exec bunzip2 -v $FILE
                         ;;
                     *.rar)
-                        echo "[+] rar x $FILE"
-                        rar x "$FILE"
+                        _exec rar x $FILE
                         ;;
                     *.gz)
-                        echo "[+] gunzip -v $FILE"
-                        gunzip -v "$FILE"
+                        _exec gunzip -v $FILE
                         ;;
                     *.tar)
-                        echo "[+] tar xvf $FILE"
-                        tar xvf "$FILE"
+                        _exec tar xvf $FILE
                         ;;
                     *.tbz2)
-                        echo "[+] tar jxvf $FILE"
-                        tar jxvf "$FILE"
+                        _exec tar jxvf $FILE
                         ;;
                     *.tgz)
-                        echo "[+] tar zxvf $FILE"
-                        tar zxvf "$FILE"
+                        _exec tar zxvf $FILE
                         ;;
                     *.zip)
-                        echo "[+] unzip $FILE"
-                        unzip "$FILE"
+                        _exec unzip $FILE
                         ;;
                     *.Z)
-                        echo "[+] uncompress $FILE"
-                        uncompress "$FILE"
+                        _exec uncompress $FILE
                         ;;
                     *.7z)
-                        echo "[+] 7z x $FILE"
-                        7z x "$FILE"
+                        _exec 7z x $FILE
                         ;;
                     *.tar.lzma)
-                        echo "[+] tar --lzma -xvf $FILE"
-                        tar --lzma -xvf "$FILE"
+                        _exec tar --lzma -xvf $FILE
                         ;;
                     *.tar.xz)
-                        echo "[+] tar -Jxvf $FILE"
-                        tar -Jxvf "$FILE"
+                        _exec tar -Jxvf $FILE
                         ;;
                     *.jar)
-                        echo "[+] jar xvf $FILE"
-                        jar xvf "$FILE"
+                        _exec jar xvf $FILE
                         ;;
                     *)
                         echo "'$FILE' is not a valid compress file"
@@ -90,64 +85,49 @@ extract()
             if [ -f "$FILE" ] ; then
                 case "$FILE" in
                     *.deb)
-                        echo "[+] ar x $FILE"
-                        ar x "$FILE"
+                        _exec ar x $FILE
                         ;;
                     *.tar.bz2)
-                        echo "[+] tar jxf $FILE"
-                        tar jxf "$FILE"
+                        _exec tar jxf $FILE
                         ;;
                     *.tar.gz)
-                        echo "[+] tar zxf $FILE"
-                        tar zxf "$FILE"
+                        _exec tar zxf $FILE
                         ;;
                     *.bz2)
-                        echo "[+] bunzip2 $FILE"
-                        bunzip2 "$FILE"
+                        _exec bunzip2 $FILE
                         ;;
                     *.rar)
-                        echo "[+] rar x $FILE"
-                        rar x "$FILE"
+                        _exec rar x $FILE
                         ;;
                     *.gz)
-                        echo "[+] gunzip $FILE"
-                        gunzip "$FILE"
+                        _exec gunzip $FILE
                         ;;
                     *.tar)
-                        echo "[+] tar xf $FILE"
-                        tar xf "$FILE"
+                        _exec tar xf $FILE
                         ;;
                     *.tbz2)
-                        echo "[+] tar jxf $FILE"
-                        tar jxf "$FILE"
+                        _exec tar jxf $FILE
                         ;;
                     *.tgz)
-                        echo "[+] tar zxf $FILE"
-                        tar zxf "$FILE"
+                        _exec tar zxf $FILE
                         ;;
                     *.zip)
-                        echo "[+] unzip $FILE"
-                        unzip "$FILE"
+                        _exec unzip $FILE
                         ;;
                     *.Z)
-                        echo "[+] uncompress $FILE"
-                        uncompress "$FILE"
+                        _exec uncompress $FILE
                         ;;
                     *.7z)
-                        echo "[+] 7z x $FILE"
-                        7z x "$FILE"
+                        _exec 7z x $FILE
                         ;;
                     *.tar.lzma)
-                        echo "[+] tar --lzma -xvf $FILE"
-                        tar --lzma -xf "$FILE"
+                        _exec tar --lzma -xvf $FILE
                         ;;
                     *.tar.xz)
-                        echo "[+] tar -Jxf $FILE"
-                        tar -Jxf "$FILE"
+                        _exec tar -Jxf $FILE
                         ;;
                     *.jar)
-                        echo "[+] jar xf $FILE"
-                        jar xf "$FILE"
+                        _exec jar xf $FILE
                         ;;
                     *)
                         echo "'$FILE' is not a valid compress file"

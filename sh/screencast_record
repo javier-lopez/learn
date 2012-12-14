@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #chilicuil <chilicuil@gmail.com> 2012 - records screecasts using ffmpeg
 #./screecasts_record [start|stop]
-#TODO 08-12-2012 07:54 >> different between VM and i3
+#TODO 14-12-2012 03:52 >> add color, status
 
 #####################################################
 #ffmpeg x11grab options
@@ -42,12 +42,37 @@ common="$hd720_followscreen -r 24  -i :0.0 -vcodec flashsv -y"
 
 _usage()
 {
-    echo -e "Usage: `basename $0` [start|stop] [FILE.mkv]" >&2
-    echo -e "           start      start recording" >&2
-    echo -e "           stop       stop recording" >&2
+    echo "Usage: `basename $0` [start|stop] [FILE.mkv]"
+    echo "           start      start recording"
+    echo "           stop       stop recording"
     echo
-    echo -e "If not file is specified it'll generate a random name" >&2
-    exit 1
+    echo "If not file is specified it'll generate a random name"
+    exit 0
+}
+
+_exec()
+{
+    status=$?
+    if [ $status != 0 ]; then
+        exit $status
+    fi
+    echo "[+] $@"
+    $@
+}
+
+_notify ()
+{
+    if [[ $TERM == "linux" ]] || [[ $TERM == "dumb" ]]; then
+        notify-send -t 3000 "${@}"
+    else
+        echo -n "${1}: "
+        shift
+        while [ -n "$*" ]
+        do
+            echo "${1}"
+            shift
+        done
+    fi
 }
 
 _countdown ()
@@ -57,10 +82,10 @@ _countdown ()
     #notify-send -t 3000 "${@}" - using xmessage instead
     if [[ $TERM == "linux" ]] || [[ $TERM == "dumb" ]]; then
         if [[ -d $HOME/data/musnd ]]; then
-            mplayer ~/data/musnd/Sounds/num$1.ogg >> /dev/null 2>&1
+            mplayer $HOME/data/musnd/Sounds/num$1.ogg >> /dev/null 2>&1
             sleep 1
             for ((i=$1-1; i>=1; i--)); do
-                mplayer ~/data/musnd/Sounds/num$i.ogg >> /dev/null 2>&1
+                mplayer $HOME/data/musnd/Sounds/num$i.ogg >> /dev/null 2>&1
                 sleep 1
             done
         else
@@ -75,26 +100,13 @@ _countdown ()
             killall notify-osd
         fi
     else
-        echo -n "[+] $1"
+        echo -n "    $1"
         sleep 1
         for ((i=$1-1; i>=1; i--)); do
             printf "\b%d" $i
             sleep 1
         done
-    fi
-}
-
-_notify ()
-{
-    if [[ $TERM == "linux" ]] || [[ $TERM == "dumb" ]]; then
-        notify-send -t 3000 "${@}"
-    else
-        while [ -n "$*" ]
-	do
-	   echo "${1}"
-	   shift
-	done
-        #echo "${@}"
+        printf "\r"
     fi
 }
 
@@ -132,15 +144,12 @@ fi
 
 _notify "[+] Recording desktop" "to stop it, run \$ screencast_record stop"
 _countdown 3
-
-ffmpeg $mic $common $file
+_exec ffmpeg $mic $common $file
 
 if [[ $? == "1" ]]; then
     _notify "[+] No mic available" "recording only video..."
-    #xmessage -center -timeout 2 "[+] No mic available" "recording only video..."
     _countdown 3
-
-    ffmpeg $common $file
+    _exec ffmpeg $common $file
 fi
 
 _notify "[+] Complete" "$file"

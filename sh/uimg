@@ -1,17 +1,30 @@
 #!/usr/bin/env bash
 #chilicuil <chilicuil@gmail.com> 2010
 #uploads imgs to your account at mononeurona.org
-# $ uimg img.png
+#$ uimg img.png
 
-# ======= Initial checks ============
+_notify ()
+{
+    if [[ $TERM == "linux" ]] || [[ $TERM == "dumb" ]]; then
+        notify-send -t 3000 "${@}"
+    else
+        echo -n "${1}: "
+        shift
+        while [ -n "$*" ]
+        do
+            echo "${1}"
+            shift
+        done
+    fi
+}
+
 if [[ ! -e /usr/bin/html2text ]]; then
-    echo "You need install html2text before using $0"
-    echo "    In Ubuntu/Debian use: \$apt-get install html2text"
+    _notify "You need to install html2text" "\$ sudo apt-get install html2text"
     exit 1
 fi
 
 if [[ ! $1 ]]; then
-    echo "$0: You must specify a file to upload."
+    echo "$(basename $0): you must specify a file to upload"
     exit 1
 fi
 
@@ -37,7 +50,7 @@ curl -s -c /tmp/MNc -d "_method=POST&data[User][email]=$MNron&data[User][pwd]=$M
 SIZE_log=`ls -l /tmp/MN.log | awk '{ print $5 }'`
 
 if [[ $SIZE_log -gt 0 ]]; then
-    echo "$0: user or password incorrect"
+    echo "$(basename $0): user or password incorrect"
     exit 0
 fi
 
@@ -46,7 +59,7 @@ curl -s -b /tmp/MNc -F "data[Image][file]=@$MNimg;type=image/png"  http://monone
 MN_url=`cat /tmp/MN.img`
 
 if [[ -e /usr/bin/xclip ]]; then
-    echo "http://www.mononeurona.org/img/imgusers/"$MN_url | tee /dev/fd/2 | xclip
+    echo "http://www.mononeurona.org/img/imgusers/"$MN_url | tee >(xclip)
 else
     echo "http://www.mononeurona.org/img/imgusers/"$MN_url
 fi
