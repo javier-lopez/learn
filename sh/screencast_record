@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 #chilicuil <chilicuil@gmail.com> 2012 - records screecasts using ffmpeg
-#./screecasts_record start
+#./screecasts_record [start|stop]
 #TODO 08-12-2012 07:54 >> different between VM and i3
-#TODO 08-12-2012 07:54 >> find out what is the best for youtube
 
 #####################################################
 #ffmpeg x11grab options
@@ -22,17 +21,26 @@
 keyword=$1 #start | stop
 file=$2    #file name
 
+width=$(xwininfo -root | grep -m1 -i 'width' | awk '{print $2;}')
+height=$(xwininfo -root | grep -m1 -i 'height' | awk '{print $2;}')
+
 fullscreen="-f x11grab -s $(xwininfo -root | grep 'geometry' | awk '{print $2;}')"
+vga_followscreen="-f x11grab -s vga -follow_mouse 200"
+vga="-f x11grab -s vga"
 svga_followscreen="-f x11grab -s svga -follow_mouse 250"
 svga="-f x11grab -s svga"
 xga_followscreen="-f x11grab -s xga -follow_mouse 350"
 xga="-f x11grab -s xga"
-custom_followscreen="-f x11grab -s 840x680 -follow_mouse 350"
-custom="-f x11grab -s 840x680"
+hd720_followscreen="-f x11grab -s hd720 -follow_mouse 350"
+hd720="-f x11grab -s hd720"
 
-common="$xga_followscreen -r 24  -i :0.0 -vcodec flashsv -y"
+#16:9 best for youtube
+custom_followscreen="-f x11grab -s 1088x612 -follow_mouse 350"
+custom="-f x11grab -s 1088x612"
 
-usage()
+common="$hd720_followscreen -r 24  -i :0.0 -vcodec flashsv -y"
+
+_usage()
 {
     echo -e "Usage: `basename $0` [start|stop] [FILE.mkv]" >&2
     echo -e "           start      start recording" >&2
@@ -42,7 +50,7 @@ usage()
     exit 1
 }
 
-countdown ()
+_countdown ()
 {
     local i 
     #https://bugs.launchpad.net/ubuntu/+source/notify-osd/+bug/390508
@@ -76,14 +84,31 @@ countdown ()
     fi
 }
 
-notify ()
+_notify ()
 {
     if [[ $TERM == "linux" ]] || [[ $TERM == "dumb" ]]; then
         notify-send -t 3000 "${@}"
     else
-        echo "${@}"
+        while [ -n "$*" ]
+	do
+	   echo "${1}"
+	   shift
+	done
+        #echo "${@}"
     fi
 }
+
+if [[ ! -e /usr/bin/ffmpeg ]]; then
+    _notify "You need install ffmpeg before using `basename $0`" "In Ubuntu/Debian use: \$ sudo apt-get install ffmpeg"
+    exit 1
+fi
+
+if [[ $(echo $common | grep -i "hd720") ]]; then
+    if [[ $height -lt 720 ]]; then
+	_notify "[-] hd720 is not supported in your hw" "max width=$width / max height=$height"
+	exit 1
+    fi
+fi
 
 if [ -z $(pidof pulseaudio) ]; then
     mic="-f alsa -i hw:0,0 -acodec pcm_s16le"
@@ -98,24 +123,24 @@ if [[ ${keyword} == "stop" ]]; then
     fi
     exit 0
 elif [[ ! ${keyword} == "start" ]]; then
-    usage
+    _usage
 fi
 
 if [[ -z "$file" ]]; then
     file=$HOME/`</dev/urandom tr -dc A-Za-z0-9 | head -c 8`.mkv
 fi
 
-notify "[+] Recording desktop" "press [Ctrl-Alt][+] to finish or ./screencast_record stop"
-countdown 3
+_notify "[+] Recording desktop" "to stop it, run \$ screencast_record stop"
+_countdown 3
 
 ffmpeg $mic $common $file
 
 if [[ $? == "1" ]]; then
-    #notify "[+] No mic available" "recording only video..."
-    xmessage -center -timeout 2 "[+] No mic available" "recording only video..."
-    countdown 3
+    _notify "[+] No mic available" "recording only video..."
+    #xmessage -center -timeout 2 "[+] No mic available" "recording only video..."
+    _countdown 3
 
     ffmpeg $common $file
 fi
 
-notify "[+] Complete" "$file"
+_notify "[+] Complete" "$file"
