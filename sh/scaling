@@ -1,0 +1,37 @@
+#!/bin/bash
+#https://bbs.archlinux.org/viewtopic.php?pid=431775#p431775
+
+#TODO 14-12-2012 03:52 >> add color, status
+
+usage()
+{
+    echo "Usage:  $(basename $0) get"
+    echo "        $(basename $0) set powersave|conservative|ondemand|performance"
+    exit 0
+}
+
+_exec()
+{
+    status=$?
+    if [ $status != 0 ]; then
+        exit $status
+    fi
+    echo -n "[+] $@: "
+    $@
+}
+
+if test "$1" = "get"
+then
+        _exec cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+elif test "$1" = "set"
+then
+    if test "$2" = "powersave" || test "$2" = "conservative" || \
+            test "$2" = "ondemand" || test "$2" = "performance"
+    then
+            sudo sh -c "echo -n '$2' > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor"
+    else
+        usage
+    fi
+else
+    usage
+fi
