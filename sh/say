@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #chilicuil <chilicuil@gmail.com> 2012
-#$ foo | say
-#$ foo | say -e
+#$ cat file_spanish | say
+#$ cat file_english | say -e
 #$ say -e "something"
 
 usage()
@@ -63,9 +63,18 @@ done
 if [[ -z "$lang" ]]; then
     lang="es";
     if [ -z "$PHRASE" ]; then
-        PHRASE=$@
+        PHRASE="$@"
     fi
 fi
 
+while [ ${#PHRASE} -gt 100 ]; do
+    tmp=$(echo -ne ${PHRASE:0:100} | xxd -plain | tr -d '\n' | sed 's/\(..\)/%\1/g')
+    mplayer -really-quiet "http://translate.google.com/translate_tts?ie=UTF-8&tl=$lang&q=$tmp" > /dev/null 2>&1
+    PHRASE=${PHRASE:100:${#PHRASE}}
+    #http://stackoverflow.com/questions/4988155/is-there-a-bash-command-that-can-tell-the-size-of-a-shell-variable
+done
+
+#http://stackoverflow.com/questions/296536/urlencode-from-a-bash-script
+PHRASE=$(echo -ne $PHRASE | xxd -plain | tr -d '\n' | sed 's/\(..\)/%\1/g')
 shift;shift;
 mplayer -really-quiet "http://translate.google.com/translate_tts?ie=UTF-8&tl=$lang&q=$PHRASE" > /dev/null 2>&1

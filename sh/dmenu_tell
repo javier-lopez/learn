@@ -6,26 +6,42 @@
 DMENU='dmenu -p > -i -nb #000000 -nf #ffffff -sb #000000 -sf #aaffaf'
 phrase=$($DMENU <&- && echo)
 
-
-string='I: Hi theres';
-
+if [ -f /usr/bin/xclip ]; then
+    clipboard="/usr/bin/xclip -o"
+elif [ -f /usr/bin/sselp ]; then
+    clipboard="/usr/bin/sselp"
+else
+    clipboard="ops"
+fi
 
 if [ -z "${phrase}" ]; then
     exit 0;
 else
-    if [[ "${phrase}" == i.* ]] ; then
+    if [[ "${phrase}" == e.* ]] ; then
         #remove first 2 chars
-        phrase=${phrase#"i"}
+        phrase=${phrase#"e"}
         phrase=${phrase#"."}
+        if [[ "${phrase}" == -* ]] ; then
+            phrase=$($clipboard)
+        fi
         say -e "${phrase}"
     elif [[ "${phrase}" == p.* ]] ; then
         phrase=${phrase#"p"}
         phrase=${phrase#"."}
+        if [[ "${phrase}" == -* ]] ; then
+            phrase=$($clipboard)
+        fi
         say -p "${phrase}"
     elif [[ "${phrase}" == s.* ]] ; then
         phrase=${phrase#"s"}
         phrase=${phrase#"."}
+        if [[ "${phrase}" == -* ]] ; then
+            phrase=$($clipboard)
+        fi
         say -s "${phrase}"
+    elif [[ "${phrase}" == - ]] ; then
+        phrase=$($clipboard)
+        say -e "${phrase}"
     else
         say "${phrase}"
     fi
