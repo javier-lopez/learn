@@ -36,8 +36,11 @@ _script()
         exit 1
     fi
 
-    _exec chmod +x $1
-    _exec sudo cp $1 /usr/local/bin
+    for file
+    do
+        _exec chmod +x $file
+        _exec sudo cp $file /usr/local/bin
+    done
 
     exit 0
 }
@@ -49,7 +52,10 @@ _autocp()
         exit 1
     fi
 
-    _exec sudo cp $1 /etc/bash_completion.d/
+    for file
+    do
+        _exec sudo cp $file /etc/bash_completion.d/
+    done
     exit 0
 }
 
@@ -156,13 +162,13 @@ if [[ $# != 0 ]]; then
         #intalio
         #;;
         script)
-        _script $2
+        shift; _script $@
         ;;
         autocp)
-        _autocp $2
+        shift; _autocp $@
         ;;
         latex)
-        shift; _latex "$@" # remove the latex
+        shift; _latex "$@"
         ;;
         -h | --help)
         usage

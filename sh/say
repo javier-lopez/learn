@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 #chilicuil <chilicuil@gmail.com> 2012
-
-PHRASE="$@"
+#$ foo | say
+#$ foo | say -e
+#$ say -e "something"
 
 usage()
 {
@@ -13,30 +14,44 @@ usage()
     exit 1
 }
 
-if [[ -z "$PHRASE" ]]; then
-    usage
+if [ -t 0 ]; then
+    #http://tldp.org/LDP/abs/html/fto.html
+    if [ -z "$1" ]; then
+        usage
+    fi
+else
+    #http://www.unix.com/302331138-post4.html
+    read PHRASE < /dev/stdin
 fi
 
-while getopts ":s:p:e:" option; do
+while getopts ":spe" option; do
     case $option in
         s)
           lang="es";
           shift
-          PHRASE="$@"
+          if [ -z "$PHRASE" ]; then
+            PHRASE="$@"
+          fi
           ;;
         p)
           lang="pt";
-          shift 
+          shift
+          if [ -z "$PHRASE" ]; then
           PHRASE="$@"
+          fi
           ;;
         e)
           lang="en";
           shift
+          if [ -z "$PHRASE" ]; then
           PHRASE="$@"
+          fi
           ;;
         :)
-          echo "Option -$OPTARG requires an argument"
-          usage
+          if [ -z "$PHRASE" ]; then
+              echo "Option -$OPTARG requires an argument"
+              usage
+          fi
           ;;
         \?)
           echo "Invalid option: -$OPTARG"
@@ -47,6 +62,9 @@ done
 
 if [[ -z "$lang" ]]; then
     lang="es";
+    if [ -z "$PHRASE" ]; then
+        PHRASE=$@
+    fi
 fi
 
 shift;shift;
