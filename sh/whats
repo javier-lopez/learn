@@ -1,0 +1,40 @@
+#!/bin/bash
+#define words using wikipedia over dns
+#https://dgl.cx/wikipedia-dns
+
+word="$1"
+
+usage()
+{
+    echo "Usage: `basename $0` word" >&2
+    exit 0
+}
+
+_whats()
+{
+    if [ -z "$1" ]; then
+        echo "$0: Missing argument"
+        exit 1
+    fi
+
+    if [ -z "$2" ]; then
+        more_than_one=1
+    fi
+
+    for word
+    do
+        response=$(dig +short txt $word.wp.dg.cx)
+        echo "$response"
+        if [ -z "$more_than_one" ]; then
+            echo
+            echo ":::::::::::::::::::::::::::::::::::::::::::::::::"
+            echo
+        fi
+    done
+}
+
+if [ -z "$word" ]; then
+    usage
+fi
+
+_whats "$@"
