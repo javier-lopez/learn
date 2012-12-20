@@ -1,0 +1,36 @@
+#!/bin/bash
+#https://wiki.archlinux.org/index.php/Feh#File_Browser_Image_Launcher
+#it will display your selected image in $viewer, but it will enable you to browse all other images in the directory as well
+
+if [ -f /usr/bin/sxiv ]; then
+    viewer=sxiv
+elif [ -f /usr/bin/feh ]; then
+    viewer=feh
+else
+    echo "[-] No viewer available, install sxiv or feh to run this script"
+    exit 255
+fi
+
+shopt -s nullglob
+
+if [[ ! -f $1 ]]; then
+    echo "$0: first argument is not a file" >&2
+    exit 1
+fi
+
+file=$(basename -- "$1")
+dir=$(dirname -- "$1")
+arr=()
+arg=$1
+shift
+
+cd -- "$dir"
+
+for i in *; do
+    [[ -f $i ]] || continue
+    arr+=("$i")
+    [[ $i == $file ]] && c=$((${#arr[@]} - 1))
+done
+
+echo "[+] $viewer $arg"
+exec $viewer -f "${arr[@]:c}" "${arr[@]:0:c}"
