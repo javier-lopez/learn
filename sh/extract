@@ -19,7 +19,7 @@ _exec()
         exit $status
     fi
     echo "[+] $@"
-    $@
+    "$@"
 }
 
 extract()
@@ -30,49 +30,49 @@ extract()
             if [ -f "$FILE" ] ; then
                 case "$FILE" in
                     *.deb)
-                        _exec ar xv $FILE
+                        _exec ar xv "$FILE"
                         ;;
                     *.tar.bz2)
-                        _exec tar jxvf $FILE
+                        _exec tar jxvf "$FILE"
                         ;;
                     *.tar.gz)
-                        _exec tar zxvf $FILE
+                        _exec tar zxvf "$FILE"
                         ;;
                     *.bz2)
-                        _exec bunzip2 -v $FILE
+                        _exec bunzip2 -v "$FILE"
                         ;;
                     *.rar)
-                        _exec rar x $FILE
+                        _exec rar x "$FILE"
                         ;;
                     *.gz)
-                        _exec gunzip -v $FILE
+                        _exec gunzip -v "$FILE"
                         ;;
                     *.tar)
-                        _exec tar xvf $FILE
+                        _exec tar xvf "$FILE"
                         ;;
                     *.tbz2)
-                        _exec tar jxvf $FILE
+                        _exec tar jxvf "$FILE"
                         ;;
                     *.tgz)
-                        _exec tar zxvf $FILE
+                        _exec tar zxvf "$FILE"
                         ;;
                     *.zip)
-                        _exec unzip $FILE
+                        _exec unzip "$FILE"
                         ;;
                     *.Z)
-                        _exec uncompress $FILE
+                        _exec uncompress "$FILE"
                         ;;
                     *.7z)
-                        _exec 7z x $FILE
+                        _exec 7z x "$FILE"
                         ;;
                     *.tar.lzma)
-                        _exec tar --lzma -xvf $FILE
+                        _exec tar --lzma -xvf "$FILE"
                         ;;
                     *.tar.xz)
-                        _exec tar -Jxvf $FILE
+                        _exec tar -Jxvf "$FILE"
                         ;;
                     *.jar)
-                        _exec jar xvf $FILE
+                        _exec jar xvf "$FILE"
                         ;;
                     *)
                         echo "'$FILE' is not a valid compress file"
@@ -85,49 +85,49 @@ extract()
             if [ -f "$FILE" ] ; then
                 case "$FILE" in
                     *.deb)
-                        _exec ar x $FILE
+                        _exec ar x "$FILE"
                         ;;
                     *.tar.bz2)
-                        _exec tar jxf $FILE
+                        _exec tar jxf "$FILE"
                         ;;
                     *.tar.gz)
-                        _exec tar zxf $FILE
+                        _exec tar zxf "$FILE"
                         ;;
                     *.bz2)
-                        _exec bunzip2 $FILE
+                        _exec bunzip2 "$FILE"
                         ;;
                     *.rar)
-                        _exec rar x $FILE
+                        _exec rar x "$FILE"
                         ;;
                     *.gz)
-                        _exec gunzip $FILE
+                        _exec gunzip "$FILE"
                         ;;
                     *.tar)
-                        _exec tar xf $FILE
+                        _exec tar xf "$FILE"
                         ;;
                     *.tbz2)
-                        _exec tar jxf $FILE
+                        _exec tar jxf "$FILE"
                         ;;
                     *.tgz)
-                        _exec tar zxf $FILE
+                        _exec tar zxf "$FILE"
                         ;;
                     *.zip)
-                        _exec unzip $FILE
+                        _exec unzip "$FILE"
                         ;;
                     *.Z)
-                        _exec uncompress $FILE
+                        _exec uncompress "$FILE"
                         ;;
                     *.7z)
-                        _exec 7z x $FILE
+                        _exec 7z x "$FILE"
                         ;;
                     *.tar.lzma)
-                        _exec tar --lzma -xvf $FILE
+                        _exec tar --lzma -xvf "$FILE"
                         ;;
                     *.tar.xz)
-                        _exec tar -Jxf $FILE
+                        _exec tar -Jxf "$FILE"
                         ;;
                     *.jar)
-                        _exec jar xf $FILE
+                        _exec jar xf "$FILE"
                         ;;
                     *)
                         echo "'$FILE' is not a valid compress file"
