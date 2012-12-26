@@ -1,4 +1,11 @@
 #!/bin/sh
-#exe=`dmenu_path | dmenu ${1+"$@"}` && exec $exe
-DMENU='dmenu -p > -i -nb #000000 -nf #ffffff -sb #000000 -sf #7541b9'
+#dmenu based launcher
+#requires a dmenu version with xft
+#https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
+
+DMENU="dmenu -p > -i -fn Bahamas-10 -nb #000000 -nf #ffffff -sb #000000 -sf #7541b9"
+#DMENU="dmenu -p > -i -fn Likhan-9 -nb #000000 -nf #ffffff -sb #000000 -sf #7541b9"
+#DMENU="dmenu -p > -i -fn Sawasdee-9 -nb #000000 -nf #ffffff -sb #000000 -sf #7541b9"
+#DMENU="dmenu -p > -i -fn TlwgTypewriter-9 -nb #000000 -nf #ffffff -sb #000000 -sf #7541b9"
+
 exe=$(dmenu_path | $DMENU) && exec $exe

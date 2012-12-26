@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
-#chilicuil <chilicuil@gmail.com> 2012
 #a simple dmenu for talking
+#requires a dmenu version with xft
+#https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
 
 #-sf blue
-DMENU='dmenu -p > -i -nb #000000 -nf #ffffff -sb #000000 -sf #aaffaf'
+DMENU='dmenu -p > -i -fn Bahamas-10 -nb #000000 -nf #ffffff -sb #000000 -sf #aaffaf'
 phrase=$($DMENU <&- && echo)
+
+[ -n "${phrase}" ] || exit 0;
 
 if [ -f /usr/bin/xclip ]; then
     clipboard="/usr/bin/xclip -o"
@@ -14,35 +17,31 @@ else
     clipboard="ops"
 fi
 
-if [ -z "${phrase}" ]; then
-    exit 0;
-else
-    if [[ "${phrase}" == e.* ]] ; then
-        #remove first 2 chars
-        phrase=${phrase#"e"}
-        phrase=${phrase#"."}
-        if [[ "${phrase}" == -* ]] ; then
-            phrase=$($clipboard)
-        fi
-        say -e "${phrase}"
-    elif [[ "${phrase}" == p.* ]] ; then
-        phrase=${phrase#"p"}
-        phrase=${phrase#"."}
-        if [[ "${phrase}" == -* ]] ; then
-            phrase=$($clipboard)
-        fi
-        say -p "${phrase}"
-    elif [[ "${phrase}" == s.* ]] ; then
-        phrase=${phrase#"s"}
-        phrase=${phrase#"."}
-        if [[ "${phrase}" == -* ]] ; then
-            phrase=$($clipboard)
-        fi
-        say -s "${phrase}"
-    elif [[ "${phrase}" == - ]] ; then
+if [[ "${phrase}" == e.* ]] ; then
+    #remove first 2 chars
+    phrase=${phrase#"e"}
+    phrase=${phrase#"."}
+    if [[ "${phrase}" == -* ]] ; then
         phrase=$($clipboard)
-        say -e "${phrase}"
-    else
-        say "${phrase}"
     fi
+    say -e "${phrase}"
+elif [[ "${phrase}" == p.* ]] ; then
+    phrase=${phrase#"p"}
+    phrase=${phrase#"."}
+    if [[ "${phrase}" == -* ]] ; then
+        phrase=$($clipboard)
+    fi
+    say -p "${phrase}"
+elif [[ "${phrase}" == s.* ]] ; then
+    phrase=${phrase#"s"}
+    phrase=${phrase#"."}
+    if [[ "${phrase}" == -* ]] ; then
+        phrase=$($clipboard)
+    fi
+    say -s "${phrase}"
+elif [[ "${phrase}" == - ]] ; then
+    phrase=$($clipboard)
+    say -e "${phrase}"
+else
+    say "${phrase}"
 fi

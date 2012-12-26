@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 #chilicuil <chilicuil@gmail.com> 2012
 #a simple dmenu for vbox
+#requires a dmenu version with xft
+#https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
 
 #-sf blue
-DMENU='dmenu -p > -i -nb #000000 -nf #ffffff -sb #000000 -sf #3B5998'
+DMENU='dmenu -p > -i -fn Bahamas-10 -nb #000000 -nf #ffffff -sb #000000 -sf #3B5998'
 vboxmachine=$(vboxmanage list vms | cut -d\" -f2 | $DMENU)
 
 if [ -z "${vboxmachine}" ]; then

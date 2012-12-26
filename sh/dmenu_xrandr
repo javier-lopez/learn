@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 #chilicuil <chilicuil@gmail.com> 2010
+#requires a dmenu version with xft
+#https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
 
 _barstatus.off()
 {
@@ -14,25 +16,28 @@ _fix.wallpaper()
 _barstatus.on.hdmi()
 {
     _barstatus.off
-    conky | $HOME/code/dzen/dzen2 -x 700 -y 1066 -fn -xos4-terminus-medium-r-*-*-12-*-*-*-*-*-iso10646-1 -ta r -fg "#999999" -bg "#000000" & 2> /dev/null
+    conky | $HOME/code/dzen/dzen2 -x 700 -y 1062 -fn 'Inconsolata:size=9' -ta r -fg "#999999" -bg "#000000" & 2> /dev/null
+    #conky | $HOME/code/dzen/dzen2 -x 700 -y 1066 -fn -xos4-terminus-medium-r-*-*-12-*-*-*-*-*-iso10646-1 -ta r -fg "#999999" -bg "#000000" & 2> /dev/null
     _fix.wallpaper
 }
 
 _barstatus.on.vga()
 {
     _barstatus.off
-    conky | $HOME/code/dzen/dzen2 -x 400 -y 1000 -fn -xos4-terminus-medium-r-*-*-12-*-*-*-*-*-iso10646-1 -ta r -fg "#999999" -bg "#000000" & 2> /dev/null
+    conky | $HOME/code/dzen/dzen2  -x 400 -y 1000 -fn 'Inconsolata:size=9' -ta r -fg "#999999" -bg "#000000" & 2> /dev/null
+    #conky | $HOME/code/dzen/dzen2 -x 400 -y 1000 -fn -xos4-terminus-medium-r-*-*-12-*-*-*-*-*-iso10646-1 -ta r -fg "#999999" -bg "#000000" & 2> /dev/null
     _fix.wallpaper
 }
 
 _barstatus.on.lvds()
 {
     _barstatus.off
-    conky | $HOME/code/dzen/dzen2  -x 350 -y 749 -fn -xos4-terminus-medium-r-*-*-12-*-*-*-*-*-iso10646-1 -ta r -fg "#999999" -bg "#000000" & 2> /dev/null
+    conky | $HOME/code/dzen/dzen2  -x 350 -y 749 -fn 'Inconsolata:size=9' -ta r -fg "#999999" -bg "#000000" & 2> /dev/null
+    #conky | $HOME/code/dzen/dzen2  -x 350 -y 749 -fn -xos4-terminus-medium-r-*-*-12-*-*-*-*-*-iso10646-1 -ta r -fg "#999999" -bg "#000000" & 2> /dev/null
     _fix.wallpaper
 }
 
-DMENU='dmenu -p > -i -nb #000000 -nf #FFFFFF -sb #000000 -sf #999999'
+DMENU='dmenu -p > -i -fn Bahamas-10 -nb #000000 -nf #FFFFFF -sb #000000 -sf #999999'
 choice=$(echo -e "above.hdmi_1920x1080\nabove.vga_1600x1200\noff.hdmi\noff.vga\nsame_as.hdmi\nsame_as.vga" | $DMENU)
 case "$choice" in
     above.hdmi_1920x1080) xrandr --output HDMI1 --mode 1920x1080 --above LVDS1; _barstatus.on.hdmi

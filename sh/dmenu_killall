@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
-#chilicuil <chilicuil@gmail.com> 2012
 #a simple dmenu for killall
+#requires a dmenu version with xft
+#https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
 
 #-sf red
-DMENU='dmenu -p > -i -nb #000000 -nf #ffffff -sb #000000 -sf #da0000'
+DMENU="dmenu -p > -i -fn Bahamas-10 -nb #000000 -nf #ffffff -sb #000000 -sf #da0000"
 npid=$(echo "$(command ps axo command= |  sed -e "s/ .*//; s:.*/::; s/:$//;"  -e "s/^[[(-]//; s/[])]$//"  -e "s/^<defunct>$//")" | $DMENU)
 
-if [ -z "${npid}" ]; then
-    exit 0;
-else
-    killall "$npid"
-fi
+[ -n "${npid}" ] || exit 0
+
+killall "$npid"
