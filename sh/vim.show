@@ -10,8 +10,6 @@ usage()
     exit 1
 }
 
-if [[ -z "$program" ]]; then
-    usage
-fi
+[ -n "$program" ] || usage
 
 $EDITOR `whereis $1|awk '{print $2}'`

@@ -16,9 +16,7 @@ usage()
     exit 1
 }
 
-if [[ -z "$phrase" ]]; then
-    usage
-fi
+[ -z "$phrase" ] && usage
 
 while getopts ":s:o:e:p:" option; do
     case $option in

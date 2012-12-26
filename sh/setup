@@ -7,7 +7,7 @@
 #Don't forget update this when adding new functions
 usage()
 {
-  echo "$(basename $0): setup my common tasks" >&2
+  echo "$(basename $0): setup my common tasks"
   echo
   echo "  autocp            cp custom autocomplete file"
   #echo "  cake              Setup cake"
@@ -31,10 +31,7 @@ _exec()
 _script()
 {
 
-    if [ -z "$1" ]; then
-        echo "$0: Missing argument, looking for a .sh|.py|.rb|etc script"
-        exit 1
-    fi
+    [ -z "$1" ] && (echo "$0: Missing argument, looking for a .sh|.py|.rb|etc script"; exit 1)
 
     for file
     do
@@ -47,10 +44,7 @@ _script()
 
 _autocp()
 {
-    if [ -z "$1" ]; then
-        echo "$0: Missing parameter, looking for an .autocp file"
-        exit 1
-    fi
+    [ -n "$1" ] || (echo "$0: Missing parameter, looking for an .autocp file"; exit 1)
 
     for file
     do
@@ -61,14 +55,9 @@ _autocp()
 
 _latex()
 {
-    if [ -z "$1" ]; then
-        echo "$0: Missing argument, looking for a .tex file"
-        exit 1
-    fi
+    [ -z "$1" ] && (echo "$0: Missing argument, looking for a .tex file"; exit 1)
 
-    if [ -z "$2" ]; then
-        more_than_one=1
-    fi
+    [ -n "$2" ] || more_than_one=1
 
     for file
     do

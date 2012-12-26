@@ -10,16 +10,13 @@ usage()
     exit 0
 }
 
+[ -z "$word" ] && usage
+
 _whats()
 {
-    if [ -z "$1" ]; then
-        echo "$0: Missing argument"
-        exit 1
-    fi
+    [ -z "$1" ] && (echo "$0: Missing argument"; exit 1)
 
-    if [ -z "$2" ]; then
-        more_than_one=1
-    fi
+    [ -n "$2" ] || more_than_one=1
 
     for word
     do
@@ -32,9 +29,5 @@ _whats()
         fi
     done
 }
-
-if [ -z "$word" ]; then
-    usage
-fi
 
 _whats "$@"

@@ -30,9 +30,7 @@ usage()
     exit 0
 }
 
-if [[ -z "$PATTERN" ]]; then
-    usage
-fi
+[ -n "$PATTERN" ] || usage
 
 while getopts ":c:" option; do
     case $option in
@@ -49,7 +47,7 @@ while getopts ":c:" option; do
     esac
 done
 
-if [[ -z $CFLAG ]]; then
+if [ -z $CFLAG ]; then
     curl -s "http://www.commandlinefu.com/commands/matching/$PATTERN/`echo -n $PATTERN |  base64`/plaintext/sort-by-votes" |\
     grep --invert-match "commandlinefu.com by David Winterbottom" #I wanna keep the output as clean as possible
 else

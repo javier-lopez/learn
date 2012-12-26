@@ -12,9 +12,9 @@ usage()
     exit 1
 }
 
-if [[ -z $1 ]]; then
-    usage
-fi
+#similar
+[ -z "$1" ] && usage
+#[ -n "$1" ] || usage
 
 notify ()
 {
