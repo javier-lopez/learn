@@ -19,64 +19,39 @@
 # http://sourceforge.net/projects/scriptkernel/
 # totalmente GPL-3
 #
-# script de compilação do kernel 3.3.X para uso no ubuntu 11.10 64 bits, 
-# baixa tudo automaticamente (dependências, compiladores, 
-# kernel e patchs) com patch 3.3.0-ck1(BFS) + BFQ   e usando cflag -march=native + -Ofast.
-#
-# para usa-lo salve ele com o nome de scriptkernel e para executa-lo, utilize um terminal MAXIMIZADO e execute:
-#
-# $ time sudo bash scriptkernel
-#
-# e em 2 minutos aparecerá uma tela do menuconfig, 
-# escolha a sua arquitetura de seu processador na parte PROCESSOR TYPE AND FEATURES e depois clicke em EXIT e em YES,  
-# e logo começará a compilação e no final a instalação automatica.
-#
-# OBS= para maior exito na compilação (certeza que irá ser executado sem erros) 
-# deve ter em seu PC ou NOTEBOOK no mínimo de 2 GB de RAM e ter pelo menos 15 GB livre
-# em seu disco rígido (não é uma regra, mas evita de erro por falta de espaço no disco)
-#
-####################################################################################################################################
-#
-# English translation:
-#
-# Script FOR USERS OF UBUNTU 11.10 and 12.04 low and kernel compiles everything automatically CREATED BY USERS OF THE FORUM BR UBUNTU:
-# http://ubuntuforum-br.org/index.php/topic,95318.0.html
-# http://ubuntuforum-br.org/index.php/topic,29799.3960.html
-# http://sourceforge.net/projects/scriptkernel/
-# Fully GPL-3
-#
-# Build script for use in kernel 3.X ubuntu 11.10 64 bit
-# Low everything automatically (dependencies, compilers,
-# Kernel and patches) with patch 3.3.0-ck1(BFS) + BFQ and cflag using -march=native + -Ofast.
-#
-# Use it to save it with the name of scriptkernel and run it, use a maximized terminal and run:
-#
-# $ time sudo bash scriptkernel
-#
-# 2 minutes and a screen of menuconfig,
-# Choose the architecture of your processor in the "Processor type and features" and then clicke "EXIT" and "YES",
-# And will soon begin to build and end the installation automatically.
-#
-# OBS = for greater success in the compilation (make sure it will run without errors)
-# Must have on your PC or NOTEBOOK at least 2 GB of RAM and at least 15 GB free
-# On your hard drive (not a rule but avoids error due to lack of disk space)
-#
 ####################################################################################################################################
 
 #####################################
-# 3.6
+# 3.7
 #versão do kernel a ser compilado
-kernel=3.6
+kernel=3.7
 #path de atualização
-patchkernel=3.6.5
+patchkernel=3.7.1
 #patch BFQ
-bfq=3.6.0-v5
+bfq=3.7.0-v5r1
+vbfq=v5r1
 #patch ck
-patchck=3.6-ck1
+patchck=3.7-ck1
 #sufixo
 ckk=ck1
 #arch
 arqt=$(dpkg --print-architecture)
+#####################################
+
+#####################################
+# 3.6
+#versão do kernel a ser compilado
+#kernel=3.6
+#path de atualização
+#patchkernel=3.6.5
+#patch BFQ
+#bfq=3.6.0-v5
+#patch ck
+#patchck=3.6-ck1
+#sufixo
+#ckk=ck1
+#arch
+#arqt=$(dpkg --print-architecture)
 #####################################
 
 #####################################
@@ -185,6 +160,8 @@ function _rotate ()
 
 function test_root()
 {
+    mkdir -p "$tmp_path"
+
     if [ ! "$LOGNAME" == "root" ]; then
         echo "[+] detecting user $LOGNAME (non-root)"
         echo "[+] checking if sudo is available ... "
@@ -202,7 +179,13 @@ function test_root()
                 stty echo
 
                 # password check
-                echo "$sudopwd" | sudo -S touch "$tmp_path/sudo.test" &>/dev/null
+                echo "$sudopwd" | sudo -S touch "$tmp_path/sudo.test" |& tee /tmp/sudo.output
+                InSudoers=$(grep -i "sudoers" /tmp/sudo.output)
+                if [ -n "$InSudoers" ]; then
+                    rm /tmp/sudo.output
+                    exit
+                fi
+
                 if [ ! -e "$tmp_path/sudo.test" ]; then
                     sudopwd=""
                 fi
@@ -253,7 +236,6 @@ test_root
 echo -e "\033[1m--------------------------------\033[7m Fixing dependencies \033[0m\033[1m--------------------------------\033[0m"
 
 ########baixando compiladores e dependencias########################################################
-_exec mkdir -p "$tmp_path"
 echo "$sudopwd" | _exec $SUDO apt-get update
 echo "$sudopwd" | _exec $SUDO apt-get install kernel-package gcc-4.6 libncurses5 libncurses5-dev build-essential patch fakeroot -y
 echo
@@ -271,21 +253,14 @@ echo "[+] downloading the -ck patches for the vanilla kernel ...    "
 _exec wget -N http://ck.kolivas.org/patches/3.0/$kernel/$patchck/patch-$patchck.bz2
 
 echo "[+] downloading the bfq patches for the vanilla kernel ...    "
-_exec wget -N http://algo.ing.unimo.it/people/paolo/disk_sched/patches/$bfq/0001-block-cgroups-kconfig-build-bits-for-BFQ-v5-$kernel.patch
-_exec wget -N http://algo.ing.unimo.it/people/paolo/disk_sched/patches/$bfq/0002-block-introduce-the-BFQ-v5-I-O-sched-for-$kernel.patch
-
-#wget -N http://algo.ing.unimo.it/people/paolo/disk_sched/patches/$bfq/0001-block-cgroups-kconfig-build-bits-for-BFQ-v3r4-$kernel.patch
-#wget -N http://algo.ing.unimo.it/people/paolo/disk_sched/patches/$bfq/0002-block-introduce-the-BFQ-v3r4-I-O-sched-for-$kernel.patch
+_exec wget -N http://algo.ing.unimo.it/people/paolo/disk_sched/patches/$bfq/0001-block-cgroups-kconfig-build-bits-for-BFQ-$vbfq-$kernel.patch
+_exec wget -N http://algo.ing.unimo.it/people/paolo/disk_sched/patches/$bfq/0002-block-introduce-the-BFQ-$vbfq-I-O-sched-for-$kernel.patch
 
 #ubuntu patch
 echo "[+] downloading the ubuntu patches for the vanilla kernel ...    "
 _exec wget -N http://kernel.ubuntu.com/~kernel-ppa/mainline/v$patchkernel-raring/0001-base-packaging.patch
 _exec wget -N http://kernel.ubuntu.com/~kernel-ppa/mainline/v$patchkernel-raring/0002-debian-changelog.patch
 _exec wget -N http://kernel.ubuntu.com/~kernel-ppa/mainline/v$patchkernel-raring/0003-default-configs.patch
-
-#wget -N http://kernel.ubuntu.com/~kernel-ppa/mainline/v$patchkernel-quantal/0001-base-packaging.patch
-#wget -N http://kernel.ubuntu.com/~kernel-ppa/mainline/v$patchkernel-quantal/0002-debian-changelog.patch
-#wget -N http://kernel.ubuntu.com/~kernel-ppa/mainline/v$patchkernel-quantal/0003-default-configs.patch
 
 echo -e "\033[1m-----------------------------\033[7m Applying the patches \033[0m\033[1m------------------------------\033[0m"
 echo "[+] uncomprensing the kernel to $tmp_path/linux-$kernel/ ...    "
@@ -304,8 +279,8 @@ _exec cd linux-$patchkernel-$ckk
 echo "[+] applying patches ...    "
 _exec patch -p1 < ../patch-$patchkernel
 _exec patch -p1 < ../patch-$patchck
-_exec patch -p1 < ../0001-block-cgroups-kconfig-build-bits-for-BFQ-v5-$kernel.patch
-_exec patch -p1 < ../0002-block-introduce-the-BFQ-v5-I-O-sched-for-$kernel.patch
+_exec patch -p1 < ../0001-block-cgroups-kconfig-build-bits-for-BFQ-$vbfq-$kernel.patch
+_exec patch -p1 < ../0002-block-introduce-the-BFQ-$vbfq-I-O-sched-for-$kernel.patch
 _exec patch -p1 < ../0001-base-packaging.patch
 _exec patch -p1 < ../0002-debian-changelog.patch
 _exec patch -p1 < ../0003-default-configs.patch
@@ -322,7 +297,7 @@ _exec cp config.$arqt .config
 #tmp fix for bug #663474
 #http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=663474
 if [ $arqt == "i386" ]; then
-    _exec sed "/CONFIG_LGUEST_GUEST/d" .config >tmp
+    sed "/CONFIG_LGUEST_GUEST/d" .config > tmp
     _exec mv tmp .config
 fi
 
@@ -350,4 +325,4 @@ echo "[+] have fun ^_^!"
 
 #echo "$sudopwd" | $SUDO dpkg -i ../*.deb
 
-#cleanup 1
+cleanup 1
