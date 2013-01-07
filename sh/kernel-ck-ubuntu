@@ -220,8 +220,9 @@ function cleanup ()
 
 function _waitfor ()
 {
-    running=$(pidof $1); running=$?
+    sleep 1s
 
+    running=$(pidof $1); running=$?
     if [ "$running" == "1" ]; then
         echo -e "\b\b\b\b\b done"
     else
@@ -238,7 +239,7 @@ echo -e "\033[1m--------------------------------\033[7m Fixing dependencies \033
 ########baixando compiladores e dependencias########################################################
 echo "$sudopwd" | _exec $SUDO apt-get update
 echo "$sudopwd" | _exec $SUDO apt-get install kernel-package gcc-4.6 libncurses5 libncurses5-dev build-essential patch fakeroot -y
-echo
+_exec echo
 ####################################################################################################
 
 echo -e "\033[1m--------------------------------\033[7m Downloading archives \033[0m\033[1m-------------------------------\033[0m"
@@ -269,12 +270,13 @@ if [ ! -d /$tmp_path/linux-$kernel/ ]; then
 fi
 
 echo "[+] uncomprensing the patches ...    "
-_exec bunzip2 patch-$patchkernel.bz2 patch-$patchck.bz2 > /dev/null 2>&1 & _waitfor bunzip2
+_exec bunzip2 patch-$patchkernel.bz2 patch-$patchck.bz2 > /dev/null 2>&1
 
 echo "[+] moving to $tmp_path/linux-$patchkernel-$ckk"
-_exec rm -rf linux-$patchkernel-$ckk & _waitfor rm
-_exec cp -r linux-$kernel linux-$patchkernel-$ckk & _waitfor cp
+_exec rm -rf linux-$patchkernel-$ckk
+_exec cp -r linux-$kernel linux-$patchkernel-$ckk
 _exec cd linux-$patchkernel-$ckk
+_exec echo
 
 echo "[+] applying patches ...    "
 _exec patch -p1 < ../patch-$patchkernel
@@ -284,7 +286,7 @@ _exec patch -p1 < ../0002-block-introduce-the-BFQ-$vbfq-I-O-sched-for-$kernel.pa
 _exec patch -p1 < ../0001-base-packaging.patch
 _exec patch -p1 < ../0002-debian-changelog.patch
 _exec patch -p1 < ../0003-default-configs.patch
-echo
+_exec echo
 
 echo -e "\033[1m-----------------------------\033[7m Configuring the kernel \033[0m\033[1m------------------------------\033[0m"
 #### criado por Stivekx #############
@@ -298,8 +300,23 @@ _exec cp config.$arqt .config
 #http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=663474
 if [ $arqt == "i386" ]; then
     sed "/CONFIG_LGUEST_GUEST/d" .config > tmp
-    _exec mv tmp .config
+    mv tmp .config
+elif [ $arqt == "amd64" ]; then
+    if [ ! -d ./arch/amd64  ]; then
+        cd arch
+        ln -s x86 amd64
+        cd -
+    fi
 fi
+
+#thanks StefanescuCristian: https://github.com/chilicuil/learn/commit/c2d44556101f997d70eac4c5536ea241363ee63c#commitcomment-2390064
+echo "[+] making sure BFS and BFQ are enabled in config"
+sed "/CONFIG_SCHED_CFS=y/d" .config > tmp
+mv tmp .config
+sed "s/# CONFIG_SCHED_BFS is not set/CONFIG_SCHED_BFS=y/g" .config > tmp
+mv tmp .config
+sed "s/# CONFIG_IOSCHED_BFQ is not set/CONFIG_IOSCHED_BFQ=y/g" .config > tmp
+mv tmp .config
 
 #echo "[+] optimizying even more, using streamline_config.pl ...    "
 #chmod +x ./scripts/kconfig/streamline_config.pl && ./scripts/kconfig/streamline_config.pl > config_strip
@@ -308,7 +325,7 @@ fi
 
 #echo "[+] running menuconfig ...    "
 #make menuconfig
-echo
+_exec echo
 
 echo -e "\033[1m-----------------------------\033[7m Compiling the kernel \033[0m\033[1m------------------------------\033[0m"
 
