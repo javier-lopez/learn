@@ -5,7 +5,7 @@
 _notify ()
 {
     if [[ $TERM == "linux" ]] || [[ $TERM == "dumb" ]]; then
-        notify-send -t 3000 "${@}"
+        DISPLAY=:0.0 notify-send -t 3000 "${@}"
     else
         echo -n "${1}: "
         shift
