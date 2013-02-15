@@ -26,7 +26,7 @@
 #versão do kernel a ser compilado
 kernel=3.7
 #patch de atualização
-patchkernel=3.7.6
+patchkernel=3.7.8
 #patch BFQ
 bfq=3.7.0-v5r1
 vbfq=v5r1
