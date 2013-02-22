@@ -6,7 +6,7 @@
 
 INDENTATION=4
 
-[ -f /usr/bin/vim ] || { echo -e "$0: You need vim & tidy to run this script\n$ sudo apt-get install vim-tiny tidy"; exit 1; }
+[ -f /usr/bin/vim ] || { echo -e "$0: You need vim & tidy to run this script\n$ sudo apt-get install vim tidy"; exit 1; }
 [ -f /usr/bin/tidy ] || { echo -e "$0: You need tidy to run this script\n$ sudo apt-get install tidy"; exit 1; }
 
 usage()
