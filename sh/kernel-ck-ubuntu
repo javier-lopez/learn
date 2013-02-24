@@ -26,7 +26,7 @@
 #versão do kernel a ser compilado
 kernel=3.7
 #patch de atualização
-patchkernel=3.7.6
+patchkernel=3.7.9
 #patch BFQ
 bfq=3.7.0-v5r1
 vbfq=v5r1
@@ -312,11 +312,11 @@ fi
 #thanks StefanescuCristian: https://github.com/chilicuil/learn/commit/c2d44556101f997d70eac4c5536ea241363ee63c#commitcomment-2390064
 echo "[+] making sure BFS and BFQ are enabled in config"
 sed "/CONFIG_SCHED_CFS=y/d" .config > tmp
-mv tmp .config
+mv -f tmp .config
 sed "s/# CONFIG_SCHED_BFS is not set/CONFIG_SCHED_BFS=y/g" .config > tmp
-mv tmp .config
+mv -f tmp .config
 sed "s/# CONFIG_IOSCHED_BFQ is not set/CONFIG_IOSCHED_BFQ=y/g" .config > tmp
-mv tmp .config
+mv -f tmp .config
 
 #echo "[+] optimizying even more, using streamline_config.pl ...    "
 #chmod +x ./scripts/kconfig/streamline_config.pl && ./scripts/kconfig/streamline_config.pl > config_strip
