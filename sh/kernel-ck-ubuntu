@@ -1,6 +1,8 @@
 #!/bin/bash
+#http://viajemotu.wordpress.com/2012/08/13/kernel-ck-for-ubuntu-precise/
+#https://github.com/chilicuil/learn/blob/master/sh/kernel-ck-ubuntu
 
-# script taken and edited from the ubuntu-br.org forums (see below): https://github.com/chilicuil/learn/blob/master/sh/kernel-ck-ubuntu
+# script taken and edited from the ubuntu-br.org forums (see below): 
 # $ time bash kernel-ck-ubuntu
 #
 # CHANGES
@@ -22,20 +24,41 @@
 ####################################################################################################################################
 
 #####################################
-# 3.7
+# 3.8
 #versão do kernel a ser compilado
-kernel=3.7
+kernel=3.8
 #patch de atualização
+<<<<<<< HEAD
+patchkernel=3.8.2
+=======
 patchkernel=3.7.9
+>>>>>>> 792c7bba09ea78d99e17f36b01203bf8711f16e6
 #patch BFQ
-bfq=3.7.0-v5r1
-vbfq=v5r1
+bfq=3.8.0-v6
+vbfq=v6
 #patch ck
-patchck=3.7-ck1
+patchck=3.8-ck1
 #sufixo
 ckk=ck1
 #arch
 arqt=$(dpkg --print-architecture)
+#####################################
+
+#####################################
+# 3.7
+#versão do kernel a ser compilado
+#kernel=3.7
+#patch de atualização
+#patchkernel=3.7.6
+#patch BFQ
+#bfq=3.7.0-v5r1
+#vbfq=v5r1
+#patch ck
+#patchck=3.7-ck1
+#sufixo
+#ckk=ck1
+#arch
+#arqt=$(dpkg --print-architecture)
 #####################################
 
 #####################################
@@ -293,7 +316,9 @@ echo -e "\033[1m-----------------------------\033[7m Configuring the kernel \033
 #config_file=$(locate /boot/config-* | sort -r | head -1)
 
 echo "[+] downloading an optimized config file from http://liquorix.net ...    "
-_exec wget "http://liquorix.net/sources/$kernel/config.$arqt"
+#_exec wget "http://liquorix.net/sources/$kernel/config.$arqt"
+#TODO 04-03-2013 21:19 >> check when liquorix update config for 3.8, using 3.7 config in the meantime
+_exec wget "http://liquorix.net/sources/3.7/config.$arqt"
 _exec cp config.$arqt .config
 
 #tmp fix for bug #663474
