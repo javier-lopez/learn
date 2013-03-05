@@ -28,11 +28,7 @@
 #versão do kernel a ser compilado
 kernel=3.8
 #patch de atualização
-<<<<<<< HEAD
 patchkernel=3.8.2
-=======
-patchkernel=3.7.9
->>>>>>> 792c7bba09ea78d99e17f36b01203bf8711f16e6
 #patch BFQ
 bfq=3.8.0-v6
 vbfq=v6
