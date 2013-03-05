@@ -74,6 +74,9 @@ extract()
                     *.jar)
                         _exec jar xvf "$FILE"
                         ;;
+                    *.iso)
+                        _exec 7z x "$FILE"
+                        ;;
                     *)
                         echo "'$FILE' is not a valid compress file"
                         ;;
@@ -128,6 +131,9 @@ extract()
                         ;;
                     *.jar)
                         _exec jar xf "$FILE"
+                        ;;
+                    *.iso)
+                        _exec 7z x "$FILE"
                         ;;
                     *)
                         echo "'$FILE' is not a valid compress file"
