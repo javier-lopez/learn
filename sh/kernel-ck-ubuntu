@@ -28,11 +28,7 @@
 #versão do kernel a ser compilado
 kernel=3.8
 #patch de atualização
-<<<<<<< HEAD
 patchkernel=3.8.2
-=======
-patchkernel=3.7.9
->>>>>>> 792c7bba09ea78d99e17f36b01203bf8711f16e6
 #patch BFQ
 bfq=3.8.0-v6
 vbfq=v6
@@ -103,7 +99,9 @@ tmp_path="$HOME/.tmp/kernel-ck-ubuntu-$patchkernel"
 curr_path=$PWD
 #arquitetura: amd64 ou i386 # criado por Stivekx - forum ubuntu-br #######
 #CL=CONCURRENCY_LEVEL do processador # criado por Stivekx  ############
-CL=$(grep -c processor /proc/cpuinfo)
+#We can set CL to the number of processors + X, where X is 1 by default.
+X=1
+CL=$(echo $(($(grep -c processor /proc/cpuinfo)+$X)))
 
 trap cleanup SIGINT SIGTERM #trap ctrl-c
 
@@ -127,6 +125,7 @@ function header()
     echo "  -ubuntu patchset:   v$patchkernel"
     echo "  sufix:              $ckk"
     echo "  arch:               $arqt"
+    echo "  concurrency level   $CL"
     echo -e "\033[1m-------------------------------------------------------------------------------------\033[0m"
     echo
 }
@@ -342,6 +341,22 @@ sed "s/# CONFIG_SCHED_BFS is not set/CONFIG_SCHED_BFS=y/g" .config > tmp
 mv -f tmp .config
 sed "s/# CONFIG_IOSCHED_BFQ is not set/CONFIG_IOSCHED_BFQ=y/g" .config > tmp
 mv -f tmp .config
+#We make sure that BFQ is trully enabled
+sed "s/CONFIG_DEFAULT_CFQ=y/# CONFIG_DEFAULT_CFQ is not set/g" .config > tmp
+mv -f tmp .config
+sed "s/CONFIG_DEFAULT_DEADLINE=y/# CONFIG_DEFAULT_DEADLINE is not set/g" .config > tmp
+mv -f tmp .config
+sed "s/CONFIG_DEFAULT_NOOP=y/# CONFIG_DEFAULT_NOOP is not set/g" .config > tmp
+mv -f tmp .config
+sed "s/CONFIG_DEFAULT_IOSCHED="cfq"/CONFIG_DEFAULT_IOSCHED="bfq"/g" .config > tmp
+mv -f tmp .config
+sed "s/CONFIG_DEFAULT_IOSCHED="deadline"/CONFIG_DEFAULT_IOSCHED="bfq"/g" .config > tmp
+mv -f tmp .config
+sed "s/CONFIG_DEFAULT_IOSCHED="noop"/CONFIG_DEFAULT_IOSCHED="bfq"/g" .config > tmp
+mv -f tmp .config
+sed "s/# CONFIG_DEFAULT_BFQ is not set/CONFIG_DEFAULT_BFQ=y/g" .config > tmp
+mv -f tmp .config
+
 
 #echo "[+] optimizying even more, using streamline_config.pl ...    "
 #chmod +x ./scripts/kconfig/streamline_config.pl && ./scripts/kconfig/streamline_config.pl > config_strip
