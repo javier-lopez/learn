@@ -99,7 +99,9 @@ tmp_path="$HOME/.tmp/kernel-ck-ubuntu-$patchkernel"
 curr_path=$PWD
 #arquitetura: amd64 ou i386 # criado por Stivekx - forum ubuntu-br #######
 #CL=CONCURRENCY_LEVEL do processador # criado por Stivekx  ############
-CL=$(grep -c processor /proc/cpuinfo)
+#We can set CL to the number of processors + X, where X is 1 by default.
+X=1
+CL=$(echo $(($(grep -c processor /proc/cpuinfo)+$X)))
 
 trap cleanup SIGINT SIGTERM #trap ctrl-c
 
@@ -123,6 +125,7 @@ function header()
     echo "  -ubuntu patchset:   v$patchkernel"
     echo "  sufix:              $ckk"
     echo "  arch:               $arqt"
+    echo "  concurrency level:  $CL"
     echo -e "\033[1m-------------------------------------------------------------------------------------\033[0m"
     echo
 }
@@ -198,6 +201,7 @@ function test_root()
                 stty echo
 
                 # password check
+                mkdir -p "$tmp_path"
                 echo "$sudopwd" | sudo -S touch "$tmp_path/sudo.test" |& tee /tmp/sudo.output
                 InSudoers=$(grep -i "sudoers" /tmp/sudo.output)
                 if [ -n "$InSudoers" ]; then
@@ -264,10 +268,10 @@ _exec echo
 echo -e "\033[1m--------------------------------\033[7m Downloading archives \033[0m\033[1m-------------------------------\033[0m"
 echo "[+] downloading the main tree for the vanilla kernel ...    "
 _exec cd $tmp_path
-_exec wget -N http://www.kernel.org/pub/linux/kernel/v3.x/linux-$kernel.tar.bz2
+_exec wget --no-check-certificate -N http://www.kernel.org/pub/linux/kernel/v3.x/linux-$kernel.tar.bz2
 
 echo "[+] downloading the mainstream patches for the vanilla kernel ...    "
-_exec wget -N http://www.kernel.org/pub/linux/kernel/v3.x/patch-$patchkernel.bz2
+_exec wget --no-check-certificate -N http://www.kernel.org/pub/linux/kernel/v3.x/patch-$patchkernel.bz2
 
 echo "[+] downloading the -ck patches for the vanilla kernel ...    "
 _exec wget -N http://ck.kolivas.org/patches/3.0/$kernel/$patchck/patch-$patchck.bz2
@@ -338,6 +342,22 @@ sed "s/# CONFIG_SCHED_BFS is not set/CONFIG_SCHED_BFS=y/g" .config > tmp
 mv -f tmp .config
 sed "s/# CONFIG_IOSCHED_BFQ is not set/CONFIG_IOSCHED_BFQ=y/g" .config > tmp
 mv -f tmp .config
+#We make sure that BFQ is trully enabled
+sed "s/CONFIG_DEFAULT_CFQ=y/# CONFIG_DEFAULT_CFQ is not set/g" .config > tmp
+mv -f tmp .config
+sed "s/CONFIG_DEFAULT_DEADLINE=y/# CONFIG_DEFAULT_DEADLINE is not set/g" .config > tmp
+mv -f tmp .config
+sed "s/CONFIG_DEFAULT_NOOP=y/# CONFIG_DEFAULT_NOOP is not set/g" .config > tmp
+mv -f tmp .config
+sed "s/CONFIG_DEFAULT_IOSCHED="cfq"/CONFIG_DEFAULT_IOSCHED="bfq"/g" .config > tmp
+mv -f tmp .config
+sed "s/CONFIG_DEFAULT_IOSCHED="deadline"/CONFIG_DEFAULT_IOSCHED="bfq"/g" .config > tmp
+mv -f tmp .config
+sed "s/CONFIG_DEFAULT_IOSCHED="noop"/CONFIG_DEFAULT_IOSCHED="bfq"/g" .config > tmp
+mv -f tmp .config
+sed "s/# CONFIG_DEFAULT_BFQ is not set/CONFIG_DEFAULT_BFQ=y/g" .config > tmp
+mv -f tmp .config
+
 
 #echo "[+] optimizying even more, using streamline_config.pl ...    "
 #chmod +x ./scripts/kconfig/streamline_config.pl && ./scripts/kconfig/streamline_config.pl > config_strip
