@@ -51,12 +51,5 @@ function getopt() {
 
 OIFS=$IFS; IFS=$(echo -e "\n"); getopt $@; IFS=$OIFS
 
-echo -e "
-foo:\t$foo
-v:\t$v
-n:\t$n
-blah:\t$blah
-one:\t$one
-"
-
+echo -e " foo:\t$foo v:\t$v n:\t$n blah:\t$blah one:\t$one "
 #./getopts --foo=bar -v -n 10 blah -one='last arg' 

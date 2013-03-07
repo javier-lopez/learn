@@ -16,6 +16,7 @@ _notify ()
         done
     fi
 }
+
 if [[ ! -e /usr/bin/html2text ]]; then
     _notify "You need to install html2text" "\$ sudo apt-get install html2text"
     exit 1
