@@ -32,6 +32,9 @@ extract()
                     *.deb)
                         _exec ar xv "$FILE"
                         ;;
+                    *.udeb)
+                        _exec ar xv "$FILE"
+                        ;;
                     *.tar.bz2)
                         _exec tar jxvf "$FILE"
                         ;;
@@ -88,6 +91,9 @@ extract()
             if [ -f "$FILE" ] ; then
                 case "$FILE" in
                     *.deb)
+                        _exec ar x "$FILE"
+                        ;;
+                    *.udeb)
                         _exec ar x "$FILE"
                         ;;
                     *.tar.bz2)
