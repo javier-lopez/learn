@@ -4,17 +4,55 @@
 #https://github.com/chilicuil/learn/blob/master/sh/lib
 #if you have more please send your push request!
 
+_arch()
+{
+    local arch
+    [ -z $MACHTYPE ] && arch=$(uname -m) || arch=$(echo $MACHTYPE | cut -d- -f1)
+
+    case $arch in
+        x86_64)
+            arch=64;
+            ;;
+        i686)
+            arch=32;
+            ;;
+    esac
+
+    echo $arch
+}
+#==================================================== Sample use =
+arch=$(_arch)
+echo $arch
+#==================================================== Sample use =
+
+_checkinternet()
+{   #returns 0 on success, 1 otherwise
+    wget --tries=3 --timeout=5 http://www.google.com -O /tmp/index.google > /dev/null 2>&1
+
+    if [ -s /tmp/index.google ]; then
+        rm /tmp/index.google
+        return 0
+    else
+        rm /tmp/index.google
+        return 1
+    fi
+}
+#==================================================== Sample use =
+if ! _checkinternet; then
+    echo "You must be connected to run this script" >&2
+    exit 1
+fi
+#==================================================== Sample use =
+
 _cleanup()
 {
     #clean tmp files, exit with no parameters
     stty echo
     echo
     echo "[+] cleanup ..."
-    _cmd rm FILE
+    rm FILE
 
-    if [ -z $1 ]; then
-        exit
-    fi
+    [ -z $1 ] && exit
 }
 #==================================================== Sample use =
 trap _cleanup SIGINT SIGTERM #trap ctrl-c
@@ -28,9 +66,7 @@ _cmd()
     $@
 
     status=$?
-    if [ $status != 0 ]; then
-        exit $status
-    fi
+    [ $status != 0 ] && exit $status || return
 }
 #===================================================== Sample use =
 _cmd rm file
@@ -165,12 +201,11 @@ _getroot()
 {
     #gets sudo's password, define $sudopasswd and $sudocmd
 
-    tmp_path="/tmp"
-    mkdir -p "$tmp_path"
+    local tmp_path="/tmp"; local sudotest; local insudoers;
 
     if [ ! "$LOGNAME" == "root" ]; then
-        echo "[+] detecting user $LOGNAME (non-root)"
-        echo "[+] checking if sudo is available ... "
+        echo "Detecting user $LOGNAME (non-root) ..."
+        echo "Checking if sudo is available ..."
         sudotest=`type sudo &>/dev/null ; echo $?`
 
         if [ "$sudotest" == 0 ]; then
@@ -185,11 +220,10 @@ _getroot()
                 stty echo
 
                 # password check
-                mkdir -p "$tmp_path"
-                echo "$sudopwd" | sudo -S touch "$tmp_path/sudo.test" |& tee /tmp/sudo.output
-                InSudoers=$(grep -i "sudoers" /tmp/sudo.output)
-                if [ -n "$InSudoers" ]; then
-                    rm /tmp/sudo.output
+                echo "$sudopwd" | sudo -S touch "$tmp_path/sudo.test" > "$tmp_path/sudo.output" 2>&1
+                insudoers=$(grep -i "sudoers" "$tmp_path/sudo.output")
+                if [ -n "$insudoers" ]; then
+                    echo "$sudopwd" | sudo -S rm "$tmp_path/sudo.output" > /dev/null 2>&1
                     exit
                 fi
 
@@ -200,7 +234,7 @@ _getroot()
 
             sudocmd="/usr/bin/sudo -S"
 
-            rm -f "$tmp_path/sudo.test"
+            echo "$sudopwd" | $sudocmd rm -f "$tmp_path/sudo.test" > /dev/null 2>&1
             echo
         else
             echo "You're not root and sudo isn't available. Please run this script as root!"
@@ -220,11 +254,7 @@ _isalphanum()
   # Remove all unacceptable chars
   compressed="$(echo $1 | sed -e 's/[^[:alnum:]]//g')"
 
-  if [ "$compressed" != "$input" ] ; then
-    return 1
-  else
-    return 0
-  fi
+  [ "$compressed" != "$input" ] && return 1 || return 0
 }
 #==================================================== Sample use =
 echo -n "Enter input: "
@@ -238,6 +268,21 @@ fi
 exit 0
 #==================================================== Sample use =
 
+_islivecd()
+{
+    grep -qs boot=live /proc/cmdline && return 0
+    grep -qs boot=casper /proc/cmdline && return 0
+    return 1
+}
+#==================================================== Sample use =
+if ! _islivecd ; then
+    echo "Live cd detected"
+else
+    echo "Non LiveCd detected"
+fi
+exit 0
+
+#==================================================== Sample use =
 _inarray ()
 {
     #checks if a value exists in an array, returns 0 on success, 1 otherwise
@@ -468,9 +513,7 @@ _waitfor()
 {
     #wait for a program, shows an animation
     status=$?
-    if [ $status != 0 ]; then
-        exit $status
-    fi
+    [ $status != 0 ] && exit $status
 
     echo "[+] $@"
     $@ &
@@ -497,8 +540,8 @@ _yesno()
     local answer
     read answer
     answer=`tr '[:upper:]' '[:lower:]' <<< $answer`
-    if [ "$answer" = y -o "$answer" = yes ] || [ -z "$answer" -a "$2" = yes ]
-    then
+
+    if [ "$answer" = y -o "$answer" = yes ] || [ -z "$answer" -a "$2" = yes ]; then
         return 0
     else
         return 1
@@ -507,5 +550,5 @@ _yesno()
 #==================================================== Sample use =
 _yesno "Do you want to continue?" #default to 'no'
 _yesno "Do you want to continue?" yes #default behavior
-_yesno "Do you want to continue? continue?" no  #default behavior
+_yesno "Do you want to continue?" no  #default behavior
 #==================================================== Sample use =

@@ -202,7 +202,7 @@ function test_root()
 
                 # password check
                 mkdir -p "$tmp_path"
-                echo "$sudopwd" | sudo -S touch "$tmp_path/sudo.test" |& tee /tmp/sudo.output
+                echo "$sudopwd" | sudo -S touch "$tmp_path/sudo.test" > /tmp/sudo.output
                 InSudoers=$(grep -i "sudoers" /tmp/sudo.output)
                 if [ -n "$InSudoers" ]; then
                     rm /tmp/sudo.output
