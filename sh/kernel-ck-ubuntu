@@ -317,8 +317,8 @@ echo -e "\033[1m-----------------------------\033[7m Configuring the kernel \033
 
 echo "[+] downloading an optimized config file from http://liquorix.net ...    "
 #_exec wget "http://liquorix.net/sources/$kernel/config.$arqt"
-#TODO 04-03-2013 21:19 >> check when liquorix update config for 3.8, using 3.7 config in the meantime
-_exec wget "http://liquorix.net/sources/3.7/config.$arqt"
+#TODO 04-07-2013 --> 3.8 update on liquorix.net replaced 3.7. Replaced 3.7 with $kernel
+_exec wget "http://liquorix.net/sources/$kernel/config.$arqt"
 _exec cp config.$arqt .config
 
 #tmp fix for bug #663474
