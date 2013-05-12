@@ -18,74 +18,74 @@ if [ $# -eq 0 ] ; then # let 'rm' ouptut the usage error
     exec rm  #our shell is replaced by /bin/rm, keeping original status unmodified
 fi
 
-usage()
+_usage()
 {
-  echo -e "Usage: "$0" [OPTION]... FILE..."
-  echo -e "Wrapper for the \`rm' command, compatible with nautilus|pcmanfm file managers\n"
-  echo -e "  -l [PATTERN]   list archived files, use -ll and -lll to increase verbosity"
-  echo -e "  -c [PATTERN]   remove permanently archived files"
-  echo -e "  -u [PATTERN]   recover archived files"
-  echo -e "  -y             say yes to all questions"
-  echo -e "  -f             remove instead of archive files \`rm' is executed directly"
-  echo -e "  -h             shows this message, use --help to obtain \`rm' help"
-  echo -e "\n"$0" deletes directories and files with no distintion therefore no -r option is needed\n"
+    echo -e "Usage: "$0" [OPTION]... FILE..."
+    echo -e "Wrapper for the \`rm' command, compatible with nautilus|pcmanfm file managers\n"
+    echo -e "  -l [PATTERN]   list archived files, use -ll and -lll to increase verbosity"
+    echo -e "  -c [PATTERN]   remove permanently archived files"
+    echo -e "  -u [PATTERN]   recover archived files"
+    echo -e "  -y             say yes to all questions"
+    echo -e "  -f             remove instead of archive files \`rm' is executed directly"
+    echo -e "  -h             shows this message, use --help to obtain \`rm' help"
+    echo -e "\n"$0" deletes directories and files with no distintion therefore no -r option is needed\n"
 
-  echo -e "Last version is always available in: <https://github.com/chilicuil/learn/tree/master/sh/rm_>"
-  echo -e "Report bugs to chilicuil@gmail.com"
+    echo -e "Last version is always available in: <https://github.com/chilicuil/learn/tree/master/sh/rm_>"
+    echo -e "Report bugs to chilicuil@gmail.com"
 }
 
 #http://www.makkintosshu.com/journal/a-realpath-implementation-in-bash
-realpath()
+_realpath()
 {
-	local success=true
+    local success=true
 
-	# start with the file name (sans the trailing slash)
-	local path="$1"
-	path="${path%/}"
+    # start with the file name (sans the trailing slash)
+    local path="$1"
+    path="${path%/}"
 
-	# get the basename of the file (ignoring '.' & '..', because they're really part of the path)
-	local file_basename="${path##*/}"
-	if [[ ( "$file_basename" = "." ) || ( "$file_basename" = ".." ) ]]; then
-		file_basename=""
-	fi
+    # get the basename of the file (ignoring '.' & '..', because they're really part of the path)
+    local file_basename="${path##*/}"
+    if [[ ( "$file_basename" = "." ) || ( "$file_basename" = ".." ) ]]; then
+        file_basename=""
+    fi
 
-	# extracts the directory component of the full path & attempt to change to it
-	local directory="${path%$file_basename}"
-	if [ "$directory" ]; then
-	  if ! cd "$directory" &>/dev/null ; then
-	  	success=false
-	  fi
-	fi
+    # extracts the directory component of the full path & attempt to change to it
+    local directory="${path%$file_basename}"
+    if [ "$directory" ]; then
+        if ! cd "$directory" &>/dev/null ; then
+            success=false
+        fi
+    fi
 
-	if $success; then
-		# does the filename exist?
-		if [[ ( ! -z "$file_basename" ) && ( ! -e "$file_basename" ) ]]; then
-			success=false
-		fi
+    if $success; then
+        # does the filename exist?
+        if [[ ( ! -z "$file_basename" ) && ( ! -e "$file_basename" ) ]]; then
+            success=false
+        fi
 
-		# get the absolute path of the current directory & change back to previous directory
-		local abs_path="$(pwd -P)"
-		cd "-" &>/dev/null
+        # get the absolute path of the current directory & change back to previous directory
+        local abs_path="$(pwd -P)"
+        cd "-" &>/dev/null
 
-		# Append base filename to absolute path
-		abs_path="${abs_path}/${file_basename}"
+        # Append base filename to absolute path
+        abs_path="${abs_path}/${file_basename}"
 
-		# output the absolute path
-		echo "$abs_path"
-	fi
+        # output the absolute path
+        echo "$abs_path"
+    fi
 
-	$success
+    $success
 }
 
 #http://www.linuxmisc.com/12-unix-web-servers/d31beb238f7b5a6b.htm
-dirname_()
+_dirname()
 {
     local dir="${1%${1##*/}}"
     [ "${dir:=./}" != "/" ] && dir="${dir%?}"
     echo "$dir"
 }
 
-list ()
+_list()
 {
     files_in_trash=("$trash_dir"/info/*.trashinfo)
 
@@ -127,13 +127,16 @@ list ()
             echo "$name"
         fi
     fi
-    done
+done
 }
 
-archive ()
+_archive()
 {
     #TODO 08-08-2011 01:19 => report nautilus bug: recovering foo/1, foo/bar/1, foo/bar/rar/1
     #                         gives foo/1 foo/bar/1.2 foo/bar/rar/1.3
+
+    mkdir -p $trash_dir/{files,info} #ensure directories exist
+
     for file
     do
         if [ -e "$file" ] ; then
@@ -153,7 +156,7 @@ archive ()
 
             #put $file & $trashinfo vars between "" to capture spaces
             echo "[Trash Info]"                         >  "$trashinfo"
-            echo "Path=$(realpath "$file")"             >> "$trashinfo"
+            echo "Path=$(_realpath "$file")"             >> "$trashinfo"
             echo "DeletionDate=$(date +%Y-%m-%dT%T)"    >> "$trashinfo"
 
             mv "$file" "$archive"
@@ -163,11 +166,11 @@ archive ()
     done
 }
 
-recover ()
+_recover()
 {
     #TODO 08-08-2011 05:39 => "*" matchs nothing
 
-    list "$1"
+    _list "$1"
 
     if [ -z "$yflag" ]; then
         echo -n "Recover this items from trash? (Y/n) "
@@ -195,8 +198,8 @@ recover ()
 
         name=$(echo "$data_in_trashinfo" | cut -d\| -f3)
 
-        if [ ! -d $(dirname_ "$name") ]; then
-            echo "mkdir -p $(dirname_ $name)"
+        if [ ! -d $(_dirname_ "$name") ]; then
+            echo "mkdir -p $(_dirname_ $name)"
         fi
 
         if [ -e "$name" ]; then
@@ -207,13 +210,13 @@ recover ()
             rm "$info_file"
         fi
     done
-    fi
-    exit
+fi
+exit
 }
 
-clean ()
+_clean()
 {
-    list "$1"
+    _list "$1"
 
     if [ -z "$yflag" ]; then
         echo -n "Empty this items from trash? (Y/n) "
@@ -240,27 +243,28 @@ clean ()
         #echo "rm: $info_file"
         #echo "rm: $file_file"
     done
-    fi
+fi
 }
 
 verboselist=0
 while getopts ":fluhcry" options
 do
     case $options in
-        f) exec rm -r "$@"                      ;;
-        l) verboselist=$(($verboselist+1))      ;;  # list verbose level 1-3
-        u) shift $(($OPTIND - 1)); recover "$@" ;;  # remove the -u
-        h) usage                                ;;
-        c) shift $(($OPTIND - 1)); clean "$@"   ;;  # remove the -c
-        r)                                      ;;
-        y) yflag=yes ;;
-        *) exec rm "$@"                        ;;   # send the rest to rm
+        f) exec rm -r "$@"                       ;;
+        l) verboselist=$(($verboselist+1))       ;;  # list verbose level 1-3
+        u) shift $(($OPTIND - 1)); _recover "$@" ;;  # remove the -u
+        h) _usage                                ;;
+        c) shift $(($OPTIND - 1)); _clean "$@"   ;;  # remove the -c
+        r)                                       ;;
+        y) yflag=yes                             ;;
+        *) exec rm "$@"                          ;;  # send the rest to rm
     esac
 done
+
 shift $(($OPTIND - 1))
 
 if [ $verboselist -gt 0 ]; then
-    list "$@"
+    _list "$@"
     exit 0
 fi
 
@@ -274,6 +278,6 @@ if [ ! -d "$trash_dir" ] ; then
     chmod -R 700 "$trash_dir"
 fi
 
-archive "$@"
+_archive "$@"
 
 exit 0
