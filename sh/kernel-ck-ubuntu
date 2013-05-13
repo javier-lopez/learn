@@ -24,20 +24,37 @@
 ####################################################################################################################################
 
 #####################################
-# 3.8
+# 3.9
 #versão do kernel a ser compilado
-kernel=3.8
+kernel=3.9
 #patch de atualização
-patchkernel=3.8.2
+patchkernel=3.9.2
 #patch BFQ
-bfq=3.8.0-v6
-vbfq=v6
+bfq=3.9.0-v6r1
+vbfq=v6r1
 #patch ck
-patchck=3.8-ck1
+patchck=3.9-ck1
 #sufixo
 ckk=ck1
 #arch
 arqt=$(dpkg --print-architecture)
+#####################################
+
+#####################################
+# 3.8
+#versão do kernel a ser compilado
+#kernel=3.8
+#patch de atualização
+#patchkernel=3.8.2
+#patch BFQ
+#bfq=3.8.0-v6
+#vbfq=v6
+#patch ck
+#patchck=3.8-ck1
+#sufixo
+#ckk=ck1
+#arch
+#arqt=$(dpkg --print-architecture)
 #####################################
 
 #####################################
@@ -282,9 +299,9 @@ _exec wget -N http://algo.ing.unimo.it/people/paolo/disk_sched/patches/$bfq/0002
 
 #ubuntu patch
 echo "[+] downloading the ubuntu patches for the vanilla kernel ...    "
-_exec wget -N http://kernel.ubuntu.com/~kernel-ppa/mainline/v$patchkernel-raring/0001-base-packaging.patch
-_exec wget -N http://kernel.ubuntu.com/~kernel-ppa/mainline/v$patchkernel-raring/0002-debian-changelog.patch
-_exec wget -N http://kernel.ubuntu.com/~kernel-ppa/mainline/v$patchkernel-raring/0003-default-configs.patch
+_exec wget -N http://kernel.ubuntu.com/~kernel-ppa/mainline/v$patchkernel-saucy/0001-base-packaging.patch
+_exec wget -N http://kernel.ubuntu.com/~kernel-ppa/mainline/v$patchkernel-saucy/0002-debian-changelog.patch
+_exec wget -N http://kernel.ubuntu.com/~kernel-ppa/mainline/v$patchkernel-saucy/0003-default-configs.patch
 
 echo -e "\033[1m-----------------------------\033[7m Applying the patches \033[0m\033[1m------------------------------\033[0m"
 echo "[+] uncomprensing the kernel to $tmp_path/linux-$kernel/ ...    "
@@ -317,8 +334,9 @@ echo -e "\033[1m-----------------------------\033[7m Configuring the kernel \033
 
 echo "[+] downloading an optimized config file from http://liquorix.net ...    "
 #_exec wget "http://liquorix.net/sources/$kernel/config.$arqt"
-#TODO 04-07-2013 --> 3.8 update on liquorix.net replaced 3.7. Replaced 3.7 with $kernel
-_exec wget "http://liquorix.net/sources/$kernel/config.$arqt"
+#TODO 04-03-2013 21:19 >> check when liquorix update config for 3.8, using 3.7 config in the meantime
+#Same for 3.9
+_exec wget "http://liquorix.net/sources/3.8/config.$arqt"
 _exec cp config.$arqt .config
 
 #tmp fix for bug #663474
