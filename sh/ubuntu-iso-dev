@@ -1,0 +1,9 @@
+#!/bin/bash
+
+cd /home/chilicuil/misc/ubuntu/release/ubuntu-13.10/isos/
+
+zsync http://cdimage.ubuntu.com/daily-live/current/saucy-desktop-amd64.iso.zsync
+zsync http://cdimage.ubuntu.com/daily-live/current/saucy-desktop-i386.iso.zsync
+
+zsync http://cdimage.ubuntu.com/ubuntu-server/daily/current/saucy-server-amd64.iso.zsync
+zsync http://cdimage.ubuntu.com/ubuntu-server/daily/current/saucy-server-i386.iso.zsync
