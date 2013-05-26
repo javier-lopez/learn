@@ -163,7 +163,7 @@ if [ -d "${BUILDRESULT}" ]; then
     chgrp "${BUILDRESULTGID}" "${BUILDPLACE}"/tmp/buildd/*
     for FILE in "${BUILDPLACE}"/tmp/buildd/*; do
 	if [ -f "${FILE}" ]; then
-	    cp -p ${FILE} "${BUILDRESULT}" || true
+	    cp -p "${FILE}" "${BUILDRESULT}" || true
 	fi
     done
 else

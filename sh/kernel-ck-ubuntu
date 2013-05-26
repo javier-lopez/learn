@@ -314,7 +314,7 @@ _exec bunzip2 patch-$patchkernel.bz2 patch-$patchck.bz2 > /dev/null 2>&1
 
 echo "[+] moving to $tmp_path/linux-$patchkernel-$ckk"
 _exec rm -rf linux-$patchkernel-$ckk
-_exec cp -r linux-$kernel linux-$patchkernel-$ckk
+_exec cp -r "linux-$kernel" "linux-$patchkernel-$ckk"
 _exec cd linux-$patchkernel-$ckk
 _exec echo
 
@@ -337,7 +337,7 @@ echo "[+] downloading an optimized config file from http://liquorix.net ...    "
 #TODO 04-03-2013 21:19 >> check when liquorix update config for 3.8, using 3.7 config in the meantime
 #Same for 3.9
 _exec wget "http://liquorix.net/sources/3.8/config.$arqt"
-_exec cp config.$arqt .config
+_exec cp "config.$arqt" .config
 
 #tmp fix for bug #663474
 #http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=663474
@@ -395,7 +395,7 @@ _exec echo
 
 echo -e "\033[1m-------------------------------------\033[7m DONE \033[0m\033[1m----------------------------------\033[0m"
 echo "[+] copying the debs files ..."
-_exec cp -v ../linux-*.deb $curr_path
+_exec cp -v ../linux-*.deb "$curr_path"
 echo "[+] you may want to install the generated packages and reboot your system, run: $ sudo dpkg -i linux-*.deb"
 echo "[+] have fun ^_^!"
 

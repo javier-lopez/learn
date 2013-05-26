@@ -6,12 +6,13 @@
 
 #new functions:
 #[+] must be self contained, with no dependencies on other functions
-#[+] they can depend on exotic cli commands thought
-#[+] they must follow the general style (name convention, return comment, indentation, etc)
-#[+] an example must be provided
+#[+] can depend on exotic cli commands or be bash specific (portability is a plus)
+#[+] must follow general style (name convention, return comment, indentation, etc)
+#[+] must not print errors
+#[+] must provide an example
 
 _arch()
-{   #check for the system arch, returns [64|32]
+{   #check for system arch, returns [64|32]
     local arch
     [ -z $MACHTYPE ] && arch=$(uname -m) || arch=$(echo $MACHTYPE | cut -d- -f1)
 
@@ -22,13 +23,16 @@ _arch()
         i686)
             arch=32;
             ;;
+        *)
+            exit 1
+            ;;
     esac
 
     echo $arch
 }
 #==================================================== Example ====
-arch=$(_arch)
-echo $arch
+#arch=$(_arch)
+#[ $arch -eq 32 ] && command32 || command64
 #=================================================================
 
 _internetlink()
@@ -44,28 +48,30 @@ _internetlink()
     fi
 }
 #==================================================== Example ====
-if ! _internetlink; then
-    echo "You must be connected to run this script" >&2
-    exit 1
-fi
+#if ! _internetlink; then
+    #echo "You must be connected to run this script" >&2
+    #exit 1
+#fi
 #=================================================================
 
 _cleanup()
-{   #clean tmp files, exit with no parameters
+{   #clean tmp files, exits with no parameters
     stty echo
     echo
     echo "[+] cleanup ..."
-    rm FILE
+    your_commands_here
 
     [ -z $1 ] && exit
 }
 #==================================================== Example ====
-trap _cleanup SIGINT SIGTERM #trap ctrl-c
-_cleanup 1
+#trap _cleanup SIGINT SIGTERM #trap ctrl-c
+#_cleanup 1
 #=================================================================
 
 _cmd()
 {   #print current command, exits on fail
+    [ -z $1 ] && return 0
+
     echo "[+] $@"
     $@
 
@@ -73,21 +79,21 @@ _cmd()
     [ $status != 0 ] && exit $status || return
 }
 #==================================================== Example ====
-_cmd rm file
+#_cmd rm file
 #=================================================================
 
 _die()
 {   #print a stacktrace with a msg, exits with 1
     local frame=0
     while caller $frame; do
-        ((frame++));
+        $((frame=frame+1));
     done
 
     echo "$*"
     exit 1
 }
 #==================================================== Example ====
-[ -z "$var" ] && _die "error msg"
+#[ -z "$var" ] && _die "error msg"
 #=================================================================
 
 _dirname()
@@ -103,22 +109,23 @@ _dirname()
     fi
 }
 #==================================================== Example ====
-_dirname /path/file #returns file
+#_dirname /path/file #returns file
 #=================================================================
 
 _download()
 {   #download files, return local location, 1 on fail
-    #requires, *liburi-perl*
+    #requires, liburi-perl, aria2c
+
     local urll="$1"
     local prot=$(echo "$urll" | cut -d: -f1)
-    if [ "$prot" == "magnet" ]; then
+    if [ "$prot" = magnet ]; then
         return 1 #not supported   
     fi
     local path=$( echo "$urll" | perl -MURI -le 'chomp($urll = <>); print URI->new($urll)->path' )
     local fn=$(basename "$path")
     local ext="${fn##*.}"    
 
-    if [ "$ext" == "torrent" ]; then
+    if [ "$ext" = torrent ]; then
         local file=$(aria2c -q --bt-stop-timeout=120 --seed-time=0 --follow-torrent=mem --on-bt-download-complete /bin/echo "$urll")
         [ -z $file ] && return 1  
         return ${file[2]}
@@ -136,8 +143,8 @@ _download()
     esac
 }
 #==================================================== Example ====
-FILE=$(_download $URL)
-[ "$FILE" -eq 1 ] && echo error || echo "done: $FILE"
+#FILE=$(_download $URL)
+#[ "$FILE" -eq 1 ] && echo error || echo "done: $FILE"
 #=================================================================
 
 _fullpath()
@@ -152,14 +159,14 @@ _fullpath()
     echo $full_file
 }
 #==================================================== Example ====
-_fullpath file #returns /path/file
+#_fullpath file #returns /path/file
 #=================================================================
 
 _getopt()
 {   #define vars for cli arguments
     var=""
     wantarg=0
-    for (( i=1; i<=$#; i+=1 )); do
+    for $(( i=1; i<=$#; i+=1 )); do
         lastvar=$var
         var=${!i}
         if [ "$var" = "" ]; then 
@@ -204,13 +211,13 @@ _getopt()
     done
 }
 #==================================================== Example ====
-OIFS=$IFS; IFS=$(echo -e "\n"); _getopt $@; IFS=$OIFS
-#./getopts --foo=bar -v -n 10 blah -one='last arg' 
-echo -e " foo:\t$foo v:\t$v n:\t$n blah:\t$blah one:\t$one "
+#OIFS=$IFS; IFS=$(echo -e "\n"); _getopt $@; IFS=$OIFS
+##./getopts --foo=bar -v -n 10 blah -one='last arg' 
+#echo -e " foo:\t$foo v:\t$v n:\t$n blah:\t$blah one:\t$one "
 #=================================================================
 
 _getpasswd()
-{   #define vars with passwords
+{   #define vars as passwords
     if [ -n "$1" ]
     then
         local option=`tr '[:upper:]' '[:lower:]' <<< $1`
@@ -228,10 +235,10 @@ _getpasswd()
     fi
 }
 #==================================================== Example ====
-_getpasswd
-echo $passwd
-_getpasswd config
-echo $configpasswd
+#_getpasswd
+#echo $passwd
+#_getpasswd config
+#echo $configpasswd
 #=================================================================
 
 _getroot()
@@ -239,12 +246,12 @@ _getroot()
 
     local tmp_path="/tmp"; local sudotest; local insudoers;
 
-    if [ ! "$LOGNAME" == "root" ]; then
+    if [ ! "$LOGNAME" = root ]; then
         echo "Detecting user $LOGNAME (non-root) ..."
         echo "Checking if sudo is available ..."
         sudotest=`type sudo &>/dev/null ; echo $?`
 
-        if [ "$sudotest" == 0 ]; then
+        if [ "$sudotest" = 0 ]; then
             sudo -K
             if [ -e "$tmp_path/sudo.test" ]; then
                 rm -f "$tmp_path/sudo.test"
@@ -279,8 +286,8 @@ _getroot()
     fi
 }
 #==================================================== Example ====
-_getroot
-echo "$sudopwd" | $sudocmd rm file
+#_getroot
+#echo "$sudopwd" | $sudocmd rm file
 #=================================================================
 
 _isalphanum()
@@ -292,15 +299,15 @@ _isalphanum()
   [ "$compressed" != "$input" ] && return 1 || return 0
 }
 #==================================================== Example ====
-echo -n "Enter input: "
-read input
-if ! _isalphanum "$input" ; then
-    echo "Your input must consist of only letters and numbers." >&2
-    exit 1
-else
-    echo "Input is valid."
-fi
-exit 0
+#echo -n "Enter input: "
+#read input
+#if ! _isalphanum "$input" ; then
+    #echo "Your input must consist of only letters and numbers." >&2
+    #exit 1
+#else
+    #echo "Input is valid."
+#fi
+#exit 0
 #=================================================================
 
 _islivecd()
@@ -310,27 +317,27 @@ _islivecd()
     return 1
 }
 #==================================================== Example ====
-if ! _islivecd ; then
-    echo "Live cd detected"
-else
-    echo "Non LiveCd detected"
-fi
+#if _islivecd ; then
+    #echo "Live cd detected"
+#else
+    #echo "Non LiveCd detected"
+#fi
 #=================================================================
 
-_inarray ()
+_inarray()
 {   #look for a value in an array, returns 0 on success, 1 otherwise
-    [ -n "$1" ] || { echo "$FUNCNAME: requires at least 1 param"; exit 1; }
+    [ -z $1 ] && return 1
 
     local needle="$1" element
     shift
     for element
     do
-        [[ $element != $needle ]] || return 0
+        [ "$element" != "$needle" ] || return 0
     done
     return 1
 }
 #==================================================== Example ====
-_inarray $name ${names[@]} && echo found!
+#_inarray $name ${names[@]} && echo found!
 #=================================================================
 
 _isnum()
@@ -338,29 +345,30 @@ _isnum()
     echo "$@" | grep -q -v "[^0-9]"
 }
 #==================================================== Example ====
-echo -n "Enter input: "
-read input
-if ! _isnum "$input" ; then
-    echo "Your input must consist of only numbers." >&2
-    exit 1
-else
-    echo "Input is valid."
-fi
-exit 0
+#echo -n "Enter input: "
+#read input
+#if ! _isnum "$input" ; then
+    #echo "Your input must consist of only numbers." >&2
+    #exit 1
+#else
+    #echo "Input is valid."
+#fi
+#exit 0
 #=================================================================
 
 _lower()
 {   #convert a string to lower string
+    [ -z $1 ] && return 1
     echo $@ | tr '[:upper:]' '[:lower:]' 
 }
 #==================================================== Example ====
-string="FOO BAR"
-lower=$(_lower $string)
+#string="FOO BAR"
+#lower=$(_lower $string)
 #=================================================================
 
 _mail()
 {   #send mail, return 0 on success, 1 otherwise
-    #requires: *libio-socket-ssl-perl* and *libnet-ssleay-perl* on ubuntu for gmail
+    #requires: libio-socket-ssl-perl, libnet-ssleay-perl and sendemail
     case $1 in
         gmail)
             sendemail -f "$1" -t "$2" -u "$3" -m "$4" -s smtp.gmail.com:587 -o tls=yes -xu "$5" -xp "$6" > /dev/null 2>&1
@@ -370,25 +378,23 @@ _mail()
             ;;
     esac
 
-    if [ $? -eq 0 ]; then
-        return 0
-    else
-        return 1
-    fi
+    [ $? -eq 0 ] && return 0 || return 1
 }
 #==================================================== Example ====
-FROM="foo@gmail.com"; TO="bar@foo.com"; TITLE="hi"; MSG="how are you?"
-USER="foo"; PASSWD="secret"
-[ $(_mail gmail $FROM $TO $TITLE $MESSAGE $USER $PASSWD) -eq 0 ] && echo "send" || echo "error"
+#FROM="foo@gmail.com"; TO="bar@foo.com"; TITLE="hi"; MSG="how are you?"
+#USER="foo"; PASSWD="secret"
+#[ $(_mail gmail $FROM $TO $TITLE $MESSAGE $USER $PASSWD) -eq 0 ] && echo "send" || echo "error"
 
-FROM="foo@custom.com"; TO="bar@foo.com"; TITLE="hi"; MSG="how are you?"
-SERVER="smpt.custom.com:port"; USER="foo"; PASSWD="secret"
-[ $(_mail $FROM $TO $TITLE $MESSAGE $SERVER $USER $PASSWD) -eq 0 ] && echo "send" || echo "error"
+#FROM="foo@custom.com"; TO="bar@foo.com"; TITLE="hi"; MSG="how are you?"
+#SERVER="smpt.custom.com:port"; USER="foo"; PASSWD="secret"
+#[ $(_mail $FROM $TO $TITLE $MESSAGE $SERVER $USER $PASSWD) -eq 0 ] && echo "send" || echo "error"
 #=================================================================
 
 _notify()
 {   #notify a msg
-    if [[ $TERM == "linux" ]] || [[ $TERM == "dumb" ]]; then
+    [ -z $1 ] && return 1
+
+    if [ "$TERM" = linux ] || [ "$TERM" = dumb ]; then
         notify-send -t 3000 "${@}"
     else
         echo -n "${1}: "
@@ -401,43 +407,67 @@ _notify()
     fi
 }
 #==================================================== Example ====
-_notify "You need html2text" "\$ sudo apt-get install html2text"
+#_notify "You need html2text" "\$ sudo apt-get install html2text"
 #=================================================================
 
 _printtime()
 {  #format seconds to a pretty string
+    [ -z $1 ] && return 1
+
     NUM=$1
     MIN=0
     HOUR=0
     DAY=0
-    if((NUM>59));then
-        ((SEC=NUM%60))
-        ((NUM=NUM/60))
-        if((NUM>59));then
-            ((MIN=NUM%60))
-            ((NUM=NUM/60))
-            if((NUM>23));then
-                ((HOUR=NUM%24))
-                ((DAY=NUM/24))
+    if $((NUM>59)); then
+        $((SEC=NUM%60))
+        $((NUM=NUM/60))
+        if $((NUM>59)); then
+            $((MIN=NUM%60))
+            $((NUM=NUM/60))
+            if $((NUM>23)); then
+                $((HOUR=NUM%24))
+                $((DAY=NUM/24))
             else
-                ((HOUR=NUM))
+                $((HOUR=NUM))
             fi
         else
-            ((MIN=NUM))
+            $((MIN=NUM))
         fi
     else
-        ((SEC=NUM))
+        $((SEC=NUM))
     fi
     echo "$DAY"d "$HOUR"h "$MIN"m "$SEC"s
 }
 #==================================================== Example ====
-SECONDS=12345
-_printtime $SECONDS #prints "0d 3h 25m 49s"
+#SECONDS=12345
+#_printtime $SECONDS #prints "0d 3h 25m 49s"
+#=================================================================
+
+_privport()
+{   #check if port is a num and if it's privated (<1025), returns 0 on success, 1 otherwise
+    [ -z $1 ] && return 1
+
+    echo "$1" | grep -q -v "[^0-9]"
+    if [ $? -eq 0 ]; then
+        [ $1 -gt 0 ] && [ $1 -lt 1025 ] && return 0 || return 1
+    else
+        return 1
+    fi
+}
+#==================================================== Example ====
+#echo -n "Enter port: "
+#read port
+#if _privport "$port" ; then #priv ports requires root
+    #sudo script $port
+#else
+    #script $port 
+#fi
 #=================================================================
 
 _realpath()
 {   #convert relative to real paths
 
+    [ -z $1 ] && return 1
     #http://www.makkintosshu.com/journal/a-realpath-implementation-in-bash
     local success=true
 
@@ -447,7 +477,7 @@ _realpath()
 
     # get the basename of the file (ignoring '.' & '..', because they're really part of the path)
     local file_basename="${path##*/}"
-    if [[ ( "$file_basename" = "." ) || ( "$file_basename" = ".." ) ]]; then
+    if [ "$file_basename" = . ] || [ "$file_basename" = .. ]; then
         file_basename=""
     fi
 
@@ -461,7 +491,7 @@ _realpath()
 
     if $success; then
         # does the filename exist?
-        if [[ ( ! -z "$file_basename" ) && ( ! -e "$file_basename" ) ]]; then
+        if [ ! -z "$file_basename" ] && [ ! -e "$file_basename" ]; then
             success=false
         fi
 
@@ -479,39 +509,43 @@ _realpath()
     $success
 }
 #==================================================== Example ====
-relative_path="../Shared/"
-absolute_path="$(_realpath "$relative_path")"
-if [ $? -eq 0 ]; then
-	echo "absolute_path = $absolute_path"
-else
-	echo "'$relative_path' does not exist!"
-fi
+#relative_path="../Shared/"
+#absolute_path="$(_realpath "$relative_path")"
+#if [ $? -eq 0 ]; then
+	#echo "absolute_path = $absolute_path"
+#else
+	#echo "'$relative_path' does not exist!"
+#fi
 #=================================================================
 
 _refarray()
 {   #exports an array to another
     #http://ihaveabackup.net/2012/01/29/a-workaround-for-passing-arrays-in-bash/
+    [ -z $1 ] && return 1
     local varname="$1"
     local export_as="$2"
     local code=$(declare -p "$varname")
     echo ${code/$varname/$export_as}
 }
 #==================================================== Example ====
-dump() {
-    eval $(ref_array "$1" array)
-    local key
+#dump()
+#{
+    #[ -z $1 ] && return 1
+    #eval $(ref_array "$1" array)
+    #local key
 
-    for key in "${!array[@]}"; do
-        printf "Key: %s, value: %s\n" "$key" "${array[$key]}"
-    done
-}
+    #for key in "${!array[@]}"; do
+        #printf "Key: %s, value: %s\n" "$key" "${array[$key]}"
+    #done
+#}
 
-declare -A PERSON=([name]="John Doe" [age]=22)
-dump PERSON
+#declare -A PERSON=([name]="John Doe" [age]=22)
+#dump PERSON
 #=================================================================
 
 _rotate()
 {   #shows an animation as long as a process is in memory
+    [ -z $1 ] && return 1
     pid=$1
     animation_state=1
 
@@ -550,11 +584,14 @@ _rotate()
     done
 }
 #==================================================== Example ====
-_rotate $(pidof tar)
+#_rotate $(pidof tar)
 #=================================================================
 
 _uploadimg()
 {   #uploads an image, returns url on success, 1 otherwise
+    #requires curl
+
+    [ -z $1 ] && return 1
     for img
     do
         if [ -f "$img" ] ; then
@@ -585,25 +622,26 @@ _uploadimg()
                         grep -E -o "http://i.imgur.com/[^<]*" | tee /dev/fd/2 | xclip 
                     ;;
                 *)
-                    echo "'$img' is not a valid img file"
+                    return 1
                     ;;
             esac
         else
-            echo "'$img' doesn't exist"
+            return 1
         fi
     done
 }
 #==================================================== Example ====
-_upload_img file.png
+#_upload_img file.png
 #=================================================================
 
 _upper()
 {   #returns upper string
+    [ -z $1 ] && return 1
     echo $@ | tr '[:lower:]' '[:upper:]'
 }
 #==================================================== Example ====
-string="foo bar"
-upper=$(_upper $string)
+#string="foo bar"
+#upper=$(_upper $string)
 #=================================================================
 
 _usage()
@@ -615,13 +653,14 @@ _usage()
     exit 0
 }
 #===================================================== Example ====
-case $1 in
-  -h | --help | h | help ) _usage;;
-esac
+#case $1 in
+  #-h | --help | h | help ) _usage;;
+#esac
 #=================================================================
 
 _waitfor()
 {   #wait for a program, shows an animation
+    [ -z $1 ] && return 1
     status=$?
     [ $status != 0 ] && exit $status
 
@@ -629,7 +668,7 @@ _waitfor()
     $@ &
 
     running=$(pidof $1); running=$?
-    if [ "$running" == "1" ]; then
+    if [ "$running" = 1 ]; then
         echo -e "\b\b\b\b\b done"
     else
         _rotate $(pidof $1)
@@ -637,28 +676,5 @@ _waitfor()
     fi
 }
 #==================================================== Example ====
-_waitfor tar -jxpf file.tar.bz2
-#=================================================================
-
-_yesno()
-{   #prints a yes/no dialog, returns 1 on yes, 0 otherwise
-    [ -n "$1" ] || { echo "$FUNCNAME: requires a question"; exit 1; }
-    [ -z "$2"    ] && echo -ne "$1 (y/n): "
-    [ "$2" = yes ] && echo -ne "$1 (Y/n): "
-    [ "$2" = no  ] && echo -ne "$1 (y/N): "
-
-    local answer
-    read answer
-    answer=`tr '[:upper:]' '[:lower:]' <<< $answer`
-
-    if [ "$answer" = y -o "$answer" = yes ] || [ -z "$answer" -a "$2" = yes ]; then
-        return 0
-    else
-        return 1
-    fi
-}
-#==================================================== Example ====
-_yesno "Do you want to continue?" #default to 'no'
-_yesno "Do you want to continue?" yes #default behavior
-_yesno "Do you want to continue?" no  #default behavior
+#_waitfor tar -jxpf file.tar.bz2
 #=================================================================

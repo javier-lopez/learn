@@ -35,8 +35,8 @@ _script()
 
     for file
     do
-        _exec chmod +x $file
-        _exec sudo cp $file /usr/local/bin
+        _exec chmod +x "$file"
+        _exec sudo cp "$file" /usr/local/bin
     done
 
     exit 0
@@ -48,7 +48,7 @@ _autocp()
 
     for file
     do
-        _exec sudo cp $file /etc/bash_completion.d/
+        _exec sudo cp "$file" /etc/bash_completion.d/
     done
     exit 0
 }

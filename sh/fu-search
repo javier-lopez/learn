@@ -5,22 +5,22 @@
 PATTERN="$@"
 
 # I love colors!
-BLUE=$'\E[0;34m'
-DEFAULT=$'\E[0m'
-RED=$'\E[0;31m'
-BROWN=$'\E[0;33m'
-CYAN=$'\E[0;36m'
-DARK_GREY=$'\E[1;30m'
-GREEN=$'\E[0;32m'
-LIGHT_BLUE=$'\E[1;34m'
-LIGHT_CYAN=$'\E[1;36m'
-LIGHT_GREEN=$'\E[1;32m'
-LIGHT_GREY=$'\E[0;37m'
-LIGHT_PURPLE=$'\E[1;35m'
-LIGHT_RED=$'\E[1;31m'
-PURPLE=$'\E[1;35m'
-WHITE=$'\E[1;37m'
-YELLOW=$'\E[0;33m'
+BLUE="$(printf '\E[0;34m')"
+DEFAULT="$(printf '\E[0m')"
+RED="$(printf '\E[0;31m')"
+BROWN="$(printf '\E[0;33m')"
+CYAN="$(printf '\E[0;36m')"
+DARK_GREY="$(printf '\E[1;30m')"
+GREEN="$(printf '\E[0;32m')"
+LIGHT_BLUE="$(printf '\E[1;34m')"
+LIGHT_CYAN="$(printf '\E[1;36m')"
+LIGHT_GREEN="$(printf '\E[1;32m')"
+LIGHT_GREY="$(printf '\E[0;37m')"
+LIGHT_PURPLE="$(printf '\E[1;35m')"
+LIGHT_RED="$(printf '\E[1;31m')"
+PURPLE="$(printf '\E[1;35m')"
+WHITE="$(printf '\E[1;37m')"
+YELLOW="$(printf '\E[0;33m')"
 
 usage()
 {
@@ -47,7 +47,7 @@ while getopts ":c:" option; do
     esac
 done
 
-if [ -z $CFLAG ]; then
+if [ -z "$CFLAG" ]; then
     curl -s "http://www.commandlinefu.com/commands/matching/$PATTERN/`echo -n $PATTERN |  base64`/plaintext/sort-by-votes" |\
     grep --invert-match "commandlinefu.com by David Winterbottom" #I wanna keep the output as clean as possible
 else

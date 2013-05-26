@@ -55,17 +55,17 @@ XARGS="/usr/bin/xargs"
 #=== Folder managment ================
 $ECHO "Folder Management: Start"
 #Make sure root backup directory exists
-[ ! -d $BackupDir ] && $MKDIR -p $BackupDir
+[ ! -d "$BackupDir" ] && $MKDIR -p $BackupDir
 
 #Create new backup directory for current "this" backup/dump
-if [[ -d $BackupDir/$DirectoryName ]]; then
+if [ -d "$BackupDir/$DirectoryName" ]; then
     $ECHO "Folder Management: RM $BackupDir/$DirectoryName"
-    $RM -rf $BackupDir/$DirectoryName
+    $RM -rf "$BackupDir/$DirectoryName"
     $ECHO "Folder Management: MKDIR $BackupDir/$DirectoryName"
-    $MKDIR $BackupDir/$DirectoryName
+    $MKDIR "$BackupDir/$DirectoryName"
 else
     $ECHO "Folder Management: MKDIR $BackupDir/$DirectoryName"
-    $MKDIR $BackupDir/$DirectoryName
+    $MKDIR "$BackupDir/$DirectoryName"
 fi
 #Check local old archives, keeping only $LocalMax
 $ECHO "Folder Management: Checking old local archives"
@@ -75,11 +75,11 @@ for i in "${files[@]}"; do #add \n
 done
 $CAT /tmp/LocalAllFiles.tmp | $SORT -n | $TAIL -$LocalMax > /tmp/LocalMaxFiles.tmp
 
-if [[ -e /tmp/LocalMaxFiles.tmp ]]; then
+if [ -e /tmp/LocalMaxFiles.tmp ]; then
     files_to_delete_locally=$($CAT /tmp/LocalAllFiles.tmp | $SORT -n | $SORT /tmp/LocalMaxFiles.tmp /tmp/LocalMaxFiles.tmp -| $UNIQ -u)
 fi
 
-if [[ $files_to_delete_locally == "" ]]; then
+if [ "$files_to_delete_locally" = "" ]; then
     $ECHO "Folder Management: Nothing to delete"
 else
     #ADD path, fuck!, it was simpler than I though!
@@ -97,7 +97,7 @@ $RM -rf /tmp/files_to_delete_locally.tmp /tmp/LocalMaxFiles.tmp /tmp/LocalAllFil
 $ECHO "Folder Management: End"
 
 #=== Dump db ==========================
-if [[ $RunDbDump ]]; then
+if [ "$RunDbDump" ]; then
     $ECHO "Database Backup: Start"
     MYSQL="$(which mysql)"
     MYSQLDUMP="$(which mysqldump)"
@@ -111,14 +111,14 @@ if [[ $RunDbDump ]]; then
 fi
 
 #=== Compress =========================
-if [[ $RunDbDump && $RunCompress ]]; then
+if [ "$RunDbDump" ] && [ "$RunCompress" ]; then
     $ECHO "Compression: Start"
     $ECHO "Compression: TAR.GZ"
     files=($BackupDir/$DirectoryName/*sql)
     $CompressBin $BackupDir/$DirectoryName"_db.tar.gz" "${files[@]}"
 #Remove the flatfile database backups
     $ECHO "Compression: RM $BackupDir/$DirectoryName"
-    $RM -rf $BackupDir/$DirectoryName
+    $RM -rf "$BackupDir/$DirectoryName"
     $ECHO "Compression: End"
 else
     $ECHO "Compression: Failed, you must enable dump first"
@@ -126,7 +126,7 @@ else
 fi
 
 #=== Upload ===========================
-if [[ $RunFtp ]]; then
+if [ "$RunFtp" ]; then
     $ECHO "Upload: Start"
     BackupFile=$BackupDir/$DirectoryName"_db.tar.gz"
     #Extract the local file name and extension only from its path
@@ -134,22 +134,22 @@ if [[ $RunFtp ]]; then
 
     #Connect, abort and return error message on failure
     $CURL -s $FtpHost --user $FtpUser:$FtpPasswd 2>&1 > /dev/null
-    if [[ $? == -1 ]]; then
+    if [ $? = -1 ]; then
         $ECHO "Upload: Couldn't connect, check you network settings"
     fi
 
     #Change directory remotely, abort and return error message on failure
     $LFTP -u $FTPU,$FTPP $FTPS -e "cd $FtpDir; quit"
-    if [[ $? == -1 ]]; then
+    if [ $? = -1 ]; then
         $LFTP -u $FTPU,$FTPP $FTPS -e "mkdir $FtpDir; quit"
-        if [[ $? == -1 ]]; then
+        if [ $? = -1 ]; then
             $ECHO "Upload: Couldn't create the dir, check permitions"
         fi
     fi
 
     #Upload the file, abort and return error message on failure
     #/usr/bin/curl -s -T $BackupDir/$DirectoryName"_db.tar.gz" ftp://$FtpUser/$FtpDir/$FileName --user $FtpUser:$FtpPasswd
-    if [[ $? == -1 ]]; then
+    if [ $? = -1 ]; then
         $ECHO "Upload: Couldn't upload the backup"
     else
         $ECHO "Upload: Correct"
@@ -160,7 +160,7 @@ if [[ $RunFtp ]]; then
     $CURL $FtpHost/$FtpDir/ --user $FtpUser:$FtpPasswd -s| $GREP ^- | $AWK '{print $9}'|\
     $SORT -n | $TAIL -$FtpMax > /tmp/FtpMaxFiles.tmp
 
-    if [[ -e /tmp/FtpMaxFiles.tmp ]]; then
+    if [ -e /tmp/FtpMaxFiles.tmp ]; then
         files_to_delete=$($CURL $FtpHost/$FtpDir/ --user $FtpUser:$FtpPasswd -s| $GREP ^- |\
         $AWK '{print $9}'| $SORT -n | $SORT /tmp/FtpMaxFiles.tmp /tmp/FtpMaxFiles.tmp -| $UNIQ -u)
     else
@@ -168,7 +168,7 @@ if [[ $RunFtp ]]; then
         exit -1
     fi
 
-    if [[ $files_to_delete == "" ]]; then
+    if [ "$files_to_delete" = "" ]; then
         $ECHO "Upload: Nothing to delete"
     else
         $ECHO $files_to_delete > /tmp/files_to_delete.tmp
