@@ -395,7 +395,7 @@ class BaseHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 # Common Options
 ################################################################################
 
-def add_common_options(parser, default_port=8080):
+def add_common_options(parser, default_port=8000):
   # Address and port
   listening_options = OptionGroup(parser, "Server Address and Port", "Configure the server's listening address and port.")
   listening_options.add_option("-b", "--bind", dest="address", default='', action="store", help='Bind the server to this address. By default the server will listen on all interfaces.')
@@ -1051,13 +1051,13 @@ if __name__ == '__main__':
 
   parser.add_option("-f", "--filelist", dest="filelist", action="store", help='Serve files listed in a filelist. The list should contain a single path per line. If the list is modified while the server is running, it will be reloaded. The directory that contains the filelist is considered the base directory for relative paths in the list. Absolute paths should be preferred.')
 
-  parser.add_option("--infopage", dest="infopage", action="store", help='Specify an info page that you can visit to see information about the server. The value should be a path and must include the leading "/", e.g. "/info" or "/sklfj23k42jf/supersecret_info". This page will not be linked directly by any other page on the server, but if this path coincides with another path on the server, it will take precedence. This option is affected by the Firefox bug.')
+  parser.add_option("-i", "--infopage", dest="infopage", action="store", help='Specify an info page that you can visit to see information about the server. The value should be a path and must include the leading "/", e.g. "/info" or "/sklfj23k42jf/supersecret_info". This page will not be linked directly by any other page on the server, but if this path coincides with another path on the server, it will take precedence. This option is affected by the Firefox bug.')
 
   parser.add_option("--no-clobber", dest="no_clobber", action="store_true", help='Prevent uploaded files from clobbering existing files by appending an incrementing number to the filename.')
 
-  parser.add_option("--upload", dest="upload_dir", action="store", help='Enable file uploads and save them in the specified directory.')
+  parser.add_option("-u", "--upload", dest="upload_dir", action="store", help='Enable file uploads and save them in the specified directory.')
 
-  parser.add_option("--motd", dest="motd", action="store", help='Path to file containing MOTD message to display on each page. The message should be valid XHTML.')
+  parser.add_option("-m", "--motd", dest="motd", action="store", help='Path to file containing MOTD message to display on each page. The message should be valid XHTML.')
 
   # Includes and Excludes
   filter_options = OptionGroup(parser, "Filtering Options", "See the output of \"--filterhelp\" for more information.")
