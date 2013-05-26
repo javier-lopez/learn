@@ -97,7 +97,7 @@ _die()
 #=================================================================
 
 _dirname()
-{   #`basename` faster clone, return string on success, 1 on fail
+{   #returns string on success, 1 on fail
 
     #http://www.linuxmisc.com/12-unix-web-servers/d31beb238f7b5a6b.htm
     if [ -z $1 ]; then
@@ -109,7 +109,7 @@ _dirname()
     fi
 }
 #==================================================== Example ====
-#_dirname /path/file #returns file
+#_dirname /path/file #returns /path
 #=================================================================
 
 _download()
