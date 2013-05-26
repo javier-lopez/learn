@@ -1,0 +1,130 @@
+#!/usr/bin/env bash
+
+SUDO=/usr/bin/sudo
+
+_isnum()
+{   #look for a number, returns 0 on success, 1 otherwise
+    echo "$@" | grep -q -v "[^0-9]"
+}
+
+_privport()
+{   #check if port is  privated (<1025), returns 0 on success, 1 otherwise
+    [ -z $1 ] && return 1
+
+    [ $1 -gt 0 ] && [ $1 -lt 1025 ] && return 0 || return 1
+}
+
+if [ ! -f /usr/local/bin/py.simple.server ]; then
+    if [ $# -gt 1 ]; then
+        for PARAM in "$@";
+        do
+            case $PARAM in
+                -p*)
+                    if [ "$PARAM" = "-p" ]; then
+                        shift
+                        PARAM=$1
+                    else
+                        PARAM=${PARAM:2}
+                    fi
+                    break
+                    ;;
+                --port=*)
+                    if [ "$PARAM" = "--port=" ]; then
+                        shift
+                        PARAM=$1
+                    else
+                        PARAM=${PARAM:7}
+                    fi
+                    break
+                    ;;
+                *)
+                    shift
+                    ;;
+            esac
+        done
+
+        PORT=$PARAM
+
+        echo "Using SimpleHTTPServer and dropping all args but the port one"
+        echo "Download the full featured simple.server at: https://raw.github.com/chilicuil/learn/master/python/py.simple.server"
+        echo
+    else
+        case "$1" in
+            -p*)
+                PORT=${1:2}
+                ;;
+            *)
+                PORT=$1
+                ;;
+        esac
+    fi
+
+    if ! _isnum $PORT; then
+        PORT=8000
+    fi
+
+    if ! _privport $PORT; then
+        SUDO=""
+    fi
+    $SUDO python -m SimpleHTTPServer $PORT
+else
+    if [ $# -gt 1 ]; then
+        ARGS="$@"
+        for PARAM in "$@";
+        do
+            case $PARAM in
+                -p*)
+                    if [ "$PARAM" = "-p" ]; then
+                        shift
+                        PARAM=$1
+                    else
+                        PARAM=${PARAM:2}
+                    fi
+                    break
+                    ;;
+                --port=*)
+                    if [ "$PARAM" = "--port=" ]; then
+                        shift
+                        PARAM=$1
+                    else
+                        PARAM=${PARAM:7}
+                    fi
+                    break
+                    ;;
+                *)
+                    shift
+                    ;;
+            esac
+        done
+
+        PORT=$PARAM
+        if ! _isnum $PORT; then
+            PORT=8000
+        fi
+
+        if ! _privport $PORT; then
+            SUDO=""
+        fi
+
+        $SUDO /usr/local/bin/py.simple.server "$ARGS"
+    else
+        case "$1" in
+            -p*)
+                PORT=${1:2}
+                ;;
+            *)
+                PORT=$1
+                ;;
+        esac
+
+        if ! _isnum $PORT; then
+            PORT=8000
+        fi
+
+        if ! _privport $PORT; then
+            SUDO=""
+        fi
+
+        $SUDO /usr/local/bin/py.simple.server -p "$PORT" .
+    fi
+fi
