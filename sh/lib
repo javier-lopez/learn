@@ -35,6 +35,97 @@ _arch()
 #[ $arch -eq 32 ] && command32 || command64
 #=================================================================
 
+_barcui()
+{
+    [ -z $1 ] && return 1
+    pid=$1
+    animation_state=1
+    printf "%s" " "
+
+    local c=0; j=0;
+    
+    exec < /dev/tty
+    oldstty=$(stty -g)
+    stty raw -echo min 0
+    echo -en "\033[6n" > /dev/tty
+    IFS=';' read -r -d R -a pos
+    stty $oldstty
+    local col=$((${pos[1]} - 1))
+    col=$((col+4))
+
+    while [ "`ps -p $pid -o comm=`" ]; do
+        case $animation_state in
+            1)
+                printf "%s" "o@o"
+                animation_state=2
+                ;;
+            2)
+                if (( j < $(tput cols)-col )); then
+                    for (( i = 0; i < c+4; i++ )); do
+                        printf "%b" "\b";
+                    done
+                    printf "%*s%s" $((c+1)) "" "o @o"
+                    (( j=j+1 ))
+                    (( c=c+1 ))
+                    if ! (( j < $(tput cols)-col )); then
+                        animation_state=3
+                    fi
+                fi
+                ;;
+            3)
+                for (( i = 0; i < c+3; i++ )); do
+                    printf "%b" "\b";
+                done
+                printf "%*s%s" $((c)) "" "o@o "
+                animation_state=4
+                ;;
+            4)
+                for (( i = 0; i < c+4; i++ )); do
+                    printf "%b" "\b";
+                done
+                printf "%*s%s" $((c)) "" "o@o?"
+                animation_state=5
+                ;;
+            5)
+                for (( i = 0; i < c+4; i++ )); do
+                    printf "%b" "\b";
+                done
+                printf "%*s%s" $((c)) "" "o@o "
+                animation_state=6
+                ;;
+            6)
+                if (( j > 0 )); then
+                    for (( i = 0; i < c+4; i++ )); do
+                        printf "%b" "\b";
+                    done
+                    #set -x
+                    printf "%*s%s" $((c-1)) "" "o@ o"
+                    printf "%*s" 1 ""
+                    printf "%b" "\b";
+                    #set +x
+
+                    (( j=j-1 ))
+                    (( c=c-1 ))
+                else
+                    for (( i = 0; i < 4; i++ )); do
+                        printf "%b" "\b";
+                    done
+                    printf "%4s" ""
+                    for (( i = 0; i < 4; i++ )); do
+                        printf "%b" "\b";
+                    done
+                    printf "%s" "o@o"
+                    animation_state=2
+                fi
+                ;;
+        esac
+        sleep 1
+    done
+}
+#==================================================== Example ====
+#echo -n "[+] tar is running ..." && _barcui $(pidof tar)
+#=================================================================
+
 _internetlink()
 {   #check for internet connection, returns 0 on success, 1 otherwise
     wget --tries=3 --timeout=5 http://www.google.com -O /tmp/index.google > /dev/null 2>&1
@@ -214,6 +305,49 @@ _getopt()
 #OIFS=$IFS; IFS=$(echo -e "\n"); _getopt $@; IFS=$OIFS
 ##./getopts --foo=bar -v -n 10 blah -one='last arg' 
 #echo -e " foo:\t$foo v:\t$v n:\t$n blah:\t$blah one:\t$one "
+#=================================================================
+
+_getcol()
+{   #return an int with the col cursor position
+
+    #http://stackoverflow.com/questions/2575037/how-to-get-the-cursor-position-in-bash
+    exec < /dev/tty
+    oldstty=$(stty -g)
+    stty raw -echo min 0
+    # on my system, the following line can be replaced by the line below it
+    echo -en "\033[6n" > /dev/tty
+    # tput u7 > /dev/tty    # when TERM=xterm (and relatives)
+    IFS=';' read -r -d R -a pos
+    stty $oldstty
+    # change from one-based to zero based so they work with: tput cup $row $col
+    local col=$((${pos[1]} - 1))
+    echo $col
+}
+#==================================================== Example ====
+printf "%s" "Hi"
+col=$(_getcol)
+printf "%s" " - $col characters"
+#=================================================================
+
+_getrow()
+{   #return an int with the col cursor position
+
+    #http://stackoverflow.com/questions/2575037/how-to-get-the-cursor-position-in-bash
+    exec < /dev/tty
+    oldstty=$(stty -g)
+    stty raw -echo min 0
+    # on my system, the following line can be replaced by the line below it
+    echo -en "\033[6n" > /dev/tty
+    # tput u7 > /dev/tty    # when TERM=xterm (and relatives)
+    IFS=';' read -r -d R -a pos
+    stty $oldstty
+    # change from one-based to zero based so they work with: tput cup $row $col
+    local row=$((${pos[0]:2} - 1))    # strip off the esc-[
+    echo $row
+}
+#==================================================== Example ====
+row=$(_getrow)
+printf "%s" "$row"
 #=================================================================
 
 _getpasswd()
@@ -548,6 +682,7 @@ _rotate()
     [ -z $1 ] && return 1
     pid=$1
     animation_state=1
+    echo -e -n "    "
 
     while [ "`ps -p $pid -o comm=`" ]; do
         # rotating star
@@ -582,9 +717,10 @@ _rotate()
         esac
         sleep 1
     done
+    echo -e "\b\b\b\b\b\b\b       "
 }
 #==================================================== Example ====
-#_rotate $(pidof tar)
+#echo -n "[+] tar" && _rotate $(pidof tar)
 #=================================================================
 
 _uploadimg()
@@ -661,18 +797,54 @@ _usage()
 _waitfor()
 {   #wait for a program, shows an animation
     [ -z $1 ] && return 1
-    status=$?
-    [ $status != 0 ] && exit $status
 
-    echo "[+] $@"
-    $@ &
+    echo -n "    $ $@ ..."
+    $@ > /dev/null 2>&1 &
+    sleep 1s
 
     running=$(pidof $1); running=$?
     if [ "$running" = 1 ]; then
-        echo -e "\b\b\b\b\b done"
+        echo
     else
-        _rotate $(pidof $1)
-        echo -e "\b\b\b\b\b done"
+        pid=$(pidof $1)
+        animation_state=1
+        echo -e -n "    "
+
+        while [ "`ps -p $pid -o comm=`" ]; do
+            # rotating star
+            echo -e -n "\b\b\b"
+            case $animation_state in
+                1)
+                    echo -n "["
+                    echo -n -e "\033[1m|\033[0m"
+                    echo -n "]"
+                    animation_state=2
+                    ;;
+                2)
+                    echo -n "["
+                    echo -n -e "\033[1m/\033[0m"
+                    echo -n "]"
+                    animation_state=3
+                    ;;
+                3)
+                    echo -n "["
+                    echo -n -e "\033[1m-\033[0m"
+                    echo -n "]"
+                    animation_state=4
+                    ;;
+                4)
+                    echo -n "["
+                    echo -n -e "\033[1m"
+                    echo -n "\\"
+                    echo -n -e "\033[0m"
+                    echo -n "]"
+                    animation_state=1
+                    ;;
+            esac
+            sleep 1
+        done
+        echo -e "\b\b\b   "
+        echo
     fi
 }
 #==================================================== Example ====
