@@ -198,8 +198,8 @@ _recover()
 
         name=$(echo "$data_in_trashinfo" | cut -d\| -f3)
 
-        if [ ! -d $(_dirname_ "$name") ]; then
-            echo "mkdir -p $(_dirname_ $name)"
+        if [ ! -d $(_dirname "$name") ]; then
+            echo "mkdir -p $(_dirname $name)"
         fi
 
         if [ -e "$name" ]; then
