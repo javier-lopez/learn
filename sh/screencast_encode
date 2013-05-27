@@ -4,7 +4,7 @@
 
 usage()
 {
-    echo "Usage: `basename $0` [-v 0-2048][-s soundtrack.mp3][-k] screencast.mkv" >&2
+    echo "Usage: $(basename $0) [-v 0-2048][-s soundtrack.mp3][-k] screencast.mkv" >&2
     echo >&2
     echo "          -v     Change the volume from the screencast [0-2048] (ffmpeg -vol)" >&2
     echo "          -s     Add soundtrack" >&2
@@ -18,7 +18,7 @@ usage()
 
 notify ()
 {
-    if [[ $TERM == "linux" ]]; then
+    if [ "$TERM" = linux ]; then
         notify-send -t 3000 "${@}"
     else
         echo "${@}"
@@ -28,10 +28,10 @@ notify ()
 
 cleanup ()
 {
-    if [[ ! -z $VFLAG ]]; then
+    if [ ! -z "$VFLAG" ]; then
         rm "$basename".audio*
     fi
-    if [[ ! -z $SFLAG ]]; then
+    if [ ! -z "$SFLAG" ]; then
         rm "$(basename $SOUNDTRACK)".vol*
     fi
 }
@@ -60,14 +60,14 @@ while getopts ":v:s:k" option; do
     esac
 done
 
-if [[ $# == 0 ]]; then
+if [ "$#" = 0 ]; then
     if [[ $1 == *.mkv ]]; then
         file=$1
         basename=$(basename $file .mkv)
     fi
 fi
 
-while [ $# -ne 0 ]; do
+while [ "$#" -ne 0 ]; do
     if [[ $1 == *.mkv ]]; then
         file=$1
         basename=$(basename $file .mkv)
@@ -75,22 +75,22 @@ while [ $# -ne 0 ]; do
     shift
 done
 
-if [[ -z $file ]]; then
+if [ -z "$file" ]; then
     notify "[-] Error:" "Specify a .mkv file"
     exit 1
-elif [[ ! -e $file ]]; then
+elif [ ! -e "$file" ]; then
     notify "[-] Error:" "File doesn't exist"
     exit 1
 fi
 
-if [[ ! -z $VFLAG ]] && [[ ! -z $SFLAG ]]; then
+if [ ! -z "$VFLAG" ] && [ ! -z "$SFLAG" ]; then
     #with -vol and -soundtrack options
     if [[ $VOLUME == -* ]]; then
         notify "[-] Error:" "Option -v requires an argument"
         usage
         exit 1
     fi
-    if [[ ! -e $SOUNDTRACK ]]; then
+    if [ ! -e "$SOUNDTRACK" ]; then
         notify "[-] Error:" "soundtrack file $SOUNDTRACK doesn't exist"
         exit 1
     fi
@@ -98,7 +98,7 @@ if [[ ! -z $VFLAG ]] && [[ ! -z $SFLAG ]]; then
     notify "[+]" "ffmpeg -i $file -acodec libvorbis -ab 192k -vn -y -ac 2 -vol $VOLUME $basename.audio[volume_$VOLUME].ogg"
     notify "[-]" "Be patient this may take a while..."
     ffmpeg -i "$file" -acodec libvorbis -ab 192k -vn -y -ac 2 -vol $VOLUME "$basename".audio[volume_$VOLUME].ogg
-    if [[ $? == "1" ]]; then
+    if [ "$?" = 1 ]; then
         notify "[-]" "Failed"
         exit 1
     fi
@@ -106,35 +106,35 @@ if [[ ! -z $VFLAG ]] && [[ ! -z $SFLAG ]]; then
     #TODO 28-11-2010 20:15 => make soundtrack vol an option
     notify "[+]" "ffmpeg -i "$SOUNDTRACK" -vol 15 -acodec libvorbis -ab 192k $(basename "$SOUNDTRACK").vol[15].ogg"
     ffmpeg -i "$SOUNDTRACK" -vol 15 -acodec libvorbis -ab 192k "$(basename "$SOUNDTRACK")".vol[15].ogg
-    if [[ $? == "1" ]]; then
+    if [ "$?" = 1 ]; then
         notify "[-]" "Failed"
         exit 1
     fi
 
     notify "[+]" "sox -S -m $basename.audio[volume_$VOLUME].ogg $(basename "$SOUNDTRACK").vol[15].ogg -r192k $basename.audio_mixed.ogg"
     sox -S -m "$basename".audio[volume_$VOLUME].ogg "$(basename "$SOUNDTRACK")".vol[15].ogg -r192k "$basename".audio_mixed.ogg
-    if [[ $? == "1" ]]; then
+    if [ "$?" = 1 ]; then
         notify "[-]" "Failed"
         exit 1
     fi
 
     notify "[+]" "mkvmerge -o $basename.optimized[$VOLUME].mkv -A $file $basename.audio_mixed.ogg"
     mkvmerge -o "$basename".optimized.mkv -A $file "$basename".audio_mixed.ogg
-    if [[ $? == "1" ]]; then
+    if [ "$?" = 1 ]; then
         notify "[-]" "Failed"
         exit 1
     fi
 
-elif [[ ! -z $SFLAG ]]; then
+elif [ ! -z "$SFLAG" ]; then
     #with -soundtrack option
-    if [[ ! -e $SOUNDTRACK ]]; then
+    if [ ! -e "$SOUNDTRACK" ]; then
         notify "[-] Error:" "soundtrack file doesn't exist"
         exit 1
     fi
     notify "[+]" "ffmpeg -i $file -acodec libvorbis -ab 192k -vn -y -ac 2 $basename.audio.ogg"
     notify "[-]" "Be patient this may take a while..."
     ffmpeg -i "$file" -acodec libvorbis -ab 192k -vn -y -ac 2 "$basename".audio.ogg
-    if [[ $? == "1" ]]; then
+    if [ "$?" = 1 ]; then
         notify "[-]" "Failed"
         exit 1
     fi
@@ -142,26 +142,26 @@ elif [[ ! -z $SFLAG ]]; then
     #TODO 28-11-2010 20:15 => make soundtrack vol an option
     notify "[+]" "ffmpeg -i "$SOUNDTRACK" -vol 15 -acodec libvorbis -ab 192k $(basename "$SOUNDTRACK").vol[15].ogg"
     ffmpeg -i "$SOUNDTRACK" -vol 15 -acodec libvorbis -ab 192k "$(basename "$SOUNDTRACK")".vol[15].ogg
-    if [[ $? == "1" ]]; then
+    if [ "$?" = 1 ]; then
         notify "[-]" "Failed"
         exit 1
     fi
 
     notify "[+]" "sox -S -m $basename.audio.ogg $(basename "$SOUNDTRACK").vol[15].ogg -r192k $basename.audio_mixed.ogg"
     sox -S -m "$basename".audio.ogg "$(basename "$SOUNDTRACK")".vol[15].ogg -r192k "$basename".audio_mixed.ogg
-    if [[ $? == "1" ]]; then
+    if [ "$?" = 1 ]; then
         notify "[-]" "Failed"
         exit 1
     fi
 
     notify "[+]" "mkvmerge -o $basename.optimized[$VOLUME].mkv -A $file $basename.audio_mixed.ogg"
     mkvmerge -o "$basename".optimized.mkv -A $file "$basename".audio_mixed.ogg
-    if [[ $? == "1" ]]; then
+    if [ "$?" = 1 ]; then
         notify "[-]" "Failed"
         exit 1
     fi
 
-elif [[ ! -z $VFLAG ]]; then
+elif [ ! -z "$VFLAG" ]; then
     #with -vol option
     if [[ $VOLUME == -* ]]; then
         notify "[-] Error:" "Option -v requires an argument"
@@ -171,14 +171,14 @@ elif [[ ! -z $VFLAG ]]; then
     notify "[+]" "ffmpeg -i $file -acodec libvorbis -ab 192k -vn -y -ac 2 -vol $VOLUME $basename.audio[volume_$VOLUME].ogg"
     notify "[-]" "Be patient this may take a while..."
     ffmpeg -i "$file" -acodec libvorbis -ab 192k -vn -y -ac 2 -vol $VOLUME "$basename".audio[volume_$VOLUME].ogg
-    if [[ $? == "1" ]]; then
+    if [ "$?" = 1 ]; then
         notify "[-]" "Failed"
         exit 1
     fi
 
     notify "[+]" "mkvmerge -o $basename.optimized[$VOLUME].mkv -A $file $basename.audio[volume_$VOLUME].ogg"
     mkvmerge -o "$basename".optimized[$VOLUME].mkv -A $file "$basename".audio[volume_$VOLUME].ogg
-    if [[ $? == "1" ]]; then
+    if [ "$?" = 1 ]; then
         notify "[-]" "Failed"
         exit 1
     fi
@@ -186,12 +186,12 @@ else
     #only encode
     notify "[+]" "ffmpeg -i $file -acodec libvorbis -ab 192k -ac 2 -vcodec libx264 -vpre max -crf 22 -threads 0 $basename.optimized.mkv"
     ffmpeg -i "$file" -acodec libvorbis -ab 192k -ac 2 -vcodec libx264 -vpre max -crf 22 -threads 0 "$basename".optimized.mkv
-    if [[ $? == "1" ]]; then
+    if [ "$?" = 1 ]; then
         notify "[-]" "Failed"
         exit 1
     fi
 fi
 
-if [[ -z $KFLAG ]]; then
+if [ -z "$KFLAG" ]; then
     cleanup
 fi

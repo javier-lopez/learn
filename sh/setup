@@ -21,7 +21,7 @@ usage()
 _exec()
 {
     status=$?
-    if [ $status != 0 ]; then
+    if [ "$status" != 0 ]; then
         exit $status
     fi
     echo "[+] $@"
@@ -142,7 +142,7 @@ _latex()
     #exit 0
 #}
 
-if [[ $# != 0 ]]; then
+if [ "$#" != 0 ]; then
     case $1 in
         #cake)
         #cake

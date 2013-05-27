@@ -3,7 +3,7 @@
 
 _notify ()
 {
-    if [[ $TERM == "linux" ]]; then
+    if [ "$TERM" = linux ]; then
         notify-send -t 1000 "${@}"
     else
         echo "${@}"
@@ -13,7 +13,7 @@ _notify ()
 _exec()
 {
     status=$?
-    if [ $status != 0 ]; then
+    if [ "$status" != 0 ]; then
         exit $status
     fi
     echo "[+] $@"

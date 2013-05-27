@@ -5,7 +5,7 @@
 _exec()
 {
     status=$?
-    if [ $status != 0 ]; then
+    if [ "$status" != 0 ]; then
         exit $status
     fi
     echo "[+] $@"
@@ -14,7 +14,7 @@ _exec()
 
 notify ()
 {
-    if [[ $TERM == "linux" ]]; then
+    if [ "$TERM" = linux ]; then
         notify-send -t 3000 "${@}"
     else
         echo "${@}"

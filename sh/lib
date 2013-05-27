@@ -37,11 +37,16 @@ _arch()
 
 _barcui()
 {
-    [ -z $1 ] && return 1
+    [ -z $1 ] && { printf "%4s\n" ""; return 1; }
     pid=$1
     animation_state=1
-    printf "%s" " "
 
+    if [ ! "$(ps -p $pid -o comm=)" ]; then
+        printf "%4s\n" ""
+        return
+    fi
+
+    printf "%s" " "
     local c=0; j=0;
     
     exec < /dev/tty
@@ -121,8 +126,13 @@ _barcui()
         esac
         sleep 1
     done
+    for (( i = 0; i < 4; i++ )); do
+        printf "%b" "\b";
+    done
+    printf "%4s\n" ""
 }
 #==================================================== Example ====
+#tar zxf big_file.tar.gz > /dev/null 2>&1 &
 #echo -n "[+] tar is running ..." && _barcui $(pidof tar)
 #=================================================================
 
@@ -422,6 +432,48 @@ _getroot()
 #==================================================== Example ====
 #_getroot
 #echo "$sudopwd" | $sudocmd rm file
+#=================================================================
+
+_handscui()
+{
+    [ -z $1 ] && { printf "%5s\n" ""; return 1; }
+    pid=$1
+    animation_state=1
+
+    if [ ! "$(ps -p $pid -o comm=)" ]; then
+        printf "%5s\n" ""
+        return
+    fi
+
+    printf "%s" "      "
+
+    while [ "`ps -p $pid -o comm=`" ]; do
+        echo -e -n "\b\b\b\b\b"
+        case $animation_state in
+            1)
+                printf "%s" '\o@o\'
+                animation_state=2
+                ;;
+            2)
+                printf "%s" '|o@o|'
+                animation_state=3
+                ;;
+            3)
+                printf "%s" '/o@o/'
+                animation_state=4
+                ;;
+            4)
+                printf "%s" '|o@o|'
+                animation_state=1
+                ;;
+        esac
+        sleep 1
+    done
+    echo -e -n "\b\b\b\b\b"
+}
+#==================================================== Example ====
+#tar zxf big_file.tar.gz > /dev/null 2>&1 &
+#echo -n "[+] tar is running ..." && _handscui $(pidof tar)
 #=================================================================
 
 _isalphanum()
