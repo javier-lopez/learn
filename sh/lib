@@ -469,7 +469,7 @@ _handscui()
         esac
         sleep 1
     done
-    echo -e -n "\b\b\b\b\b"
+    printf "%b" "\b\b\b\b\b" && printf "%5s\n" ""
 }
 #==================================================== Example ====
 #tar zxf big_file.tar.gz > /dev/null 2>&1 &
