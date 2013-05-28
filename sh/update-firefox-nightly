@@ -21,10 +21,44 @@ notify ()
     fi
 }
 
-#wget -c http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-trunk/firefox-19.0a1.en-US.linux-x86_64.tar.bz2
-#_exec wget -c http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-trunk/firefox-21.0a1.en-US.linux-x86_64.tar.bz2 
-_exec wget -c http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-trunk/firefox-23.0a1.en-US.linux-x86_64.tar.bz2
+_arch()
+{   #check for system arch, returns [64|32]
+    local arch
+    [ -z $MACHTYPE ] && arch=$(uname -m) || arch=$(echo $MACHTYPE | cut -d- -f1)
+
+    case $arch in
+        x86_64)
+            arch=64;
+            ;;
+        i686)
+            arch=32;
+            ;;
+        *)
+            exit 1
+            ;;
+    esac
+
+    echo $arch
+}
+
+_update-firefox32()
+{
+_exec wget -c http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-trunk/firefox-24.0a1.en-US.linux-i686.tar.bz2
+_exec extract firefox*
+_exec rm -rf firefox-* $HOME/.bin/firefox32
+_exec mv firefox $HOME/.bin/firefox32
+}
+
+
+_update-firefox64()
+{
+_exec wget -c http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-trunk/firefox-24.0a1.en-US.linux-x86_64.tar.bz2
 _exec extract firefox*
 _exec rm -rf firefox-* $HOME/.bin/firefox64
 _exec mv firefox $HOME/.bin/firefox64
+}
+
+arch=$(_arch)
+[ $arch -eq 32 ] && _update-firefox32 || _update-firefox64
+
 notify "[+] Done" "restart firefox to apply the update"
