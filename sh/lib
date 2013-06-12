@@ -36,7 +36,7 @@ _arch()
 #=================================================================
 
 _barcui()
-{
+{   #prints a bar of o@o moving
     [ -z $1 ] && { printf "%4s\n" ""; return 1; }
     pid=$1
     animation_state=1
@@ -150,7 +150,7 @@ _internetlink()
 }
 #==================================================== Example ====
 #if ! _internetlink; then
-    #echo "You must be connected to run this script" >&2
+    #echo "You must have an Internet connection to run this script" >&2
     #exit 1
 #fi
 #=================================================================
@@ -198,7 +198,7 @@ _die()
 #=================================================================
 
 _dirname()
-{   #returns string on success, 1 on fail
+{   #returns string containing dirname on success, 1 on fail
 
     #http://www.linuxmisc.com/12-unix-web-servers/d31beb238f7b5a6b.htm
     if [ -z $1 ]; then
@@ -435,7 +435,7 @@ _getroot()
 #=================================================================
 
 _handscui()
-{
+{   #prints \o@o\ |o@o| o@o// while a process finish
     [ -z $1 ] && { printf "%5s\n" ""; return 1; }
     pid=$1
     animation_state=1
@@ -494,6 +494,20 @@ _isalphanum()
     #echo "Input is valid."
 #fi
 #exit 0
+#=================================================================
+
+_isarray()
+{   #detect if arg is an array, returns 0 on sucess, 1 otherwise
+    declare -p ${1} 2> /dev/null | grep -qs 'declare \-a' && return 0
+    return 1
+}
+#==================================================== Example ====
+#vararray=(1 2 3)
+#if _isarray vararray; then #the argument is passed as a name
+    #echo "vararray is an array"
+#else
+    #echo "vararray is not an array"
+#fi
 #=================================================================
 
 _islivecd()
