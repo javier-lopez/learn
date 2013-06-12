@@ -476,6 +476,22 @@ _handscui()
 #echo -n "[+] tar is running ..." && _handscui $(pidof tar)
 #=================================================================
 
+_inarray()
+{   #look for a value in an array, returns 0 on success, 1 otherwise
+    [ -z $1 ] && return 1
+
+    local needle="$1" element
+    shift
+    for element
+    do
+        [ "$element" != "$needle" ] || return 0
+    done
+    return 1
+}
+#==================================================== Example ====
+#_inarray $name ${names[@]} && echo found!
+#=================================================================
+
 _isalphanum()
 { #check for alphanum strings, return 0 if all upper+lower+digits, 1 otherwise
 
@@ -524,21 +540,22 @@ _islivecd()
 #fi
 #=================================================================
 
-_inarray()
-{   #look for a value in an array, returns 0 on success, 1 otherwise
-    [ -z $1 ] && return 1
+_isnewer()
+{   #compare the dates of two files, return true (0) if file1 has
+    #been modified more recently otherwise 1
 
-    local needle="$1" element
-    shift
-    for element
-    do
-        [ "$element" != "$needle" ] || return 0
-    done
-    return 1
+    [ $# -ne 2 ] && exit 1
+
+    if [ ! -f $1 -o ! -f $2 ]; then
+        return 1       # No
+    fi
+
+    if [ -n "`find $1 -newer $2 -print`" ]; then
+        return 0       # Yes
+    else
+        return 1       # No
+    fi
 }
-#==================================================== Example ====
-#_inarray $name ${names[@]} && echo found!
-#=================================================================
 
 _isnum()
 {   #look for a number, returns 0 on success, 1 otherwise
