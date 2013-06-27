@@ -1,0 +1,238 @@
+#!/bin/bash
+set -e                          #exit as soon as any command fail
+
+LOGFILE="/tmp/$(basename $0).log"
+HOME="/home/chilicuil"
+REMOTEUSER="admin"
+REMOTESERVER="backup.javier.io"
+
+exec 9>/tmp/$(basename $0).lock #verify that only one instance is running
+if ! flock -n 9  ; then         #http://mywiki.wooledge.org/BashFAQ/045
+    echo "$(basename $0): another instance is running";
+    exit 1
+fi
+
+START=$(date +%s)
+
+_usage()
+{
+    echo "Usage: $(basename $0) service all"
+    echo "Create home backups"
+    exit 0 
+}
+
+_printtime()
+{  #format seconds to a pretty string
+    [ -z $1 ] && return 1
+
+    NUM=$1
+    MIN=0
+    HOUR=0
+    DAY=0
+    if ((NUM>59)); then
+        ((SEC=NUM%60))
+        ((NUM=NUM/60))
+        if ((NUM>59)); then
+            ((MIN=NUM%60))
+            ((NUM=NUM/60))
+            if ((NUM>23)); then
+                ((HOUR=NUM%24))
+                ((DAY=NUM/24))
+            else
+                ((HOUR=NUM))
+            fi
+        else
+            ((MIN=NUM))
+        fi
+    else
+        ((SEC=NUM))
+    fi
+    echo "$DAY"d "$HOUR"h "$MIN"m "$SEC"s
+}
+
+_init()
+{
+    [ -z "$init" ] || return 0 #run only once
+    echo =============================================================== | tee $LOGFILE
+    echo $(date) | tee -a $LOGFILE
+    echo =============================================================== | tee -a $LOGFILE
+    echo
+
+    # logic for incremental backups
+
+    ssh -i $HOME/.ssh/id_rsa $REMOTEUSER@$REMOTESERVER mkdir -p backup/$(hostname)/main
+    ssh -i $HOME/.ssh/id_rsa $REMOTEUSER@$REMOTESERVER mkdir -p backup/$(hostname)/dotfiles
+    #mkdir -p $DIR/daily.0
+    #mkdir -p $DIR/daily.{0..6}
+    #mkdir -p $DIR/weekly.{1..3}
+    #mkdir -p $DIR/montly.{1..6}
+
+    #touch $DIR/montly.counter
+    #touch $DIR/weekly.counter
+
+    #DAYS=$(cat $DIR/montly.counter)
+    #[ -z $DAYS ] && { DAYS=0; echo 1 > $DIR/montly.counter; }
+
+    #if [ $DAYS -gt 30 ] ; then
+    #    for (( i = 6; i > 0; i-- )); do
+    #        [ $i -eq 6 ] && rm -rf $DIR/montly.$i || mv $DIR/montly.$i $DIR/montly.$((i+1))
+    #    done
+    #    rm $DIR/montly.counter
+    #else
+    #    echo $((DAYS+1)) > $DIR/montly.counter
+    #fi
+
+    #DAYS=$(cat $DIR/weekly.counter)
+    #[ -z $DAYS ] && { DAYS=0; echo 1 > $DIR/weekly.counter; }
+
+    #if [ $DAYS -gt 7 ] ; then
+    #    for (( i = 3; i > 0; i-- )); do
+    #        [ $i -eq 3 ] && { rm -rf $DIR/montly.1; mv $DIR/weekly.$i $DIR/montly.1; } || mv $DIR/weekly.$i $DIR/weekly.$((i+1))
+    #    done
+    #    rm $DIR/weekly.counter
+    #else
+    #    echo $((DAYS+1)) > $DIR/weekly.counter
+    #fi
+
+    #for (( i = 6; i > 0; i-- )); do
+    #        [ $i -eq 6 ] && { rm -rf $DIR/weekly.1; mv $DIR/daily.$i $DIR/weekly.1; } || mv $DIR/daily.$i $DIR/daily.$((i+1))
+    #done
+
+    #cp -al $DIR/daily.0 $DIR/daily.1
+
+    #init="done"
+}
+
+_networkup()
+{   #returns 0 on success, 1 otherwise
+    wget --tries=3 --timeout=5 http://www.google.com -O /tmp/index.google > /dev/null 2>&1
+    if [ -s /tmp/index.google ]; then
+        rm /tmp/index.google
+        return 0
+    else
+        rm /tmp/index.google
+        return 1
+    fi
+}
+
+_refarray()
+{   #http://ihaveabackup.net/2012/01/29/a-workaround-for-passing-arrays-in-bash/
+    local varname="$1"
+    local export_as="$2"
+    local code=$(declare -p "$varname")
+    echo ${code/$varname/$export_as}
+}
+
+_scp()
+{   #$1=remote_files, $2=remote_hosts $3=local_dir
+    eval $(_refarray "$1" FILES)
+    eval $(_refarray "$2" HOSTS)
+
+    for host in "${!HOSTS[@]}"; do
+	    for file in "${!FILES[@]}"; do
+		 local REMOTE="$REMOTEUSER@${HOSTS[host]}:$3"
+                 local LOCAL="${FILES[file]}"
+	    done
+
+        rsync -avz -e "ssh -i $HOME/.ssh/id_rsa" --one-file-system --relative --delete --exclude=$LOCAL/.* $LOCAL/ $REMOTE/main | tee -a $LOGFILE
+        #rsync -avz --one-file-system --relative --delete $HOME/data $HOME/code $HOME/downloads $HOME/misc $HOME/read $HOME/tmp_img $HOME/tmp_music $REMOTE/main | tee -a $LOGFILE
+
+        ls $HOME | rsync -avz -e "ssh -i $HOME/.ssh/id_rsa" --one-file-system --relative --delete --exclude-from=- --delete $LOCAL/ $REMOTE/dotfiles/ | tee -a $LOGFILE
+        REMOTE=""
+    done
+
+    END=$(date +%s)
+    DIFF=$(( $END - $START ))
+    echo =============================================================== | tee -a $LOGFILE
+    echo Total time: $(date +"%d-%m-%Y"):$(_printtime $DIFF) | tee -a $LOGFILE
+    echo =============================================================== | tee -a $LOGFILE
+
+    scp -i $HOME/.ssh/id_rsa $LOGFILE $REMOTEUSER@$REMOTESERVER:$3
+}
+
+_general()
+{
+    _init
+    local FILES=(
+          "$HOME"
+    )
+    local REMOTE=(
+          "$REMOTESERVER"
+    )
+    _scp FILES REMOTE $DIR
+}
+
+_all()
+{
+    _general
+}
+
+[ $# -eq 0 ] && _usage # no options
+
+if ! _networkup; then
+    echo "$(basename $0): network not detected, exiting..." | tee -a $LOGFILE
+    exit 1
+fi 
+
+for var in "$@"; do #parse options
+    if [ "${var}" == "-v" ]; then
+        set -x
+	shift
+    fi
+done
+
+[ -z "$3" ] && DIR="/home/$REMOTEUSER/backup/$(hostname)" || DIR="$3"
+
+case "$1" in #parse services
+    service)
+        case "$2" in
+    	    heartbeat)
+	        _heartbeat
+	    ;;
+    	    mysql)
+	        _mysql
+	    ;;
+    	    powerdns)
+	        _powerdns
+	    ;;
+    	    thor)
+	        _thor
+	    ;;
+    	    freeradius)
+	        _freeradius
+	    ;;
+    	    ngnpro)
+	        _ngnpro
+	    ;;
+    	    cdrtool)
+	        _cdrtool
+	    ;;
+    	    openxcap)
+	        _openxcap
+	    ;;
+    	    mediaproxy)
+	        _mediaproxy
+	    ;;
+    	    callcontrol)
+	        _callcontrol
+	    ;;
+    	    opensips)
+	        _opensips
+	    ;;
+    	    asterisk)
+	        _asterisk
+	    ;;
+    	    general)
+	        _general
+	    ;;
+    	    all)
+	        _all
+	    ;;
+    	    *)
+	        _usage
+	    ;;
+        esac
+        ;;
+    *)
+        _usage
+esac

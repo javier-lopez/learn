@@ -103,7 +103,7 @@ dotfiles()
             echo "Aborting..."
             exit 1
         fi
-        ls $HOME | sudo  rsync  -a --progress --exclude-from=- --delete $HOME/ $BACKUP_TO/dotfiles/$HOSTNAME/
+        ls $HOME | sudo rsync  -a --progress --exclude-from=- --delete $HOME/ $BACKUP_TO/dotfiles/$HOSTNAME/
     else
         ls $HOME | sudo rsync  -a --progress --exclude-from=- --delete $HOME/ $BACKUP_TO/dotfiles/$HOSTNAME/
     fi
