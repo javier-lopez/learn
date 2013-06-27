@@ -9,13 +9,13 @@ _isnum()
 
 _privport()
 {   #check if port is  privated (<1025), returns 0 on success, 1 otherwise
-    [ -z $1 ] && return 1
+    [ -z "$1" ] && return 1
 
-    [ $1 -gt 0 ] && [ $1 -lt 1025 ] && return 0 || return 1
+    [ "$1" -gt 0 ] && [ "$1" -lt 1025 ] && return 0 || return 1
 }
 
 if [ ! -f /usr/local/bin/py.simple.server ]; then
-    if [ $# -gt 1 ]; then
+    if [ "$#" -gt 1 ]; then
         for PARAM in "$@";
         do
             case $PARAM in
@@ -68,7 +68,7 @@ if [ ! -f /usr/local/bin/py.simple.server ]; then
     fi
     $SUDO python -m SimpleHTTPServer $PORT
 else
-    if [ $# -gt 1 ]; then
+    if [ "$#" -gt 1 ]; then
         ARGS="$@"
         for PARAM in "$@";
         do

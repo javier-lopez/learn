@@ -5,7 +5,7 @@
 
 _notify ()
 {
-    if [[ $TERM == "linux" ]] || [[ $TERM == "dumb" ]]; then
+    if [ "$TERM" = linux ] || [ "$TERM" = dumb ]; then
         notify-send -t 3000 "${@}"
     else
         echo -n "${1}: "
@@ -18,12 +18,12 @@ _notify ()
     fi
 }
 
-if [[ ! -e /usr/bin/html2text ]]; then
+if [ ! -e /usr/bin/html2text ]; then
     _notify "You need to install html2text" "\$ sudo apt-get install html2text"
     exit 1
 fi
 
-if [[ ! $1 ]]; then
+if [ ! "$1" ]; then
     echo "$(basename $0): you must specify a file to upload"
     exit 1
 fi
@@ -35,12 +35,12 @@ MNpwd=vimuswal
 MNimg="$1"
 # ===================================
 
-if [[ -z "${MNron}" ]]; then
+if [ -z "${MNron}" ]; then
     echo -n "User: "
     read -e MNron
 fi
 
-if [[ -z "${MNpwd}" ]]; then
+if [ -z "${MNpwd}" ]; then
     echo -n "Password: "
     read -e MNpwd
 fi
@@ -49,7 +49,7 @@ curl -s -c /tmp/MNc -d "_method=POST&data[User][email]=$MNron&data[User][pwd]=$M
 
 SIZE_log=`ls -l /tmp/MN.log | awk '{ print $5 }'`
 
-if [[ $SIZE_log -gt 0 ]]; then
+if [ "$SIZE_log" -gt 0 ]; then
     echo "$(basename $0): user or password incorrect"
     exit 0
 fi
@@ -58,7 +58,7 @@ curl -s -b /tmp/MNc -F "data[Image][file]=@$MNimg;type=image/png"  http://monone
     grep "final" |awk '{print $3}' | sed -e 's:\"::g' > /tmp/MN.img
 MN_url=`cat /tmp/MN.img`
 
-if [[ -e /usr/bin/xclip ]]; then
+if [ -e /usr/bin/xclip ]; then
     echo "http://www.mononeurona.org/img/imgusers/"$MN_url | tee >(xclip)
 else
     echo "http://www.mononeurona.org/img/imgusers/"$MN_url

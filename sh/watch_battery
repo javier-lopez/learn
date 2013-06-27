@@ -2,9 +2,9 @@
 #add it as a cronjob (every 3 min)
 #*/3 * * * * /path/to/this/script
 
-_notify ()
+_notify()
 {
-    if [[ $TERM == "linux" ]] || [[ $TERM == "dumb" ]]; then
+    if [ "$TERM" = linux ] || [ "$TERM" = dumb ]; then
         DISPLAY=:0.0 notify-send -t 3000 "${@}"
     else
         echo -n "${1}: "
@@ -17,7 +17,7 @@ _notify ()
     fi
 }
 
-if [[ ! -e /usr/bin/notify-send || ! -e /usr/sbin/hibernate || ! -e /usr/bin/acpi ]]; then
+if [ ! -e /usr/bin/notify-send ] || [ ! -e /usr/sbin/hibernate ] || [ ! -e /usr/bin/acpi ]; then
     _notify  "[+] You need install acpi, notify-send and hibernate" "\$ sudo apt-get install acpi libnotify-bin hibernate"
     exit 1
 fi
@@ -32,11 +32,11 @@ ACTION="/usr/sbin/hibernate"
 WATCH_BATTERY_CURRENT=$(cat /tmp/watch_battery_current 2>/dev/null)
 
 # If Discharging...
-if [[ "$STAT" = "Discharging" ]]; then
+if [ "$STAT" = Discharging ]; then
     # Battery under 5% -> force to hibernate
-    if [[ $BATT -lt "5" ]]; then
+    if [ "$BATT" -lt 5 ]]; then
         WATCH_BATTERY_CURRENT="5"
-        if [[ $TERM != "rxvt-unicode" ]]; then
+        if [ "$TERM" != rxvt-unicode ]; then
             DISPLAY=:0.0 notify-send -u critical -t 3000 "[-] Critical"\
             "Battery under 5%, the system will hibernate in 30 seconds, unless you plugin the computer"
         else
@@ -46,7 +46,7 @@ if [[ "$STAT" = "Discharging" ]]; then
         for (( i = 0; i < 30; i++ )); do
             sleep 1
             STAT=$(acpi -b | awk '{print $3}' | awk 'sub(".$", "")')
-            if [[ "$STAT" != "Discharging" ]]; then
+            if [ "$STAT" != Discharging ]; then
                 _notify  "[+] Charging" "charging now..."
                 break
             fi
@@ -55,27 +55,27 @@ if [[ "$STAT" = "Discharging" ]]; then
         #check a last time if nobody has pluged in the machine, if not hibernate it
         STAT=$(acpi -b | awk '{print $3}' | awk 'sub(".$", "")')
 
-        if [[ "$STAT" = "Discharging" ]]; then
-            if [[ -e /usr/bin/mpc ]]; then
+        if [ "$STAT" = Discharging ]; then
+            if [ -e /usr/bin/mpc ]; then
                 mpc stop
             fi
             sudo $ACTION
         fi
 
     # Battery under 7% -> print an alert msg and don't repeat it again
-    elif [[ $BATT -lt "7" && $BATT -gt "4" && $WATCH_BATTERY_CURRENT != "7" ]]; then
+    elif [ "$BATT" -lt 7 ] && [ "$BATT" -gt 4 ] && [ "$WATCH_BATTERY_CURRENT" != 7 ]; then
         WATCH_BATTERY_CURRENT="7"
         _notify  "[-] Warning" "Battery under 7%"
     # Battery under 10% -> print an alert msg and don't repeat it again
-    elif [[ $BATT -lt "10" && $BATT -gt "6" && $WATCH_BATTERY_CURRENT != "10" ]]; then
+    elif [ "$BATT" -lt 10 ] && [ "$BATT" -gt 6 ] && [ "$WATCH_BATTERY_CURRENT" != 10 ]; then
         WATCH_BATTERY_CURRENT="10"
         _notify  "[-] Warning" "Battery under 10%"
     # Battery under 15% -> print an alert msg and don't repeat it again
-    elif [[ $BATT -lt "15" && $BATT -gt "9" && $WATCH_BATTERY_CURRENT != "15" ]]; then
+    elif [ "$BATT" -lt 15 ] && [ "$BATT" -gt 9 ] && [ "$WATCH_BATTERY_CURRENT" != 15 ]; then
         WATCH_BATTERY_CURRENT="15"
         _notify  "[-] Warning" "Battery under 15%"
     fi
 fi
 
-echo $WATCH_BATTERY_CURRENT > /tmp/watch_battery_current
+echo "$WATCH_BATTERY_CURRENT" > /tmp/watch_battery_current
 exit 0

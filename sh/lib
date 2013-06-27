@@ -36,12 +36,17 @@ _arch()
 #=================================================================
 
 _barcui()
-{
-    [ -z $1 ] && return 1
+{   #prints a bar of o@o moving
+    [ -z $1 ] && { printf "%4s\n" ""; return 1; }
     pid=$1
     animation_state=1
-    printf "%s" " "
 
+    if [ ! "$(ps -p $pid -o comm=)" ]; then
+        printf "%4s\n" ""
+        return
+    fi
+
+    printf "%s" " "
     local c=0; j=0;
     
     exec < /dev/tty
@@ -121,8 +126,13 @@ _barcui()
         esac
         sleep 1
     done
+    for (( i = 0; i < 4; i++ )); do
+        printf "%b" "\b";
+    done
+    printf "%4s\n" ""
 }
 #==================================================== Example ====
+#tar zxf big_file.tar.gz > /dev/null 2>&1 &
 #echo -n "[+] tar is running ..." && _barcui $(pidof tar)
 #=================================================================
 
@@ -140,7 +150,7 @@ _internetlink()
 }
 #==================================================== Example ====
 #if ! _internetlink; then
-    #echo "You must be connected to run this script" >&2
+    #echo "You must have an Internet connection to run this script" >&2
     #exit 1
 #fi
 #=================================================================
@@ -188,7 +198,7 @@ _die()
 #=================================================================
 
 _dirname()
-{   #returns string on success, 1 on fail
+{   #returns string containing dirname on success, 1 on fail
 
     #http://www.linuxmisc.com/12-unix-web-servers/d31beb238f7b5a6b.htm
     if [ -z $1 ]; then
@@ -424,6 +434,64 @@ _getroot()
 #echo "$sudopwd" | $sudocmd rm file
 #=================================================================
 
+_handscui()
+{   #prints \o@o\ |o@o| o@o// while a process finish
+    [ -z $1 ] && { printf "%5s\n" ""; return 1; }
+    pid=$1
+    animation_state=1
+
+    if [ ! "$(ps -p $pid -o comm=)" ]; then
+        printf "%5s\n" ""
+        return
+    fi
+
+    printf "%s" "      "
+
+    while [ "`ps -p $pid -o comm=`" ]; do
+        echo -e -n "\b\b\b\b\b"
+        case $animation_state in
+            1)
+                printf "%s" '\o@o\'
+                animation_state=2
+                ;;
+            2)
+                printf "%s" '|o@o|'
+                animation_state=3
+                ;;
+            3)
+                printf "%s" '/o@o/'
+                animation_state=4
+                ;;
+            4)
+                printf "%s" '|o@o|'
+                animation_state=1
+                ;;
+        esac
+        sleep 1
+    done
+    printf "%b" "\b\b\b\b\b" && printf "%5s\n" ""
+}
+#==================================================== Example ====
+#tar zxf big_file.tar.gz > /dev/null 2>&1 &
+#echo -n "[+] tar is running ..." && _handscui $(pidof tar)
+#=================================================================
+
+_inarray()
+{   #look for a value in an array, returns 0 on success, 1 otherwise
+    [ -z $1 ] && return 1
+
+    local needle="$1" element
+    shift
+    for element
+    do
+        [ "$element" != "$needle" ] || return 0
+    done
+    return 1
+}
+#==================================================== Example ====
+#_inarray $name ${names[@]} && echo found!
+#=================================================================
+
 _isalphanum()
 { #check for alphanum strings, return 0 if all upper+lower+digits, 1 otherwise
 
@@ -444,6 +512,20 @@ _isalphanum()
 #exit 0
 #=================================================================
 
+_isarray()
+{   #detect if arg is an array, returns 0 on sucess, 1 otherwise
+    declare -p ${1} 2> /dev/null | grep -qs 'declare \-a' && return 0
+    return 1
+}
+#==================================================== Example ====
+#vararray=(1 2 3)
+#if _isarray vararray; then #the argument is passed as a name
+    #echo "vararray is an array"
+#else
+    #echo "vararray is not an array"
+#fi
+#=================================================================
+
 _islivecd()
 {   #detect a livecd system, return 0 on success, 1 otherwise
     grep -qs boot=live /proc/cmdline && return 0
@@ -458,21 +540,22 @@ _islivecd()
 #fi
 #=================================================================
 
-_inarray()
-{   #look for a value in an array, returns 0 on success, 1 otherwise
-    [ -z $1 ] && return 1
+_isnewer()
+{   #compare the dates of two files, return true (0) if file1 has
+    #been modified more recently otherwise 1
 
-    local needle="$1" element
-    shift
-    for element
-    do
-        [ "$element" != "$needle" ] || return 0
-    done
-    return 1
+    [ $# -ne 2 ] && exit 1
+
+    if [ ! -f $1 -o ! -f $2 ]; then
+        return 1       # No
+    fi
+
+    if [ -n "`find $1 -newer $2 -print`" ]; then
+        return 0       # Yes
+    else
+        return 1       # No
+    fi
 }
-#==================================================== Example ====
-#_inarray $name ${names[@]} && echo found!
-#=================================================================
 
 _isnum()
 {   #look for a number, returns 0 on success, 1 otherwise
