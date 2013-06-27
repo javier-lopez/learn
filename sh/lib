@@ -552,23 +552,23 @@ _printtime()
     MIN=0
     HOUR=0
     DAY=0
-    if $((NUM>59)); then
-        $((SEC=NUM%60))
-        $((NUM=NUM/60))
-        if $((NUM>59)); then
-            $((MIN=NUM%60))
-            $((NUM=NUM/60))
-            if $((NUM>23)); then
-                $((HOUR=NUM%24))
-                $((DAY=NUM/24))
+    if ((NUM>59)); then
+        ((SEC=NUM%60))
+        ((NUM=NUM/60))
+        if ((NUM>59)); then
+            ((MIN=NUM%60))
+            ((NUM=NUM/60))
+            if ((NUM>23)); then
+                ((HOUR=NUM%24))
+                ((DAY=NUM/24))
             else
-                $((HOUR=NUM))
+                ((HOUR=NUM))
             fi
         else
-            $((MIN=NUM))
+            ((MIN=NUM))
         fi
     else
-        $((SEC=NUM))
+        ((SEC=NUM))
     fi
     echo "$DAY"d "$HOUR"h "$MIN"m "$SEC"s
 }
