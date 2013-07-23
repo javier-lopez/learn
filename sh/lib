@@ -588,6 +588,7 @@ _mail()
     #requires: libio-socket-ssl-perl, libnet-ssleay-perl and sendemail
     case $1 in
         gmail)
+            shift
             sendemail -f "$1" -t "$2" -u "$3" -m "$4" -s smtp.gmail.com:587 -o tls=yes -xu "$5" -xp "$6" > /dev/null 2>&1
             ;;
         *)
