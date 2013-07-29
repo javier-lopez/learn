@@ -2,14 +2,15 @@
 #chilicuil <chilicuil@gmail.com> 2012
 #a simple script to update firefox nightly when the integrated updater doesn't work
 
-_exec()
-{
-    status=$?
-    if [ "$status" != 0 ]; then
-        exit $status
-    fi
-    echo "[+] $@"
+_cmd()
+{   #print current command, exits on fail
+    [ -z "$1" ] && return 0
+
+    echo "    $ $@"
     $@
+
+    status=$?
+    [ "$status" != 0 ] && exit $status || return
 }
 
 notify ()
@@ -43,19 +44,21 @@ _arch()
 
 _update-firefox32()
 {
-_exec wget -c http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-trunk/firefox-24.0a1.en-US.linux-i686.tar.bz2
-_exec extract firefox*
-_exec rm -rf firefox-* $HOME/.bin/firefox32
-_exec mv firefox $HOME/.bin/firefox32
+    nightly=$(curl http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-trunk/ 2>&1 | grep -o -E 'href="([^"#]+)"' | cut -d'"' -f2 |  grep "linux-i686.tar.bz2")
+    _cmd wget -c http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-trunk/"$nightly"
+    _cmd extract firefox*
+    _cmd rm -rf firefox-* $HOME/.bin/firefox32
+    _cmd mv firefox $HOME/.bin/firefox32
 }
 
 
 _update-firefox64()
 {
-_exec wget -c http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-trunk/firefox-24.0a1.en-US.linux-x86_64.tar.bz2
-_exec extract firefox*
-_exec rm -rf firefox-* $HOME/.bin/firefox64
-_exec mv firefox $HOME/.bin/firefox64
+    nightly=$(curl http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-trunk/ 2>&1 | grep -o -E 'href="([^"#]+)"' | cut -d'"' -f2 | grep "linux-x86_64.tar.bz2")
+    _cmd wget -c http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-trunk/"$nightly"
+    _cmd extract firefox*
+    _cmd rm -rf firefox-* $HOME/.bin/firefox64
+    _cmd mv firefox $HOME/.bin/firefox64
 }
 
 arch=$(_arch)
