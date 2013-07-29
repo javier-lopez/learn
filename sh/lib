@@ -35,7 +35,7 @@ _arch()
 #[ $arch -eq 32 ] && command32 || command64
 #=================================================================
 
-_barcui()
+_animbarcui()
 {   #prints a bar of o@o moving
     [ -z $1 ] && { printf "%4s\n" ""; return 1; }
     pid=$1
@@ -48,7 +48,7 @@ _barcui()
 
     printf "%s" " "
     local c=0; j=0;
-    
+
     exec < /dev/tty
     oldstty=$(stty -g)
     stty raw -echo min 0
@@ -133,26 +133,49 @@ _barcui()
 }
 #==================================================== Example ====
 #tar zxf big_file.tar.gz > /dev/null 2>&1 &
-#echo -n "[+] tar is running ..." && _barcui $(pidof tar)
+#echo -n "[+] tar is running ..." && _animbarcui $(pidof tar)
 #=================================================================
 
-_internetlink()
-{   #check for internet connection, returns 0 on success, 1 otherwise
-    wget --tries=3 --timeout=5 http://www.google.com -O /tmp/index.google > /dev/null 2>&1
+_animcui()
+{
+    [ -z "$1" ] && { printf "%5s\n" ""; return 1; }
+    pid="$1"
+    animation_state=1
 
-    if [ -s /tmp/index.google ]; then
-        rm /tmp/index.google
-        return 0
-    else
-        rm /tmp/index.google
-        return 1
+    if [ ! "$(ps -p $pid -o comm=)" ]; then
+        printf "%5s\n" ""
+        return
     fi
+
+    printf "%s" "      "
+
+    while [ "`ps -p $pid -o comm=`" ]; do
+        echo -e -n "\b\b\b\b\b"
+        case $animation_state in
+            1)
+                printf "%s" '\o@o\'
+                animation_state=2
+                ;;
+            2)
+                printf "%s" '|o@o|'
+                animation_state=3
+                ;;
+            3)
+                printf "%s" '/o@o/'
+                animation_state=4
+                ;;
+            4)
+                printf "%s" '|o@o|'
+                animation_state=1
+                ;;
+        esac
+        sleep 1
+    done
+    printf "%b" "\b\b\b\b\b" && printf "%5s\n" ""
 }
 #==================================================== Example ====
-#if ! _internetlink; then
-    #echo "You must have an Internet connection to run this script" >&2
-    #exit 1
-#fi
+#tar zxf big_file.tar.gz > /dev/null 2>&1 &
+#echo -n "[+] tar is running ..." && _animcui $(pidof tar)
 #=================================================================
 
 _cleanup()
@@ -171,16 +194,30 @@ _cleanup()
 
 _cmd()
 {   #print current command, exits on fail
-    [ -z $1 ] && return 0
+    [ -z "$1" ] && return 0
 
-    echo "[+] $@"
+    echo "    $ $@"
     $@
 
     status=$?
-    [ $status != 0 ] && exit $status || return
+    [ "$status" != 0 ] && exit $status || return
 }
 #==================================================== Example ====
 #_cmd rm file
+#=================================================================
+
+_cmdsudo()
+{   #print current command, exits on fail
+    [ -z "$1" ] && return 0
+
+    echo "    $ sudo $@"
+    echo "$sudopwd" | $sudocmd $@
+
+    status=$?
+    [ "$status" != 0 ] && exit $status || return
+}
+#==================================================== Example ====
+#_cmd rm /file
 #=================================================================
 
 _die()
@@ -214,38 +251,78 @@ _dirname()
 #=================================================================
 
 _download()
-{   #download files, return local location, 1 on fail
-    #requires, liburi-perl, aria2c
-
+{
+    #requires liburi-perl
     local urll="$1"
     local prot=$(echo "$urll" | cut -d: -f1)
-    if [ "$prot" = magnet ]; then
-        return 1 #not supported   
+    if [ "$prot" == "magnet" ]; then
+        return 1 #not supported
     fi
-    local path=$( echo "$urll" | perl -MURI -le 'chomp($urll = <>); print URI->new($urll)->path' )
+    local path=$( echo "$urll" | perl -MURI -le 'chomp($url = <>); print URI->new($url)->path' )
     local fn=$(basename "$path")
-    local ext="${fn##*.}"    
-
-    if [ "$ext" = torrent ]; then
-        local file=$(aria2c -q --bt-stop-timeout=120 --seed-time=0 --follow-torrent=mem --on-bt-download-complete /bin/echo "$urll")
-        [ -z $file ] && return 1  
-        return ${file[2]}
-    fi
+    local ext="${fn##*.}"
 
     case "$ext" in
         mp4|ogv|mpg|flv|avi|mkv|mov|wmv|webm|3gpp)
             local file=$(aria2c -q --bt-stop-timeout=120 --seed-time=0 --follow-torrent=mem --on-download-complete /bin/echo "$urll")
-            [ -z $file ] && return 1  
-            return ${file[2]}         
+            [ -z "$file" ] && echo 1 || echo $file | cut -d" " -f3
+            ;;
+        torrent)
+            mkdir torrent && cd torrent
+            aria2c -q --bt-stop-timeout=120 --seed-time=0 --follow-torrent=mem "$urll" > /dev/null 2>&1
+            OLDIFS=$IFS && IFS=$'\n'
+            local files="$(find ./ -name "*.mp4" -o -name "*.ogv" -o -name "*.mpg" -o -name "*.flv" -o -name "*.avi" -o -name "*.mkv" -o -name "*.mov" -o -name "*.wmv" -o -name "*.webm" -o -name "*.3gpp" 2>/dev/null)"
+            # restore it
+            IFS=$OLDIFS
+            [ -z "$files" ] && echo 1 || echo "$files"
             ;;
         *)
-            return 1
+            echo 1
             ;;
     esac
 }
 #==================================================== Example ====
 #FILE=$(_download $URL)
 #[ "$FILE" -eq 1 ] && echo error || echo "done: $FILE"
+#=================================================================
+
+_email()
+{   #send email, return 0 on success, 1 otherwise
+    #requires: libio-socket-ssl-perl, libnet-ssleay-perl and sendemail
+    case $1 in
+        gmail)
+            shift
+            sendemail -f "$1" -t "$2" -u "$3" -m "$4" -s smtp.gmail.com:587 -o tls=yes -xu "$5" -xp "$6" > /dev/null 2>&1
+            ;;
+        *)
+            sendemail -f "$1" -t "$2" -u "$3" -m "$4" -s "$5" -xu "$6" -xp "$7" > /dev/null 2>&1
+            ;;
+    esac
+
+    [ $? -eq 0 ] && return 0 || return 1
+}
+#==================================================== Example ====
+#FROM="foo@gmail.com"; TO="bar@foo.com"; TITLE="hi"; MSG="how are you?"
+#USER="foo"; PASSWD="secret"
+#[ $(_mail gmail $FROM $TO $TITLE $MESSAGE $USER $PASSWD) -eq 0 ] && echo "send" || echo "error"
+
+#FROM="foo@custom.com"; TO="bar@foo.com"; TITLE="hi"; MSG="how are you?"
+#SERVER="smpt.custom.com:port"; USER="foo"; PASSWD="secret"
+#[ $(_mail $FROM $TO $TITLE $MESSAGE $SERVER $USER $PASSWD) -eq 0 ] && echo "send" || echo "error"
+#=================================================================
+
+_existuser()
+{
+    if id -u $1 >/dev/null 2>&1; then
+        return 0
+    else
+        return 1
+    fi
+}
+#==================================================== Example ====
+#if ! _existuser user; then
+    #echo "user exit ... "
+#fi
 #=================================================================
 
 _fullpath()
@@ -270,8 +347,8 @@ _getopt()
     for $(( i=1; i<=$#; i+=1 )); do
         lastvar=$var
         var=${!i}
-        if [ "$var" = "" ]; then 
-            continue 
+        if [ "$var" = "" ]; then
+            continue
         fi
         echo \ $var | grep -q -- '='
         if [ $? -eq 0 ]; then
@@ -313,7 +390,7 @@ _getopt()
 }
 #==================================================== Example ====
 #OIFS=$IFS; IFS=$(echo -e "\n"); _getopt $@; IFS=$OIFS
-##./getopts --foo=bar -v -n 10 blah -one='last arg' 
+##./getopts --foo=bar -v -n 10 blah -one='last arg'
 #echo -e " foo:\t$foo v:\t$v n:\t$n blah:\t$blah one:\t$one "
 #=================================================================
 
@@ -573,38 +650,45 @@ _isnum()
 #exit 0
 #=================================================================
 
+_lock()
+{
+    exec 9>/tmp/$(basename $1).lock #verify only one instance is running
+    if ! flock -n 9  ; then         #http://mywiki.wooledge.org/BashFAQ/045
+        echo "$(basename $1): another instance is running";
+        exit 1
+    fi
+}
+#==================================================== Example ====
+#_lock $0
+#=================================================================
+
 _lower()
 {   #convert a string to lower string
     [ -z $1 ] && return 1
-    echo $@ | tr '[:upper:]' '[:lower:]' 
+    echo $@ | tr '[:upper:]' '[:lower:]'
 }
 #==================================================== Example ====
 #string="FOO BAR"
 #lower=$(_lower $string)
 #=================================================================
 
-_mail()
-{   #send mail, return 0 on success, 1 otherwise
-    #requires: libio-socket-ssl-perl, libnet-ssleay-perl and sendemail
-    case $1 in
-        gmail)
-            sendemail -f "$1" -t "$2" -u "$3" -m "$4" -s smtp.gmail.com:587 -o tls=yes -xu "$5" -xp "$6" > /dev/null 2>&1
-            ;;
-        *)
-            sendemail -f "$1" -t "$2" -u "$3" -m "$4" -s "$5" -xu "$6" -xp "$7" > /dev/null 2>&1
-            ;;
-    esac
+_networkup()
+{   #check for internet connection, returns 0 on success, 1 otherwise
+    wget --tries=3 --timeout=5 http://www.google.com -O /tmp/index.google > /dev/null 2>&1
 
-    [ $? -eq 0 ] && return 0 || return 1
+    if [ -s /tmp/index.google ]; then
+        rm /tmp/index.google
+        return 0
+    else
+        rm /tmp/index.google
+        return 1
+    fi
 }
 #==================================================== Example ====
-#FROM="foo@gmail.com"; TO="bar@foo.com"; TITLE="hi"; MSG="how are you?"
-#USER="foo"; PASSWD="secret"
-#[ $(_mail gmail $FROM $TO $TITLE $MESSAGE $USER $PASSWD) -eq 0 ] && echo "send" || echo "error"
-
-#FROM="foo@custom.com"; TO="bar@foo.com"; TITLE="hi"; MSG="how are you?"
-#SERVER="smpt.custom.com:port"; USER="foo"; PASSWD="secret"
-#[ $(_mail $FROM $TO $TITLE $MESSAGE $SERVER $USER $PASSWD) -eq 0 ] && echo "send" || echo "error"
+#if ! _networkup; then
+    #echo "You must have an Internet connection to run this script" >&2
+    #exit 1
+#fi
 #=================================================================
 
 _notify()
@@ -677,7 +761,7 @@ _privport()
 #if _privport "$port" ; then #priv ports requires root
     #sudo script $port
 #else
-    #script $port 
+    #script $port
 #fi
 #=================================================================
 
@@ -818,27 +902,27 @@ _uploadimg()
                 *.jpg)
                     curl -s -F "image=@$img" -F "key=486690f872c678126a2c09a9e196ce1b" http://imgur.com/api/upload.xml \
                         | grep -E -o "<original_image>(.)*</original_image>" | \
-                        grep -E -o "http://i.imgur.com/[^<]*" | tee /dev/fd/2 | xclip 
+                        grep -E -o "http://i.imgur.com/[^<]*" | tee /dev/fd/2 | xclip
                     ;;
                 *.JPG)
                     curl -s -F "image=@$img" -F "key=486690f872c678126a2c09a9e196ce1b" http://imgur.com/api/upload.xml \
                         | grep -E -o "<original_image>(.)*</original_image>" | \
-                        grep -E -o "http://i.imgur.com/[^<]*" | tee /dev/fd/2 | xclip 
+                        grep -E -o "http://i.imgur.com/[^<]*" | tee /dev/fd/2 | xclip
                     ;;
                 *.jpeg)
                     curl -s -F "image=@$img" -F "key=486690f872c678126a2c09a9e196ce1b" http://imgur.com/api/upload.xml \
                         | grep -E -o "<original_image>(.)*</original_image>" | \
-                        grep -E -o "http://i.imgur.com/[^<]*" | tee /dev/fd/2 | xclip 
+                        grep -E -o "http://i.imgur.com/[^<]*" | tee /dev/fd/2 | xclip
                     ;;
                 *.png)
                     curl -s -F "image=@$img" -F "key=486690f872c678126a2c09a9e196ce1b" http://imgur.com/api/upload.xml \
                         | grep -E -o "<original_image>(.)*</original_image>" | \
-                        grep -E -o "http://i.imgur.com/[^<]*" | tee /dev/fd/2 | xclip 
+                        grep -E -o "http://i.imgur.com/[^<]*" | tee /dev/fd/2 | xclip
                     ;;
                 *.PNG)
                     curl -s -F "image=@$img" -F "key=486690f872c678126a2c09a9e196ce1b" http://imgur.com/api/upload.xml \
                         | grep -E -o "<original_image>(.)*</original_image>" | \
-                        grep -E -o "http://i.imgur.com/[^<]*" | tee /dev/fd/2 | xclip 
+                        grep -E -o "http://i.imgur.com/[^<]*" | tee /dev/fd/2 | xclip
                     ;;
                 *)
                     return 1
@@ -867,8 +951,8 @@ _usage()
 {   #prints an usage msg and exits with 0
     echo "Usage: `basename $0` [OPTION] FILE"
     echo "  -a   description"
-    echo "  -b   description" 
-    echo "  -c   description" 
+    echo "  -b   description"
+    echo "  -c   description"
     exit 0
 }
 #===================================================== Example ====
