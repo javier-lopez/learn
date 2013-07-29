@@ -62,6 +62,11 @@ _update-firefox64()
 }
 
 arch=$(_arch)
-[ $arch -eq 32 ] && _update-firefox32 || _update-firefox64
+
+if [ "$arch" -eq 32 ]; then
+    _update-firefox32
+else
+    _update-firefox64
+fi
 
 notify "[+] Done" "restart firefox to apply the update"
