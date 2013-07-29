@@ -11,30 +11,6 @@
 #[+] must not print errors
 #[+] must provide an example
 
-_arch()
-{   #check for system arch, returns [64|32]
-    local arch
-    [ -z $MACHTYPE ] && arch=$(uname -m) || arch=$(echo $MACHTYPE | cut -d- -f1)
-
-    case $arch in
-        x86_64)
-            arch=64;
-            ;;
-        i686)
-            arch=32;
-            ;;
-        *)
-            exit 1
-            ;;
-    esac
-
-    echo $arch
-}
-#==================================================== Example ====
-#arch=$(_arch)
-#[ $arch -eq 32 ] && command32 || command64
-#=================================================================
-
 _animbarcui()
 {   #prints a bar of o@o moving
     [ -z $1 ] && { printf "%4s\n" ""; return 1; }
@@ -176,6 +152,76 @@ _animcui()
 #==================================================== Example ====
 #tar zxf big_file.tar.gz > /dev/null 2>&1 &
 #echo -n "[+] tar is running ..." && _animcui $(pidof tar)
+#=================================================================
+
+_animrotate()
+{   #shows an animation as long as a process is in memory
+    [ -z $1 ] && return 1
+    pid=$1
+    animation_state=1
+    echo -e -n "    "
+
+    while [ "`ps -p $pid -o comm=`" ]; do
+        # rotating star
+        echo -e -n "\b\b\b"
+        case $animation_state in
+            1)
+                echo -n "["
+                echo -n -e "\033[1m|\033[0m"
+                echo -n "]"
+                animation_state=2
+                ;;
+            2)
+                echo -n "["
+                echo -n -e "\033[1m/\033[0m"
+                echo -n "]"
+                animation_state=3
+                ;;
+            3)
+                echo -n "["
+                echo -n -e "\033[1m-\033[0m"
+                echo -n "]"
+                animation_state=4
+                ;;
+            4)
+                echo -n "["
+                echo -n -e "\033[1m"
+                echo -n "\\"
+                echo -n -e "\033[0m"
+                echo -n "]"
+                animation_state=1
+                ;;
+        esac
+        sleep 1
+    done
+    echo -e "\b\b\b\b\b\b\b       "
+}
+#==================================================== Example ====
+#echo -n "[+] tar" && _animrotate $(pidof tar)
+#=================================================================
+
+_arch()
+{   #check for system arch, returns [64|32]
+    local arch
+    [ -z $MACHTYPE ] && arch=$(uname -m) || arch=$(echo $MACHTYPE | cut -d- -f1)
+
+    case $arch in
+        x86_64)
+            arch=64;
+            ;;
+        i686)
+            arch=32;
+            ;;
+        *)
+            exit 1
+            ;;
+    esac
+
+    echo $arch
+}
+#==================================================== Example ====
+#arch=$(_arch)
+#[ $arch -eq 32 ] && command32 || command64
 #=================================================================
 
 _cleanup()
@@ -511,48 +557,6 @@ _getroot()
 #echo "$sudopwd" | $sudocmd rm file
 #=================================================================
 
-_handscui()
-{   #prints \o@o\ |o@o| o@o// while a process finish
-    [ -z $1 ] && { printf "%5s\n" ""; return 1; }
-    pid=$1
-    animation_state=1
-
-    if [ ! "$(ps -p $pid -o comm=)" ]; then
-        printf "%5s\n" ""
-        return
-    fi
-
-    printf "%s" "      "
-
-    while [ "`ps -p $pid -o comm=`" ]; do
-        echo -e -n "\b\b\b\b\b"
-        case $animation_state in
-            1)
-                printf "%s" '\o@o\'
-                animation_state=2
-                ;;
-            2)
-                printf "%s" '|o@o|'
-                animation_state=3
-                ;;
-            3)
-                printf "%s" '/o@o/'
-                animation_state=4
-                ;;
-            4)
-                printf "%s" '|o@o|'
-                animation_state=1
-                ;;
-        esac
-        sleep 1
-    done
-    printf "%b" "\b\b\b\b\b" && printf "%5s\n" ""
-}
-#==================================================== Example ====
-#tar zxf big_file.tar.gz > /dev/null 2>&1 &
-#echo -n "[+] tar is running ..." && _handscui $(pidof tar)
-#=================================================================
-
 _inarray()
 {   #look for a value in an array, returns 0 on success, 1 otherwise
     [ -z $1 ] && return 1
@@ -842,52 +846,6 @@ _refarray()
 
 #declare -A PERSON=([name]="John Doe" [age]=22)
 #dump PERSON
-#=================================================================
-
-_rotate()
-{   #shows an animation as long as a process is in memory
-    [ -z $1 ] && return 1
-    pid=$1
-    animation_state=1
-    echo -e -n "    "
-
-    while [ "`ps -p $pid -o comm=`" ]; do
-        # rotating star
-        echo -e -n "\b\b\b"
-        case $animation_state in
-            1)
-                echo -n "["
-                echo -n -e "\033[1m|\033[0m"
-                echo -n "]"
-                animation_state=2
-                ;;
-            2)
-                echo -n "["
-                echo -n -e "\033[1m/\033[0m"
-                echo -n "]"
-                animation_state=3
-                ;;
-            3)
-                echo -n "["
-                echo -n -e "\033[1m-\033[0m"
-                echo -n "]"
-                animation_state=4
-                ;;
-            4)
-                echo -n "["
-                echo -n -e "\033[1m"
-                echo -n "\\"
-                echo -n -e "\033[0m"
-                echo -n "]"
-                animation_state=1
-                ;;
-        esac
-        sleep 1
-    done
-    echo -e "\b\b\b\b\b\b\b       "
-}
-#==================================================== Example ====
-#echo -n "[+] tar" && _rotate $(pidof tar)
 #=================================================================
 
 _uploadimg()
