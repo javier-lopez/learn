@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#a simple dmenu session script 
+#a simple dmenu session script
 #requires a dmenu version with xft
 #https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
 
@@ -17,12 +17,12 @@ case "$choice" in
     reboot) dbus-send --system --print-reply --dest="org.freedesktop.ConsoleKit" /org/freedesktop/ConsoleKit/Manager org.freedesktop.ConsoleKit.Manager.Restart
         #gksudo shutdown -r now & (if u don't have ConsoleKit running)
         ;;
-    suspend) i3lock -i $HOME/data/images/wallpapers/lock.png && sudo /usr/sbin/pm-suspend
+    suspend) i3lock -i $HOME/.data/images/wallpapers/sun.png -t; sudo /usr/sbin/pm-suspend
         ;;
     hibernate) sudo /usr/sbin/hibernate &
         # requires the hibernate package in ubuntu
         ;;
-    lock) i3lock -i $HOME/data/images/wallpapers/lock.png -n &
+    lock) i3lock -i $HOME/.data/images/wallpapers/sun.png -n -t &
         #gnome-screensaver-command --lock &
         # requires the hibernate package in ubuntu
         ;;
