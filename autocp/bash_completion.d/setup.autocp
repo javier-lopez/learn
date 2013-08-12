@@ -15,7 +15,7 @@ _setup()
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
 
-    COMMANDS="autocp script latex"
+    COMMANDS="autocp script"
 
     OPTS="-h --help -v --version"
 
@@ -26,10 +26,6 @@ _setup()
           ;;
         autocp)
             _filedir
-            return 0
-            ;;
-        latex)
-            COMPREPLY=( $( compgen -o filenames -G "$cur*.tex" ) )
             return 0
             ;;
     esac

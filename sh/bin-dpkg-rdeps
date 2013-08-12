@@ -3,7 +3,7 @@
 # shows binary deps
 
 if [ ! -e /usr/bin/apt-file ]; then
-    echo "You need to install apt-file" "\$ sudo apt-get install html2text"
+    echo "You need to install apt-file" "\$ sudo apt-get install apt-file"
     exit 1
 fi
 

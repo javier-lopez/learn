@@ -41,8 +41,7 @@ _removecustom()
 
     case "${cur}" in
     *)
-        COMPREPLY=( $( \
-                    _xfunc dpkg _comp_dpkg_installed_packages $cur ) )
+        COMPREPLY=( $( _comp_dpkg_installed_packages $cur ) )
         return 0
         ;;
     esac
