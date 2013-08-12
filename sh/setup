@@ -10,10 +10,7 @@ usage()
   echo "$(basename $0): setup my common tasks"
   echo
   echo "  autocp            cp custom autocomplete file"
-  #echo "  cake              Setup cake"
   echo "  script            cp custom script to the path system"
-  echo "  latex             compile a .tex file -> pdf"
-  #echo "  intalio           Setup intalio"
   echo
   exit 0
 }
@@ -53,111 +50,13 @@ _autocp()
     exit 0
 }
 
-_latex()
-{
-    [ -z "$1" ] && (echo "$0: Missing argument, looking for a .tex file"; exit 1)
-
-    [ -n "$2" ] || more_than_one=1
-
-    for file
-    do
-        if [ -e "$file" ] ; then
-            current=$(basename $file .tex)
-            _exec latex $current.tex
-            _exec dvips $current.dvi
-            _exec ps2pdf $current.ps
-
-            if [ -z "$more_than_one" ]; then
-                echo -e "======================"
-            fi
-        fi
-    done
-    exit 0
-}
-
-#cake()
-#{
-    #echo -ne "$LIGHT_RED[*]$DEFAULT tar zxvf cake*.tar.gz"
-    #tar zxvf cake*.tar.gz >> /tmp/init_cake.log 2>&1
-    #st $?
-
-    #echo -ne "$LIGHT_RED[*]$DEFAULT chmod -R 777 cake_*/app/tmp/"
-    #chmod -R 777 cake_*/app/tmp/ >> /tmp/init_cake.log 2>&1
-    #st $?
-
-    #echo -ne "$LIGHT_RED[*]$DEFAULT cp cake_*/app/config/{database.php.default,database.php}"
-    #cp cake_*/app/config/{database.php.default,database.php} >> /tmp/init_cake.log 2>&1
-    #st $?
-
-    #echo -ne "$LIGHT_RED[*]$DEFAULT cd cake_*"
-    #cd cake_* >> /tmp/init_cake.log 2>&1
-    #st $?
-
-    #echo -ne "$LIGHT_RED[*]$DEFAULT vim app/config/{core.php,database.php} -o"
-    #vim app/config/{core.php,database.php} -o
-    #st $?
-    #exit 0
-#}
-
-#intalio()
-#{
-    #IS_INTALIO=(intalio-bpms*.zip)
-
-    #if [[ ! -e ${IS_INTALIO[0]} ]]; then
-        #echo -ne "$LIGHT_RED[*]$DEFAULT ./intalio-bpms*.zip was not found"
-        #false
-        #st $?
-        #exit 1
-    #fi
-
-    #echo -ne "$LIGHT_RED[*]$DEFAULT extract ${IS_INTALIO[0]}"
-    #extract ${IS_INTALIO[0]} >> /tmp/setup.log 2>&1
-    #st $?
-
-    #echo -e "$LIGHT_RED[*]$DEFAULT setting up JAVA_HOME"
-
-    #if [[ -z $JAVA_HOME ]]; then
-        #echo -ne "$LIGHT_RED[+]$DEFAULT echo export JAVA_HOME=/usr/lib/jvm/java-6-sun > $HOME/.bashrc"
-        #echo "export JAVA_HOME=/usr/lib/jvm/java-6-sun" > $HOME/.bashrc
-        #st $?
-    #else
-        #echo -e "$LIGHT_RED[+]$DEFAULT JAVA_HOME is set to $JAVA_HOME, nothing to do..."
-    #fi
-
-    #echo -ne "$LIGHT_RED[*]$DEFAULT groovy.sh change_http_port"
-    #cd ./intalio-bpms*/extras/; ./groovy.sh change_http_port.groovy
-
-    #echo -ne "$LIGHT_RED[*]$DEFAULT Wanna start intalio now? y/n: "
-    #read -e BOOT_INTALIO
-
-    #if [[ "{$BOOT_INTALIO}" == "y" ]]; then
-        #echo -ne "$LIGHT_RED[*]$DEFAULT ../bin/startup.sh"
-        #../bin/startup.sh
-        #echo -e "$LIGHT_RED[*]$DEFAULT Please be patient, tomcat may take some time to initializate..." 
-        #echo -e "$LIGHT_RED[*]$DEFAULT Go to http://localhost:8080/bpms-console to start, have fun ^_^"
-    #fi
-
-    #echo -e "$LIGHT_RED[*]$DEFAULT Intalio has been setup but has not been booted, have fun ^_^" 
-
-    #exit 0
-#}
-
 if [ "$#" != 0 ]; then
     case $1 in
-        #cake)
-        #cake
-        #;;
-        #intalio)
-        #intalio
-        #;;
         script)
         shift; _script $@
         ;;
         autocp)
         shift; _autocp $@
-        ;;
-        latex)
-        shift; _latex "$@"
         ;;
         -h | --help)
         usage
