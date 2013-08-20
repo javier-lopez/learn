@@ -19,8 +19,8 @@ _die()
 
 _ismonitorattached()
 {
-    xrandr | grep "^VGA" | grep " connected" && return 0
-    xrandr | grep "^HDMI" | grep " connected" && return 0
+    xrandr | grep "^VGA" | grep -qs " connected" && return 0
+    xrandr | grep "^HDMI" | grep -qs " connected" && return 0
     return 1
 }
 
@@ -46,15 +46,6 @@ _arch()
 
 
 [ ! -f /usr/bin/xdotool ] && _die "You need to install xdotool: $ sudo apt-get install xdotool"
-
-if _ismonitorattached; then
-    if [ -f /usr/local/bin/lights/"$_arch"/lights ]; then
-        /usr/local/bin/lights/"$_arch"/lights &
-    else
-        echo "To enjoy fully the movietime experience install: /usr/local/bin/lights/"$_arch"/lights"
-        echo "  https://github.com/chilicuil/learn/tree/master/java"
-    fi
-fi
 
 resumetime=0
 
@@ -165,13 +156,28 @@ if [[ "$dispdpms" == "Enabled" ]] && [ -z "$suspinhtest" ]; then
   chmod u+x "$suspinhscript"
   # Run script
   nohup "$suspinhscript" &> /dev/null &
+
+  if _ismonitorattached; then
+      if [ -f /usr/local/bin/lights/$(_arch)/lights ]; then
+          /usr/local/bin/lights/$(_arch)/lights > /dev/null 2>&1 &
+      else
+          echo "To enjoy fully the movietime experience install: /usr/local/bin/lights/"$_arch"/lights"
+          echo "  https://github.com/chilicuil/learn/tree/master/java"
+      fi
+  fi
+
   echo "[+] $prog started"
 else
   # Enable blanking, screen power saving
   xset s on; xset +dpms
   # Kill script
   if [ -n $suspinhtest ]; then
-    echo "[-] $prog stopped"
+
     kill -s 9 $(pgrep movietime-susp) &> /dev/null
+    ps aux | grep -qs [l]ights.jar
+    if [ "$?" -eq 0 ]; then
+        kill -s 9 $(ps aux | grep [l]ights.jar | awk '{print $2}')
+    fi
+    echo "[-] $prog stopped"
   fi
 fi
