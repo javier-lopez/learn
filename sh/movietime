@@ -5,9 +5,60 @@
 #Movietime options
 #Resume time - resume normal display pm and suspend after set time.
 #0 = disabled, time in minutes
+
+_die()
+{   #print a stacktrace with a msg, exits with 1
+    local frame=0
+    while caller $frame; do
+        $((frame=frame+1));
+    done
+
+    echo "$*"
+    exit 1
+}
+
+_ismonitorattached()
+{
+    xrandr | grep "^VGA" | grep " connected" && return 0
+    xrandr | grep "^HDMI" | grep " connected" && return 0
+    return 1
+}
+
+_arch()
+{   #check for system arch, returns [64|32]
+    local arch
+    [ -z "$MACHTYPE" ] && arch=$(uname -m) || arch=$(echo $MACHTYPE | cut -d- -f1)
+
+    case $arch in
+        x86_64)
+            arch=64;
+            ;;
+        i686)
+            arch=32;
+            ;;
+        *)
+            exit 1
+            ;;
+    esac
+
+    echo $arch
+}
+
+
+[ ! -f /usr/bin/xdotool ] && _die "You need to install xdotool: $ sudo apt-get install xdotool"
+
+if _ismonitorattached; then
+    if [ -f /usr/local/bin/lights/"$_arch"/lights ]; then
+        /usr/local/bin/lights/"$_arch"/lights &
+    else
+        echo "To enjoy fully the movietime experience install: /usr/local/bin/lights/"$_arch"/lights"
+        echo "  https://github.com/chilicuil/learn/tree/master/java"
+    fi
+fi
+
 resumetime=0
 
-if [ $resumetime = 0 ]; then 
+if [ $resumetime = 0 ]; then
   resumetime=1440 # Re-enable resume after a full day
 fi
 
@@ -44,7 +95,7 @@ usage()
     # Display current values of power management and movietime.
     suspinhtest=$(ps aux | grep -v grep | grep $suspinhscript)
     suspinhval=$([ -n "$suspinhtest" ] && echo "Disabled" || echo "Desktop settings")
-    
+
     # DPMS disabled information
     echo "   ${txtbld}Current settings ${txtrst}(in minutes, 0 = disabled):"
     if [[ "$dispdpms" == "Disabled" ]]; then
@@ -98,7 +149,8 @@ suspinhibit () {
     echo '#!/bin/bash
     for time in $(seq 1 '$resumetime'); do
     # Simulate user activity every minute
-    dbus-send --print-reply --type=method_call --dest=org.freedesktop.ScreenSaver /ScreenSaver org.freedesktop.ScreenSaver.SimulateUserActivity
+    xdotool keydown Shift_L keyup Shift_L
+    #dbus-send --print-reply --type=method_call --dest=org.freedesktop.ScreenSaver /ScreenSaver org.freedesktop.ScreenSaver.SimulateUserActivity
     sleep 60
     done'
 }
