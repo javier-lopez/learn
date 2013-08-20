@@ -13,7 +13,7 @@
 
 _animbarcui()
 {   #prints a bar of o@o moving
-    [ -z $1 ] && { printf "%4s\n" ""; return 1; }
+    [ -z "$1" ] && { printf "%4s\n" ""; return 1; }
     pid=$1
     animation_state=1
 
@@ -156,7 +156,7 @@ _animcui()
 
 _animrotate()
 {   #shows an animation as long as a process is in memory
-    [ -z $1 ] && return 1
+    [ -z "$1" ] && return 1
     pid=$1
     animation_state=1
     echo -e -n "    "
@@ -203,7 +203,7 @@ _animrotate()
 _arch()
 {   #check for system arch, returns [64|32]
     local arch
-    [ -z $MACHTYPE ] && arch=$(uname -m) || arch=$(echo $MACHTYPE | cut -d- -f1)
+    [ -z "$MACHTYPE" ] && arch=$(uname -m) || arch=$(echo $MACHTYPE | cut -d- -f1)
 
     case $arch in
         x86_64)
@@ -231,7 +231,7 @@ _cleanup()
     echo "[+] cleanup ..."
     your_commands_here
 
-    [ -z $1 ] && exit
+    [ -z "$1" ] && exit
 }
 #==================================================== Example ====
 #trap _cleanup SIGINT SIGTERM #trap ctrl-c
@@ -284,7 +284,7 @@ _dirname()
 {   #returns string containing dirname on success, 1 on fail
 
     #http://www.linuxmisc.com/12-unix-web-servers/d31beb238f7b5a6b.htm
-    if [ -z $1 ]; then
+    if [ -z "$1" ]; then
         return 1;
     else
         local dir="${1%${1##*/}}"
@@ -371,9 +371,15 @@ _existuser()
 #fi
 #=================================================================
 
+_existaptproxy()
+{
+    avahi-browse -a  -t | grep -qs apt-cacher-ng && return 0
+    return 1
+}
+
 _fullpath()
 {   #return full path of the argument, return string on success, 1 on fail
-    if [ -z $1 ]; then
+    if [ -z "$1" ]; then
         return 1;
     else
         if [ `expr substr ${1:-a} 1 2` != "/" ]; then
@@ -462,6 +468,12 @@ col=$(_getcol)
 printf "%s" " - $col characters"
 #=================================================================
 
+_getfs()
+{
+    [ -z "$1" ] && return 1
+    udevadm info -q all -n "$1" | grep -i ID_FS_TYPE | cut -f2 -d'='
+}
+
 _getrow()
 {   #return an int with the col cursor position
 
@@ -481,6 +493,14 @@ _getrow()
 #==================================================== Example ====
 row=$(_getrow)
 printf "%s" "$row"
+#=================================================================
+
+_getuuid()
+{
+    [ -z "$1" ] && return 1
+    udevadm info -q all -n "$1" | grep -i uuid | egrep "^S:" | cut -f3 -d'/'
+}
+#==================================================== Example ====
 #=================================================================
 
 _getpasswd()
@@ -559,7 +579,7 @@ _getroot()
 
 _inarray()
 {   #look for a value in an array, returns 0 on success, 1 otherwise
-    [ -z $1 ] && return 1
+    [ -z "$1" ] && return 1
 
     local needle="$1" element
     shift
@@ -621,6 +641,20 @@ _islivecd()
 #fi
 #=================================================================
 
+_ismonitorattached()
+{
+    xrandr | grep "^VGA" | grep " connected" && return 0
+    xrandr | grep "^HDMI" | grep " connected" && return 0
+    return 1
+}
+#==================================================== Example ====
+#if _ismonitorattached; then
+    #echo "At least one monitor is attached"
+#else
+    #echo "No monitor are attached"
+#fi
+#=================================================================
+
 _isnewer()
 {   #compare the dates of two files, return true (0) if file1 has
     #been modified more recently otherwise 1
@@ -666,16 +700,6 @@ _lock()
 #_lock $0
 #=================================================================
 
-_lower()
-{   #convert a string to lower string
-    [ -z $1 ] && return 1
-    echo $@ | tr '[:upper:]' '[:lower:]'
-}
-#==================================================== Example ====
-#string="FOO BAR"
-#lower=$(_lower $string)
-#=================================================================
-
 _networkup()
 {   #check for internet connection, returns 0 on success, 1 otherwise
     wget --tries=3 --timeout=5 http://www.google.com -O /tmp/index.google > /dev/null 2>&1
@@ -697,7 +721,7 @@ _networkup()
 
 _notify()
 {   #notify a msg
-    [ -z $1 ] && return 1
+    [ -z "$1" ] && return 1
 
     if [ "$TERM" = linux ] || [ "$TERM" = dumb ]; then
         notify-send -t 3000 "${@}"
@@ -717,7 +741,7 @@ _notify()
 
 _printtime()
 {  #format seconds to a pretty string
-    [ -z $1 ] && return 1
+    [ -z "$1" ] && return 1
 
     NUM=$1
     MIN=0
@@ -750,7 +774,7 @@ _printtime()
 
 _privport()
 {   #check if port is a num and if it's privated (<1025), returns 0 on success, 1 otherwise
-    [ -z $1 ] && return 1
+    [ -z "$1" ] && return 1
 
     echo "$1" | grep -q -v "[^0-9]"
     if [ $? -eq 0 ]; then
@@ -772,7 +796,7 @@ _privport()
 _realpath()
 {   #convert relative to real paths
 
-    [ -z $1 ] && return 1
+    [ -z "$1" ] && return 1
     #http://www.makkintosshu.com/journal/a-realpath-implementation-in-bash
     local success=true
 
@@ -826,7 +850,7 @@ _realpath()
 _refarray()
 {   #exports an array to another
     #http://ihaveabackup.net/2012/01/29/a-workaround-for-passing-arrays-in-bash/
-    [ -z $1 ] && return 1
+    [ -z "$1" ] && return 1
     local varname="$1"
     local export_as="$2"
     local code=$(declare -p "$varname")
@@ -835,7 +859,7 @@ _refarray()
 #==================================================== Example ====
 #dump()
 #{
-    #[ -z $1 ] && return 1
+    #[ -z "$1" ] && return 1
     #eval $(ref_array "$1" array)
     #local key
 
@@ -848,11 +872,52 @@ _refarray()
 #dump PERSON
 #=================================================================
 
+_strlen()
+{
+    [ -z "$1" ] && return 1
+    echo ${#1}
+}
+#==================================================== Example ====
+#=================================================================
+
+_strreplace()
+{
+    [ -z "$1" ] && return 1
+    echo ${1//$2/$3}
+}
+#==================================================== Example ====
+#hello="hello world"
+#bye=$(_strreplace "$string" "hello" "bye")
+#world=$(_strreplace "$string" "world")
+#echo $bye #prints "bye world"
+#echo $world #prints "world"
+#=================================================================
+
+_strtolower()
+{   #convert a string to lower string
+    [ -z "$1" ] && return 1
+    echo $@ | tr '[:upper:]' '[:lower:]'
+}
+#==================================================== Example ====
+#string="FOO BAR"
+#lower=$(_strtolower $string)
+#=================================================================
+
+_strtoupper()
+{   #returns upper string
+    [ -z "$1" ] && return 1
+    echo $@ | tr '[:lower:]' '[:upper:]'
+}
+#==================================================== Example ====
+#string="foo bar"
+#upper=$(_strtoupper $string)
+#=================================================================
+
 _uploadimg()
 {   #uploads an image, returns url on success, 1 otherwise
     #requires curl
 
-    [ -z $1 ] && return 1
+    [ -z "$1" ] && return 1
     for img
     do
         if [ -f "$img" ] ; then
@@ -895,16 +960,6 @@ _uploadimg()
 #_upload_img file.png
 #=================================================================
 
-_upper()
-{   #returns upper string
-    [ -z $1 ] && return 1
-    echo $@ | tr '[:lower:]' '[:upper:]'
-}
-#==================================================== Example ====
-#string="foo bar"
-#upper=$(_upper $string)
-#=================================================================
-
 _usage()
 {   #prints an usage msg and exits with 0
     echo "Usage: `basename $0` [OPTION] FILE"
@@ -921,7 +976,7 @@ _usage()
 
 _waitfor()
 {   #wait for a program, shows an animation
-    [ -z $1 ] && return 1
+    [ -z "$1" ] && return 1
 
     echo -n "    $ $@ ..."
     $@ > /dev/null 2>&1 &
