@@ -704,6 +704,21 @@ _isarray()
 #fi
 #=================================================================
 
+_isip4valid()
+{   #return 0 if parameter is a valid ip4 address, non-zero otherwise
+    #https://groups.google.com/forum/#!original/comp.unix.shell/NDu-kAL5cHs/7Zpc6Q2Hu5YJ
+    case "$*" in
+        ""|*[!0-9.]*|*[!0-9]) return 1 ;;
+    esac
+
+    local IFS=.  ## local is bash-specific
+    set -- $*
+
+    [ $# -eq 4 ] &&
+        [ ${1:-666} -le 255 ] && [ ${2:-666} -le 255 ] &&
+        [ ${3:-666} -le 255 ] && [ ${4:-666} -le 254 ]
+}
+
 _islivecd()
 {   #detect a livecd system, return 0 on success, 1 otherwise
     grep -qs boot=live /proc/cmdline && return 0
