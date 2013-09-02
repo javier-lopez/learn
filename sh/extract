@@ -59,7 +59,7 @@ extract()
                     *.tgz)
                         _exec tar zxvf "$FILE"
                         ;;
-                    *.zip)
+                    *.zip|*.xpi)
                         _exec unzip "$FILE"
                         ;;
                     *.Z)
@@ -120,7 +120,7 @@ extract()
                     *.tgz)
                         _exec tar zxf "$FILE"
                         ;;
-                    *.zip)
+                    *.zip|*.xpi)
                         _exec unzip "$FILE"
                         ;;
                     *.Z)
@@ -156,7 +156,7 @@ while getopts ":s:" option; do
     case $option in
         s)
           SFLAG=yes
-          shift 1; extract "$@" 
+          shift 1; extract "$@"
           exit 0
           ;;
         :)
