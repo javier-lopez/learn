@@ -2,6 +2,10 @@
 #add it as a cronjob (every 3 min)
 #*/3 * * * * /path/to/this/script
 
+if ps aux | grep -qs [u]powerd; then
+    exit
+fi
+
 _notify()
 {
     if [ "$TERM" = linux ] || [ "$TERM" = dumb ]; then
