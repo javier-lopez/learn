@@ -5,6 +5,8 @@
 # $ time bash kernel-ck-ubuntu
 
 #####################################
+
+#####################################
 # 3.9
 #versão do kernel a ser compilado
 kernel=3.9
@@ -95,7 +97,7 @@ arqt=$(dpkg --print-architecture)
 #the /tmp partitions usually have noexec
 tmp_path="$HOME/.tmp/kernel-ck-ubuntu-$patchkernel"
 curr_path=$PWD
-apps_default="kernel-package gcc-4.6 libncurses5 libncurses5-dev build-essential patch fakeroot"
+apps_default="kernel-package gcc-4.6 libncurses5 libncurses5-dev build-essential patch fakeroot bc"
 
 X=1
 CL=$(echo $(($(grep -c processor /proc/cpuinfo)+$X)))
@@ -280,6 +282,7 @@ _waitforsudo apt-get install --no-install-recommends -y $apps_default
 
 echo -e "\033[1m--------------------------------\033[7m Downloading archives \033[0m\033[1m-------------------------------\033[0m"
 echo "[+] downloading main vanilla kernel tree ..."
+_cmd mkdir -p $tmp_path
 _cmd cd $tmp_path
 _waitfor wget --no-check-certificate -N http://www.kernel.org/pub/linux/kernel/v3.x/linux-$kernel.tar.bz2
 
@@ -328,10 +331,10 @@ echo -e "\033[1m-----------------------------\033[7m Configuring kernel \033[0m\
 #config_file=$(locate /boot/config-* | sort -r | head -1)
 
 echo "[+] downloading optimized config from http://liquorix.net ...    "
-#_cmd wget "http://liquorix.net/sources/$kernel/config.$arqt"
+_cmd wget "http://liquorix.net/sources/$kernel/config.$arqt"
 #TODO 04-03-2013 21:19 >> check when liquorix update config for 3.8, using 3.7 config in the meantime
 #Same for 3.9
-_waitfor wget "http://javier.io/mirror/3.9/config.$arqt"
+#_waitfor wget "http://javier.io/mirror/3.9/config.$arqt"
 _cmd cp "config.$arqt" .config
 
 #tmp fix for bug #663474
