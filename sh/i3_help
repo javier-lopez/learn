@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+XMESSAGE=$(which gxmessage) || XMESSAGE=xmessage
+font="Monaco 9"
+
+[ "$XMESSAGE" = xmessage ] && font="fixed"
+
+$XMESSAGE ${font:+-fn "$font"} -file $HOME/.i3/shortcuts -buttons "got it"
