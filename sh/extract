@@ -29,13 +29,10 @@ extract()
         if [ -z "$SFLAG" ]; then
             if [ -f "$FILE" ] ; then
                 case "$FILE" in
-                    *.deb)
+                    *.deb|*.udeb)
                         _exec ar xv "$FILE"
                         ;;
-                    *.udeb)
-                        _exec ar xv "$FILE"
-                        ;;
-                    *.tar.bz2)
+                    *.tar.bz2|*.tbz|*.tbz2)
                         _exec tar jxvf "$FILE"
                         ;;
                     *.tar.gz)
@@ -52,9 +49,6 @@ extract()
                         ;;
                     *.tar)
                         _exec tar xvf "$FILE"
-                        ;;
-                    *.tbz2)
-                        _exec tar jxvf "$FILE"
                         ;;
                     *.tgz)
                         _exec tar zxvf "$FILE"
@@ -90,13 +84,10 @@ extract()
         else
             if [ -f "$FILE" ] ; then
                 case "$FILE" in
-                    *.deb)
+                    *.deb|*.udeb)
                         _exec ar x "$FILE"
                         ;;
-                    *.udeb)
-                        _exec ar x "$FILE"
-                        ;;
-                    *.tar.bz2)
+                    *.tar.bz2|*.tbz|*.tbz2)
                         _exec tar jxf "$FILE"
                         ;;
                     *.tar.gz)
@@ -113,9 +104,6 @@ extract()
                         ;;
                     *.tar)
                         _exec tar xf "$FILE"
-                        ;;
-                    *.tbz2)
-                        _exec tar jxf "$FILE"
                         ;;
                     *.tgz)
                         _exec tar zxf "$FILE"
