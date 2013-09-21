@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+#set -e
+BACKUPDIR="/path"
+DBUSER="user"
+DBPASSWD="passwd"
+
+exec 9>/var/run/$(basename $0).lock    #verify only one instance is running
+if ! flock -n 9  ; then                #http://mywiki.wooledge.org/BashFAQ/045
+    echo "$(basename $0): another instance is running";
+    exit 1
+fi
+
+_time()
+{
+    NUM=$1
+    MIN=0
+    HOUR=0
+    DAY=0
+    if((NUM>59));then
+        ((SEC=NUM%60))
+        ((NUM=NUM/60))
+        if((NUM>59));then
+            ((MIN=NUM%60))
+            ((NUM=NUM/60))
+            if((NUM>23));then
+                ((HOUR=NUM%24))
+                ((DAY=NUM/24))
+            else
+                ((HOUR=NUM))
+            fi
+        else
+            ((MIN=NUM))
+        fi
+    else
+        ((SEC=NUM))
+    fi
+    echo "$DAY"d "$HOUR"h "$MIN"m "$SEC"s
+}
+
+sleep $(($RANDOM%1000))m #wait random minutes to run the backup [0-1000]
+START=$(date +%s)
+
+[ ! -d $BACKUPDIR ] && mkdir -p $BACKUPDIR
+
+#http://dba.stackexchange.com/questions/19532/safest-way-to-perform-mysqldump-on-a-live-system-with-active-reads-and-writes
+mysql -u$DBUSER -p$DBPASSWD -Ae"FLUSH TABLES WITH READ LOCK; SELECT SLEEP(86400)" &
+sleep 5
+mysql -u$DBUSER -p$DBPASSWD -ANe"SHOW PROCESSLIST" | grep "SELECT SLEEP(86400)" > $BACKUPDIR/proclist.txt
+SLEEP_ID=$(cat $BACKUPDIR/proclist.txt | awk '{print $1}')
+echo "KILL ${SLEEP_ID};" > $BACKUPDIR/kill_sleep.sql
+
+DBS="$(mysql -u$DBUSER -p$DBPASSWD -Bse 'show databases')"
+for DB in $DBS
+do
+    mysqldump -u $DBUSER -p$DBPASSWD --single-transaction --routines --triggers $DB > $BACKUPDIR/$DB.sql
+done
+
+mysql -u$DBUSER -p$DBPASSWD -A < $BACKUPDIR/kill_sleep.sql
+mysql -u$DBUSER -p$DBPASSWD -Ae"UNLOCK TABLES;"
+
+FILES=($BACKUPDIR/*sql)
+tar -czf $BACKUPDIR/dbs.tar.gz "${FILES[@]}"
+
+END=$(date +%s)
+DIFF=$(( $END - $START ))
+
+echo $(date +"%d-%m-%Y"):$(_time $DIFF) | tee -a $BACKUPDIR/time.txt
