@@ -1,0 +1,39 @@
+#! /usr/bin/env bash
+
+PASSWD=$(date +%s | sha256sum | base64 | head -c 8)
+USER="guest"
+PORT="26769"
+BACKUP_DIR="/path/backup"
+CERT="/path/server.pem"
+
+if [ "$1" = stop ] ; then
+    ID=$(ps aux | grep [s]imple | awk '{ print $2 }')
+    [ -n "$ID" ] && { kill -9 $ID; echo "Stopped"; } || echo "No instance found"
+    exit
+fi
+
+exec 9> /tmp/$(basename $0).lock #verify only one instance is running
+if ! flock -n 9  ; then                #http://mywiki.wooledge.org/BashFAQ/045
+    echo "$(basename $0): another instance is running";
+    exit 1
+fi
+
+[ -f "$CERT" ] && SSL_OPTS="--ssl --certificate=$CERT"
+
+if [ -f /usr/local/bin/py.simple.server ] ; then
+    echo "Starting simple.server..."
+    echo "  address: all interfaces"
+    echo "  port: $PORT"
+    echo "  authentication"
+    echo "    username: $USER"
+    echo "    password: $PASSWD"
+    echo "    ssl: $SSL_OPTS"
+    echo "  serving:"
+    echo "    $BACKUP_DIR"
+    echo
+    echo "Run: $(basename $0) stop, to stop sharing"
+    nohup py.simple.server -p $PORT --username=$USER --password=$PASSWD $SSL_OPTS $BACKUP_DIR &
+else
+    echo "No /usr/local/bin/py.simple.server found, download it at: https://raw.github.com/chilicuil/learn/master/python/py.simple.server"
+    exit 1
+fi

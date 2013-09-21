@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+
+echo "==================================="
+echo "[+] Running into the 1st datacenter"
+echo "==================================="
+#http://mywiki.wooledge.org/BashFAQ/089
+#!faq ssh
+while read <&3 ip
+do
+    echo $@ $ip
+    ssh $ip $@
+    echo "==================================="
+done 3< DC1-ips.txt
+
+echo "==================================="
+echo "[+] Running into the 2nd datacenter"
+echo "==================================="
+while read <&4 ip
+do
+    echo $@ $ip
+    ssh $ip $@
+    echo "==================================="
+done 4< DC2-ips.txt
