@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-#P.L. Javier <fco.plj@gmail.com> 2010
 #translate strings
 
 phrase="$@"

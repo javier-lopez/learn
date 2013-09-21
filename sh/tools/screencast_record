@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#chilicuil <chilicuil@gmail.com> 2012 - records screecasts using ffmpeg
+#records screecasts using ffmpeg
 #./screecasts_record [start|stop]
 #TODO 14-12-2012 03:52 >> add color, status
 

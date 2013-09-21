@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
-#chilicuil <chilicuil@gmail.com> 2010
-#requires a dmenu version with xft
-#https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
+#requires a dmenu version with xft: https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
 
 _barstatus.off()
 {

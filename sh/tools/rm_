@@ -10,7 +10,7 @@
 #Taken initially from 'Wicked Cool Shell Scripts: 101 Scripts for Linux, Mac
 #OS X, and Unix Systems'
 
-#If you improve it, please drop me an email
+#If you improve it, drop me an email, <m@javier.io>
 
 trash_dir="$HOME/.local/share/Trash"
 

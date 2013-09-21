@@ -1,20 +1,20 @@
 #!/bin/bash
-# The author of the original script is unknown to me. The first entry I can
-# find was posted at 2010-03-21 09:50:09 on Arch Linux Forums (doesn't mean the
-# poster is the author at all):
+#The author of the original script is unknown to me. The first entry I can
+#find was posted at 2010-03-21 09:50:09 on Arch Linux Forums (doesn't mean the
+#poster is the author at all):
 #
 #   https://bbs.archlinux.org/viewtopic.php?pid=728932#p728932
 #
-# I, Yu-Jie Lin, made a few changes and additions:
+#I, Yu-Jie Lin, made a few changes and additions:
 #
-#   -p, -R, and -C
+#  -p, -R, and -C
 #
-#   Screenshot: http://flic.kr/p/dRnLVj
-#   Screencast: http://youtu.be/5XnGSFg_gTk
+#  Screenshot: http://flic.kr/p/dRnLVj
+#  Screencast: http://youtu.be/5XnGSFg_gTk
 #
-# And push the commits to Gist:
+#And push the commits to Gist:
 #
-#   https://gist.github.com/4689307
+#  https://gist.github.com/4689307
 
 p=1
 f=75 s=13 r=2000 t=0

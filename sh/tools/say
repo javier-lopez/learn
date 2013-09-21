@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-#chilicuil <chilicuil@gmail.com> 2012
 #$ cat file_spanish | say
 #$ cat file_english | say -e
 #$ say -e "something"

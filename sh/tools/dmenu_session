@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 #a simple dmenu session script
-#requires a dmenu version with xft
-#https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
+#requires a dmenu version with xft: https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
 
 DMENU='dmenu -p > -i -fn Bahamas-10 -nb #000000 -nf #FFFFFF -sb #000000 -sf #999999'
 choice=$(echo -e "lock\nlogout\nrestart\nshutdown\nreboot\nsuspend\nhibernate" | $DMENU)

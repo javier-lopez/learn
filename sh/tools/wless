@@ -1,6 +1,6 @@
 #!/bin/sh
-# wless - web page less
-# http://chneukirchen.org/dotfiles/bin/wless
+#wless - web page less
+#http://chneukirchen.org/dotfiles/bin/wless
 LESS=vim
 TEMPFILE=$(mktemp)
 trap "rm -f $TEMPFILE" INT TERM EXIT

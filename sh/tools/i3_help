@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+#print help for my personal setup
 
 XMESSAGE=$(which gxmessage) || XMESSAGE=xmessage
 font="Monaco 9"

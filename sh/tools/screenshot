@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#TODO 14-12-2012 04:52 >> review notify function
+#screenshot in 3.., 2.., 1...
 
 _notify ()
 {
@@ -20,11 +20,20 @@ _exec()
     $@
 }
 
+if [ -f /usr/bin/scrot ]; then
+    screenshot_bin="scrot"
+elif [ -f /usr/bin/import ]; then
+    screenshot_bin="import -window root"
+else
+    _notify "[-] Error, install either import or scrot"
+    exit 1
+fi
+
 file=$HOME/`</dev/urandom tr -dc A-Za-z0-9 | head -c 8`.png
 
 _notify "[+] Screenshot" "in 3.., 2.., 1.., smile =)!"
 _exec sleep 3
-_exec killall notify-osd 
+_exec killall notify-osd
 sleep .5
-_exec import -window root $file
+_exec $screenshot_bin $file
 _notify "[+] Done" "$file"

@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-
-# shows binary deps
+#shows binary deps
 
 if [ ! -e /usr/bin/apt-file ]; then
     echo "You need to install apt-file" "\$ sudo apt-get install apt-file"

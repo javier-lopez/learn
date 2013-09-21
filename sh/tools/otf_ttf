@@ -1,7 +1,7 @@
 #!/usr/bin/env fontforge
-#Quick and dirty hack: converts a font to truetype (.ttf), works only with one font.
+#quick and dirty hack: converts a font to truetype (.ttf), works only with one font at a time
 Print("[+] Opening "+$1);
 Open($1);
 Print("[+] Saving "+$1:r+".ttf");
 Generate($1:r+".ttf");
-Quit(0); 
+Quit(0);

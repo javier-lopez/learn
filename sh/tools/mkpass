@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
-#chilicuil <chilicuil@gmail.com> 2010
 #create a secure password with 8 chars by default
-#people may want to use $RANDOM to create tmp files
 
 usage()
 {
@@ -9,18 +7,18 @@ usage()
     exit 0
 }
 
-if [ ! $1 ]; then
+if [ ! "$1" ]; then
     mkpasswd_length=8
 else
     #isnum?
     #http://stackoverflow.com/questions/806906/how-do-i-test-if-a-variable-is-a-number-in-bash
     case $1 in
         ''|*[!0-9]*) echo Error, not a number:\"$1\";exit 1;;
-        *) mkpasswd_length=$1;; 
+        *) mkpasswd_length=$1;;
     esac
 fi
 
-if [[ -e /usr/bin/xclip ]]; then
+if [ -f /usr/bin/xclip ]; then
     #http://unix.stackexchange.com/questions/28503/how-can-i-send-stdout-to-multiple-commands
     strings /dev/urandom | grep -o '[[:alnum:]]' | head -n $mkpasswd_length | tr -d '\n' | tee >(xclip); echo
 else

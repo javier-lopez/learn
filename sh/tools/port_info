@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-#chilicuil <chilicuil@gmail.com> 2010
 #a primitive 'eix' for Obsd
 
 PORTS="/usr/ports"

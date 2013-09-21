@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 #resets ip on thompson routers
-#TODO 14-12-2012 03:52 >> add color, status
 
 _notify ()
 {

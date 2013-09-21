@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+#wrapper around py.simple.server and SimpleHTTPServer
 
 SUDO=/usr/bin/sudo
 
