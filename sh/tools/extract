@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#extract function, http://bashscripts.org/forum/viewtopic.php?f=7&t=367
+#$ extract file.format #http://bashscripts.org/forum/viewtopic.php?f=7&t=367
 
 usage()
 {
@@ -22,7 +22,7 @@ _exec()
     "$@"
 }
 
-extract()
+_extract()
 {
     for FILE
     do
@@ -35,7 +35,7 @@ extract()
                     *.tar.bz2|*.tbz|*.tbz2)
                         _exec tar jxvf "$FILE"
                         ;;
-                    *.tar.gz)
+                    *.tar.gz|*.tgz)
                         _exec tar zxvf "$FILE"
                         ;;
                     *.bz2)
@@ -50,14 +50,8 @@ extract()
                     *.tar)
                         _exec tar xvf "$FILE"
                         ;;
-                    *.tgz)
-                        _exec tar zxvf "$FILE"
-                        ;;
                     *.zip|*.xpi)
                         _exec unzip "$FILE"
-                        ;;
-                    *.Z)
-                        _exec uncompress "$FILE"
                         ;;
                     *.7z)
                         _exec 7z x "$FILE"
@@ -75,7 +69,7 @@ extract()
                         _exec 7z x "$FILE"
                         ;;
                     *)
-                        echo "'$FILE' is not a valid compress file"
+                        echo "'$FILE' is not a valid compressed file"
                         ;;
                 esac
             else
@@ -90,7 +84,7 @@ extract()
                     *.tar.bz2|*.tbz|*.tbz2)
                         _exec tar jxf "$FILE"
                         ;;
-                    *.tar.gz)
+                    *.tar.gz|*.tgz)
                         _exec tar zxf "$FILE"
                         ;;
                     *.bz2)
@@ -105,14 +99,8 @@ extract()
                     *.tar)
                         _exec tar xf "$FILE"
                         ;;
-                    *.tgz)
-                        _exec tar zxf "$FILE"
-                        ;;
                     *.zip|*.xpi)
                         _exec unzip "$FILE"
-                        ;;
-                    *.Z)
-                        _exec uncompress "$FILE"
                         ;;
                     *.7z)
                         _exec 7z x "$FILE"
@@ -130,7 +118,7 @@ extract()
                         _exec 7z x "$FILE"
                         ;;
                     *)
-                        echo "'$FILE' is not a valid compress file"
+                        echo "'$FILE' is not a valid compressed file"
                         ;;
                 esac
             else
@@ -144,7 +132,7 @@ while getopts ":s:" option; do
     case $option in
         s)
           SFLAG=yes
-          shift 1; extract "$@"
+          shift 1; _extract "$@"
           exit 0
           ;;
         :)
@@ -158,4 +146,4 @@ while getopts ":s:" option; do
     esac
 done
 
-extract "$@"
+_extract "$@"

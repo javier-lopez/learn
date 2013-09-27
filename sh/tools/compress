@@ -1,0 +1,164 @@
+#!/usr/bin/env bash
+#$ compress files file.format
+
+usage()
+{
+    echo "Usage: `basename $0` [-s] FILES ... FILE.[tar.gz,tar.bz2,zip...]"
+    echo "           -s       quiet mode"
+    exit 0
+}
+
+if [ "$#" -lt 2 ] ; then # no files to compress
+    usage
+fi
+
+_exec()
+{
+    status=$?
+    if [ "$status" != 0 ]; then
+        exit $status
+    fi
+    echo "[+] $@"
+    "$@"
+}
+
+_compress()
+{
+    for COMPRESS_FILE; do true; done
+    FILES="${@:1:$(($#-1))}"
+    for FILE in $FILES; do
+        [ ! -r "$FILE" ] && { echo "$(basename $0): "$FILE" does not exist or is not readable"; exit 1; }
+    done
+
+    if [ -z "$SFLAG" ]; then
+        case "$COMPRESS_FILE" in
+            *.deb|*.udeb)
+                _exec ar rv "$COMPRESS_FILE" "$FILES"
+                ;;
+            *.tar.bz2|*.tbz|*.tbz2)
+                _exec tar jcvf "$COMPRESS_FILE" "$FILES"
+                ;;
+            *.tar.gz|*.tgz)
+                _exec tar zcvf "$COMPRESS_FILE" "$FILES"
+                ;;
+            *.bz2)
+                local x=0
+                for FILE in $FILES; do
+                    x=$(($x+1))
+                done
+                [ $x -gt 1 ] && { echo "$(basename $0): bz2 files can only be compressed one by one, use tar.bz2 if you require to compress several files at the same time"; exit 1; }
+                _exec "bunzip2 -cv \"$FILES\" | dd of=\"$COMPRESS_FILE\""
+                ;;
+            *.rar)
+                _exec rar a "$COMPRESS_FILE" "$FILES"
+                ;;
+            *.gz)
+                local x=0
+                for FILE in $FILES; do
+                    x=$(($x+1))
+                done
+                [ $x -gt 1 ] && { echo "$(basename $0): gz files can only be compressed one by one, use tar.gz if you require to compress several files at the same time"; exit 1; }
+                _exec "gunzip -cv \"$FILES\" | dd of=\"$COMPRESS_FILE\""
+                ;;
+            *.tar)
+                _exec tar cvf "$COMPRESS_FILE" "$FILES"
+                ;;
+            *.zip|*.xpi)
+                _exec zip "$COMPRESS_FILE" "$FILES"
+                ;;
+            *.7z)
+                _exec 7z a "$COMPRESS_FILE" "$FILES"
+                ;;
+            *.tar.lzma)
+                _exec tar --lzma -cvf "$COMPRESS_FILE" "$FILES"
+                ;;
+            *.tar.xz)
+                _exec tar -Jcvf "$COMPRESS_FILE" "$FILES"
+                ;;
+            *.jar)
+                _exec jar cvf "$COMPRESS_FILE" "$FILES"
+                ;;
+            *.iso)
+                _exec 7z a "$COMPRESS_FILE" "$FILES"
+                ;;
+            *)
+                echo "'$COMPRESS_FILE' is not a valid compressed file"
+                ;;
+        esac
+    else
+        case "$COMPRESS_FILE" in
+            *.deb|*.udeb)
+                _exec ar r "$COMPRESS_FILE" "$FILES"
+                ;;
+            *.tar.bz2|*.tbz|*.tbz2)
+                _exec tar jcf "$COMPRESS_FILE" "$FILES"
+                ;;
+            *.tar.gz|*.tgz)
+                _exec tar zcf "$COMPRESS_FILE" "$FILES"
+                ;;
+            *.bz2)
+                local x=0
+                for FILE in $FILES; do
+                    x=$(($x+1))
+                done
+                [ $x -gt 1 ] && { echo "$(basename $0): bz2 files can only be compressed one by one, use tar.bz2 if you require to compress several files at the same time"; exit 1; }
+                _exec "bunzip2 -c \"$FILES\" | dd of=\"$COMPRESS_FILE\""
+                ;;
+            *.rar)
+                _exec rar a "$COMPRESS_FILE" "$FILES"
+                ;;
+            *.gz)
+                local x=0
+                for FILE in $FILES; do
+                    x=$(($x+1))
+                done
+                [ $x -gt 1 ] && { echo "$(basename $0): gz files can only be compressed one by one, use tar.gz if you require to compress several files at the same time"; exit 1; }
+                _exec "gunzip -c \"$FILES\" | dd of=\"$COMPRESS_FILE\""
+                ;;
+            *.tar)
+                _exec tar cf "$COMPRESS_FILE" "$FILES"
+                ;;
+            *.zip|*.xpi)
+                _exec zip "$COMPRESS_FILE" "$FILES"
+                ;;
+            *.7z)
+                _exec 7z a "$COMPRESS_FILE" "$FILES"
+                ;;
+            *.tar.lzma)
+                _exec tar --lzma -cf "$COMPRESS_FILE" "$FILES"
+                ;;
+            *.tar.xz)
+                _exec tar -Jcf "$COMPRESS_FILE" "$FILES"
+                ;;
+            *.jar)
+                _exec jar cf "$COMPRESS_FILE" "$FILES"
+                ;;
+            *.iso)
+                _exec 7z a "$COMPRESS_FILE" "$FILES"
+                ;;
+            *)
+                echo "'$COMPRESS_FILE' is not a valid compressed file"
+                ;;
+        esac
+    fi
+}
+
+while getopts ":s:" option; do
+    case $option in
+        s)
+          SFLAG=yes
+          shift 1; _compress "$@"
+          exit 0
+          ;;
+        :)
+          echo "Option -$OPTARG requires an argument"
+          usage
+          ;;
+        \?)
+          echo "Invalid option: -$OPTARG"
+          usage
+          ;;
+    esac
+done
+
+_compress "$@"
