@@ -5,10 +5,9 @@ updates="https://raw.github.com/chilicuil/learn/master/sh/is/apt-proxy"
 _header()
 {
     clear
-    echo -e "\033[1m----------------------\033[7m Setup apt proxy \033[0m\033[1m---------------------------\033[0m"
-    echo -e "\033[1m Updates:\033[0m         $updates"
-    echo
-    echo -e "\033[1m------------------------------------------------------------\033[0m"
+    echo -e "\033[1m-------------------------\033[7m Setup apt proxy \033[0m\033[1m----------------------------\033[0m"
+    echo -e "\033[1mUpdates:\033[0m $updates"
+    echo -e "\033[1m----------------------------------------------------------------------\033[0m"
 }
 
 _existaptproxy()
@@ -116,13 +115,15 @@ _waitforsudo()
 }
 
 _header
+_getroot
 
 echo "[+] setting up an apt-get proxy ..."
 _waitforsudo apt-get update
 _waitforsudo apt-get install --no-install-recommends -y avahi-utils
 
 if _existaptproxy; then
-    echo "[+] exists an apt-get proxy in the network, using it ..."
+    apt_proxy_server=$(avahi-browse -a -t -r -p | grep apt-cacher-ng | grep = | cut -d";" -f8)
+    echo "[+] exists an apt-get proxy in the network at $apt_proxy_server, using it ..."
     _waitforsudo apt-get install --no-install-recommends -y squid-deb-proxy-client
 else
     echo "[+] no apt-get proxy found, installing one locally ..."
