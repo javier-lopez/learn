@@ -1,56 +1,70 @@
 #!/usr/bin/env bash
-#upload tmp imgs to http://imgur.com
+#uploads imgs to your account at mononeurona.org
+#$ uimg img.png
 
-usage()
+_notify ()
 {
-    echo "Usage: `basename $0` img1 img2 imgN ..."
-    echo "        img must be a valid image file: png, jpg"
-    exit 1
+    if [ "$TERM" = linux ] || [ "$TERM" = dumb ]; then
+        notify-send -t 3000 "${@}"
+    else
+        echo -n "${1}: "
+        shift
+        while [ -n "$*" ]
+        do
+            echo "${1}"
+            shift
+        done
+    fi
 }
 
-if [ $# -eq 0 ] ; then # no files to extract
-    usage
+if [ ! -e /usr/bin/html2text ]; then
+    _notify "You need to install html2text" "\$ sudo apt-get install html2text"
+    exit 1
 fi
 
-upload_img()
-{
-    for img
-    do
-        if [ -f "$img" ] ; then
-            case "$img" in
-                *.jpg)
-                    curl -s -F "image=@$img" -F "key=486690f872c678126a2c09a9e196ce1b" http://imgur.com/api/upload.xml \
-                        | grep -E -o "<original_image>(.)*</original_image>" | \
-                        grep -E -o "http://i.imgur.com/[^<]*" | tee /dev/fd/2 | xclip 
-                    ;;
-                *.JPG)
-                    curl -s -F "image=@$img" -F "key=486690f872c678126a2c09a9e196ce1b" http://imgur.com/api/upload.xml \
-                        | grep -E -o "<original_image>(.)*</original_image>" | \
-                        grep -E -o "http://i.imgur.com/[^<]*" | tee /dev/fd/2 | xclip 
-                    ;;
-                *.jpeg)
-                    curl -s -F "image=@$img" -F "key=486690f872c678126a2c09a9e196ce1b" http://imgur.com/api/upload.xml \
-                        | grep -E -o "<original_image>(.)*</original_image>" | \
-                        grep -E -o "http://i.imgur.com/[^<]*" | tee /dev/fd/2 | xclip 
-                    ;;
-                *.png)
-                    curl -s -F "image=@$img" -F "key=486690f872c678126a2c09a9e196ce1b" http://imgur.com/api/upload.xml \
-                        | grep -E -o "<original_image>(.)*</original_image>" | \
-                        grep -E -o "http://i.imgur.com/[^<]*" | tee /dev/fd/2 | xclip 
-                    ;;
-                *.PNG)
-                    curl -s -F "image=@$img" -F "key=486690f872c678126a2c09a9e196ce1b" http://imgur.com/api/upload.xml \
-                        | grep -E -o "<original_image>(.)*</original_image>" | \
-                        grep -E -o "http://i.imgur.com/[^<]*" | tee /dev/fd/2 | xclip 
-                    ;;
-                *)
-                    echo "'$img' is not a valid img file"
-                    ;;
-            esac
-        else
-                echo "'$img' doesn't exist"
-        fi
-    done
-}
+if [ ! "$1" ]; then
+    echo "$(basename $0): you must specify a file to upload"
+    exit 1
+fi
 
-upload_img "$@"
+# ============ Settings =============
+#Avoid writing user/password every time
+MNron=chilicuil@gmail.com
+MNpwd=vimuswal
+MNimg="$1"
+# ===================================
+
+if [ -z "${MNron}" ]; then
+    echo -n "User: "
+    read -e MNron
+fi
+
+if [ -z "${MNpwd}" ]; then
+    echo -n "Password: "
+    read -e MNpwd
+fi
+
+curl -s -c /tmp/MNc -d "_method=POST&data[User][email]=$MNron&data[User][pwd]=$MNpwd" http://mononeurona.org/users/login > /tmp/MN.log
+
+SIZE_log=`ls -l /tmp/MN.log | awk '{ print $5 }'`
+
+if [ "$SIZE_log" -gt 0 ]; then
+    echo "$(basename $0): user or password incorrect"
+    exit 0
+fi
+
+curl -s -b /tmp/MNc -F "data[Image][file]=@$MNimg;type=image/png"  http://mononeurona.org/admin/images/add | html2text | \
+    grep "final" |awk '{print $3}' | sed -e 's:\"::g' > /tmp/MN.img
+MN_url=`cat /tmp/MN.img`
+
+if [ -e /usr/bin/xclip ]; then
+    echo "http://www.mononeurona.org/img/imgusers/"$MN_url | tee >(xclip)
+else
+    echo "http://www.mononeurona.org/img/imgusers/"$MN_url
+fi
+
+#====Clean up variables=====
+unset MNron
+unset MNpwd
+unset MN_url
+rm /tmp/MN*

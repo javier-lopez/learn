@@ -1,16 +1,14 @@
 #!/usr/bin/env bash
 #$ compress files file.format
 
-usage()
+_usage()
 {
     echo "Usage: `basename $0` [-s] FILES ... FILE.[tar.gz,tar.bz2,zip...]"
     echo "           -s       quiet mode"
     exit 0
 }
 
-if [ "$#" -lt 2 ] ; then # no files to compress
-    usage
-fi
+[ "$#" -lt 2 ] && _usage
 
 _exec()
 {
@@ -152,11 +150,11 @@ while getopts ":s:" option; do
           ;;
         :)
           echo "Option -$OPTARG requires an argument"
-          usage
+          _usage
           ;;
         \?)
           echo "Invalid option: -$OPTARG"
-          usage
+          _usage
           ;;
     esac
 done

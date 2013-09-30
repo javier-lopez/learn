@@ -299,7 +299,7 @@ _cmdsudo()
 _decode64()
 {
     [ -z "$1" ] && echo ""
-    echo "$1" | base64 --decode
+    echo "$1" | openssl enc -base64 -d
 }
 #==================================================== Example ====
 #string=$(_decode64 $string)
@@ -456,7 +456,7 @@ _email()
 _encode64()
 {
     [ -z "$1" ] && echo ""
-    echo "$1" | base64
+    echo "$1" | openssl enc -base64
 }
 #==================================================== Example ====
 #string=$(_encode64 $string)
@@ -1156,10 +1156,11 @@ _waitfor()
 
 _xmessage()
 {   #prints a message using xmessage || gxmessage
+    XMESSAGE=$(which gxmessage) || XMESSAGE=$(which xmessage)
     MESSAGE="$PROGNAME: $*"
     echo "$MESSAGE" | fold -s -w ${COLUMNS:-80} >&2
-    if [ -n "$DISPLAY" ] && which xmessage > /dev/null 2>&1; then
-        echo "$MESSAGE" | fold -s -w ${COLUMNS:-80} | xmessage -center -file -
+    if [ -n "$DISPLAY" ] && which "$XMESSAGE" > /dev/null 2>&1; then
+        echo "$MESSAGE" | fold -s -w ${COLUMNS:-80} | $XMESSAGE -center -file -
     fi
 }
 #==================================================== Example ====

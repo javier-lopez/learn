@@ -1,0 +1,17 @@
+#!/bin/bash
+#http://rrr.thetruth.de/2009/04/remote-copy-without-scp/
+
+[ "$#" -lt "1" ] && exit
+
+for file in $@; do
+    [ ! -r "$file" ] && { echo "$(basename $0): "$file" does not exist or is not readable"; exit 1; }
+done
+
+str=$(tar cz $@ | openssl enc -base64; exit $PIPESTATUS) || return $?
+line1="cat<<E=O=F | openssl enc -base64 -d | tar xz"
+line2="$str"
+line3="E=O=F"
+
+cmd=${line1}'\n'${line2}'\n'${line3}'\n'
+
+[ -f /usr/bin/xclip ] && printf "$cmd" | tee >(xclip) || printf "$cmd"
