@@ -33,12 +33,12 @@ STAT=$(acpi -b | awk '{print $3}' | awk 'sub(".$", "")')
 BATT=$(acpi -b | awk '{print $4}' | awk 'sub("..$", "")')
 # Actions
 ACTION="/usr/sbin/hibernate"
-WATCH_BATTERY_CURRENT=$(cat /tmp/watch_battery_current 2>/dev/null)
+WATCH_BATTERY_CURRENT=$(cat /tmp/$(basename $0) 2>/dev/null)
 
 # If Discharging...
 if [ "$STAT" = Discharging ]; then
     # Battery under 5% -> force to hibernate
-    if [ "$BATT" -lt 5 ]]; then
+    if [ "$BATT" -lt 5 ]; then
         WATCH_BATTERY_CURRENT="5"
         if [ "$TERM" != rxvt-unicode ]; then
             DISPLAY=:0.0 notify-send -u critical -t 3000 "[-] Critical"\
@@ -81,5 +81,5 @@ if [ "$STAT" = Discharging ]; then
     fi
 fi
 
-echo "$WATCH_BATTERY_CURRENT" > /tmp/watch_battery_current
+echo "$WATCH_BATTERY_CURRENT" > /tmp/$(basename $0)
 exit 0

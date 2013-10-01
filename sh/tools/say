@@ -6,7 +6,7 @@
 [ -f /usr/bin/mplayer ] || { echo -e "$0: You need vim & mplayer to run this script\n$ sudo apt-get install vim-nox mplayer"; exit 1; }
 [ -f /usr/bin/vim ] || { echo -e "$0: You need vim to run this script\n$ sudo apt-get install vim-nox"; exit 1; }
 
-usage()
+_usage()
 {
     echo "Usage: `basename $0` [-s|-p|-e] phrase"
     echo
@@ -19,7 +19,7 @@ usage()
 if [ -t 0 ]; then
     #http://tldp.org/LDP/abs/html/fto.html
     if [ -z "$1" ]; then
-        usage
+        _usage
     fi
 else
     #http://www.unix.com/302331138-post4.html
@@ -31,38 +31,32 @@ while getopts ":spe" option; do
         s)
           lang="es";
           shift
-          if [ -z "$PHRASE" ]; then
-            PHRASE="$@"
-          fi
+          [ -z "$PHRASE" ] && PHRASE="$@"
           ;;
         p)
           lang="pt";
           shift
-          if [ -z "$PHRASE" ]; then
-          PHRASE="$@"
-          fi
+          [ -z "$PHRASE" ] && PHRASE="$@"
           ;;
         e)
           lang="en";
           shift
-          if [ -z "$PHRASE" ]; then
-          PHRASE="$@"
-          fi
+          [ -z "$PHRASE" ] && PHRASE="$@"
           ;;
         :)
           if [ -z "$PHRASE" ]; then
               echo "Option -$OPTARG requires an argument"
-              usage
+              _usage
           fi
           ;;
         \?)
           echo "Invalid option: -$OPTARG"
-          usage
+          _usage
           ;;
     esac
 done
 
-if [[ -z "$lang" ]]; then
+if [ -z "$lang" ]; then
     lang="es";
     if [ -z "$PHRASE" ]; then
         PHRASE="$@"

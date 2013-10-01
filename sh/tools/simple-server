@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#wrapper around simple.httpd and SimpleHTTPServer
+#wrapper around simple-httpd and SimpleHTTPServer
 
 SUDO=/usr/bin/sudo
 
@@ -15,7 +15,7 @@ _privport()
     [ "$1" -gt 0 ] && [ "$1" -lt 1025 ] && return 0 || return 1
 }
 
-if [ ! -f /usr/local/bin/simple.httpd ]; then
+if [ ! -f /usr/local/bin/simple-httpd ]; then
     if [ "$#" -gt 1 ]; then
         for PARAM in "$@";
         do
@@ -47,7 +47,7 @@ if [ ! -f /usr/local/bin/simple.httpd ]; then
         PORT=$PARAM
 
         echo "Using SimpleHTTPServer and dropping all args but the port one"
-        echo "Download the full featured simple.server at: https://raw.github.com/chilicuil/learn/master/python/simple.httpd"
+        echo "Download the full featured simple-server at: https://raw.github.com/chilicuil/learn/master/python/simple-httpd"
         echo
     else
         case "$1" in
@@ -107,7 +107,7 @@ else
             SUDO=""
         fi
 
-        $SUDO /usr/local/bin/simple.httpd "$ARGS"
+        $SUDO /usr/local/bin/simple-httpd "$ARGS"
     else
         case "$1" in
             -p*)
@@ -126,6 +126,6 @@ else
             SUDO=""
         fi
 
-        $SUDO /usr/local/bin/simple.httpd -p "$PORT" .
+        $SUDO /usr/local/bin/simple-httpd -p "$PORT" .
     fi
 fi

@@ -1,16 +1,14 @@
 #!/usr/bin/env bash
 #$ extract file.format #http://bashscripts.org/forum/viewtopic.php?f=7&t=367
 
-usage()
+_usage()
 {
     echo "Usage: `basename $0` [-s] FILES ..."
     echo "           -s       quiet mode"
     exit 0
 }
 
-if [ "$#" -eq 0 ] ; then # no files to extract
-    usage
-fi
+[ "$#" -eq 0 ] && _usage
 
 _exec()
 {
@@ -73,7 +71,7 @@ _extract()
                         ;;
                 esac
             else
-                usage
+                _usage
             fi
         else
             if [ -f "$FILE" ] ; then
@@ -122,7 +120,7 @@ _extract()
                         ;;
                 esac
             else
-                usage
+                _usage
             fi
         fi
     done
@@ -137,11 +135,11 @@ while getopts ":s:" option; do
           ;;
         :)
           echo "Option -$OPTARG requires an argument"
-          usage
+          _usage
           ;;
         \?)
           echo "Invalid option: -$OPTARG"
-          usage
+          _usage
           ;;
     esac
 done

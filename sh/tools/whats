@@ -4,13 +4,13 @@
 
 word="$1"
 
-usage()
+_usage()
 {
     echo "Usage: `basename $0` word" >&2
     exit 0
 }
 
-[ -z "$word" ] && usage
+[ -z "$word" ] && _usage
 
 _whats()
 {

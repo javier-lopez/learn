@@ -3,12 +3,12 @@
 
 program="$1"
 
-usage()
+_usage()
 {
     echo "Usage: `basename $0` foo_program" >&2
     exit 1
 }
 
-[ -n "$program" ] || usage
+[ -n "$program" ] || _usage
 
 $EDITOR `whereis $1|awk '{print $2}'`

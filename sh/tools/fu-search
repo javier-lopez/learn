@@ -21,7 +21,7 @@ PURPLE="$(printf '\E[1;35m')"
 WHITE="$(printf '\E[1;37m')"
 YELLOW="$(printf '\E[0;33m')"
 
-usage()
+_usage()
 {
     echo "Usage: `basename $0` [-c] pattern"
     echo
@@ -29,7 +29,7 @@ usage()
     exit 0
 }
 
-[ -n "$PATTERN" ] || usage
+[ -n "$PATTERN" ] || _usage
 
 while getopts ":c:" option; do
     case $option in
@@ -37,11 +37,11 @@ while getopts ":c:" option; do
           CFLAG=yes PATTERN=$OPTARG ;;
         :)
           echo "Option -$OPTARG requires an argument"
-          usage
+          _usage
           ;;
         \?)
           echo "Invalid option: -$OPTARG"
-          usage
+          _usage
           ;;
     esac
 done

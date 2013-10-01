@@ -4,7 +4,7 @@
 #===================================================
 
 #Don't forget update this when adding new functions
-usage()
+_usage()
 {
   echo "$(basename $0): setup my common tasks"
   echo
@@ -15,13 +15,14 @@ usage()
 }
 
 _exec()
-{
-    status=$?
-    if [ "$status" != 0 ]; then
-        exit $status
-    fi
+{   #print current command, exits on fail
+    [ -z "$1" ] && return 0
+
     echo "[+] $@"
     $@
+
+    local status=$?
+    [ "$status" != 0 ] && exit $status || return
 }
 
 _script()
@@ -58,16 +59,16 @@ if [ "$#" != 0 ]; then
         shift; _autocp $@
         ;;
         -h | --help)
-        usage
+        _usage
         ;;
         -v | --version)
         echo $VERSION
         ;;
         *)
         echo -e "Error, unknown option: \"$1\""
-        usage
+        _usage
         ;;
     esac
 else
-    usage
+    _usage
 fi

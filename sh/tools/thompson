@@ -16,7 +16,7 @@ _notify ()
     fi
 }
 
-if [[ ! -e /usr/bin/expect ]]; then
+if [ ! -e /usr/bin/expect ]; then
     _notify "You need to install expect" "\$ sudo apt-get install expect"
     exit 1
 fi
