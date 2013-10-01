@@ -12,10 +12,14 @@ WICD_OPTIONS="-j -GN -c -i -f $HOME/.wcd/.treedata.wcd"
 #-i     case insensitve
 
 #not sure why $@ looks like this if no param is given
-if [[ $@ == "completion-ignore-case on" ]]; then
-    \cd "`$WICD_BIN $WICD_OPTIONS $HOME`"
+if [ ! -f "$WICD_BIN" ]; then
+    \cd "$@"
 else
-    #remove backslash before passing it to cd
-    CD_PATH=$(echo "`$WICD_BIN $WICD_OPTIONS "$@"`" | sed -e 's:\\::g')
-    \cd "$CD_PATH"
+    if [ $@ == "completion-ignore-case on" ]; then
+        \cd "`$WICD_BIN $WICD_OPTIONS $HOME`"
+    else
+        #remove backslash before passing it to cd
+        CD_PATH=$(echo "`$WICD_BIN $WICD_OPTIONS "$@"`" | sed -e 's:\\::g')
+        \cd "$CD_PATH"
+    fi
 fi
