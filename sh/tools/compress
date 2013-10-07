@@ -62,7 +62,7 @@ _compress()
                 _exec tar cvf "$COMPRESS_FILE" "$FILES"
                 ;;
             *.zip|*.xpi)
-                _exec zip "$COMPRESS_FILE" "$FILES"
+                _exec zip -r "$COMPRESS_FILE" "$FILES"
                 ;;
             *.7z)
                 _exec 7z a "$COMPRESS_FILE" "$FILES"
@@ -117,7 +117,7 @@ _compress()
                 _exec tar cf "$COMPRESS_FILE" "$FILES"
                 ;;
             *.zip|*.xpi)
-                _exec zip "$COMPRESS_FILE" "$FILES"
+                _exec zip -r "$COMPRESS_FILE" "$FILES"
                 ;;
             *.7z)
                 _exec 7z a "$COMPRESS_FILE" "$FILES"

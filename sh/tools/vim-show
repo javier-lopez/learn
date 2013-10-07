@@ -5,10 +5,12 @@ program="$1"
 
 _usage()
 {
-    echo "Usage: `basename $0` foo_program" >&2
-    exit 1
+    echo "Usage: $(basename $0) foo_program"
+    exit 0
 }
 
 [ -n "$program" ] || _usage
 
-$EDITOR `whereis $1|awk '{print $2}'`
+if command -v "$program" 2>/dev/null; then
+    $EDITOR $(command -v "$program" 2>/dev/null)
+fi
