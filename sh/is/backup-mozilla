@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+
+rm -rf $HOME/.mozilla.backup.tar.gz
+tar -zcvf $HOME/.mozilla.backup.tar.gz $HOME/.mozilla
