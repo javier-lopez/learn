@@ -8,7 +8,7 @@
 #[+] must be self contained, with no dependencies on other functions
 #[+] can depend on exotic cli commands or be bash specific (portability is a plus)
 #[+] must follow general style (name convention, return comment, indentation, etc)
-#[+] must not print errors
+#[+] must not print errors, return 1 instead
 #[+] must provide an example
 
 _addcron()
@@ -817,6 +817,13 @@ _isnum()
 #exit 0
 #=================================================================
 
+_isrunning()
+{
+    local name=$1
+    ps auxw | grep -v grep | grep -qs ${name} && return 0
+    return 1
+}
+
 _lock()
 {
     exec 9>/tmp/$(basename $1).lock #verify only one instance is running
@@ -1097,6 +1104,13 @@ _validip4()
         [ ${3:-666} -le 255 ] && [ ${4:-666} -le 254 ]
 }
 
+_verbose()
+{
+    if (( VERBOSE )); then
+        echo "$*"
+    fi
+}
+
 _waitfor()
 {   #wait for a program, shows an animation
     [ -z "$1" ] && return 1
@@ -1154,12 +1168,26 @@ _waitfor()
 #_waitfor tar -jxpf file.tar.bz2
 #=================================================================
 
+_whereis()
+{
+    [ -z "$1" ] && return 1
+    [ -n "$2" ] && return 1
+    if ! command -v "$1" 2>/dev/null; then
+        return 1
+    fi
+}
+#==================================================== Example ====
+#if _whereis command >/dev/null; then
+    #command 
+#fi
+#=================================================================
+
 _xmessage()
 {   #prints a message using xmessage || gxmessage
-    XMESSAGE=$(which gxmessage) || XMESSAGE=$(which xmessage)
+    XMESSAGE=$(command -v gxmessage 2>/dev/null) || XMESSAGE=$(command -v xmessage 2>/dev/null)
     MESSAGE="$PROGNAME: $*"
     echo "$MESSAGE" | fold -s -w ${COLUMNS:-80} >&2
-    if [ -n "$DISPLAY" ] && which "$XMESSAGE" > /dev/null 2>&1; then
+    if [ -n "$DISPLAY" ] && [ -n "$XMESSAGE" ]; then
         echo "$MESSAGE" | fold -s -w ${COLUMNS:-80} | $XMESSAGE -center -file -
     fi
 }
