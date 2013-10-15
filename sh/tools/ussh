@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+if (( $# == 0 )); then
+	echo "Unsafe SSH - Applies a few default configuration options to an SSH command." >&2
+	echo "Host key and IP will not be checked, nor will it be saved!" >&2
+	echo "Make sure you know what you are doing before using this!" >&2
+else
+	echo "Using Unsafe SSH - Host key will not be verified, nor saved!" >&2
+	echo "Don't trust any messages about the key being saved. It won't be :)" >&2
+fi
+exec ssh -o UserKnownHostsFile=/dev/null -o CheckHostIP=no -o StrictHostKeyChecking=no "$@"
