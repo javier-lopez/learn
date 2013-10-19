@@ -6,7 +6,7 @@ phrase="$@"
 
 _usage()
 {
-    echo "Usage: `basename $0` [-s|-e] phrase"
+    echo "Usage: `expr "$0" : '.*/\([^/]*\)'` [-s|-e] phrase"
     echo
     echo "          -s     Spanish-English (default)"
     echo "          -o     Spanish-Portuguese"

@@ -42,7 +42,7 @@ common="$hd720_followscreen -r 24  -i :0.0 -vcodec flashsv -y"
 
 _usage()
 {
-    echo "Usage: `basename $0` [start|stop] [FILE.mkv]"
+    echo "Usage: `expr "$0" : '.*/\([^/]*\)'` [start|stop] [FILE.mkv]"
     echo "           start      start recording"
     echo "           stop       stop recording"
     echo
@@ -111,7 +111,7 @@ _countdown ()
 }
 
 if [[ ! -e /usr/bin/ffmpeg ]]; then
-    _notify "You need install ffmpeg before using `basename $0`" "In Ubuntu/Debian use: \$ sudo apt-get install ffmpeg"
+    _notify "You need install ffmpeg before using `expr "$0" : '.*/\([^/]*\)'`" "In Ubuntu/Debian use: \$ sudo apt-get install ffmpeg"
     exit 1
 fi
 

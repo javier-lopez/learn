@@ -23,7 +23,7 @@ YELLOW="$(printf '\E[0;33m')"
 
 _usage()
 {
-    echo "Usage: `basename $0` [-c] pattern"
+    echo "Usage: `expr "$0" : '.*/\([^/]*\)'` [-c] pattern"
     echo
     echo "          -c     Colorize the output"
     exit 0

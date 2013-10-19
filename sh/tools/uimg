@@ -3,7 +3,7 @@
 
 _usage()
 {
-    echo "Usage: `basename $0` img1 img2 imgN ..."
+    echo "Usage: `expr "$0" : '.*/\([^/]*\)'` img1 img2 imgN ..."
     echo "        img must be a valid image file: *.[png|jpg|..]"
     exit 1
 }

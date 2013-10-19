@@ -8,7 +8,7 @@
 
 _usage()
 {
-    echo "Usage: `basename $0` [-s|-p|-e] phrase"
+    echo "Usage: `expr "$0" : '.*/\([^/]*\)'` [-s|-p|-e] phrase"
     echo
     echo "          -s     Spanish (default)"
     echo "          -p     Portuguese"

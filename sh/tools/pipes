@@ -35,7 +35,7 @@ case $arg in
     r) ((r=(OPTARG>0)?OPTARG:r));;
     R) RNDSTART=1;;
     C) NOCOLOR=1;;
-    h) echo -e "Usage: $(basename $0) [OPTION]..."
+    h) echo -e "Usage: $(expr "$0" : '.*/\([^/]*\)') [OPTION]..."
         echo -e "Animated pipes terminal screensaver.\n"
         echo -e " -p [1-]\tnumber of pipes (D=1)."
         echo -e " -f [20-100]\tframerate (D=75)."

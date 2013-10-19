@@ -7,16 +7,16 @@
 #Don't forget update this when adding new functions
 usage()
 {
-  echo "Usage: `basename $0` module"
-  echo
-  echo "  apache            Moves /etc/init.d/apache2.1 to apache2"
-  echo "  ipw2200           Restart the ipw2200 module"
-  echo "  wl                Restart the wl module"
-  echo "  iwlagn            Restart the iwlagn module"
-  echo "  mpd               Restart mpd"
-  echo "  webcam            Fix webcam - thinkpad"
-  echo
-  exit 0
+    echo "Usage: `expr "$0" : '.*/\([^/]*\)'` module"
+    echo
+    echo "  apache            Moves /etc/init.d/apache2.1 to apache2"
+    echo "  ipw2200           Restart the ipw2200 module"
+    echo "  wl                Restart the wl module"
+    echo "  iwlagn            Restart the iwlagn module"
+    echo "  mpd               Restart mpd"
+    echo "  webcam            Fix webcam - thinkpad"
+    echo
+    exit 0
 }
 
 _exec()

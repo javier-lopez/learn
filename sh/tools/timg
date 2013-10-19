@@ -23,7 +23,7 @@ if [ ! -e /usr/bin/html2text ]; then
 fi
 
 if [ ! "$1" ]; then
-    echo "$(basename $0): you must specify a file to upload"
+    echo "$(expr "$0" : '.*/\([^/]*\)'): you must specify a file to upload"
     exit 1
 fi
 
@@ -49,7 +49,7 @@ curl -s -c /tmp/MNc -d "_method=POST&data[User][email]=$MNron&data[User][pwd]=$M
 SIZE_log=`ls -l /tmp/MN.log | awk '{ print $5 }'`
 
 if [ "$SIZE_log" -gt 0 ]; then
-    echo "$(basename $0): user or password incorrect"
+    echo "$(expr "$0" : '.*/\([^/]*\)'): user or password incorrect"
     exit 0
 fi
 

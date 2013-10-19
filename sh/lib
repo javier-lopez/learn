@@ -253,6 +253,15 @@ _arch()
 #[ $arch -eq 32 ] && command32 || command64
 #=================================================================
 
+_basename()
+{
+    [ -z "$1" ] && return 0
+    expr "$1" : '.*/\([^/]*\)'
+}
+#==================================================== Example ====
+#_dirname /path/file #returns file
+#=================================================================
+
 _cleanup()
 {   #clean tmp files, exits with no parameters
     stty echo
@@ -401,7 +410,7 @@ _download()
         return 1 #not supported
     fi
     local path=$( echo "$urll" | perl -MURI -le 'chomp($url = <>); print URI->new($url)->path' )
-    local fn=$(basename "$path")
+    local fn=$(expr "$path" : '.*/\([^/]*\)')
     local ext="${fn##*.}"
 
     case "$ext" in
@@ -826,9 +835,9 @@ _isrunning()
 
 _lock()
 {
-    exec 9>/tmp/$(basename $1).lock #verify only one instance is running
+    exec 9>/tmp/$(expr "$1" : '.*/\([^/]*\)').lock #verify only one instance is running
     if ! flock -n 9  ; then         #http://mywiki.wooledge.org/BashFAQ/045
-        echo "$(basename $1): another instance is running";
+        echo "$(expr "$1" : '.*/\([^/]*\)'): another instance is running";
         exit 1
     fi
 }
@@ -1065,7 +1074,7 @@ _uploadimg()
 
 _usage()
 {   #prints an usage msg and exits with 0
-    echo "Usage: `basename $0` [OPTION] FILE"
+    echo "Usage: `expr "$0" : '.*/\([^/]*\)'` [OPTION] FILE"
     echo "  -a   description"
     echo "  -b   description"
     echo "  -c   description"
@@ -1085,7 +1094,7 @@ _validinterface()
 }
 #===================================================== Example ====
 #if ! _validinterface $interface
-    #echo "$(basename $0): not valid interface $interface"
+    #echo "$(expr "$0" : '.*/\([^/]*\)'): not valid interface $interface"
 #fi
 #=================================================================
 

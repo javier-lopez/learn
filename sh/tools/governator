@@ -5,8 +5,8 @@
 
 _usage()
 {
-    echo "Usage:  $(basename $0) get"
-    echo "        $(basename $0) set powersave|conservative|ondemand|performance"
+    echo "Usage:  $(expr "$0" : '.*/\([^/]*\)') get"
+    echo "        $(expr "$0" : '.*/\([^/]*\)') set powersave|conservative|ondemand|performance"
     exit 0
 }
 

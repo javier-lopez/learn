@@ -6,7 +6,7 @@ word="$1"
 
 _usage()
 {
-    echo "Usage: `basename $0` word" >&2
+    echo "Usage: `expr "$0" : '.*/\([^/]*\)'` word" >&2
     exit 0
 }
 

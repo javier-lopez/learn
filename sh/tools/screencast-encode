@@ -1,9 +1,15 @@
 #!/usr/bin/env bash
 #encode screencasts
 
+_basename()
+{
+    [ -z "$1" ] && return 0
+    expr "$1" : '.*/\([^/]*\)'
+}
+
 _usage()
 {
-    echo "Usage: $(basename $0) [-v 0-2048][-s soundtrack.mp3][-k] screencast.mkv" >&2
+    echo "Usage: $(_basename $0) [-v 0-2048][-s soundtrack.mp3][-k] screencast.mkv" >&2
     echo >&2
     echo "          -v     Change the volume from the screencast [0-2048] (ffmpeg -vol)" >&2
     echo "          -s     Add soundtrack" >&2
@@ -31,7 +37,7 @@ cleanup ()
         rm "$basename".audio*
     fi
     if [ ! -z "$SFLAG" ]; then
-        rm "$(basename $SOUNDTRACK)".vol*
+        rm "$(_basename $SOUNDTRACK)".vol*
     fi
 }
 
@@ -62,14 +68,14 @@ done
 if [ "$#" = 0 ]; then
     if [[ $1 == *.mkv ]]; then
         file=$1
-        basename=$(basename $file .mkv)
+        basename=$(_basename $file .mkv)
     fi
 fi
 
 while [ "$#" -ne 0 ]; do
     if [[ $1 == *.mkv ]]; then
         file=$1
-        basename=$(basename $file .mkv)
+        basename=$(_basename $file .mkv)
     fi
     shift
 done
@@ -103,15 +109,15 @@ if [ ! -z "$VFLAG" ] && [ ! -z "$SFLAG" ]; then
     fi
 
     #TODO 28-11-2010 20:15 => make soundtrack vol an option
-    _notify "[+]" "ffmpeg -i "$SOUNDTRACK" -vol 15 -acodec libvorbis -ab 192k $(basename "$SOUNDTRACK").vol[15].ogg"
-    ffmpeg -i "$SOUNDTRACK" -vol 15 -acodec libvorbis -ab 192k "$(basename "$SOUNDTRACK")".vol[15].ogg
+    _notify "[+]" "ffmpeg -i "$SOUNDTRACK" -vol 15 -acodec libvorbis -ab 192k $(_basename "$SOUNDTRACK").vol[15].ogg"
+    ffmpeg -i "$SOUNDTRACK" -vol 15 -acodec libvorbis -ab 192k "$(_basename "$SOUNDTRACK")".vol[15].ogg
     if [ "$?" = 1 ]; then
         _notify "[-]" "Failed"
         exit 1
     fi
 
-    _notify "[+]" "sox -S -m $basename.audio[volume_$VOLUME].ogg $(basename "$SOUNDTRACK").vol[15].ogg -r192k $basename.audio_mixed.ogg"
-    sox -S -m "$basename".audio[volume_$VOLUME].ogg "$(basename "$SOUNDTRACK")".vol[15].ogg -r192k "$basename".audio_mixed.ogg
+    _notify "[+]" "sox -S -m $basename.audio[volume_$VOLUME].ogg $(_basename "$SOUNDTRACK").vol[15].ogg -r192k $basename.audio_mixed.ogg"
+    sox -S -m "$basename".audio[volume_$VOLUME].ogg "$(_basename "$SOUNDTRACK")".vol[15].ogg -r192k "$basename".audio_mixed.ogg
     if [ "$?" = 1 ]; then
         _notify "[-]" "Failed"
         exit 1
@@ -139,15 +145,15 @@ elif [ ! -z "$SFLAG" ]; then
     fi
 
     #TODO 28-11-2010 20:15 => make soundtrack vol an option
-    _notify "[+]" "ffmpeg -i "$SOUNDTRACK" -vol 15 -acodec libvorbis -ab 192k $(basename "$SOUNDTRACK").vol[15].ogg"
-    ffmpeg -i "$SOUNDTRACK" -vol 15 -acodec libvorbis -ab 192k "$(basename "$SOUNDTRACK")".vol[15].ogg
+    _notify "[+]" "ffmpeg -i "$SOUNDTRACK" -vol 15 -acodec libvorbis -ab 192k $(_basename "$SOUNDTRACK").vol[15].ogg"
+    ffmpeg -i "$SOUNDTRACK" -vol 15 -acodec libvorbis -ab 192k "$(_basename "$SOUNDTRACK")".vol[15].ogg
     if [ "$?" = 1 ]; then
         _notify "[-]" "Failed"
         exit 1
     fi
 
-    _notify "[+]" "sox -S -m $basename.audio.ogg $(basename "$SOUNDTRACK").vol[15].ogg -r192k $basename.audio_mixed.ogg"
-    sox -S -m "$basename".audio.ogg "$(basename "$SOUNDTRACK")".vol[15].ogg -r192k "$basename".audio_mixed.ogg
+    _notify "[+]" "sox -S -m $basename.audio.ogg $(_basename "$SOUNDTRACK").vol[15].ogg -r192k $basename.audio_mixed.ogg"
+    sox -S -m "$basename".audio.ogg "$(_basename "$SOUNDTRACK")".vol[15].ogg -r192k "$basename".audio_mixed.ogg
     if [ "$?" = 1 ]; then
         _notify "[-]" "Failed"
         exit 1

@@ -9,7 +9,7 @@ BACKUP_TO="/media/disk"
 
 usage()
 {
-    echo "Usage: `basename $0` [-y]"
+    echo "Usage: `expr "$0" : '.*/\([^/]*\)'` [-y]"
     echo "           -y       Say yes to all questions"
     exit 0
 }

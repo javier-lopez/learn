@@ -3,7 +3,7 @@
 
 _usage()
 {
-    echo "Usage: `basename $0` [-s] FILES ..."
+    echo "Usage: `expr "$0" : '.*/\([^/]*\)'` [-s] FILES ..."
     echo "           -s       quiet mode"
     exit 0
 }

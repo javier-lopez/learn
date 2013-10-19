@@ -90,7 +90,7 @@ _list()
     files_in_trash=("$trash_dir"/info/*.trashinfo)
 
     if [ ! -e "${files_in_trash[0]}" ] ; then
-        echo "$(basename $0): Nothing to list" >&2 ; exit 1
+        echo "$(expr "$0" : '.*/\([^/]*\)'): Nothing to list" >&2 ; exit 1
     fi
 
     OLDIFS="$IFS"; IFS=$'\n' #fix case where files have spaces
@@ -140,16 +140,16 @@ _archive()
     for file
     do
         if [ -e "$file" ] ; then
-            archive="$trash_dir/files/$(basename "$file")"
-            trashinfo="$trash_dir/info/$(basename "$file").trashinfo"
+            archive="$trash_dir/files/$(expr "$file" : '.*/\([^/]*\)')"
+            trashinfo="$trash_dir/info/$(expr "$file" : '.*/\([^/]*\)').trashinfo"
 
             #man bash: declare -i gives to $num the integer attribute
             #declare -i num=2
             num=2
 
             while [ -e "$archive" ]; do
-                archive="$trash_dir/files/$(basename "$file")".$num
-                trashinfo="$trash_dir/info/$(basename "$file").$num.trashinfo"
+                archive="$trash_dir/files/$(expr "$file" : '.*/\([^/]*\)')".$num
+                trashinfo="$trash_dir/info/$(expr "$file" : '.*/\([^/]*\)').$num.trashinfo"
                 #num+=1
                 num=$(($num+ 1))
             done
@@ -193,8 +193,8 @@ _recover()
         detail_date=$(echo "$datetime" | cut -dT -f2)
 
         real_file=$(echo "$data_in_trashinfo" | cut -d\| -f2)
-        info_file="$trash_dir/info/$(basename "$real_file").trashinfo"
-        file_file="$trash_dir/files/$(basename "$real_file")"
+        info_file="$trash_dir/info/$(expr "$real_file" : '.*/\([^/]*\)').trashinfo"
+        file_file="$trash_dir/files/$(expr "$real_file" : '.*/\([^/]*\)')"
 
         name=$(echo "$data_in_trashinfo" | cut -d\| -f3)
 
@@ -235,8 +235,8 @@ _clean()
         IFS="$OLDIFS"
 
         real_file=$(echo "$data_in_trashinfo" | cut -d\| -f2)
-        info_file="$trash_dir/info/$(basename "$real_file").trashinfo"
-        file_file="$trash_dir/files/$(basename "$real_file")"
+        info_file="$trash_dir/info/$(expr "$real_file" : '.*/\([^/]*\)').trashinfo"
+        file_file="$trash_dir/files/$(expr "$real_file" : '.*/\([^/]*\)')"
 
         rm -rf "$info_file"
         rm -rf "$file_file"

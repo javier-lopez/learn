@@ -4,15 +4,21 @@ set -e                          #exit as soon as any command fail
 default_ssh_passwd="c2VjcmV0Cg=="
 default_mysql_passwd="c2VjcmV0Cg=="
 
-exec 9>/tmp/$(basename $0).lock #verify only one instance is running
+_basename()
+{
+    [ -z "$1" ] && return 0
+    expr "$1" : '.*/\([^/]*\)'
+}
+
+exec 9>/tmp/$(_basename $0).lock #verify only one instance is running
 if ! flock -n 9 ; then #http://mywiki.wooledge.org/BashFAQ/045
-    echo "$(basename $0): another instance is running";
+    echo "$(_basename $0): another instance is running";
     exit 1
 fi
 
 _usage()
 {
-    echo "Usage: $(basename $0) [OPTION] TYPE ARGS..."
+    echo "Usage: $(_basename $0) [OPTION] TYPE ARGS..."
     echo "Control Elastix through a cli interface"
     echo
     echo " -c                   credentials, requires a FILE string as a parameter"
@@ -29,13 +35,13 @@ _usage()
     echo "=examples="
     echo
     echo "#adds a new trunk in domain.com based on definition FILE[0]"
-    echo "  $(basename $0) -h admin@domain.com trunk add definition"
+    echo "  $(_basename $0) -h admin@domain.com trunk add definition"
     echo
     echo "#removes a trunk based on [IP|domain], uses credential FILE [1] to apply changes in several machines"
-    echo "  $(basename $0) -r credentials trunk remove domain.com"
+    echo "  $(_basename $0) -r credentials trunk remove domain.com"
     echo
     echo "#edit the IP field of an existing trunk in localhost, uses <secret> as the mysql password for the root account"
-    echo "  $(basename $0) -m secret trunk edit x.x.x.x y.y.y.y"
+    echo "  $(_basename $0) -m secret trunk edit x.x.x.x y.y.y.y"
     echo
     echo "[0] http://www.voip-info.org/wiki/view/Asterisk+config+sip.conf"
     echo "[1] remote access is defined as: user@remotehost:port,ssh_passwd,mysql_passwd, and can be defined as many lines as desired"
@@ -45,7 +51,7 @@ _usage()
 _die()
 {
     echo "$*"
-    echo "See $(basename $0) --help"
+    echo "See $(_basename $0) --help"
     exit 1
 }
 
@@ -452,7 +458,7 @@ for var in "$@"; do #parse options
 done
 
 if ! _networkup; then
-    echo "$(basename $0): network not detected, exiting..."
+    echo "$(_basename $0): network not detected, exiting..."
     exit 1
 fi
 

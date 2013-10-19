@@ -6,7 +6,7 @@
 #Don't forget update this when adding new functions
 _usage()
 {
-  echo "$(basename $0): setup my common tasks"
+  echo "$(expr "$0" : '.*/\([^/]*\)'): setup my common tasks"
   echo
   echo "  autocp            cp custom autocomplete file"
   echo "  script            cp custom script to the path system"

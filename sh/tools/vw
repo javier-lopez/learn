@@ -18,7 +18,7 @@ if [ ! -f "$1" ]; then
     exit 1
 fi
 
-file=$(basename -- "$1")
+file=$(expr "$1" : '.*/\([^/]*\)')
 dir=$(dirname -- "$1")
 arr=()
 arg=$1

@@ -6,12 +6,18 @@
 
 INDENTATION=4
 
-[ -f /usr/bin/vim ] || { echo -e "$(basename $0): You need vim & tidy to run this script\n$ sudo apt-get install vim tidy"; exit 1; }
-[ -f /usr/bin/tidy ] || { echo -e "$(basename $0): You need tidy to run this script\n$ sudo apt-get install tidy"; exit 1; }
+_basename()
+{
+    [ -z "$1" ] && return 0
+    expr "$1" : '.*/\([^/]*\)'
+}
+
+[ -f /usr/bin/vim ] || { echo -e "$(_basename $0): You need vim & tidy to run this script\n$ sudo apt-get install vim tidy"; exit 1; }
+[ -f /usr/bin/tidy ] || { echo -e "$(_basename $0): You need tidy to run this script\n$ sudo apt-get install tidy"; exit 1; }
 
 _usage()
 {
-    echo "Usage: $(basename $0) testcase"
+    echo "Usage: $(_basename $0) testcase"
     echo
     echo "       https://wiki.ubuntu.com/Testing/TestCaseFormat"
     exit 1
@@ -21,10 +27,10 @@ _usage()
 
 _tmp_files()
 {
-    mkdir -p /tmp/$(basename $0)/indent
+    mkdir -p /tmp/$(_basename $0)/indent
     #this file can also be copied to ~/.vim/indent/html.vim so
     #vim indent html files the testcase way <dl>/<dt>/<dd>
-    cat > /tmp/$(basename $0)/indent/html.vim << EOF
+    cat > /tmp/$(_basename $0)/indent/html.vim << EOF
 " Description:	html indenter
 " Author:	Johannes Zellner <johannes@zellner.org>
 " Last Change:	Mo, 05 Jun 2006 22:32:41 CEST
@@ -289,8 +295,8 @@ unlet s:cpo_save
 " [-- EOF <runtime>/indent/html.vim --]
 EOF
 
-cat > /tmp/$(basename $0)/vimrc << EOF
-set runtimepath=/tmp/$(basename $0),\$VIMRUNTIME
+cat > /tmp/$(_basename $0)/vimrc << EOF
+set runtimepath=/tmp/$(_basename $0),\$VIMRUNTIME
 syntax on
 set ffs=unix,dos
 set encoding=utf-8          "utf is able to represent any character
@@ -306,9 +312,9 @@ _format()
     for testcase
     do
         echo $testcase
-        tidy -f /tmp/$(basename $0)/testcase -xml -i "$testcase" > /dev/null
-        [ "$?" -eq 2 ] && { cat /tmp/$(basename $0)/testcase; exit 1; }
-        vim -es -u /tmp/$(basename $0)/vimrc -c "set ft=html" -c "normal gg=G" -c wq "$testcase"
+        tidy -f /tmp/$(_basename $0)/testcase -xml -i "$testcase" > /dev/null
+        [ "$?" -eq 2 ] && { cat /tmp/$(_basename $0)/testcase; exit 1; }
+        vim -es -u /tmp/$(_basename $0)/vimrc -c "set ft=html" -c "normal gg=G" -c wq "$testcase"
     done
 }
 

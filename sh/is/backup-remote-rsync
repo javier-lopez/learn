@@ -1,14 +1,20 @@
 #!/bin/bash
 set -e                          #exit as soon as any command fail
 
-LOGFILE="/tmp/$(basename $0).log"
+_basename()
+{
+    [ -z "$1" ] && return 0
+    expr "$1" : '.*/\([^/]*\)'
+}
+
+LOGFILE="/tmp/$(_basename $0).log"
 HOME="/home/chilicuil"
 REMOTEUSER="admin"
 REMOTESERVER="backup.javier.io"
 
-exec 9>/tmp/$(basename $0).lock #verify that only one instance is running
+exec 9>/tmp/$(_basename $0).lock #verify that only one instance is running
 if ! flock -n 9  ; then         #http://mywiki.wooledge.org/BashFAQ/045
-    echo "$(basename $0): another instance is running";
+    echo "$(_basename $0): another instance is running";
     exit 1
 fi
 
@@ -16,7 +22,7 @@ START=$(date +%s)
 
 _usage()
 {
-    echo "Usage: $(basename $0) service all"
+    echo "Usage: $(_basename $0) service all"
     echo "Create home backups"
     exit 0 
 }
@@ -170,7 +176,7 @@ _all()
 [ $# -eq 0 ] && _usage # no options
 
 if ! _networkup; then
-    echo "$(basename $0): network not detected, exiting..." | tee -a $LOGFILE
+    echo "$(_basename $0): network not detected, exiting..." | tee -a $LOGFILE
     exit 1
 fi 
 

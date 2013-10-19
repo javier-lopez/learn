@@ -4,9 +4,15 @@ BACKUPDIR="/path"
 DBUSER="user"
 DBPASSWD="passwd"
 
-exec 9>/var/run/$(basename $0).lock    #verify only one instance is running
+_basename()
+{
+    [ -z "$1" ] && return 0
+    expr "$1" : '.*/\([^/]*\)'
+}
+
+exec 9>/var/run/$(_basename $0).lock    #verify only one instance is running
 if ! flock -n 9  ; then                #http://mywiki.wooledge.org/BashFAQ/045
-    echo "$(basename $0): another instance is running";
+    echo "$(_basename $0): another instance is running";
     exit 1
 fi
 

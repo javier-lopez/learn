@@ -2,6 +2,6 @@
 #see http://www.mplayerhq.hu/DOCS/tech/slave.txt
 #and https://github.com/chilicuil/learn/tree/master/sh/tools/music-control
 
-prog=$(basename "$0")
+prog=$(expr "$0" : '.*/\([^/]*\)')
 mkfifo /tmp/mplayer.fifo > /dev/null 2>&1
 mplayer -slave -really-quiet -input file=/tmp/mplayer.fifo "$@" &

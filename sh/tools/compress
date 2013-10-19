@@ -1,9 +1,15 @@
 #!/usr/bin/env bash
 #$ compress files file.format
 
+_basename()
+{
+    [ -z "$1" ] && return 0
+    expr "$1" : '.*/\([^/]*\)'
+}
+
 _usage()
 {
-    echo "Usage: `basename $0` [-s] FILES ... FILE.[tar.gz,tar.bz2,zip...]"
+    echo "Usage: `_basename $0` [-s] FILES ... FILE.[tar.gz,tar.bz2,zip...]"
     echo "           -s       quiet mode"
     exit 0
 }
@@ -25,7 +31,7 @@ _compress()
     for COMPRESS_FILE; do true; done
     FILES="${@:1:$(($#-1))}"
     for FILE in $FILES; do
-        [ ! -r "$FILE" ] && { echo "$(basename $0): "$FILE" does not exist or is not readable"; exit 1; }
+        [ ! -r "$FILE" ] && { echo "$(_basename $0): "$FILE" does not exist or is not readable"; exit 1; }
     done
 
     if [ -z "$SFLAG" ]; then
@@ -44,7 +50,7 @@ _compress()
                 for FILE in $FILES; do
                     x=$(($x+1))
                 done
-                [ $x -gt 1 ] && { echo "$(basename $0): bz2 files can only be compressed one by one, use tar.bz2 if you require to compress several files at the same time"; exit 1; }
+                [ $x -gt 1 ] && { echo "$(_basename $0): bz2 files can only be compressed one by one, use tar.bz2 if you require to compress several files at the same time"; exit 1; }
                 _exec "bunzip2 -cv \"$FILES\" | dd of=\"$COMPRESS_FILE\""
                 ;;
             *.rar)
@@ -55,7 +61,7 @@ _compress()
                 for FILE in $FILES; do
                     x=$(($x+1))
                 done
-                [ $x -gt 1 ] && { echo "$(basename $0): gz files can only be compressed one by one, use tar.gz if you require to compress several files at the same time"; exit 1; }
+                [ $x -gt 1 ] && { echo "$(_basename $0): gz files can only be compressed one by one, use tar.gz if you require to compress several files at the same time"; exit 1; }
                 _exec "gunzip -cv \"$FILES\" | dd of=\"$COMPRESS_FILE\""
                 ;;
             *.tar)
@@ -99,7 +105,7 @@ _compress()
                 for FILE in $FILES; do
                     x=$(($x+1))
                 done
-                [ $x -gt 1 ] && { echo "$(basename $0): bz2 files can only be compressed one by one, use tar.bz2 if you require to compress several files at the same time"; exit 1; }
+                [ $x -gt 1 ] && { echo "$(_basename $0): bz2 files can only be compressed one by one, use tar.bz2 if you require to compress several files at the same time"; exit 1; }
                 _exec "bunzip2 -c \"$FILES\" | dd of=\"$COMPRESS_FILE\""
                 ;;
             *.rar)
@@ -110,7 +116,7 @@ _compress()
                 for FILE in $FILES; do
                     x=$(($x+1))
                 done
-                [ $x -gt 1 ] && { echo "$(basename $0): gz files can only be compressed one by one, use tar.gz if you require to compress several files at the same time"; exit 1; }
+                [ $x -gt 1 ] && { echo "$(_basename $0): gz files can only be compressed one by one, use tar.gz if you require to compress several files at the same time"; exit 1; }
                 _exec "gunzip -c \"$FILES\" | dd of=\"$COMPRESS_FILE\""
                 ;;
             *.tar)
