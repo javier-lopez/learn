@@ -3,7 +3,7 @@
 
 _notify ()
 {
-    if [[ $TERM == "linux" ]] || [[ $TERM == "dumb" ]]; then
+    if [ X"$TERM" = X"linux" ] || [ X"$TERM" = X"dumb" ]; then
         notify-send -t 3000 "${@}"
     else
         echo -n "${1}: "
@@ -16,12 +16,12 @@ _notify ()
     fi
 }
 
-if [[ ! -e /usr/bin/html2text ]]; then
+if [ ! -e /usr/bin/html2text ]; then
     _notify "You need to install html2text" "\$ sudo apt-get install html2text"
     exit 1
 fi
 
-if [[ "${#@}" -eq "1" ]]; then
+if [ X"${#@}" = X"1" ]; then
     case "$1" in
         u)
         curl -s http://mononeurona.org/waydings/addwayd | html2text

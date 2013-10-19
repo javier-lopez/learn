@@ -45,7 +45,7 @@ _realpath()
 
     # get the basename of the file (ignoring '.' & '..', because they're really part of the path)
     local file_basename="${path##*/}"
-    if [[ ( "$file_basename" = "." ) || ( "$file_basename" = ".." ) ]]; then
+    if [ X"$file_basename" = X"." ] || [ X"$file_basename" = X".."  ]; then
         file_basename=""
     fi
 
@@ -59,7 +59,7 @@ _realpath()
 
     if $success; then
         # does the filename exist?
-        if [[ ( ! -z "$file_basename" ) && ( ! -e "$file_basename" ) ]]; then
+        if [ ! -z "$file_basename" ] && [ ! -e "$file_basename" ]; then
             success=false
         fi
 
@@ -81,7 +81,7 @@ _realpath()
 _dirname()
 {
     local dir="${1%${1##*/}}"
-    [ "${dir:=./}" != "/" ] && dir="${dir%?}"
+    [ X"${dir:=./}" != X"/" ] && dir="${dir%?}"
     echo "$dir"
 }
 
@@ -140,16 +140,16 @@ _archive()
     for file
     do
         if [ -e "$file" ] ; then
-            archive="$trash_dir/files/$(expr "$file" : '.*/\([^/]*\)')"
-            trashinfo="$trash_dir/info/$(expr "$file" : '.*/\([^/]*\)').trashinfo"
+            archive="$trash_dir/files/$(basename "$file")"
+            trashinfo="$trash_dir/info/$(basename "$file").trashinfo"
 
             #man bash: declare -i gives to $num the integer attribute
             #declare -i num=2
             num=2
 
             while [ -e "$archive" ]; do
-                archive="$trash_dir/files/$(expr "$file" : '.*/\([^/]*\)')".$num
-                trashinfo="$trash_dir/info/$(expr "$file" : '.*/\([^/]*\)').$num.trashinfo"
+                archive="$trash_dir/files/$(basename "$file")".$num
+                trashinfo="$trash_dir/info/$(basename "$file").$num.trashinfo"
                 #num+=1
                 num=$(($num+ 1))
             done
@@ -180,7 +180,7 @@ _recover()
         answer=y
     fi
 
-    if [ ! "$answer" == "y" ]; then
+    if [ ! X"$answer" = X"y" ]; then
         echo "Nothing done" && exit 0
     else
         OLDIFS="$IFS"; IFS=$'\n' #fix case where files have spaces
@@ -193,8 +193,8 @@ _recover()
         detail_date=$(echo "$datetime" | cut -dT -f2)
 
         real_file=$(echo "$data_in_trashinfo" | cut -d\| -f2)
-        info_file="$trash_dir/info/$(expr "$real_file" : '.*/\([^/]*\)').trashinfo"
-        file_file="$trash_dir/files/$(expr "$real_file" : '.*/\([^/]*\)')"
+        info_file="$trash_dir/info/$(basename "$real_file").trashinfo"
+        file_file="$trash_dir/files/$(basename "$real_file")"
 
         name=$(echo "$data_in_trashinfo" | cut -d\| -f3)
 
@@ -226,7 +226,7 @@ _clean()
         answer=y
     fi
 
-    if [ ! "$answer" == "y" ]; then
+    if [ ! X"$answer" = X"y" ]; then
         echo "Nothing done" && exit 0
     else
         OLDIFS="$IFS"; IFS=$'\n' #fix case where files have spaces
@@ -235,8 +235,8 @@ _clean()
         IFS="$OLDIFS"
 
         real_file=$(echo "$data_in_trashinfo" | cut -d\| -f2)
-        info_file="$trash_dir/info/$(expr "$real_file" : '.*/\([^/]*\)').trashinfo"
-        file_file="$trash_dir/files/$(expr "$real_file" : '.*/\([^/]*\)')"
+        info_file="$trash_dir/info/$(basename "$real_file").trashinfo"
+        file_file="$trash_dir/files/$(basename "$real_file")"
 
         rm -rf "$info_file"
         rm -rf "$file_file"

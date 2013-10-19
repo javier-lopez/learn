@@ -501,7 +501,7 @@ EOF
 
 		local q=false
 		local e=$(echo -e "\e")
-		if [[ "$(tput cup 0 0)" = "${e}[1;1H" ]]; then
+		if [ X"$(tput cup 0 0)" = X"${e}[1;1H" ]; then
 			# standard terminal movement commands - quick generation
 			q=true
 		fi
@@ -790,7 +790,7 @@ EOF
 			local timer value
 			for timer in "${pausetimers[@]}"; do
 				value=${!timer}
-				if [[ value != "zero" ]]; then
+				if [ X"$value" != X"zero" ]; then
 					(( value += time_now ))
 				else
 					value=0
@@ -927,8 +927,8 @@ EOF
 
 		# resize if needed
 		if
-			[[ "$state_current" != "$state_last" ]] ||
-			[[ "$pause" != "$pause_last" ]] ||
+			[ X"$state_current" != X"$state_last" ] ||
+			[ X"$pause" != X"$pause_last" ] ||
 			{
 				(( timer_resize + timerd_resize < time_now )) &&
 				{
@@ -1074,7 +1074,7 @@ EOF
 					safeecho $color_keybindings
 					catc $ascii_keybindings_w $((messageheight + ascii_title_h + 3)) <<<"${ascii_keybindings}"
 				fi
-				if $redraw || [[ "$blink_pressfire" != "$blink_medium" ]]; then
+				if $redraw || [ X"$blink_pressfire" != X"$blink_medium" ]; then
 					blink_pressfire=$blink_medium
 					$blink_medium && safeecho $color_pressfire_1 || safeecho $color_pressfire_2
 					catc $ascii_press_fire_w $((messageheight + ascii_title_h + 1)) <<<"$ascii_press_fire"
@@ -1106,7 +1106,7 @@ EOF
 						catc $((12+${#highscore})) $((messageheight + ascii_dead_h + 3)) <<<"High Score: $highscore"
 					fi
 				fi
-				if $redraw || [[ "$blink_pressq" != "$blink_slow" ]]; then
+				if $redraw || [ X"$blink_pressq" != X"$blink_slow" ]; then
 					blink_pressq=$blink_slow
 					$blink_slow && safeecho $color_pressq_1 || safeecho $color_pressq_2
 					catc $ascii_press_q_w $((messageheight + ascii_dead_h + 5)) <<<"$ascii_press_q"
@@ -1298,7 +1298,7 @@ EOF
 				fi
 
 				# blink engines of player ship
-				if ! $pause && ((dynel_hp[0] > 0)) && ! ${dynel_redraw[0]} && [[ "$blink_engines" != "$blink_fast" ]]; then
+				if ! $pause && ((dynel_hp[0] > 0)) && ! ${dynel_redraw[0]} && [ X"$blink_engines" != X"$blink_fast" ]; then
 					blink_engines=$blink_fast
 					$blink_fast && safeecho $color_engine_1 || safeecho $color_engine_2
 					xyecho $((origo_x+dynel_cx[0]+3)) $((origo_y+dynel_cy[0]-2)) "@"
@@ -1337,7 +1337,7 @@ EOF
 						safeecho ${color_pauseframe}
 						catc $ascii_pauseframe_w $((messageheight + 4)) <<<"$ascii_pauseframe"
 					fi
-					if $redraw || [[ "$blink_pause" != "$blink_slow" ]]; then
+					if $redraw || [ X"$blink_pause" != X"$blink_slow" ]; then
 						blink_pause=$blink_slow
 						$blink_slow && safeecho $color_pause_1 || safeecho $color_pause_2
 						catc $ascii_pause_w $((messageheight + 6)) <<<"$ascii_pause"
@@ -1372,7 +1372,7 @@ while true; do
 	case "$c" in
 		$'\e')
 			readc
-			[[ "$c" = '[' ]] || continue
+			[ X"$c" = X'[' ] || continue
 			readc
 			case "$c" in
 				A|B|C|D)

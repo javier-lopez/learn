@@ -15,7 +15,7 @@ WICD_OPTIONS="-j -GN -c -i -f $HOME/.wcd/.treedata.wcd"
 if [ ! -f "$WICD_BIN" ]; then
     \cd "$@"
 else
-    if [ $@ == "completion-ignore-case on" ]; then
+    if [ X"$@" = X"completion-ignore-case on" ]; then
         \cd "`$WICD_BIN $WICD_OPTIONS $HOME`"
     else
         #remove backslash before passing it to cd

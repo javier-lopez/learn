@@ -23,7 +23,7 @@ _usage()
 
 _notify()
 {
-    if [ "$TERM" = linux ]; then
+    if [ X"$TERM" = X"linux" ]; then
         notify-send -t 3000 "${@}"
     else
         echo "${@}"
@@ -65,15 +65,15 @@ while getopts ":v:s:k" option; do
     esac
 done
 
-if [ "$#" = 0 ]; then
-    if [[ $1 == *.mkv ]]; then
+if [ X"$#" = X"0" ]; then
+    if [ X"$1" = X"*.mkv" ]; then
         file=$1
         basename=$(_basename $file .mkv)
     fi
 fi
 
 while [ "$#" -ne 0 ]; do
-    if [[ $1 == *.mkv ]]; then
+    if [ X"$1" = X"*.mkv" ]; then
         file=$1
         basename=$(_basename $file .mkv)
     fi
@@ -103,7 +103,7 @@ if [ ! -z "$VFLAG" ] && [ ! -z "$SFLAG" ]; then
     _notify "[+]" "ffmpeg -i $file -acodec libvorbis -ab 192k -vn -y -ac 2 -vol $VOLUME $basename.audio[volume_$VOLUME].ogg"
     _notify "[-]" "Be patient this may take a while..."
     ffmpeg -i "$file" -acodec libvorbis -ab 192k -vn -y -ac 2 -vol $VOLUME "$basename".audio[volume_$VOLUME].ogg
-    if [ "$?" = 1 ]; then
+    if [ X"$?" = X"1" ]; then
         _notify "[-]" "Failed"
         exit 1
     fi
@@ -111,21 +111,21 @@ if [ ! -z "$VFLAG" ] && [ ! -z "$SFLAG" ]; then
     #TODO 28-11-2010 20:15 => make soundtrack vol an option
     _notify "[+]" "ffmpeg -i "$SOUNDTRACK" -vol 15 -acodec libvorbis -ab 192k $(_basename "$SOUNDTRACK").vol[15].ogg"
     ffmpeg -i "$SOUNDTRACK" -vol 15 -acodec libvorbis -ab 192k "$(_basename "$SOUNDTRACK")".vol[15].ogg
-    if [ "$?" = 1 ]; then
+    if [ X"$?" = X"1" ]; then
         _notify "[-]" "Failed"
         exit 1
     fi
 
     _notify "[+]" "sox -S -m $basename.audio[volume_$VOLUME].ogg $(_basename "$SOUNDTRACK").vol[15].ogg -r192k $basename.audio_mixed.ogg"
     sox -S -m "$basename".audio[volume_$VOLUME].ogg "$(_basename "$SOUNDTRACK")".vol[15].ogg -r192k "$basename".audio_mixed.ogg
-    if [ "$?" = 1 ]; then
+    if [ X"$?" = X"1" ]; then
         _notify "[-]" "Failed"
         exit 1
     fi
 
     _notify "[+]" "mkvmerge -o $basename.optimized[$VOLUME].mkv -A $file $basename.audio_mixed.ogg"
     mkvmerge -o "$basename".optimized.mkv -A $file "$basename".audio_mixed.ogg
-    if [ "$?" = 1 ]; then
+    if [ X"$?" = X"1" ]; then
         _notify "[-]" "Failed"
         exit 1
     fi
@@ -139,7 +139,7 @@ elif [ ! -z "$SFLAG" ]; then
     _notify "[+]" "ffmpeg -i $file -acodec libvorbis -ab 192k -vn -y -ac 2 $basename.audio.ogg"
     _notify "[-]" "Be patient this may take a while..."
     ffmpeg -i "$file" -acodec libvorbis -ab 192k -vn -y -ac 2 "$basename".audio.ogg
-    if [ "$?" = 1 ]; then
+    if [ X"$?" = X"1" ]; then
         _notify "[-]" "Failed"
         exit 1
     fi
@@ -147,21 +147,21 @@ elif [ ! -z "$SFLAG" ]; then
     #TODO 28-11-2010 20:15 => make soundtrack vol an option
     _notify "[+]" "ffmpeg -i "$SOUNDTRACK" -vol 15 -acodec libvorbis -ab 192k $(_basename "$SOUNDTRACK").vol[15].ogg"
     ffmpeg -i "$SOUNDTRACK" -vol 15 -acodec libvorbis -ab 192k "$(_basename "$SOUNDTRACK")".vol[15].ogg
-    if [ "$?" = 1 ]; then
+    if [ X"$?" = X"1" ]; then
         _notify "[-]" "Failed"
         exit 1
     fi
 
     _notify "[+]" "sox -S -m $basename.audio.ogg $(_basename "$SOUNDTRACK").vol[15].ogg -r192k $basename.audio_mixed.ogg"
     sox -S -m "$basename".audio.ogg "$(_basename "$SOUNDTRACK")".vol[15].ogg -r192k "$basename".audio_mixed.ogg
-    if [ "$?" = 1 ]; then
+    if [ X"$?" = X"1" ]; then
         _notify "[-]" "Failed"
         exit 1
     fi
 
     _notify "[+]" "mkvmerge -o $basename.optimized[$VOLUME].mkv -A $file $basename.audio_mixed.ogg"
     mkvmerge -o "$basename".optimized.mkv -A $file "$basename".audio_mixed.ogg
-    if [ "$?" = 1 ]; then
+    if [ X"$?" = X"1" ]; then
         _notify "[-]" "Failed"
         exit 1
     fi
@@ -176,14 +176,14 @@ elif [ ! -z "$VFLAG" ]; then
     _notify "[+]" "ffmpeg -i $file -acodec libvorbis -ab 192k -vn -y -ac 2 -vol $VOLUME $basename.audio[volume_$VOLUME].ogg"
     _notify "[-]" "Be patient this may take a while..."
     ffmpeg -i "$file" -acodec libvorbis -ab 192k -vn -y -ac 2 -vol $VOLUME "$basename".audio[volume_$VOLUME].ogg
-    if [ "$?" = 1 ]; then
+    if [ X"$?" = X"1" ]; then
         _notify "[-]" "Failed"
         exit 1
     fi
 
     _notify "[+]" "mkvmerge -o $basename.optimized[$VOLUME].mkv -A $file $basename.audio[volume_$VOLUME].ogg"
     mkvmerge -o "$basename".optimized[$VOLUME].mkv -A $file "$basename".audio[volume_$VOLUME].ogg
-    if [ "$?" = 1 ]; then
+    if [ X"$?" = X"1" ]; then
         _notify "[-]" "Failed"
         exit 1
     fi
@@ -191,7 +191,7 @@ else
     #only encode
     _notify "[+]" "ffmpeg -i $file -acodec libvorbis -ab 192k -ac 2 -vcodec libx264 -vpre max -crf 22 -threads 0 $basename.optimized.mkv"
     ffmpeg -i "$file" -acodec libvorbis -ab 192k -ac 2 -vcodec libx264 -vpre max -crf 22 -threads 0 "$basename".optimized.mkv
-    if [ "$?" = 1 ]; then
+    if [ X"$?" = X"1" ]; then
         _notify "[-]" "Failed"
         exit 1
     fi

@@ -49,7 +49,7 @@ _arch()
 
 resumetime=0
 
-if [ $resumetime = 0 ]; then
+if [ X"$resumetime" = X"0" ]; then
   resumetime=1440 # Re-enable resume after a full day
 fi
 
@@ -89,13 +89,13 @@ usage()
 
     # DPMS disabled information
     echo "   ${txtbld}Current settings ${txtrst}(in minutes, 0 = disabled):"
-    if [[ "$dispdpms" == "Disabled" ]]; then
+    if [ X"$dispdpms" = X"Disabled" ]; then
       echo "   DPMS:         $dispdpms"
       echo "   Suspend:      $suspinhval"
     fi
 
     # DPMS enabled information
-    if [[ "$dispdpms" == "Enabled" ]]; then
+    if [ X"$dispdpms" = X"Enabled" ]; then
       echo "   DPMS:         $dispdpms"
       echo "   DPMS times:   Blank: ${dispblank}; Standby: ${dispstand}; Suspend: ${dispsusp}; Offtime: ${dispoff}"
       echo "   Suspend:      $suspinhval"
@@ -114,7 +114,7 @@ if [[ -z $(ps aux | grep /usr/bin/X) ]]; then
 fi
 
 # Check if user is regular user
-if [ $(whoami) == "root" ]; then
+if [ X"$(whoami)" = X"root" ]; then
   echo "$warn You are the root user, must be a regular user."
   exit
 fi
@@ -147,7 +147,7 @@ suspinhibit () {
 }
 
 # Toggle powersaving
-if [[ "$dispdpms" == "Enabled" ]] && [ -z "$suspinhtest" ]; then
+if [ X"$dispdpms" = X"Enabled" ] && [ -z "$suspinhtest" ]; then
   # Disable blanking, screen power saving
   xset s off; xset -dpms
   # Create script in tmp

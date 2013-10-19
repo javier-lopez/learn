@@ -19,7 +19,7 @@ _usage()
 _exec()
 {
     status=$?
-    if [ "$status" != 0 ]; then
+    if [ X"$status" != X"0" ]; then
         exit $status
     fi
     echo "[+] $@"

@@ -151,7 +151,7 @@ _trunk()
     [ -z "$2" ] && _die "Missing param for: trunk $1"
 
     #do we have valid parameters?, preliminar tests
-    if [ "$1" = add ]; then
+    if [ X"$1" = X"add" ]; then
         [ -n "$3" ] && _die "too many parameters for: trunk $@"
         [ ! -f "$2" ] && _die "Not a file: $2"
         if ! _elastixfileformatisvalid "$2"; then
@@ -164,17 +164,17 @@ _trunk()
             fi
         fi
 
-    elif [ "$1" = remove ]; then
+    elif [ X"$1" = X"remove" ]; then
         [ -n "$3" ] && _die "too many parameters for: trunk $@"
         if ! _isip4valid "$2"; then
             if ! _isdomainvalid "$2"; then
                 _die "Not a valid host: $2"
             fi
         fi
-    elif [ "$1" = edit ]; then
+    elif [ X"$1" = X"edit" ]; then
         [ -n "$4" ] && _die "too many parameters for: trunk $@"
         [ -z "$3" ] && _die "too few parameters for: trunk $@"
-        [ "$2" = "$3" ] && _die "parameters must be different: trunk $@"
+        [ X"$2" = X"$3" ] && _die "parameters must be different: trunk $@"
 
         if ! _isip4valid "$2"; then
             if ! _isdomainvalid "$2"; then
@@ -262,7 +262,7 @@ _trunk()
         elastix_mysql_passwd_array=("$elastix_mysql_passwd")
     fi
 
-    if [ "$1" = add ]; then
+    if [ X"$1" = X"add" ]; then
         for (( i = 0 ; i < ${#elastix_ssh_host_array[@]} ; i=$i+1 ));
         do
             remote_db=""
@@ -327,7 +327,7 @@ _trunk()
                 _die "Error reloading elastix services, this should *never* happen, if you're looking this message review the script code + remote elastix server, something is seriously broken"
             fi
         done
-    elif [ "$1" = remove ]; then
+    elif [ X"$1" = X"remove" ]; then
         for (( i = 0 ; i < ${#elastix_ssh_host_array[@]} ; i=$i+1 ));
         do
             remote_db=""
@@ -376,7 +376,7 @@ _trunk()
                 fi
             fi
         done
-    elif [ "$1" = edit ]; then
+    elif [ X"$1" = X"edit" ]; then
         for (( i = 0 ; i < ${#elastix_ssh_host_array[@]} ; i=$i+1 ));
         do
             remote_db=""

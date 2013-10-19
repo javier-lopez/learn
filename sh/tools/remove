@@ -12,15 +12,15 @@ do
 done
 
 #todo:fix this
-if [[ "${__packages[@]}" = " " ]]; then
+if [ X"${__packages[@]}" = X" " ]; then
     exit 0
 fi
 
-if [[ "${__packages[@]}" = "  " ]]; then
+if [ X"${__packages[@]}" = X"  " ]; then
     exit 0
 fi
 
-if [[ "${__packages[@]}" = "   " ]]; then
+if [ X"${__packages[@]}" = X"   " ]; then
     exit 0
 fi
 

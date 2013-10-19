@@ -75,7 +75,7 @@ while ! read -t0.0$((1000/f)) -n1; do
 
         # Print:
         tput cup ${y[i]} ${x[i]}
-        [[ $NOCOLOR == 0 ]] && echo -ne "\033[1;3${c[i]}m"
+        [ X"$NOCOLOR" = X"0" ]] && echo -ne "\033[1;3${c[i]}m"
         echo -ne "\xe2\x94${v[${l[i]}${n[i]}]}"
         l[i]=${n[i]}
     done

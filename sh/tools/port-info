@@ -22,12 +22,12 @@ PURPLE=$'\E[1;35m'
 WHITE=$'\E[1;37m'
 YELLOW=$'\E[0;33m'
 
-if [[ $OS != "OpenBSD" ]]; then
+if [ X"$OS" != X"OpenBSD" ]; then
     echo "OpenBSD was not detected"
     exit 1
 fi
 
-if [[ ! -d $PORTS ]]; then
+if [ ! -d "$PORTS" ]; then
     echo "$PORTS was not found in your system"
     exit 1
 fi

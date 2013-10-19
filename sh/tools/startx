@@ -7,7 +7,7 @@ if [ $# -eq 0 ]      # check to see if arguements are given (color depth)
         else a=$1    # use given arguement
 fi
 
-if [ $a -ne 8 -a $a -ne 16 -a $a -ne 24 ]
+if [ $a -ne 8 ] && [ $a -ne 16 ] && [ $a -ne 24 ]
         then
                 echo "Invalid color depth. Use 8, 16, or 24."
         exit 1

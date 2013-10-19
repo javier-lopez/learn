@@ -15,7 +15,7 @@ full_path() {
     if [ -z $1 ]; then
         exit;
     else
-        if [ `expr substr ${1:-a} 1 2` != "/" ]; then
+        if [ X"`expr substr ${1:-a} 1 2`" != X"/" ]; then
             FULL_FILE=`pwd`"/"$1
         fi
     fi

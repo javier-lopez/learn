@@ -22,7 +22,7 @@ _exec()
     $@
 
     local status=$?
-    [ "$status" != 0 ] && exit $status || return
+    [ X"$status" != X"0" ] && exit $status || return
 }
 
 _script()
@@ -50,7 +50,7 @@ _autocp()
     exit 0
 }
 
-if [ "$#" != 0 ]; then
+if [ X"$#" != X"0" ]; then
     case $1 in
         script)
         shift; _script $@

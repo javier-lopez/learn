@@ -4,7 +4,7 @@
 
 _notify ()
 {
-    if [ "$TERM" = linux ] || [ "$TERM" = dumb ]; then
+    if [ X"$TERM" = X"linux" ] || [ X"$TERM" = X"dumb" ]; then
         notify-send -t 3000 "${@}"
     else
         echo -n "${1}: "

@@ -43,7 +43,7 @@ if $EDITOR $TARGETS; then
 	# files from ARGV appropriately.
 	while read TARGET; do
 		SOURCE="${ARGV[$FILENO]}"
-		if [ "$SOURCE" != "$TARGET" ]; then
+		if [ X"$SOURCE" != X"$TARGET" ]; then
 			mv -v -f -- "$SOURCE" "$TARGET"
 		fi
 		FILENO=$[$FILENO+1]
