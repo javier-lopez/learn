@@ -70,8 +70,8 @@ function rm_process { local file; for file in "${_rm_queue[@]}"; do rm "$file"; 
 
 # check if tput actually outputs something useful for this terminal
 if [[ -z "$(tput sgr0)" ]] || [[ -z "$(tput bold)" ]]; then
-	echo 'Error: tput is not working as expected with your current terminal settings!' >&2
-	echo 'Try setting your $TERM to something more standard?' >&2
+	printf "%s\\n" "Error: tput is not working as expected with your current terminal settings!" >&2
+	printf "%s\\n" "Try setting your $TERM to something more standard?" >&2
 	exit 1
 fi
 
@@ -116,7 +116,7 @@ esac
 if [[ -n "$comm" ]]; then
 	rm_queue "$comm"
 else
-	echo "Error: Communications file creation failed!" >&2
+	printf "%s\\n" "Error: Communications file creation failed!" >&2
 	exit 1
 fi
 
@@ -144,12 +144,12 @@ tput civis						# hide the cursor
 		shift 2
 
 		# running this in a loop with 2>/dev/null to avoid "interrupted system call" messages
-		while { ! builtin echo -n "${posarray[$((y*cols+x))]}$@"; } 2>/dev/null; do testparent; done
+		while { ! printf "%s" "${posarray[$((y*cols+x))]}$@"; } 2>/dev/null; do testparent; done
 	}
 	function safeecho
 	{
 		# running this in a loop with 2>/dev/null to avoid "interrupted system call" messages
-		while { ! builtin echo -n "${posarray[$((y*cols+x))]}$@"; } 2>/dev/null; do testparent; done
+		while { ! printf "%s" "${posarray[$((y*cols+x))]}$@"; } 2>/dev/null; do testparent; done
 	}
 	function xyprintf
 	{
@@ -473,13 +473,13 @@ EOF
 			# this is slow. very slow.
 			function microtime {
 				local time=$(python <<<"import time; print \"%.6f\" % time.time();")
-				echo -n ${time/./}
+				printf "%s" ${time/./}
 			}
 		;;
 		*)
 			function microtime {
 				local time=$(date +%s%N)
-				echo -n ${time:0:((${#time}-3))}
+				printf "%s" ${time:0:((${#time}-3))}
 			}
 		;;
 	esac
@@ -500,7 +500,7 @@ EOF
 		posarray=()
 
 		local q=false
-		local e=$(echo -e "\e")
+		local e=$(printf "%b\\n" "\e")
 		if [ X"$(tput cup 0 0)" = X"${e}[1;1H" ]; then
 			# standard terminal movement commands - quick generation
 			q=true
@@ -516,7 +516,7 @@ EOF
 				buildposarray
 				return $?
 			fi
-			echo -n "${pos}$((x*100/cols))%"
+			printf "%s" "${pos}$((x*100/cols))%"
 			for ((y=0; y < rows; y++)); do
 				if $q; then
 					posarray[$((y*cols+x))]="${e}[$((y+1));$((x+1))H"
@@ -1097,7 +1097,7 @@ EOF
 					# reading and writing this high score is sensitive to signal interruption and is somewhat error prone
 					highscore=$(command cat "${HOME}/.shellshock" 2>/dev/null)
 					if ((score_current > highscore)); then
-						echo -n "$score_current" >"${HOME}/.shellshock"
+						printf "%s" "$score_current" >"${HOME}/.shellshock"
 					fi
 					safeecho $color_score_result
 					if ((score_current >= highscore)); then
@@ -1376,13 +1376,13 @@ while true; do
 			readc
 			case "$c" in
 				A|B|C|D)
-					builtin echo "$c" >"$comm"
+					printf "%s\\n" "$c" >"$comm"
 					kill -USR1 "$gamepid"
 				;;
 			esac
 		;;
 		' '|p|q|z)
-			builtin echo "$c" >"$comm"
+			printf "%s\\n" "$c" >"$comm"
 			kill -USR1 "$gamepid"
 		;;
 	esac

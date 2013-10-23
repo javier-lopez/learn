@@ -4,11 +4,11 @@ DPI=150
 PDF_DESTINATION=""
 
 help() {
-    echo "optimize_pdf help"
-    echo "-h : show this help"
-    echo "-d : (optional) output pdf document resolution, by default : 150"
-    echo "-s : pdf source file, this file must exist"
-    echo "-o : pdf output file"
+    printf "%s\\n" "optimize_pdf help"
+    printf "%s\\n" "-h : show this help"
+    printf "%s\\n" "-d : (optional) output pdf document resolution, by default : 150"
+    printf "%s\\n" "-s : pdf source file, this file must exist"
+    printf "%s\\n" "-o : pdf output file"
 }
 
 full_path() {
@@ -19,10 +19,10 @@ full_path() {
             FULL_FILE=`pwd`"/"$1
         fi
     fi
-    echo $FULL_FILE
+    printf "%s\\n" "$FULL_FILE"
 }
 
-isNumeric(){ echo "$@" | grep -q -v "[^0-9]" ;}
+isNumeric(){ printf "%s\\n" "$@" | grep -v "[^0-9]" >/dev/null ;}
 
 while getopts "s:o:d:h" flag
 do
@@ -31,7 +31,7 @@ do
         "s")
         PDF_FILE=`full_path $OPTARG`
         if [ ! -e $PDF_FILE ]; then
-            echo "Please provide a valid source file"
+            printf "%s\\n" "Please provide a valid source file"
             exit=1
         fi
         ;;
@@ -44,7 +44,7 @@ do
         if [ -z `isNumeric $OPTARG` ]; then
             DPI=$OPTARG
         else
-            echo "Please provide a numeric value for your DPI"
+            printf "%s\\n" "Please provide a numeric value for your DPI"
             exit=1
         fi
         ;;
@@ -56,7 +56,7 @@ done
 
 #Is there a target file?
 if [ -z $PDF_DESTINATION ]; then
-    echo "Please provide a file name for output"
+    printf "%s\\n" "Please provide a file name for output"
     exit=1
 fi
 

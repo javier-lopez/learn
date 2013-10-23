@@ -5,8 +5,8 @@
 
 _usage()
 {
-    echo "Usage:  $(expr "$0" : '.*/\([^/]*\)') get"
-    echo "        $(expr "$0" : '.*/\([^/]*\)') set powersave|conservative|ondemand|performance"
+    printf "%s\\n" "Usage:  $(expr "$0" : '.*/\([^/]*\)') get"
+    printf "%s\\n" "        $(expr "$0" : '.*/\([^/]*\)') set powersave|conservative|ondemand|performance"
     exit 0
 }
 
@@ -16,19 +16,16 @@ _exec()
     if [ X"$status" != X"0" ]; then
         exit $status
     fi
-    echo -n "[+] $@: "
+    printf "%s" "[+] $@: "
     $@
 }
 
-if test "$1" = "get"
-then
-        _exec cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
-elif test "$1" = "set"
-then
-    if test "$2" = "powersave" || test "$2" = "conservative" || \
-            test "$2" = "ondemand" || test "$2" = "performance"
-    then
-        sudo sh -c "echo -n '$2' > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor"
+if [ X"$1" = X"get" ]; then
+    _exec cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+elif [ X"$1" = X"set" ]; then
+    if [ X"$2" = X"powersave" ] || [ X"$2" = X"conservative" ] || \
+            [ X"$2" = X"ondemand" ] || [ X"$2" = X"performance" ]; then
+        sudo sh -c "printf %s '$2' > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor"
     else
         _usage
     fi

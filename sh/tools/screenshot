@@ -6,7 +6,7 @@ _notify ()
     if [ X"$TERM" = X"linux" ]; then
         notify-send -t 1000 "${@}"
     else
-        echo "${@}"
+        printf "%s\\n" "${@}"
     fi
 }
 
@@ -16,7 +16,7 @@ _exec()
     if [ X"$status" != X"0" ]; then
         exit $status
     fi
-    echo "[+] $@"
+    printf "%s\\n" "[+] $@"
     $@
 }
 

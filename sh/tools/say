@@ -3,16 +3,16 @@
 #$ cat file_english | say -e
 #$ say -e "something"
 
-[ -f /usr/bin/mplayer ] || { echo -e "$0: You need vim & mplayer to run this script\n$ sudo apt-get install vim-nox mplayer"; exit 1; }
-[ -f /usr/bin/vim ] || { echo -e "$0: You need vim to run this script\n$ sudo apt-get install vim-nox"; exit 1; }
+[ -f /usr/bin/mplayer ] || { printf "%b\\n" "$(expr "$0" : '.*/\([^/]*\)'): You need vim & mplayer to run this script\n$ sudo apt-get install vim-nox mplayer"; exit 1; }
+[ -f /usr/bin/vim ] || { printf "%b\\n" "$(expr "$0" : '.*/\([^/]*\)'): You need vim to run this script\n$ sudo apt-get install vim-nox"; exit 1; }
 
 _usage()
 {
-    echo "Usage: `expr "$0" : '.*/\([^/]*\)'` [-s|-p|-e] phrase"
-    echo
-    echo "          -s     Spanish (default)"
-    echo "          -p     Portuguese"
-    echo "          -e     English"
+    printf "%s\\n" "Usage: `expr "$0" : '.*/\([^/]*\)'` [-s|-p|-e] phrase"
+    printf "\\n"
+    printf "%s\\n" "          -s     Spanish (default)"
+    printf "%s\\n" "          -p     Portuguese"
+    printf "%s\\n" "          -e     English"
     exit 1
 }
 
@@ -45,12 +45,12 @@ while getopts ":spe" option; do
           ;;
         :)
           if [ -z "$PHRASE" ]; then
-              echo "Option -$OPTARG requires an argument"
+              printf "%s\\n" "Option -$OPTARG requires an argument"
               _usage
           fi
           ;;
         \?)
-          echo "Invalid option: -$OPTARG"
+          printf "%s\\n" "Invalid option: -$OPTARG"
           _usage
           ;;
     esac
@@ -64,13 +64,13 @@ if [ -z "$lang" ]; then
 fi
 
 while [ ${#PHRASE} -gt 100 ]; do
-    tmp=$(echo -ne ${PHRASE:0:100} | xxd -plain | tr -d '\n' | sed 's/\(..\)/%\1/g')
+    tmp=$(printf "%b" "${PHRASE:0:100}" | xxd -plain | tr -d '\n' | sed 's/\(..\)/%\1/g')
     mplayer -really-quiet "http://translate.google.com/translate_tts?ie=UTF-8&tl=$lang&q=$tmp" > /dev/null 2>&1
     PHRASE=${PHRASE:100:${#PHRASE}}
     #http://stackoverflow.com/questions/4988155/is-there-a-bash-command-that-can-tell-the-size-of-a-shell-variable
 done
 
 #http://stackoverflow.com/questions/296536/urlencode-from-a-bash-script
-PHRASE=$(echo -ne $PHRASE | xxd -plain | tr -d '\n' | sed 's/\(..\)/%\1/g')
+PHRASE=$(printf "%b" "$PHRASE" | xxd -plain | tr -d '\n' | sed 's/\(..\)/%\1/g')
 shift;shift;
 mplayer -really-quiet "http://translate.google.com/translate_tts?ie=UTF-8&tl=$lang&q=$PHRASE" > /dev/null 2>&1

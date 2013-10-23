@@ -7,10 +7,10 @@
 BACKUP_TO="/media/disk"
 #=======================
 
-usage()
+_usage()
 {
-    echo "Usage: `expr "$0" : '.*/\([^/]*\)'` [-y]"
-    echo "           -y       Say yes to all questions"
+    printf "%s\\n" "Usage: `expr "$0" : '.*/\([^/]*\)'` [-y]"
+    printf "%s\\n" "           -y       Say yes to all questions"
     exit 0
 }
 
@@ -20,28 +20,28 @@ while getopts ":y" option; do
           YFLAG=yes
           ;;
         \?)
-          echo "Invalid option: -$OPTARG"
-          usage
+          printf "%s\\n" "Invalid option: -$OPTARG"
+          _usage
           ;;
     esac
 done
 
 if [ ! -e "$BACKUP_TO" ]; then
-    echo -n "$BACKUP_TO doesn't exist, please provide another directory to move the files to: "
+    printf "%s" "$BACKUP_TO doesn't exist, please provide another directory to move the files to: "
     read -e BACKUP_TO
     if [ ! -e $BACKUP_TO ]; then
-        echo "Invalid directory"
+        printf "%s\\n" "Invalid directory"
         exit 1
     fi
 else
     if [ -z "$YFLAG" ]; then #if not exist
-        echo -n "Is $BACKUP_TO correct? (y/n): "
+        printf "%s" "Is $BACKUP_TO correct? (y/n): "
         read -e ANSWER
         if [ "$ANSWER" != "y" ]; then
-            echo -n "Insert the path you want to use to backup to: " 
+            printf "%s" "Insert the path you want to use to backup to: " 
             read -e BACKUP_TO
             if [ ! -e $BACKUP_TO ]; then
-                echo "Invalid directory"
+                printf "%s\\n" "Invalid directory"
                 exit 1
             fi
         fi
@@ -50,21 +50,21 @@ fi
 
 main()
 {
-    echo "Sycronizing main ================================================================"; sleep 3
+    printf "%s\\n" "Sycronizing main ================================================================"; sleep 3
     sudo mkdir -pv "$BACKUP_TO/main"
     if [ -z "$YFLAG" ]; then #if not exist
         sudo rsync -a --progress --delete -n $HOME/data $HOME/code $HOME/downloads $HOME/misc $HOME/read $HOME/tmp_img $HOME/tmp_music $BACKUP_TO/main/ | less
-        echo -n "Continue? (y/n): "
+        printf "%s" "Continue? (y/n): "
         read -e ANSWER
         if [ "$ANSWER" != "y" ]; then
-            echo "Aborting..."
+            printf "%s\\n" "Aborting..."
             exit 1
         fi
         sudo rsync -a --progress --delete $HOME/data $HOME/code $HOME/downloads $HOME/misc $HOME/read $HOME/tmp_img $HOME/tmp_music $BACKUP_TO/main/
     else
         sudo rsync -a --progress --delete $HOME/data $HOME/code $HOME/downloads $HOME/misc $HOME/read $HOME/tmp_img $HOME/tmp_music $BACKUP_TO/main/
     fi
-    echo "Writing logs: $HOME/misc/log/main.log"
+    printf "%s\\n" "Writing logs: $HOME/misc/log/main.log"
     sudo rsync -a --progress -n $BACKUP_TO/main/ $HOME/ > $HOME/misc/log/main.log
     sudo rm -rf "$BACKUP_TO/main/main*.last"
     DATE=$(date +"%Y-%m-%d"); sudo touch "$BACKUP_TO/main/main-$DATE.last"
@@ -72,42 +72,42 @@ main()
 
 #extra()
 #{
-    #echo "Sycronizing extra ================================================================"; sleep 3
+    #printf "%s\\n" "Sycronizing extra ================================================================"; sleep 3
     #sudo mkdir -p $BACKUP_TO/extra
     #if [[ -z $YFLAG ]]; then #if not exist
         #sudo rsync -a --progress -n $HOME/extra $BACKUP_TO/extra/ | less
-        #echo -n "Continue? (y/n): "
+        #printf "%s" "Continue? (y/n): "
         #read -e ANSWER
         #if [[ $ANSWER != "y" ]]; then
-            #echo "Aborting..."
+            #printf "%s\\n" "Aborting..."
             #exit 1
         #fi
         #sudo rsync -a --progress $HOME/extra $BACKUP_TO/extra/
     #else
         #sudo rsync -a --progress $HOME/extra $BACKUP_TO/extra/
     #fi
-    #echo "Writing to $HOME/misc/log/extra.log ..."
+    #printf "%s\\n" "Writing to $HOME/misc/log/extra.log ..."
     #sudo rsync -a --progress -n $BACKUP_TO/extra/ $HOME/extra/ > $HOME/misc/log/extra.log
     #DATE=$(date +"%Y-%m-%d"); touch $BACKUP_TO/extra/extra-$DATE.last
 #}
 
 dotfiles()
 {
-    echo "Sycronizing dotfiles ================================================================"; sleep 3
+    printf "%s\\n" "Sycronizing dotfiles ================================================================"; sleep 3
     sudo mkdir -p "$BACKUP_TO/dotfiles/$HOSTNAME"
     if [ -z "$YFLAG" ]; then #if not exist
         ls $HOME | sudo rsync  -a --progress -n --exclude-from=- --delete $HOME/ $BACKUP_TO/dotfiles/$HOSTNAME/ | less
-        echo -n "Continue? (y/n): "
+        printf "%s" "Continue? (y/n): "
         read -e ANSWER
         if [ "$ANSWER" != "y" ]; then
-            echo "Aborting..."
+            printf "%s\\n" "Aborting..."
             exit 1
         fi
         ls $HOME | sudo rsync  -a --progress --exclude-from=- --delete $HOME/ $BACKUP_TO/dotfiles/$HOSTNAME/
     else
         ls $HOME | sudo rsync  -a --progress --exclude-from=- --delete $HOME/ $BACKUP_TO/dotfiles/$HOSTNAME/
     fi
-    echo "Writing to $HOME/misc/log/dotfiles_$HOSTNAME.log ..."
+    printf "%s\\n" "Writing to $HOME/misc/log/dotfiles_$HOSTNAME.log ..."
     sudo rsync -a --progress -n "$BACKUP_TO/dotfiles/$HOSTNAME/" "$HOME/" > "$HOME/misc/log/dotfiles_$HOSTNAME.log"
     DATE=$(date +"%Y-%m-%d")
     sudo touch "$BACKUP_TO/dotfiles/$HOSTNAME-$DATE.last"

@@ -23,22 +23,22 @@ WHITE=$'\E[1;37m'
 YELLOW=$'\E[0;33m'
 
 if [ X"$OS" != X"OpenBSD" ]; then
-    echo "OpenBSD was not detected"
+    printf "%s\\n" "OpenBSD was not detected"
     exit 1
 fi
 
 if [ ! -d "$PORTS" ]; then
-    echo "$PORTS was not found in your system"
+    printf "%s\\n" "$PORTS was not found in your system"
     exit 1
 fi
 
 usage()
 {
-    echo "Usage: $0 [-c] [-p|-w] pattern" >&2
-    echo >&2
-    echo "          -c    Colorize the output" >&2
-    echo "          -p    Search in package's name" >&2
-    echo "          -w    Search in full descriptions" >&2
+    printf "%s\\n" "Usage: $(expr "$0" : '.*/\([^/]*\)') [-c] [-p|-w] pattern"
+    printf "\\n"
+    printf "%s\\n" "          -c    Colorize the output"
+    printf "%s\\n" "          -p    Search in package's name"
+    printf "%s\\n" "          -w    Search in full descriptions"
     exit 1
 }
 
@@ -56,14 +56,14 @@ while getopts ":p:w:c" option; do
           PATTERN=$OPTARG
           ;;
         :)
-          echo "Option -$OPTARG requires an argument"
+          printf "%s\\n" "Option -$OPTARG requires an argument"
           usage
           ;;
         c)
           CFLAG=yes
           ;;
         \?)
-          echo "Invalid option: -$OPTARG"
+          printf "%s\\n" "Invalid option: -$OPTARG"
           usage
           ;;
     esac
@@ -71,7 +71,7 @@ done
 
 # use only 1 '[]' if you don't have bash
 if [[ $PFLAG ]] && [[ $WFLAG ]]; then
-    echo "Can't select both options at the same time"
+    printf "%s\\n" "Can't select both options at the same time"
     usage
 elif [[ -z $PFLAG ]] && [[ -z $WFLAG ]]; then
     PFLAG=yes
@@ -85,36 +85,36 @@ fi
 if [[ $PFLAG ]]; then
     if [[ $CFLAG ]]; then
         for PACKAGE in `awk -v PATTERN=$PATTERN -F\| '$1 ~ PATTERN { print $5; }' /usr/ports/INDEX`; do
-            echo "$BLUE Package: $DEFAULT" $RED `echo $PORTS/$PACKAGE | cut -d/ -f1-5` $DEFAULT
-            echo
-            echo "" `cat $PORTS/$PACKAGE`
-            echo;
-            echo $WHITE ======================================================= $DEFAULT; echo;
+            printf "%s\\n" "$BLUE Package: $DEFAULT" $RED `printf "%s\\n" "$PORTS/$PACKAGE" | cut -d/ -f1-5` $DEFAULT
+            printf "\\n"
+            printf "%s\\n" "`cat $PORTS/$PACKAGE`"
+            printf "\\n"
+            printf "%s\\n\\n" "$WHITE ======================================================= $DEFAULT"
         done
     else
         for PACKAGE in `awk -v PATTERN=$PATTERN -F\| '$1 ~ PATTERN { print $5; }' /usr/ports/INDEX`; do
-            echo "Package: " `echo $PORTS/$PACKAGE | cut -d/ -f1-5`
-            echo
+            printf "%s\\n" "Package: `printf "%s\\n" "$PORTS/$PACKAGE" | cut -d/ -f1-5`"
+            printf "\\n"
             cat $PORTS/$PACKAGE
-            echo; echo =======================================================; echo;
+            printf "\\n%s\\n" "======================================================="
         done
     fi
 
 elif [[ $WFLAG ]]; then
     if [[ $CFLAG ]]; then
         for PACKAGE in `egrep -i -- $PATTERN /usr/ports/INDEX | awk -F\| '{ print $5; }'`; do
-            echo "$BLUE Package: $DEFAULT" $RED `echo $PORTS/$PACKAGE | cut -d/ -f1-5` $DEFAULT
-            echo
-            echo "" `cat $PORTS/$PACKAGE`
-            echo;
-            echo $WHITE ======================================================= $DEFAULT; echo;
+            printf "%s\\n" "$BLUE Package: $DEFAULT" $RED `printf "%s\\n" "$PORTS/$PACKAGE" | cut -d/ -f1-5` $DEFAULT
+            printf "\\n"
+            printf "%s\\n" "`cat $PORTS/$PACKAGE`"
+            printf "\\n"
+            printf "%s\\n\\n" "$WHITE ======================================================= $DEFAULT"
         done
     else
         for PACKAGE in `egrep -i -- $PATTERN /usr/ports/INDEX | awk -F\| '{ print $5; }'`; do
-            echo "Package: " `echo $PORTS/$PACKAGE | cut -d/ -f1-5`
-            echo
+            printf "%s\\n" "Package: `printf "%s\\n" "$PORTS/$PACKAGE" | cut -d/ -f1-5`"
+            printf "\\n"
             cat $PORTS/$PACKAGE
-            echo; echo =======================================================; echo;
+            printf "\\n%s\\n" "======================================================="
         done
     fi
 fi

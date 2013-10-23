@@ -12,14 +12,14 @@ _basename()
     expr "$1" : '.*/\([^/]*\)'
 }
 
-[ -f /usr/bin/vim ] || { echo -e "$(_basename $0): You need vim & tidy to run this script\n$ sudo apt-get install vim tidy"; exit 1; }
-[ -f /usr/bin/tidy ] || { echo -e "$(_basename $0): You need tidy to run this script\n$ sudo apt-get install tidy"; exit 1; }
+[ -f /usr/bin/vim ] || { printf "%b\\n" "$(_basename $0): You need vim & tidy to run this script\n$ sudo apt-get install vim tidy"; exit 1; }
+[ -f /usr/bin/tidy ] || { printf "%b\\n" "$(_basename $0): You need tidy to run this script\n$ sudo apt-get install tidy"; exit 1; }
 
 _usage()
 {
-    echo "Usage: $(_basename $0) testcase"
-    echo
-    echo "       https://wiki.ubuntu.com/Testing/TestCaseFormat"
+    printf "%s\\n" "Usage: $(_basename $0) testcase"
+    printf "\\n"
+    printf "%s\\n" "       https://wiki.ubuntu.com/Testing/TestCaseFormat"
     exit 1
 }
 
@@ -311,7 +311,7 @@ _format()
 {
     for testcase
     do
-        echo $testcase
+        printf "%s\\n" "$testcase"
         tidy -f /tmp/$(_basename $0)/testcase -xml -i "$testcase" > /dev/null
         [ "$?" -eq 2 ] && { cat /tmp/$(_basename $0)/testcase; exit 1; }
         vim -es -u /tmp/$(_basename $0)/vimrc -c "set ft=html" -c "normal gg=G" -c wq "$testcase"

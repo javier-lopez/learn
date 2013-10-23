@@ -6,11 +6,11 @@ _notify ()
     if [ X"$TERM" = X"linux" ] || [ X"$TERM" = X"dumb" ]; then
         notify-send -t 3000 "${@}"
     else
-        echo -n "${1}: "
+        printf "%s" "${1}: "
         shift
         while [ -n "$*" ]
         do
-            echo "${1}"
+            printf "%s\\n" "${1}"
             shift
         done
     fi
@@ -60,18 +60,18 @@ MNpwd=vimuswal
 MNtask="$@"
 # ===================================
 
-if [[ -z "${MNron}" ]]; then
-    echo -n "User: "
+if [ -z "${MNron}" ]; then
+    printf "%s" "User: "
     read -e MNron
 fi
 
-if [[ -z "${MNpwd}" ]]; then
-    echo -n "Password: "
+if [ -z "${MNpwd}" ]; then
+    printf "%s" "Password: "
     read -e MNpwd
 fi
 
-if [[ -z "${MNtask}" ]]; then
-    echo -n "k estas haciendo?: "
+if [ -z "${MNtask}" ]; then
+    printf "%s" "k estas haciendo?: "
     read -e MNtask
 fi
 
@@ -79,8 +79,8 @@ curl -s -c /tmp/MNc -d "_method=POST&data[User][email]=$MNron&data[User][pwd]=$M
 
 SIZE_log=`ls -l /tmp/MN.log | awk '{ print $5 }'`
 
-if [[ $SIZE_log -gt 0 ]]; then
-    echo "$(expr "$0" : '.*/\([^/]*\)'): user or password incorrect"
+if [ $SIZE_log -gt 0 ]; then
+    printf "%s\\n" "$(expr "$0" : '.*/\([^/]*\)'): user or password incorrect"
     exit 0
 fi
 

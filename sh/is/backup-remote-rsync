@@ -14,7 +14,7 @@ REMOTESERVER="backup.javier.io"
 
 exec 9>/tmp/$(_basename $0).lock #verify that only one instance is running
 if ! flock -n 9  ; then         #http://mywiki.wooledge.org/BashFAQ/045
-    echo "$(_basename $0): another instance is running";
+    printf "%s\\n" "$(_basename $0): another instance is running";
     exit 1
 fi
 
@@ -22,47 +22,45 @@ START=$(date +%s)
 
 _usage()
 {
-    echo "Usage: $(_basename $0) service all"
-    echo "Create home backups"
+    printf "%s\\n" "Usage: $(_basename $0) service all"
+    printf "%s\\n" "Create home backups"
     exit 0 
 }
 
 _printtime()
 {  #format seconds to a pretty string
-    [ -z $1 ] && return 1
-
     NUM=$1
     MIN=0
     HOUR=0
     DAY=0
-    if ((NUM>59)); then
-        ((SEC=NUM%60))
-        ((NUM=NUM/60))
-        if ((NUM>59)); then
-            ((MIN=NUM%60))
-            ((NUM=NUM/60))
-            if ((NUM>23)); then
-                ((HOUR=NUM%24))
-                ((DAY=NUM/24))
+    if [ $NUM -gt 59 ]; then
+        SEC=$(expr $NUM % 60)
+        NUM=$(expr $NUM / 60)
+        if [ $NUM -gt 59 ]; then
+            MIN=$(expr $NUM % 60)
+            NUM=$(expr $NUM / 60)
+            if [ $NUM -gt 23 ]; then
+                HOUR=$(expr $NUM % 24)
+                DAY=$(expr $NUM / 24)
             else
-                ((HOUR=NUM))
+                HOUR=$NUM
             fi
         else
-            ((MIN=NUM))
+            MIN=$NUM
         fi
     else
-        ((SEC=NUM))
+        SEC=$NUM
     fi
-    echo "$DAY"d "$HOUR"h "$MIN"m "$SEC"s
+    printf "%s\\n" ""$DAY"d "$HOUR"h "$MIN"m "$SEC"s"
 }
 
 _init()
 {
     [ -z "$init" ] || return 0 #run only once
-    echo =============================================================== | tee $LOGFILE
-    echo $(date) | tee -a $LOGFILE
-    echo =============================================================== | tee -a $LOGFILE
-    echo
+    printf "%s\\n" "=============================================================== | tee $LOGFILE
+    printf "%s\\n" "$(date)" | tee -a $LOGFILE
+    printf "%s\\n" "=============================================================== | tee -a $LOGFILE
+    printf "\\n"
 
     # logic for incremental backups
 
@@ -77,31 +75,31 @@ _init()
     #touch $DIR/weekly.counter
 
     #DAYS=$(cat $DIR/montly.counter)
-    #[ -z $DAYS ] && { DAYS=0; echo 1 > $DIR/montly.counter; }
+    #[ -z $DAYS ] && { DAYS=0; printf "%s\\n" "1" > $DIR/montly.counter; }
 
     #if [ $DAYS -gt 30 ] ; then
     #    for (( i = 6; i > 0; i-- )); do
-    #        [ $i -eq 6 ] && rm -rf $DIR/montly.$i || mv $DIR/montly.$i $DIR/montly.$((i+1))
+    #        [ $i -eq 6 ] && rm -rf $DIR/montly.$i || mv $DIR/montly.$i $DIR/montly.$(expr $i + 1)
     #    done
     #    rm $DIR/montly.counter
     #else
-    #    echo $((DAYS+1)) > $DIR/montly.counter
+    #    printf "%s\\n" "$(expr $DAYS + 1)" > $DIR/montly.counter
     #fi
 
     #DAYS=$(cat $DIR/weekly.counter)
-    #[ -z $DAYS ] && { DAYS=0; echo 1 > $DIR/weekly.counter; }
+    #[ -z $DAYS ] && { DAYS=0; printf "%s\\n" "1" > $DIR/weekly.counter; }
 
     #if [ $DAYS -gt 7 ] ; then
     #    for (( i = 3; i > 0; i-- )); do
-    #        [ $i -eq 3 ] && { rm -rf $DIR/montly.1; mv $DIR/weekly.$i $DIR/montly.1; } || mv $DIR/weekly.$i $DIR/weekly.$((i+1))
+    #        [ $i -eq 3 ] && { rm -rf $DIR/montly.1; mv $DIR/weekly.$i $DIR/montly.1; } || mv $DIR/weekly.$i $DIR/weekly.$(expr $i + 1)
     #    done
     #    rm $DIR/weekly.counter
     #else
-    #    echo $((DAYS+1)) > $DIR/weekly.counter
+    #    printf "%s\\n" "$(expr $DAYS + 1)" > $DIR/weekly.counter
     #fi
 
     #for (( i = 6; i > 0; i-- )); do
-    #        [ $i -eq 6 ] && { rm -rf $DIR/weekly.1; mv $DIR/daily.$i $DIR/weekly.1; } || mv $DIR/daily.$i $DIR/daily.$((i+1))
+    #        [ $i -eq 6 ] && { rm -rf $DIR/weekly.1; mv $DIR/daily.$i $DIR/weekly.1; } || mv $DIR/daily.$i $DIR/daily.$(expr $i + 1)
     #done
 
     #cp -al $DIR/daily.0 $DIR/daily.1
@@ -126,7 +124,7 @@ _refarray()
     local varname="$1"
     local export_as="$2"
     local code=$(declare -p "$varname")
-    echo ${code/$varname/$export_as}
+    printf "%s\\n" "${code/$varname/$export_as}"
 }
 
 _scp()
@@ -148,10 +146,10 @@ _scp()
     done
 
     END=$(date +%s)
-    DIFF=$(( $END - $START ))
-    echo =============================================================== | tee -a $LOGFILE
-    echo Total time: $(date +"%d-%m-%Y"):$(_printtime $DIFF) | tee -a $LOGFILE
-    echo =============================================================== | tee -a $LOGFILE
+    DIFF=$(expr $END - $START )
+    printf "%s\\n" "===============================================================" | tee -a $LOGFILE
+    printf "%s\\n" "Total time: $(date +"%d-%m-%Y"):$(_printtime $DIFF)" | tee -a $LOGFILE
+    printf "%s\\n" "===============================================================" | tee -a $LOGFILE
 
     scp -i $HOME/.ssh/id_rsa $LOGFILE $REMOTEUSER@$REMOTESERVER:$3
 }
@@ -176,7 +174,7 @@ _all()
 [ $# -eq 0 ] && _usage # no options
 
 if ! _networkup; then
-    echo "$(_basename $0): network not detected, exiting..." | tee -a $LOGFILE
+    printf "%s\\n" "$(_basename $0): network not detected, exiting..." | tee -a $LOGFILE
     exit 1
 fi 
 

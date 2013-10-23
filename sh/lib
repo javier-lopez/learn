@@ -14,7 +14,7 @@
 _addcron()
 {   #adds cron job, returns 1 on error
     [ -z "$1" ] && return 1
-    crontab -l | { cat; echo "$@"; } | crontab -
+    crontab -l | { cat; printf "%s\\n" "$@"; } | crontab -
 }
 #==================================================== Example ====
 #_addcron "* * * * * /path/task"
@@ -37,11 +37,11 @@ _animbarcui()
     exec < /dev/tty
     local oldstty=$(stty -g)
     stty raw -echo min 0
-    echo -en "\033[6n" > /dev/tty
+    printf "%b" "\033[6n" > /dev/tty
     IFS=';' read -r -d R -a pos
     stty $oldstty
-    local col=$((${pos[1]} - 1))
-    col=$((col+4))
+    local col=$(expr ${pos[1]} - 1)
+    col=$(expr $col + 4)
 
     while [ "`ps -p $pid -o comm=`" ]; do
         case $animation_state in
@@ -50,14 +50,14 @@ _animbarcui()
                 animation_state=2
                 ;;
             2)
-                if (( j < $(tput cols)-col )); then
+                if [ $j -lt $(expr $(tput cols) - $col) ]; then
                     for (( i = 0; i < c+4; i++ )); do
                         printf "%b" "\b";
                     done
-                    printf "%*s%s" $((c+1)) "" "o @o"
-                    (( j=j+1 ))
-                    (( c=c+1 ))
-                    if ! (( j < $(tput cols)-col )); then
+                    printf "%*s%s" $(expr $c + 1) "" "o @o"
+                    j=$(expr $j + 1 )
+                    c=$(expr $c + 1 )
+                    if ! [ $j -lt $(expr $(tput cols) - $col) ]; then
                         animation_state=3
                     fi
                 fi
@@ -66,36 +66,36 @@ _animbarcui()
                 for (( i = 0; i < c+3; i++ )); do
                     printf "%b" "\b";
                 done
-                printf "%*s%s" $((c)) "" "o@o "
+                printf "%*s%s" $(expr $c) "" "o@o "
                 animation_state=4
                 ;;
             4)
                 for (( i = 0; i < c+4; i++ )); do
                     printf "%b" "\b";
                 done
-                printf "%*s%s" $((c)) "" "o@o?"
+                printf "%*s%s" $(expr $c) "" "o@o?"
                 animation_state=5
                 ;;
             5)
                 for (( i = 0; i < c+4; i++ )); do
                     printf "%b" "\b";
                 done
-                printf "%*s%s" $((c)) "" "o@o "
+                printf "%*s%s" $(expr $c) "" "o@o "
                 animation_state=6
                 ;;
             6)
-                if (( j > 0 )); then
+                if [ $j -gt > 0 ]; then
                     for (( i = 0; i < c+4; i++ )); do
                         printf "%b" "\b";
                     done
                     #set -x
-                    printf "%*s%s" $((c-1)) "" "o@ o"
+                    printf "%*s%s" $(expr $c - 1) "" "o@ o"
                     printf "%*s" 1 ""
                     printf "%b" "\b";
                     #set +x
 
-                    (( j=j-1 ))
-                    (( c=c-1 ))
+                    j=$(expr  $j - 1 )
+                    c=$(expr  $c - 1 )
                 else
                     for (( i = 0; i < 4; i++ )); do
                         printf "%b" "\b";
@@ -118,7 +118,7 @@ _animbarcui()
 }
 #==================================================== Example ====
 #tar zxf big_file.tar.gz > /dev/null 2>&1 &
-#echo -n "[+] tar is running ..." && _animbarcui $(pidof tar)
+#printf "%s" "[+] tar is running ..." && _animbarcui $(pidof tar)
 #=================================================================
 
 _animcui()
@@ -135,7 +135,7 @@ _animcui()
     printf "%s" "      "
 
     while [ "`ps -p $pid -o comm=`" ]; do
-        echo -e -n "\b\b\b\b\b"
+        printf "%b" "\b\b\b\b\b"
         case $animation_state in
             1)
                 printf "%s" '\o@o\'
@@ -160,7 +160,7 @@ _animcui()
 }
 #==================================================== Example ====
 #tar zxf big_file.tar.gz > /dev/null 2>&1 &
-#echo -n "[+] tar is running ..." && _animcui $(pidof tar)
+#printf "%s" "[+] tar is running ..." && _animcui $(pidof tar)
 #=================================================================
 
 _animrotate()
@@ -168,71 +168,71 @@ _animrotate()
     [ -z "$1" ] && return 1
     local pid=$1
     local animation_state=1
-    echo -e -n "    "
+    printf "%b" "    "
 
     while [ "`ps -p $pid -o comm=`" ]; do
         # rotating star
-        echo -e -n "\b\b\b"
+        printf "%b" "\b\b\b"
         case $animation_state in
             1)
-                echo -n "["
-                echo -n -e "\033[1m|\033[0m"
-                echo -n "]"
+                printf "%s" "["
+                printf "%b" "\033[1m|\033[0m"
+                printf "%s" "]"
                 animation_state=2
                 ;;
             2)
-                echo -n "["
-                echo -n -e "\033[1m/\033[0m"
-                echo -n "]"
+                printf "%s" "["
+                printf "%b" "\033[1m/\033[0m"
+                printf "%s" "]"
                 animation_state=3
                 ;;
             3)
-                echo -n "["
-                echo -n -e "\033[1m-\033[0m"
-                echo -n "]"
+                printf "%s" "["
+                printf "%b" "\033[1m-\033[0m"
+                printf "%s" "]"
                 animation_state=4
                 ;;
             4)
-                echo -n "["
-                echo -n -e "\033[1m"
-                echo -n "\\"
-                echo -n -e "\033[0m"
-                echo -n "]"
+                printf "%s" "["
+                printf "%b" "\033[1m"
+                printf "%s" "\\"
+                printf "%b" "\033[0m"
+                printf "%s" "]"
                 animation_state=1
                 ;;
         esac
         sleep 1
     done
-    echo -e "\b\b\b\b\b\b\b       "
+    printf "%b" "\b\b\b\b\b\b\b       "
 }
 #==================================================== Example ====
-#echo -n "[+] tar" && _animrotate $(pidof tar)
+#printf "%s" "[+] tar" && _animrotate $(pidof tar)
 #=================================================================
 
 _cidr2mask()
 {
   local i mask=""
-  local full_octets=$(($1/8))
-  local partial_octet=$(($1%8))
+  local full_octets=$(expr $1 / 8)
+  local partial_octet=$(expr $1 % 8)
 
   for ((i=0;i<4;i+=1)); do
     if [ $i -lt $full_octets ]; then
-      mask+=255
+        mask=$(expr $mask + 255)
     elif [ $i -eq $full_octets ]; then
-      mask+=$((256 - 2**(8-$partial_octet)))
+        mask+=$((256 - 2**(8-$partial_octet)))
     else
-      mask+=0
+        mask=$(expr $mask + 0)
     fi
-    test $i -lt 3 && mask+=.
+    [ $i -lt 3 ] && mask+=.
   done
 
-  echo $mask
+  printf "%s\\n" "$mask"
 }
 
 _arch()
 {   #check for system arch, returns [64|32]
     local arch
-    [ -z "$MACHTYPE" ] && arch=$(uname -m) || arch=$(echo $MACHTYPE | cut -d- -f1)
+    [ -z "$MACHTYPE" ] && arch=$(uname -m) || arch=$(printf "%s\\n" "$MACHTYPE" | cut -d- -f1)
 
     case $arch in
         x86_64)
@@ -246,7 +246,7 @@ _arch()
             ;;
     esac
 
-    echo $arch
+    printf "%s\\n" "$arch"
 }
 #==================================================== Example ====
 #arch=$(_arch)
@@ -265,8 +265,8 @@ _basename()
 _cleanup()
 {   #clean tmp files, exits with no parameters
     stty echo
-    echo
-    echo "[+] cleanup ..."
+    printf "\\n"
+    printf "%s\\n" "[+] cleanup ..."
     your_commands_here
 
     [ -z "$1" ] && exit
@@ -280,7 +280,7 @@ _cmd()
 {   #print current command, exits on fail
     [ -z "$1" ] && return 0
 
-    echo "    $ $@"
+    printf "%s\\n" "    $ $@"
     "$@"
 
     local status=$?
@@ -293,13 +293,13 @@ _cmd()
 _cmdsudo()
 {   #print && execute a command, exits if command fails
     [ -z "$1" ] && return 0
-    local serr=$RANDOM
+    local serr=$$
 
-    echo "    $ sudo $@"
-    echo "$sudopwd" | $sudocmd "$@" > /tmp/$serr.out 2>&1
+    printf "%s\\n" "    $ sudo $@"
+    printf "%s\\n" "$sudopwd" | $sudocmd "$@" > /tmp/"$serr".out 2>&1
 
     local status=$?
-    [ X"$status" != X"0" ] && { cat /tmp/$serr.out; rm /tmp/$serr.out; exit $status; } || { rm /tmp/$serr.out; return; }
+    [ X"$status" != X"0" ] && { cat /tmp/"$serr".out; rm -rf /tmp/"$serr".out; exit $status; } || { rm -rf /tmp/"$serr".out; return; }
 }
 #==================================================== Example ====
 #_cmdsudo rm /file
@@ -307,22 +307,22 @@ _cmdsudo()
 
 _decode64()
 {
-    [ -z "$1" ] && echo ""
-    echo "$1" | openssl enc -base64 -d
+    [ -z "$1" ] && printf "\\n"
+    printf "%s\\n" "$1" | openssl enc -base64 -d
 }
 #==================================================== Example ====
 #string=$(_decode64 $string)
-#[ -z "$string" ] && echo "fail, empty string"
+#[ -z "$string" ] && printf "%s\\n" "fail, empty string"
 #=================================================================
 
 _die()
 {   #print a stacktrace with a msg, exits with 1
     local frame=0
     while caller $frame; do
-        $((frame=frame+1));
+        frame=$(expr $frame+1);
     done
 
-    echo "$*"
+    printf "%s\\n" "$*"
     exit 1
 }
 #==================================================== Example ====
@@ -338,7 +338,7 @@ _dirname()
     else
         local dir="${1%${1##*/}}"
         [ X"${dir:=./}" != X"/" ] && dir="${dir%?}"
-        echo "$dir"
+        printf "%s\\n" "$dir"
     fi
 }
 #==================================================== Example ====
@@ -349,11 +349,11 @@ _distro()
 {   #return distro name in a lower string
 
     local DIST_INFO="/etc/lsb-release"
-    if [ -r $DIST_INFO ]; then
-        . $DIST_INFO
+    if [ -r "$DIST_INFO" ]; then
+        . "$DIST_INFO"
     fi
 
-    if [ -z $DISTRIB_ID ]; then
+    if [ -z "$DISTRIB_ID" ]; then
         local DISTRIB_ID="Unknown";
         if [ -f /etc/arch-release ]; then
             DISTRIB_ID="Arch"
@@ -395,7 +395,7 @@ _distro()
         fi
     fi
 
-    echo $DISTRIB_ID | tr '[:upper:]' '[:lower:]'
+    printf "%s\\n" "$DISTRIB_ID" | tr '[:upper:]' '[:lower:]'
 }
 #==================================================== Example ====
 #distro=$(_distro)
@@ -405,18 +405,18 @@ _download()
 {
     #requires liburi-perl
     local urll="$1"
-    local prot=$(echo "$urll" | cut -d: -f1)
+    local prot=$(printf "%s\\n" "$urll" | cut -d: -f1)
     if [ X"$prot" = X"magnet" ]; then
         return 1 #not supported
     fi
-    local path=$( echo "$urll" | perl -MURI -le 'chomp($url = <>); print URI->new($url)->path' )
+    local path=$( printf "%s\\n" "$urll" | perl -MURI -le 'chomp($url = <>); print URI->new($url)->path' )
     local fn=$(expr "$path" : '.*/\([^/]*\)')
     local ext="${fn##*.}"
 
     case "$ext" in
         mp4|ogv|mpg|flv|avi|mkv|mov|wmv|webm|3gpp)
             local file=$(aria2c -q --bt-stop-timeout=120 --seed-time=0 --follow-torrent=mem --on-download-complete /bin/echo "$urll")
-            [ -z "$file" ] && echo 1 || echo $file | cut -d" " -f3
+            [ -z "$file" ] && printf "%s\\n" "1" || printf "%s\\n" "$file" | cut -d" " -f3
             ;;
         torrent)
             mkdir torrent && cd torrent
@@ -425,17 +425,34 @@ _download()
             local files="$(find ./ -name "*.mp4" -o -name "*.ogv" -o -name "*.mpg" -o -name "*.flv" -o -name "*.avi" -o -name "*.mkv" -o -name "*.mov" -o -name "*.wmv" -o -name "*.webm" -o -name "*.3gpp" 2>/dev/null)"
             # restore it
             IFS=$OLDIFS
-            [ -z "$files" ] && echo 1 || echo "$files"
+            [ -z "$files" ] && printf "%s\\n" "1" || printf "%s\\n" "$files"
             ;;
         *)
-            echo 1
+            printf "%s\\n" "1"
             ;;
     esac
 }
 #==================================================== Example ====
 #FILE=$(_download $URL)
-#[ "$FILE" -eq 1 ] && echo error || echo "done: $FILE"
+#[ "$FILE" -eq 1 ] && printf "%s\\n" "error" || printf "%s\\n" "done: $FILE"
 #=================================================================
+
+_echo()
+{   #http://www.etalabs.net/sh_tricks.html
+    fmt=%s end=\\n IFS=" "
+
+    while [ $# -gt 1 ] ; do
+        case "$1" in
+            [!-]*|-*[!ne]*) break ;;
+            *ne*|*en*) fmt=%b end= ;;
+            *n*) end= ;;
+            *e*) fmt=%b ;;
+        esac
+        shift
+    done
+
+    printf "$fmt$end" "$*"
+}
 
 _email()
 {   #send email, return 0 on success, 1 otherwise
@@ -455,31 +472,31 @@ _email()
 #==================================================== Example ====
 #FROM="foo@gmail.com"; TO="bar@foo.com"; TITLE="hi"; MSG="how are you?"
 #USER="foo"; PASSWD="secret"
-#[ $(_mail gmail $FROM $TO $TITLE $MESSAGE $USER $PASSWD) -eq 0 ] && echo "send" || echo "error"
+#[ $(_mail gmail $FROM $TO $TITLE $MESSAGE $USER $PASSWD) -eq 0 ] && printf "%s\\n" "send" || printf "%s\\n" "error"
 
 #FROM="foo@custom.com"; TO="bar@foo.com"; TITLE="hi"; MSG="how are you?"
 #SERVER="smpt.custom.com:port"; USER="foo"; PASSWD="secret"
-#[ $(_mail $FROM $TO $TITLE $MESSAGE $SERVER $USER $PASSWD) -eq 0 ] && echo "send" || echo "error"
+#[ $(_mail $FROM $TO $TITLE $MESSAGE $SERVER $USER $PASSWD) -eq 0 ] && printf "%s\\n" "send" || printf "%s\\n" "error"
 #=================================================================
 
 _encode64()
 {
     [ -z "$1" ] && return 1
-    echo "$1" | openssl enc -base64
+    printf "%s\\n" "$1" | openssl enc -base64
 }
 #==================================================== Example ====
 #string=$(_encode64 $string)
-#[ -z "$string" ] && echo "fail, empty string"
+#[ -z "$string" ] && printf "%s\\n" "fail, empty string"
 #=================================================================
 
 _existaptproxy()
 {   #test if an apt proxy exist on the local network, return 0 on sucess, 1 otherwise
-    avahi-browse -a  -t | grep -qs apt-cacher-ng && return 0
+    avahi-browse -a  -t | grep apt-cacher-ng >/dev/null && return 0
     return 1
 }
 #==================================================== Example ====
 #if ! _existaptproxy; then
-    #echo "no apt proxy was found, setting up one ..."
+    #printf "%s\\n" "no apt proxy was found, setting up one ..."
 #fi
 #=================================================================
 
@@ -493,7 +510,7 @@ _existuser()
 }
 #==================================================== Example ====
 #if _existuser user; then
-    #echo "user was found ..."
+    #printf "%s\\n" "user was found ..."
 #fi
 #=================================================================
 
@@ -506,7 +523,7 @@ _fullpath()
             local full_file=`pwd`"/"$1
         fi
     fi
-    echo $full_file
+    printf "%s\\n" "$full_file"
 }
 #==================================================== Example ====
 #_fullpath file #returns /path/file
@@ -520,13 +537,13 @@ _getcol()
     local oldstty=$(stty -g)
     stty raw -echo min 0
     # on my system, the following line can be replaced by the line below it
-    echo -en "\033[6n" > /dev/tty
+    printf "%b" "\033[6n" > /dev/tty
     # tput u7 > /dev/tty    # when TERM=xterm (and relatives)
     IFS=';' read -r -d R -a pos
     stty $oldstty
     # change from one-based to zero based so they work with: tput cup $row $col
-    local col=$((${pos[1]} - 1))
-    echo $col
+    local col=$(expr ${pos[1]} - 1)
+    printf "%s\\n" "$col"
 }
 #==================================================== Example ====
 #printf "%s" "Hi"
@@ -550,22 +567,22 @@ _getopt()
         if [ X"$var" = X"" ]; then
             continue
         fi
-        echo \ $var | grep -q -- '='
+        printf "%s\\n" "\ $var" | grep -q -- '='
         if [ $? -eq 0 ]; then
             ## -*param=value
-            local var=$(echo \ $var | sed -r s/'^[ ]*-*'/''/)
+            local var=$(printf "%s\\n" "\ $var" | sed -r s/'^[ ]*-*'/''/)
             local myvar=${var%=*}
             local myval=${var#*=}
             eval "${myvar}"="'$myval'"
         else
-            echo \ $var | grep -E -q -- '^[ ]*-'
+            printf "%s\\n" "\ $var" | grep -E -q -- '^[ ]*-'
             if [ $? -eq 0 ]; then
                 ## -*param$
-                var=$(echo \ $var | sed -r s/'^[ ]*-*'/''/)
+                var=$(printf "%s\\n" "\ $var" | sed -r s/'^[ ]*-*'/''/)
                 eval "${var}"=1
                 local wantarg=1
             else
-                echo \ $var | grep -E -- '^[ ]*-'
+                printf "%s\\n" "\ $var" | grep -E -- '^[ ]*-'
                 if [ $? -eq 0 ]; then
                     # the current one has a dash, so cannot be
                     # the argument to the last parameter
@@ -589,9 +606,9 @@ _getopt()
     done
 }
 #==================================================== Example ====
-#OIFS=$IFS; IFS=$(echo -e "\n"); _getopt $@; IFS=$OIFS
+#OIFS=$IFS; IFS=$(printf "%b" "\n"); _getopt $@; IFS=$OIFS
 ##./getopts --foo=bar -v -n 10 blah -one='last arg'
-#echo -e " foo:\t$foo v:\t$v n:\t$n blah:\t$blah one:\t$one "
+#printf "%b" " foo:\t$foo v:\t$v n:\t$n blah:\t$blah one:\t$one "
 #=================================================================
 
 _getpasswd()
@@ -599,24 +616,24 @@ _getpasswd()
     if [ -n "$1" ]
     then
         local option=`tr '[:upper:]' '[:lower:]' <<< $1`
-        echo -n "Enter your $option password: "
+        printf "%s" "Enter your $option password: "
         stty -echo
         read ${option}passwd
         stty echo
-        echo
+        printf "\\n"
     else
-        echo -n "Enter your password: "
+        printf "%s" "Enter your password: "
         stty -echo
         read passwd
         stty echo
-        echo
+        printf "\\n"
     fi
 }
 #==================================================== Example ====
 #_getpasswd
-#echo $passwd
+#printf "%s\\n" "$passwd"
 #_getpasswd config
-#echo $configpasswd
+#printf "%s\\n" "$configpasswd"
 #=================================================================
 
 _getroot()
@@ -625,9 +642,9 @@ _getroot()
     local tmp_path="/tmp"; local sudotest; local insudoers;
 
     if [ ! X"$LOGNAME" = X"root" ]; then
-        echo "Detecting user $LOGNAME (non-root) ..."
-        echo "Checking if sudo is available ..."
-        sudotest=`type sudo &>/dev/null ; echo $?`
+        printf "%s\\n" "Detecting user $LOGNAME (non-root) ..."
+        printf "%s\\n" "Checking if sudo is available ..."
+        sudotest=`type sudo &>/dev/null ; printf "%s\\n" "$?"`
 
         if [ X"$sudotest" = X"0" ]; then
             sudo -K
@@ -635,16 +652,16 @@ _getroot()
                 rm -f "$tmp_path/sudo.test"
             fi
             while [ -z "$sudopwd" ]; do
-                echo -n "   - enter sudo-password: "
+                printf "%s" "   - enter sudo-password: "
                 stty -echo
                 read sudopwd
                 stty echo
 
                 # password check
-                echo "$sudopwd" | sudo -S touch "$tmp_path/sudo.test" > "$tmp_path/sudo.output" 2>&1
+                printf "%s\\n" "$sudopwd" | sudo -S touch "$tmp_path/sudo.test" > "$tmp_path/sudo.output" 2>&1
                 insudoers=$(grep -i "sudoers" "$tmp_path/sudo.output")
                 if [ -n "$insudoers" ]; then
-                    echo "$sudopwd" | sudo -S rm "$tmp_path/sudo.output" > /dev/null 2>&1
+                    printf "%s\\n" "$sudopwd" | sudo -S rm "$tmp_path/sudo.output" > /dev/null 2>&1
                     exit
                 fi
 
@@ -655,17 +672,17 @@ _getroot()
 
             sudocmd="/usr/bin/sudo -S"
 
-            echo "$sudopwd" | $sudocmd rm -f "$tmp_path/sudo.test" > /dev/null 2>&1
-            echo
+            printf "%s\\n" "$sudopwd" | $sudocmd rm -f "$tmp_path/sudo.test" > /dev/null 2>&1
+            printf "\\n"
         else
-            echo "You're not root and sudo isn't available. Please run this script as root!"
+            printf "%s\\n" "You're not root and sudo isn't available. Please run this script as root!"
             exit
         fi
     fi
 }
 #==================================================== Example ====
 #_getroot
-#echo "$sudopwd" | $sudocmd rm file
+#printf "%s\\n" "$sudopwd" | $sudocmd rm file
 #=================================================================
 
 _getrow()
@@ -676,13 +693,13 @@ _getrow()
     local oldstty=$(stty -g)
     stty raw -echo min 0
     # on my system, the following line can be replaced by the line below it
-    echo -en "\033[6n" > /dev/tty
+    printf "%b" "\033[6n" > /dev/tty
     # tput u7 > /dev/tty    # when TERM=xterm (and relatives)
     IFS=';' read -r -d R -a pos
     stty $oldstty
     # change from one-based to zero based so they work with: tput cup $row $col
-    local row=$((${pos[0]:2} - 1))    # strip off the esc-[
-    echo $row
+    local row=$(expr ${pos[0]:2} - 1)    # strip off the esc-[
+    printf "%s\\n" "$row"
 }
 #==================================================== Example ====
 row=$(_getrow)
@@ -710,7 +727,7 @@ _inarray()
     return 1
 }
 #==================================================== Example ====
-#_inarray $name ${names[@]} && echo found!
+#_inarray $name ${names[@]} && printf "%s\\n" "found!"
 #=================================================================
 
 _internetavailable()
@@ -727,7 +744,7 @@ _internetavailable()
 }
 #==================================================== Example ====
 #if ! _internetavailable; then
-    #echo "You must have an Internet connection to run this script" >&2
+    #printf "%s\\n" "You must have an Internet connection to run this script" >&2
     #exit 1
 #fi
 #=================================================================
@@ -735,61 +752,61 @@ _internetavailable()
 _isalphanum()
 { #check for alphanum strings, return 0 if all upper+lower+digits, 1 otherwise
   # Remove all unacceptable chars
-  local compressed="$(echo $1 | sed -e 's/[^[:alnum:]]//g')"
+  local compressed="$(printf "%s\\n" "$1" | sed -e 's/[^[:alnum:]]//g')"
 
   [ X"$compressed" != X"$input" ] && return 0 || return 1
 }
 #==================================================== Example ====
-#echo -n "Enter input: "
+#printf "%s" "Enter input: "
 #read input
 #if ! _isalphanum "$input" ; then
-    #echo "Your input must consist of only letters and numbers." >&2
+    #printf "%s\\n" "Your input must consist of only letters and numbers." >&2
     #exit 1
 #else
-    #echo "Input is valid."
+    #printf "%s\\n" "Input is valid."
 #fi
 #exit 0
 #=================================================================
 
 _isarray()
 {   #detect if arg is an array, returns 0 on sucess, 1 otherwise
-    declare -p ${1} 2> /dev/null | grep -qs 'declare \-a' && return 0
+    declare -p ${1} 2> /dev/null | grep 'declare \-a' >/dev/null && return 0
     return 1
 }
 #==================================================== Example ====
 #vararray=(1 2 3)
 #if _isarray vararray; then #the argument is passed as a name
-    #echo "vararray is an array"
+    #printf "%s\\n" "vararray is an array"
 #else
-    #echo "vararray is not an array"
+    #printf "%s\\n" "vararray is not an array"
 #fi
 #=================================================================
 
 _islivecd()
 {   #detect a livecd system, return 0 on success, 1 otherwise
-    grep -qs boot=live /proc/cmdline && return 0
-    grep -qs boot=casper /proc/cmdline && return 0
+    grep boot=live /proc/cmdline >/dev/null && return 0
+    grep boot=casper /proc/cmdline >/dev/null && return 0
     return 1
 }
 #==================================================== Example ====
 #if _islivecd ; then
-    #echo "Live cd detected"
+    #printf "%s\\n" "Live cd detected"
 #else
-    #echo "Non LiveCd detected"
+    #printf "%s\\n" "Non LiveCd detected"
 #fi
 #=================================================================
 
 _ismonitorattached()
 {
-    xrandr | grep "^VGA" | grep " connected" && return 0
-    xrandr | grep "^HDMI" | grep " connected" && return 0
+    xrandr | grep "^VGA" | grep " connected" >/dev/null && return 0
+    xrandr | grep "^HDMI" | grep " connected" >/dev/null && return 0
     return 1
 }
 #==================================================== Example ====
 #if _ismonitorattached; then
-    #echo "At least one monitor is attached"
+    #printf "%s\\n" "At least one monitor is attached"
 #else
-    #echo "No monitor are attached"
+    #printf "%s\\n" "No monitor are attached"
 #fi
 #=================================================================
 
@@ -812,16 +829,16 @@ _isnewer()
 
 _isnum()
 {   #look for a number, returns 0 on success, 1 otherwise
-    echo "$@" | grep -q -v "[^0-9]"
+    printf "%s\\n" "$@" | grep -v "[^0-9]" >/dev/null
 }
 #==================================================== Example ====
-#echo -n "Enter input: "
+#printf "%s" "Enter input: "
 #read input
 #if ! _isnum "$input" ; then
-    #echo "Your input must consist of only numbers." >&2
+    #printf "%s\\n" "Your input must consist of only numbers." >&2
     #exit 1
 #else
-    #echo "Input is valid."
+    #printf "%s\\n" "Input is valid."
 #fi
 #exit 0
 #=================================================================
@@ -829,7 +846,7 @@ _isnum()
 _isrunning()
 {
     local name=$1
-    ps auxw | grep -v grep | grep -qs ${name} && return 0
+    ps auxw | grep -v grep | grep ${name} >/dev/null && return 0
     return 1
 }
 
@@ -837,7 +854,7 @@ _lock()
 {
     exec 9>/tmp/$(expr "$1" : '.*/\([^/]*\)').lock #verify only one instance is running
     if ! flock -n 9  ; then         #http://mywiki.wooledge.org/BashFAQ/045
-        echo "$(expr "$1" : '.*/\([^/]*\)'): another instance is running";
+        printf "%s\\n" "$(expr "$1" : '.*/\([^/]*\)'): another instance is running";
         exit 1
     fi
 }
@@ -852,11 +869,11 @@ _notify()
     if [ X"$TERM" = X"linux" ] || [ X"$TERM" = X"dumb" ]; then
         notify-send -t 3000 "${@}"
     else
-        echo -n "${1}: "
+        printf "%s" "${1}: "
         shift
         while [ -n "$*" ]
         do
-            echo "${1}"
+            printf "%s\\n" "${1}"
             shift
         done
     fi
@@ -867,31 +884,29 @@ _notify()
 
 _printtime()
 {  #format seconds to a pretty string
-    [ -z "$1" ] && return 1
-
     NUM=$1
     MIN=0
     HOUR=0
     DAY=0
-    if ((NUM>59)); then
-        ((SEC=NUM%60))
-        ((NUM=NUM/60))
-        if ((NUM>59)); then
-            ((MIN=NUM%60))
-            ((NUM=NUM/60))
-            if ((NUM>23)); then
-                ((HOUR=NUM%24))
-                ((DAY=NUM/24))
+    if [ $NUM -gt 59 ]; then
+        SEC=$(expr $NUM % 60)
+        NUM=$(expr $NUM / 60)
+        if [ $NUM -gt 59 ]; then
+            MIN=$(expr $NUM % 60)
+            NUM=$(expr $NUM / 60)
+            if [ $NUM -gt 23 ]; then
+                HOUR=$(expr $NUM % 24)
+                DAY=$(expr $NUM / 24)
             else
-                ((HOUR=NUM))
+                HOUR=$NUM
             fi
         else
-            ((MIN=NUM))
+            MIN=$NUM
         fi
     else
-        ((SEC=NUM))
+        SEC=$NUM
     fi
-    echo "$DAY"d "$HOUR"h "$MIN"m "$SEC"s
+    printf "%s\\n" ""$DAY"d "$HOUR"h "$MIN"m "$SEC"s"
 }
 #==================================================== Example ====
 #SECONDS=12345
@@ -902,7 +917,7 @@ _privport()
 {   #check if port is a num and if it's privated (<1025), returns 0 on success, 1 otherwise
     [ -z "$1" ] && return 1
 
-    echo "$1" | grep -q -v "[^0-9]"
+    printf "%s\\n" "$1" | grep -v "[^0-9]" >/dev/null
     if [ $? -eq 0 ]; then
         [ $1 -gt 0 ] && [ $1 -lt 1025 ] && return 0 || return 1
     else
@@ -910,7 +925,7 @@ _privport()
     fi
 }
 #==================================================== Example ====
-#echo -n "Enter port: "
+#printf "%s" "Enter port: "
 #read port
 #if _privport "$port" ; then #priv ports requires root
     #sudo script $port
@@ -958,7 +973,7 @@ _realpath()
         abs_path="${abs_path}/${file_basename}"
 
         # output the absolute path
-        echo "$abs_path"
+        printf "%s\\n" "$abs_path"
     fi
 
     $success
@@ -967,9 +982,9 @@ _realpath()
 #relative_path="../Shared/"
 #absolute_path="$(_realpath "$relative_path")"
 #if [ $? -eq 0 ]; then
-	#echo "absolute_path = $absolute_path"
+	#printf "%s\\n" "absolute_path = $absolute_path"
 #else
-	#echo "'$relative_path' does not exist!"
+	#printf "%s\\n" "'$relative_path' does not exist!"
 #fi
 #=================================================================
 
@@ -980,7 +995,7 @@ _refarray()
     local varname="$1"
     local export_as="$2"
     local code=$(declare -p "$varname")
-    echo ${code/$varname/$export_as}
+    printf "%s\\n" "${code/$varname/$export_as}"
 }
 #==================================================== Example ====
 #dump()
@@ -1001,7 +1016,7 @@ _refarray()
 _strlen()
 {
     [ -z "$1" ] && return 1
-    echo ${#1}
+    printf "%s\\n" "${#1}"
 }
 #==================================================== Example ====
 #=================================================================
@@ -1009,20 +1024,20 @@ _strlen()
 _strreplace()
 {
     [ -z "$1" ] && return 1
-    echo ${1//$2/$3}
+    printf "%s\\n" "${1//$2/$3}"
 }
 #==================================================== Example ====
 #hello="hello world"
 #bye=$(_strreplace "$string" "hello" "bye")
 #world=$(_strreplace "$string" "world")
-#echo $bye #prints "bye world"
-#echo $world #prints "world"
+#printf "%s\\n" "$bye"   #prints "bye world"
+#printf "%s\\n" "$world" #prints "world"
 #=================================================================
 
 _str2lower()
 {   #convert a string to lower string
     [ -z "$1" ] && return 1
-    echo $@ | tr '[:upper:]' '[:lower:]'
+    printf "%s\\n" "$@" | tr '[:upper:]' '[:lower:]'
 }
 
 _uploadimg()
@@ -1074,10 +1089,10 @@ _uploadimg()
 
 _usage()
 {   #prints an usage msg and exits with 0
-    echo "Usage: `expr "$0" : '.*/\([^/]*\)'` [OPTION] FILE"
-    echo "  -a   description"
-    echo "  -b   description"
-    echo "  -c   description"
+    printf "%s\\n" "Usage: `expr "$0" : '.*/\([^/]*\)'` [OPTION] FILE"
+    printf "%s\\n" "  -a   description"
+    printf "%s\\n" "  -b   description"
+    printf "%s\\n" "  -c   description"
     exit 0
 }
 #===================================================== Example ====
@@ -1089,12 +1104,12 @@ _usage()
 _validinterface()
 {   #return 0 if parameter is a valid network interface, 1 otherwise
     [ -z "$1" ] && return 1
-    ip addr | grep -qs "$1" && return 0
+    ip addr | grep "$1" >/dev/null && return 0
     return 1
 }
 #===================================================== Example ====
 #if ! _validinterface $interface
-    #echo "$(expr "$0" : '.*/\([^/]*\)'): not valid interface $interface"
+    #printf "%s\\n" "$(expr "$0" : '.*/\([^/]*\)'): not valid interface $interface"
 #fi
 #=================================================================
 
@@ -1115,62 +1130,60 @@ _validip4()
 
 _verbose()
 {
-    if (( VERBOSE )); then
-        echo "$*"
-    fi
+    [ ! X"$VERBOSE" = X"0" ] && printf "%s\\n" "$*"
 }
 
 _waitfor()
 {   #wait for a program, shows an animation
     [ -z "$1" ] && return 1
 
-    echo -n "    $ $@ ..."
+    printf "%s" "    $ $@ ..."
     $@ > /dev/null 2>&1 &
     sleep 1s
 
     running=$(pidof $1); running=$?
     if [ X"$running" = X"1" ]; then
-        echo
+        printf "\\n"
     else
         pid=$(pidof $1)
         animation_state=1
-        echo -e -n "    "
+        printf "%b" "    "
 
         while [ "`ps -p $pid -o comm=`" ]; do
             # rotating star
-            echo -e -n "\b\b\b"
+            printf "%b" "\b\b\b"
             case $animation_state in
                 1)
-                    echo -n "["
-                    echo -n -e "\033[1m|\033[0m"
-                    echo -n "]"
+                    printf "%s" "["
+                    printf "%b" "\033[1m|\033[0m"
+                    printf "%s" "]"
                     animation_state=2
                     ;;
                 2)
-                    echo -n "["
-                    echo -n -e "\033[1m/\033[0m"
-                    echo -n "]"
+                    printf "%s" "["
+                    printf "%b" "\033[1m/\033[0m"
+                    printf "%s" "]"
                     animation_state=3
                     ;;
                 3)
-                    echo -n "["
-                    echo -n -e "\033[1m-\033[0m"
-                    echo -n "]"
+                    printf "%s" "["
+                    printf "%b" "\033[1m-\033[0m"
+                    printf "%s" "]"
                     animation_state=4
                     ;;
                 4)
-                    echo -n "["
-                    echo -n -e "\033[1m"
-                    echo -n "\\"
-                    echo -n -e "\033[0m"
-                    echo -n "]"
+                    printf "%s" "["
+                    printf "%b" "\033[1m"
+                    printf "%s" "\\"
+                    printf "%b" "\033[0m"
+                    printf "%s" "]"
                     animation_state=1
                     ;;
             esac
             sleep 1
         done
-        echo -e "\b\b\b   "
-        echo
+        printf "%b\\n" "\b\b\b   "
+        printf "\\n"
     fi
 }
 #==================================================== Example ====
@@ -1195,9 +1208,9 @@ _xmessage()
 {   #prints a message using xmessage || gxmessage
     XMESSAGE=$(command -v gxmessage 2>/dev/null) || XMESSAGE=$(command -v xmessage 2>/dev/null)
     MESSAGE="$PROGNAME: $*"
-    echo "$MESSAGE" | fold -s -w ${COLUMNS:-80} >&2
+    printf "%s\\n" "$MESSAGE" | fold -s -w ${COLUMNS:-80} >&2
     if [ -n "$DISPLAY" ] && [ -n "$XMESSAGE" ]; then
-        echo "$MESSAGE" | fold -s -w ${COLUMNS:-80} | $XMESSAGE -center -file -
+        printf "%s\\n" "$MESSAGE" | fold -s -w ${COLUMNS:-80} | $XMESSAGE -center -file -
     fi
 }
 #==================================================== Example ====

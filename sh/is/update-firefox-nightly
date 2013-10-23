@@ -8,29 +8,29 @@ _cmd()
 {   #print current command, exits on fail
     [ -z "$1" ] && return 0
 
-    echo "    $ $@"
+    printf "%s\\n" "    $ $@"
     $@
 
     status=$?
-    [ "$status" != 0 ] && exit $status || return
+    [ X"$status" != X"0" ] && exit $status || return
 }
 
 _die()
 {   #print a stacktrace with a msg, exits with 1
     local frame=0
     while caller $frame; do
-        $((frame=frame+1));
+        frame=$(expr $frame+1);
     done
 
-    echo "$*"
+    printf "%s\\n" "$*"
     exit 1
 }
 
 _cleanup()
 {   #clean tmp files, exits with no parameters
     stty echo
-    echo
-    echo "[+] cleanup ..."
+    printf "\\n"
+    printf "%s\\n" "[+] cleanup ..."
     _cmd rm firefox*bz2
 
     [ -z $1 ] && exit
@@ -38,17 +38,17 @@ _cleanup()
 
 notify ()
 {
-    if [ "$TERM" = linux ]; then
+    if [ X"$TERM" = X"linux" ]; then
         notify-send -t 3000 "${@}"
     else
-        echo "${@}"
+        printf "%s\\n" "${@}"
     fi
 }
 
 _arch()
 {   #check for system arch, returns [64|32]
     local arch
-    [ -z $MACHTYPE ] && arch=$(uname -m) || arch=$(echo $MACHTYPE | cut -d- -f1)
+    [ -z $MACHTYPE ] && arch=$(uname -m) || arch=$(printf "%s\\n" $MACHTYPE | cut -d- -f1)
 
     case $arch in
         x86_64)
@@ -62,7 +62,7 @@ _arch()
             ;;
     esac
 
-    echo $arch
+    printf %s\\n "$arch"
 }
 
 _update-firefox32()

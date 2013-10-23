@@ -3,8 +3,8 @@
 
 _usage()
 {
-    echo "Usage: `expr "$0" : '.*/\([^/]*\)'` img1 img2 imgN ..."
-    echo "        img must be a valid image file: *.[png|jpg|..]"
+    printf "%s\\n" "Usage: `expr "$0" : '.*/\([^/]*\)'` img1 img2 imgN ..."
+    printf "%s\\n" "        img must be a valid image file: *.[png|jpg|..]"
     exit 1
 }
 
@@ -29,11 +29,11 @@ upload_img()
                     fi
                     ;;
                 *)
-                    echo "'$img' is not a valid img file"
+                    printf "%s\\n" "'$img' is not a valid img file"
                     ;;
             esac
         else
-                echo "'$img' doesn't exist"
+                printf "%s\\n" "'$img' doesn't exist"
         fi
     done
 }

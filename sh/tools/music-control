@@ -2,7 +2,7 @@
 
 _usage()
 {
-    echo "usage: $0 pause|next|previous"
+    printf "%s\\n" "usage: $(expr "$0" : '.*/\([^/]*\)') pause|next|previous"
     exit 1
 }
 
@@ -24,7 +24,7 @@ for player in $players; do
     esac
 done
 
-if  [ -n "$mplayer_flag" ] && [ -n "$mpd_flag" ]; then
+if [ -n "$mplayer_flag" ] && [ -n "$mpd_flag" ]; then
     if command -v "mpc" > /dev/null 2>&1; then
         if [ "$(mpc status | grep playing)" ]; then
             mpc pause 1>/dev/null
@@ -35,11 +35,11 @@ fi
 if [ -n "$mplayer_flag" ]; then
     if [ -p /tmp/mplayer.fifo ]; then
         case "$1" in
-            pause) echo "pause" > /tmp/mplayer.fifo
+            pause) printf "%s\\n" "pause" > /tmp/mplayer.fifo
                 ;;
-            next) echo "pt_step 1" > /tmp/mplayer.fifo
+            next) printf "%s\\n" "pt_step 1" > /tmp/mplayer.fifo
                 ;;
-            previous) echo "pt_step -1" > /tmp/mplayer.fifo
+            previous) printf "%s\\n" "pt_step -1" > /tmp/mplayer.fifo
                 ;;
         esac
     fi

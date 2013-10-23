@@ -30,14 +30,14 @@ set -e
 # Returns nothing.
 help()
 {
-  echo "spark\n"
-  echo "USAGE:"
-  echo "  spark [comma,separated,value,list]\n"
-  echo "EXAMPLES:"
-  echo "  spark 1,5,22,13,53"
-  echo "  ▁▁▃▂▇"
-  echo "  spark 0,30,55,80,33,150"
-  echo "  ▁▂▃▅▂▇"
+  printf "%b\\n" "spark\n"
+  printf "%s\\n" "USAGE:"
+  printf "%b\\n" "  spark [comma,separated,value,list]\n"
+  printf "%s\\n" "EXAMPLES:"
+  printf "%s\\n" "  spark 1,5,22,13,53"
+  printf "%s\\n" "  ▁▁▃▂▇"
+  printf "%s\\n" "  spark 0,30,55,80,33,150"
+  printf "%s\\n" "  ▁▂▃▅▂▇"
 }
 
 # The actual fun characters we are generating in the sparkline.
@@ -55,7 +55,7 @@ sorted=()
 # Returns nothing.
 setup_array() {
   # 3,6,2 => 2,3,6
-  sorted=$(echo $1 | tr ',' '\n' | sort -k1,1n | paste -s -d',' -)
+  sorted=$(printf "%s\\n" "$1" | tr ',' '\n' | sort -k1,1n | paste -s -d',' -)
 
   # convert comma-separated string to array
   IFS=,
@@ -67,21 +67,21 @@ setup_array() {
 sort_max()
 {
   last=${#sorted[@]}
-  echo ${sorted[$last - 1]}
+  printf "%s\\n" "${sorted[$last - 1]}"
 }
 
 # The minimum value of the sorted array. In other words, the first value.
 sort_min()
 {
-  echo ${sorted[0]}
+  printf "%s\\n" "${sorted[0]}"
 }
 
 # Find the distance between tiers so we know which tick to assign a character.
 tier()
 {
   number_of_ticks=${#ticks[@]}
-  distance=$(echo "$(sort_max) / $number_of_ticks" | bc)
-  echo $distance
+  distance=$(printf "%s\\n" "$(sort_max) / $number_of_ticks" | bc)
+  printf "%s\\n" "$distance"
 }
 
 # Determines what tick we should print for this number and prints it.
@@ -95,19 +95,19 @@ print_tick()
   do
     tick=${ticks[$i]}
     number=$1
-    less_than=$(echo "$i * $tier + sort_min + $tier" | bc)
-    greater_than=$(echo "($i - 1) * $tier + sort_min + $tier" | bc)
-    result=$(echo "$number <= $less_than && $number >= $greater_than" | bc)
+    less_than=$(printf "%s\\n" "$i * $tier + sort_min + $tier" | bc)
+    greater_than=$(printf "%s\\n" "($i - 1) * $tier + sort_min + $tier" | bc)
+    result=$(printf "%s\\n" "$number <= $less_than && $number >= $greater_than" | bc)
 
     if [ $result -eq 1 ]
     then
-      echo "$tick"
+      printf "%s\\n" "$tick"
       return
     fi
   done
 
   last=${#ticks[@]}
-  echo ${ticks[$last-1]}
+  printf "%s\\n" "${ticks[$last-1]}"
 }
 
 # Iterate over all of our ticks and print them out.
@@ -117,15 +117,15 @@ print_ticks()
 {
   for number in ${numbers[@]}
   do
-    echo -e $"$(print_tick $number)\c"
+    printf "%b\\n" $"$(print_tick $number)\c"
   done
-  echo ""
+  printf "\\n"
 }
 
 while getopts ":h" option; do
   case "$option" in
     h) help && exit ;;
-#    [?]) echo "$OPTARG";;
+#    [?]) printf "%s\\n" "$OPTARG";;
   esac
 done
 

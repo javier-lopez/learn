@@ -2,7 +2,7 @@
 #add it as a cronjob (every 3 min)
 #*/3 * * * * /path/to/this/script
 
-if ps aux | grep -qs [u]powerd; then
+if ps aux | grep [u]powerd >/dev/null; then
     exit
 fi
 
@@ -11,11 +11,11 @@ _notify()
     if [ X"$TERM" = X"linux" ] || [ X"$TERM" = X"dumb" ]; then
         DISPLAY=:0.0 notify-send -t 3000 "${@}"
     else
-        echo -n "${1}: "
+        printf "%s" "${1}: "
         shift
         while [ -n "$*" ]
         do
-            echo "${1}"
+            printf "%s\\n" "${1}"
             shift
         done
     fi
@@ -44,7 +44,7 @@ if [ X"$STAT" = X"Discharging" ]; then
             DISPLAY=:0.0 notify-send -u critical -t 3000 "[-] Critical"\
             "Battery under 5%, the system will hibernate in 30 seconds, unless you plugin the computer"
         else
-            echo "[-] Critical, battery under 5%, the system will hibernate in 30 seconds, unless you plugin the computer"
+            printf "%s\\n" "[-] Critical, battery under 5%, the system will hibernate in 30 seconds, unless you plugin the computer"
         fi
 
         for (( i = 0; i < 30; i++ )); do
@@ -81,5 +81,5 @@ if [ X"$STAT" = X"Discharging" ]; then
     fi
 fi
 
-echo "$WATCH_BATTERY_CURRENT" > /tmp/$(expr "$0" : '.*/\([^/]*\)')
+printf "%s\\n" "$WATCH_BATTERY_CURRENT" > /tmp/$(expr "$0" : '.*/\([^/]*\)')
 exit 0

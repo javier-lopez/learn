@@ -2,23 +2,22 @@
 CACHE=$HOME/.dmenu_cache
 IFS=:
 
-uptodate() {
-    test -f "$CACHE" &&
+uptodate()
+{
+    [ -f "$CACHE" ] &&
         for dir in $PATH
         do
-            test ! $dir -nt "$CACHE" || return 1
+            [ ! $dir -nt "$CACHE" ] || return 1
         done
 }
 
-if ! uptodate
-then
+if ! uptodate ; then
     for dir in $PATH
     do
         cd "$dir" &&
             for file in *
             do
-                #test -x "$file" && echo "$file"
-                test -e "$file" && echo "$file"
+                [ -e "$file" ] && printf "%s\\n" "$file"
             done
         done | sort | uniq > "$CACHE".$$ &&
             mv "$CACHE".$$ "$CACHE"

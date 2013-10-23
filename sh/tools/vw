@@ -7,14 +7,14 @@ if [ -f /usr/bin/sxiv ]; then
 elif [ -f /usr/bin/feh ]; then
     viewer=feh
 else
-    echo "[-] No viewer available, install sxiv or feh to run this script"
+    printf "%s\\n" "[-] No viewer available, install sxiv or feh to run this script"
     exit 255
 fi
 
 shopt -s nullglob
 
 if [ ! -f "$1" ]; then
-    echo "$0: first argument is not a file" >&2
+    printf "%s\\n" "$(expr "$0" : '.*/\([^/]*\)'): first argument is not a file" >&2
     exit 1
 fi
 
@@ -29,8 +29,8 @@ cd -- "$dir"
 for i in *; do
     [ -f "$i" ] || continue
     arr+=("$i")
-    [ X"$i" = X"$file" ] && c=$((${#arr[@]} - 1))
+    [ X"$i" = X"$file" ] && c=$(expr ${#arr[@]} - 1)
 done
 
-echo "[+] $viewer $arg"
+printf "%s\\n" "[+] $viewer $arg"
 exec $viewer -f "${arr[@]:c}" "${arr[@]:0:c}"

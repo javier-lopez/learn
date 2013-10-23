@@ -7,10 +7,9 @@ if [ $# -eq 0 ]      # check to see if arguements are given (color depth)
         else a=$1    # use given arguement
 fi
 
-if [ $a -ne 8 ] && [ $a -ne 16 ] && [ $a -ne 24 ]
-        then
-                echo "Invalid color depth. Use 8, 16, or 24."
-        exit 1
+if [ $a -ne 8 ] && [ $a -ne 16 ] && [ $a -ne 24 ]; then
+    printf "%s\\n" "Invalid color depth. Use 8, 16, or 24."
+    exit 1
 fi
 
 for display in 0 1 2 3 4 5
@@ -18,9 +17,9 @@ do   # checks for open display, starts X on next available
     if [ ! -f "/tmp/.X$display-lock" ]
     then
         exec startx -- :$display #-depth $a
-        exit0
+        exit 0
     fi
 done
 
-echo "No displays available."
+printf "%s\\n" "No displays available."
 exit 1

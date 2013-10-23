@@ -6,11 +6,11 @@ _notify ()
     if [ X"$TERM" = X"linux" ] || [ X"$TERM" = X"dumb" ]; then
         notify-send -t 3000 "${@}"
     else
-        echo -n "${1}: "
+        printf "%s" "${1}: "
         shift
         while [ -n "$*" ]
         do
-            echo "${1}"
+            printf "%s\\n" "${1}"
             shift
         done
     fi
@@ -21,8 +21,8 @@ if [ ! -e /usr/bin/expect ]; then
     exit 1
 fi
 
-echo "Resetting router..."
-echo "[+] old ip      -> `curl -s ifconfig.me`"
+printf "%s\\n" "Resetting router..."
+printf "%s\\n" "[+] old ip      -> `curl -s ifconfig.me`"
 thompson.expect > /dev/null
 sleep 1
-echo "[+] current ip  -> `curl -s ifconfig.me`"
+printf "%s\\n" "[+] current ip  -> `curl -s ifconfig.me`"

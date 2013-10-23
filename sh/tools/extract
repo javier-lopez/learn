@@ -3,8 +3,8 @@
 
 _usage()
 {
-    echo "Usage: `expr "$0" : '.*/\([^/]*\)'` [-s] FILES ..."
-    echo "           -s       quiet mode"
+    printf "%s\\n" "Usage: `expr "$0" : '.*/\([^/]*\)'` [-s] FILES ..."
+    printf "%s\\n" "           -s       quiet mode"
     exit 0
 }
 
@@ -16,7 +16,7 @@ _exec()
     if [ X"$status" != X"0" ]; then
         exit $status
     fi
-    echo "[+] $@"
+    printf "%s\\n" "[+] $@"
     "$@"
 }
 
@@ -67,7 +67,7 @@ _extract()
                         _exec 7z x "$FILE"
                         ;;
                     *)
-                        echo "'$FILE' is not a valid compressed file"
+                        printf "%s\\n" "'$FILE' is not a valid compressed file"
                         ;;
                 esac
             else
@@ -116,7 +116,7 @@ _extract()
                         _exec 7z x "$FILE"
                         ;;
                     *)
-                        echo "'$FILE' is not a valid compressed file"
+                        printf "%s\\n" "'$FILE' is not a valid compressed file"
                         ;;
                 esac
             else
@@ -134,11 +134,11 @@ while getopts ":s:" option; do
           exit 0
           ;;
         :)
-          echo "Option -$OPTARG requires an argument"
+          printf "%s\\n" "Option -$OPTARG requires an argument"
           _usage
           ;;
         \?)
-          echo "Invalid option: -$OPTARG"
+          printf "%s\\n" "Invalid option: -$OPTARG"
           _usage
           ;;
     esac

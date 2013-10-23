@@ -2,16 +2,16 @@
 #translate strings
 
 phrase="$@"
-#echo $PHRASE
+#printf "%s\\n" "$PHRASE"
 
 _usage()
 {
-    echo "Usage: `expr "$0" : '.*/\([^/]*\)'` [-s|-e] phrase"
-    echo
-    echo "          -s     Spanish-English (default)"
-    echo "          -o     Spanish-Portuguese"
-    echo "          -e     English-Spanish"
-    echo "          -p     Portugese-Spanish"
+    printf "%s\\n" "Usage: `expr "$0" : '.*/\([^/]*\)'` [-s|-e] phrase"
+    printf "\\n"
+    printf "%s\\n" "          -s     Spanish-English (default)"
+    printf "%s\\n" "          -o     Spanish-Portuguese"
+    printf "%s\\n" "          -e     English-Spanish"
+    printf "%s\\n" "          -p     Portugese-Spanish"
     exit 1
 }
 
@@ -40,11 +40,11 @@ while getopts ":s:o:e:p:" option; do
           phrase=$OPTARG
           ;;
         :)
-          echo "Option -$OPTARG requires an argument"
+          printf "%s\\n" "Option -$OPTARG requires an argument"
           _usage
           ;;
         \?)
-          echo "Invalid option: -$OPTARG"
+          printf "%s\\n" "Invalid option: -$OPTARG"
           _usage
           ;;
     esac
@@ -61,5 +61,5 @@ shift;shift;
 page=$(curl -s -i --user-agent "" -d "sl=$lng1" -d "tl=$lng2" --data-urlencode "text=${phrase}" http://translate.google.com)
 encoding=$(awk '/Content-Type: .* charset=/ {sub(/^.*charset=["'\'']?/,""); sub(/[ "'\''].*$/,""); print}' <<<"$page")
 result=$(iconv -f $encoding <<<"$page" |  awk 'BEGIN {RS="</div>"};/<span[^>]* id=["'\'']?result_box["'\'']?/' | html2text -utf8)
-echo "$result"
-#iconv -f $encoding <<<"$page" |  awk 'BEGIN {RS="</div>"};/<span[^>]* id=["'\'']?result_box["'\'']?/' | echo
+printf "%s\\n" "$result"
+#iconv -f $encoding <<<"$page" |  awk 'BEGIN {RS="</div>"};/<span[^>]* id=["'\'']?result_box["'\'']?/' | printf "\\n"

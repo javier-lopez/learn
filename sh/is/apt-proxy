@@ -5,14 +5,14 @@ updates="https://raw.github.com/chilicuil/learn/master/sh/is/apt-proxy"
 _header()
 {
     clear
-    echo -e "\033[1m-------------------------\033[7m Setup apt proxy \033[0m\033[1m----------------------------\033[0m"
-    echo -e "\033[1mUpdates:\033[0m $updates"
-    echo -e "\033[1m----------------------------------------------------------------------\033[0m"
+    printf "%b\\n" "\033[1m-------------------------\033[7m Setup apt proxy \033[0m\033[1m----------------------------\033[0m"
+    printf "%b\\n" "\033[1mUpdates:\033[0m $updates"
+    printf "%b\\n" "\033[1m----------------------------------------------------------------------\033[0m"
 }
 
 _existaptproxy()
 {
-    avahi-browse -a  -t | grep -qs apt-cacher-ng && return 0
+    avahi-browse -a  -t | grep apt-cacher-ng >/dev/null && return 0
     return 1
 }
 
@@ -30,7 +30,7 @@ _handscui()
     printf "%s" "      "
 
     while [ "`ps -p $pid -o comm=`" ]; do
-        echo -e -n "\b\b\b\b\b"
+        printf "%b" "\b\b\b\b\b"
         case $animation_state in
             1)
                 printf "%s" '\o@o\'
@@ -59,27 +59,27 @@ _getroot()
     local tmp_path="/tmp"; local sudotest; local insudoers;
 
     if [ ! "$LOGNAME" = root ]; then
-        echo "Detecting user $LOGNAME (non-root) ..."
-        echo "Checking if sudo is available ..."
-        sudotest=`type sudo &>/dev/null ; echo $?`
+        printf "%s\\n" "Detecting user $LOGNAME (non-root) ..."
+        printf "%s\\n" "Checking if sudo is available ..."
+        sudotest=`type sudo &>/dev/null ; printf "%s\\n" "$?"`
 
         if [ "$sudotest" = 0 ]; then
-            echo "    Requesting sudo's password, I'll be carefull I promise =)"
+            printf "%s\\n" "    Requesting sudo's password, I'll be carefull I promise =)"
             sudo -K
             if [ -e "$tmp_path/sudo.test" ]; then
                 rm -f "$tmp_path/sudo.test"
             fi
             while [ -z "$sudopwd" ]; do
-                echo -n "    - enter sudo-password: "
+                printf "%s" "    - enter sudo-password: "
                 stty -echo
                 read sudopwd
                 stty echo
 
                 # password check
-                echo "$sudopwd" | sudo -S touch "$tmp_path/sudo.test" > "$tmp_path/sudo.output" 2>&1
+                printf "%s\\n" "$sudopwd" | sudo -S touch "$tmp_path/sudo.test" > "$tmp_path/sudo.output" 2>&1
                 insudoers=$(grep -i "sudoers" "$tmp_path/sudo.output")
                 if [ -n "$insudoers" ]; then
-                    echo "$sudopwd" | sudo -S rm "$tmp_path/sudo.output" > /dev/null 2>&1
+                    printf "%s\\n" "$sudopwd" | sudo -S rm "$tmp_path/sudo.output" > /dev/null 2>&1
                     exit
                 fi
 
@@ -90,10 +90,10 @@ _getroot()
 
             sudocmd="/usr/bin/sudo -S"
 
-            echo "$sudopwd" | $sudocmd rm -f "$tmp_path/sudo.test" > /dev/null 2>&1
-            echo
+            printf "%s\\n" "$sudopwd" | $sudocmd rm -f "$tmp_path/sudo.test" > /dev/null 2>&1
+            printf "\\n"
         else
-            echo "You're not root and sudo isn't available. Please run this script as root!"
+            printf "%s\\n" "You're not root and sudo isn't available. Please run this script as root!"
             exit
         fi
     fi
@@ -103,8 +103,8 @@ _waitforsudo()
 {
     [ -z "$1" ] && return 1
 
-    echo -n "    $ sudo $@ ..."
-    echo "$sudopwd" | $sudocmd $@ > /dev/null 2>&1 &
+    printf "%s" "    $ sudo $@ ..."
+    printf "%s\\n" "$sudopwd" | $sudocmd $@ > /dev/null 2>&1 &
     sleep 1s
 
     if [ "$1" = DEBIAN_FRONTEND=noninteractive ]; then
@@ -117,23 +117,23 @@ _waitforsudo()
 _header
 _getroot
 
-echo "[+] setting up an apt-get proxy ..."
+printf "%s\\n" "[+] setting up an apt-get proxy ..."
 _waitforsudo apt-get update
 _waitforsudo apt-get install --no-install-recommends -y avahi-utils
 
 if _existaptproxy; then
     apt_proxy_server=$(avahi-browse -a -t -r -p | grep apt-cacher-ng | grep = | cut -d";" -f8)
-    echo "[+] exists an apt-get proxy in the network at $apt_proxy_server, using it ..."
+    printf "%s\\n" "[+] exists an apt-get proxy in the network at $apt_proxy_server, using it ..."
     _waitforsudo apt-get install --no-install-recommends -y squid-deb-proxy-client
 else
-    echo "[+] no apt-get proxy found, installing one locally ..."
+    printf "%s\\n" "[+] no apt-get proxy found, installing one locally ..."
     _waitforsudo apt-get install --no-install-recommends -y squid-deb-proxy-client apt-cacher-ng
     _waitforsudo wget http://javier.io/mirror/apt-cacher-ng.service -o /etc/avahi/services/apt-cacher-ng.service
     if [ -d "$home"/misc/ubuntu/proxy/apt-cacher-ng/ ]; then
-        echo "[+] exporting files ..."
+        printf "%s\\n" "[+] exporting files ..."
         _cmdsudo rm -rf /var/cache/apt-cacher-ng
         _cmdsudo ln -s $home/misc/ubuntu/proxy/apt-cacher-ng/ /var/cache/apt-cacher-ng
     fi
 fi
 
-echo "[+] done!, have fun!"
+printf "%s\\n" "[+] done!, have fun!"

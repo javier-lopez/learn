@@ -10,24 +10,24 @@ _die()
 {   #print a stacktrace with a msg, exits with 1
     local frame=0
     while caller $frame; do
-        $((frame=frame+1));
+        frame=$(expr $frame + 1);
     done
 
-    echo "$*"
+    printf "%s\\n" "$*"
     exit 1
 }
 
 _ismonitorattached()
 {
-    xrandr | grep "^VGA" | grep -qs " connected" && return 0
-    xrandr | grep "^HDMI" | grep -qs " connected" && return 0
+    xrandr | grep "^VGA" | grep " connected" >/dev/null && return 0
+    xrandr | grep "^HDMI" | grep " connected" >/dev/null && return 0
     return 1
 }
 
 _arch()
 {   #check for system arch, returns [64|32]
     local arch
-    [ -z "$MACHTYPE" ] && arch=$(uname -m) || arch=$(echo $MACHTYPE | cut -d- -f1)
+    [ -z "$MACHTYPE" ] && arch=$(uname -m) || arch=$(printf "%s\\n" "$MACHTYPE" | cut -d- -f1)
 
     case $arch in
         x86_64)
@@ -41,7 +41,7 @@ _arch()
             ;;
     esac
 
-    echo $arch
+    printf "%s\\n" "$arch"
 }
 
 
@@ -55,7 +55,7 @@ fi
 
 # Check that values for 'resumetime' are numbers
 case $resumetime in
-    ''|*[!0-9]*) echo Error, \"$resumetime\" is not a number;exit 1;;
+    ''|*[!0-9]*) printf "%s\\n" "Error, $resumetime is not a number";exit 1;;
 esac
 
 # Name of suspend script
@@ -79,43 +79,43 @@ warn=${bldred}*${txtrst}
 usage()
 {
     # Help message.
-    echo
-    echo "   $prog disables screen blanking and screensaver to allow viewing a video.  Running the program again will enable them.  If the 'resumetime' variable is set after that time $prog will resume normal powersaving values." | fmt -c -w 76
-    echo
+    printf "\\n"
+    printf "%s\\n" "   $prog disables screen blanking and screensaver to allow viewing a video.  Running the program again will enable them.  If the 'resumetime' variable is set after that time $prog will resume normal powersaving values." | fmt -c -w 76
+    printf "\\n"
 
     # Display current values of power management and movietime.
     suspinhtest=$(ps aux | grep -v grep | grep $suspinhscript)
-    suspinhval=$([ -n "$suspinhtest" ] && echo "Disabled" || echo "Desktop settings")
+    suspinhval=$([ -n "$suspinhtest" ] && printf "%s\\n" "Disabled" || printf "%s\\n" "Desktop settings")
 
     # DPMS disabled information
-    echo "   ${txtbld}Current settings ${txtrst}(in minutes, 0 = disabled):"
+    printf "%s\\n" "   ${txtbld}Current settings ${txtrst}(in minutes, 0 = disabled):"
     if [ X"$dispdpms" = X"Disabled" ]; then
-      echo "   DPMS:         $dispdpms"
-      echo "   Suspend:      $suspinhval"
+      printf "%s\\n" "   DPMS:         $dispdpms"
+      printf "%s\\n" "   Suspend:      $suspinhval"
     fi
 
     # DPMS enabled information
     if [ X"$dispdpms" = X"Enabled" ]; then
-      echo "   DPMS:         $dispdpms"
-      echo "   DPMS times:   Blank: ${dispblank}; Standby: ${dispstand}; Suspend: ${dispsusp}; Offtime: ${dispoff}"
-      echo "   Suspend:      $suspinhval"
+      printf "%s\\n" "   DPMS:         $dispdpms"
+      printf "%s\\n" "   DPMS times:   Blank: ${dispblank}; Standby: ${dispstand}; Suspend: ${dispsusp}; Offtime: ${dispoff}"
+      printf "%s\\n" "   Suspend:      $suspinhval"
     fi
-    echo
-    echo "   ${txtbld}$prog settings${txtrst}:"
-    echo "   Resume after: $resumetimehr hours"
-    echo
+    printf "\\n"
+    printf "%s\\n" "   ${txtbld}$prog settings${txtrst}:"
+    printf "%s\\n" "   Resume after: $resumetimehr hours"
+    printf "\\n"
     exit 0
 }
 
 # Check that Xorg server is running
-if [[ -z $(ps aux | grep /usr/bin/X) ]]; then
-  echo "$warn The Xorg server is not running."
+if [ -z "$(ps aux | grep /usr/bin/X)" ]; then
+  printf "%s\\n" "$warn The Xorg server is not running."
   exit
 fi
 
 # Check if user is regular user
 if [ X"$(whoami)" = X"root" ]; then
-  echo "$warn You are the root user, must be a regular user."
+  printf "%s\\n" "$warn You are the root user, must be a regular user."
   exit
 fi
 
@@ -127,7 +127,7 @@ dispoff=$(xset -q | grep "^  Standby: " | awk '{ printf $6/60 }')
 dispblank=$(xset -q | grep "^  timeout:  " | awk '{ printf $2/60 }')
 
 # Resume time in hours
-resumetimehr=$(echo "scale=1;${resumetime}/60" | bc)
+resumetimehr=$(printf "%s\\n" "scale=1;${resumetime}/60" | bc)
 
 # Display help
 case $1 in
@@ -137,7 +137,7 @@ esac
 
 # Suspend inhibit script (must be run as seperate process)
 suspinhibit () {
-    echo '#!/bin/bash
+    printf "%s\\n" '#!/bin/bash
     for time in $(seq 1 '$resumetime'); do
     # Simulate user activity every minute
     xdotool keydown Shift_L keyup Shift_L
@@ -161,12 +161,12 @@ if [ X"$dispdpms" = X"Enabled" ] && [ -z "$suspinhtest" ]; then
       if [ -f /usr/local/bin/lights/$(_arch)/lights ]; then
           /usr/local/bin/lights/$(_arch)/lights > /dev/null 2>&1 &
       else
-          echo "To enjoy fully the movietime experience install: /usr/local/bin/lights/"$_arch"/lights"
-          echo "  https://github.com/chilicuil/learn/tree/master/java"
+          printf "%s\\n" "To enjoy fully the movietime experience install: /usr/local/bin/lights/"$_arch"/lights"
+          printf "%s\\n" "  https://github.com/chilicuil/learn/tree/master/java"
       fi
   fi
 
-  echo "[+] $prog started"
+  printf "%s\\n" "[+] $prog started"
 else
   # Enable blanking, screen power saving
   xset s on; xset +dpms
@@ -174,10 +174,10 @@ else
   if [ -n $suspinhtest ]; then
 
     kill -s 9 $(pgrep movietime-susp) &> /dev/null
-    ps aux | grep -qs [l]ights.jar
+    ps aux | grep [l]ights.jar >/dev/null
     if [ "$?" -eq 0 ]; then
         kill -s 9 $(ps aux | grep [l]ights.jar | awk '{print $2}')
     fi
-    echo "[-] $prog stopped"
+    printf "%s\\n" "[-] $prog stopped"
   fi
 fi

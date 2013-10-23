@@ -23,9 +23,9 @@ YELLOW="$(printf '\E[0;33m')"
 
 _usage()
 {
-    echo "Usage: `expr "$0" : '.*/\([^/]*\)'` [-c] pattern"
-    echo
-    echo "          -c     Colorize the output"
+    printf "%s\\n" "Usage: `expr "$0" : '.*/\([^/]*\)'` [-c] pattern"
+    printf "\\n"
+    printf "%s\\n" "          -c     Colorize the output"
     exit 0
 }
 
@@ -36,21 +36,21 @@ while getopts ":c:" option; do
         c)
           CFLAG=yes PATTERN=$OPTARG ;;
         :)
-          echo "Option -$OPTARG requires an argument"
+          printf "%s\\n" "Option -$OPTARG requires an argument"
           _usage
           ;;
         \?)
-          echo "Invalid option: -$OPTARG"
+          printf "%s\\n" "Invalid option: -$OPTARG"
           _usage
           ;;
     esac
 done
 
 if [ -z "$CFLAG" ]; then
-    curl -s "http://www.commandlinefu.com/commands/matching/$PATTERN/`echo -n $PATTERN |  base64`/plaintext/sort-by-votes" |\
+    curl -s "http://www.commandlinefu.com/commands/matching/$PATTERN/`printf "%s" "$PATTERN" |  base64`/plaintext/sort-by-votes" |\
     grep --invert-match "commandlinefu.com by David Winterbottom" #I wanna keep the output as clean as possible
 else
-    curl -s "http://www.commandlinefu.com/commands/matching/$PATTERN/`echo -n $PATTERN |  base64`/plaintext/sort-by-votes" |\
+    curl -s "http://www.commandlinefu.com/commands/matching/$PATTERN/`printf "%s" "$PATTERN" |  base64`/plaintext/sort-by-votes" |\
     grep --invert-match "commandlinefu.com by David Winterbottom" | sed -e "
             s:^#.*:$PURPLE&$DEFAULT:g" -e "
             s:[^#].*:$LIGHT_GREEN&$DEFAULT:g" -e "

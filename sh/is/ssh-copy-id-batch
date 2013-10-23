@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 
-echo "=================================="
-echo "[+] Copying into the 1st datacenter"
-echo "=================================="
+printf "%s\\n" "=================================="
+printf "%s\\n" "[+] Copying into the 1st datacenter"
+printf "%s\\n" "=================================="
 while read ip
 do
     ssh-copy-id -i $1 $ip
 done < DC1-ips.txt
 
-echo "=================================="
-echo "[+] Copying into the 2nd datacenter"
-echo "=================================="
+printf "%s\\n" "=================================="
+printf "%s\\n" "[+] Copying into the 2nd datacenter"
+printf "%s\\n" "=================================="
 while read ip
 do
     ssh-copy-id -i $1 $ip

@@ -9,11 +9,11 @@ _basename()
 
 _usage()
 {
-    echo "Usage: $(_basename $0) [-v 0-2048][-s soundtrack.mp3][-k] screencast.mkv" >&2
-    echo >&2
-    echo "          -v     Change the volume from the screencast [0-2048] (ffmpeg -vol)" >&2
-    echo "          -s     Add soundtrack" >&2
-    echo "          -k     Keep tmp files" >&2
+    printf "%s\\n" "Usage: $(_basename $0) [-v 0-2048][-s soundtrack.mp3][-k] screencast.mkv" >&2
+    printf "\\n" >&2
+    printf "%s\\n" "          -v     Change the volume from the screencast [0-2048] (ffmpeg -vol)" >&2
+    printf "%s\\n" "          -s     Add soundtrack" >&2
+    printf "%s\\n" "          -k     Keep tmp files" >&2
     exit 1
 }
 
@@ -26,8 +26,8 @@ _notify()
     if [ X"$TERM" = X"linux" ]; then
         notify-send -t 3000 "${@}"
     else
-        echo "${@}"
-        echo
+        printf "%s\\n" "${@}"
+        printf "\\n"
     fi
 }
 
@@ -55,11 +55,11 @@ while getopts ":v:s:k" option; do
           KFLAG=yes
           ;;
         :)
-          echo "Option -$OPTARG requires an argument"
+          printf "%s\\n" "Option -$OPTARG requires an argument"
           _usage
           ;;
         \?)
-          echo "Invalid option: -$OPTARG"
+          printf "%s\\n" "Invalid option: -$OPTARG"
           _usage
           ;;
     esac

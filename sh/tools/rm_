@@ -20,18 +20,18 @@ fi
 
 _usage()
 {
-    echo -e "Usage: "$0" [OPTION]... FILE..."
-    echo -e "Wrapper for the \`rm' command, compatible with nautilus|pcmanfm file managers\n"
-    echo -e "  -l [PATTERN]   list archived files, use -ll and -lll to increase verbosity"
-    echo -e "  -c [PATTERN]   remove permanently archived files"
-    echo -e "  -u [PATTERN]   recover archived files"
-    echo -e "  -y             say yes to all questions"
-    echo -e "  -f             remove instead of archive files \`rm' is executed directly"
-    echo -e "  -h             shows this message, use --help to obtain \`rm' help"
-    echo -e "\n"$0" deletes directories and files with no distintion therefore no -r option is needed\n"
+    printf "%b\\n" "Usage: $(expr "$0" : '.*/\([^/]*\)') [OPTION]... FILE..."
+    printf "%b\\n" "Wrapper for the \`rm' command, compatible with nautilus|pcmanfm file managers\n"
+    printf "%b\\n" "  -l [PATTERN]   list archived files, use -ll and -lll to increase verbosity"
+    printf "%b\\n" "  -c [PATTERN]   remove permanently archived files"
+    printf "%b\\n" "  -u [PATTERN]   recover archived files"
+    printf "%b\\n" "  -y             say yes to all questions"
+    printf "%b\\n" "  -f             remove instead of archive files \`rm' is executed directly"
+    printf "%b\\n" "  -h             shows this message, use --help to obtain \`rm' help"
+    printf "%b\\n" "\n$(expr "$0" : '.*/\([^/]*\)') deletes directories and files with no distintion therefore no -r option is needed\n"
 
-    echo -e "Last version is always available in: <https://github.com/chilicuil/learn/tree/master/sh/rm_>"
-    echo -e "Report bugs to chilicuil@gmail.com"
+    printf "%b\\n" "Last version is always available in: <https://github.com/chilicuil/learn/tree/master/sh/rm_>"
+    printf "%b\\n" "Report bugs to m@javier.io"
 }
 
 #http://www.makkintosshu.com/journal/a-realpath-implementation-in-bash
@@ -71,7 +71,7 @@ _realpath()
         abs_path="${abs_path}/${file_basename}"
 
         # output the absolute path
-        echo "$abs_path"
+        printf "%s\\n" "$abs_path"
     fi
 
     $success
@@ -82,7 +82,7 @@ _dirname()
 {
     local dir="${1%${1##*/}}"
     [ X"${dir:=./}" != X"/" ] && dir="${dir%?}"
-    echo "$dir"
+    printf "%s\\n" "$dir"
 }
 
 _list()
@@ -90,7 +90,7 @@ _list()
     files_in_trash=("$trash_dir"/info/*.trashinfo)
 
     if [ ! -e "${files_in_trash[0]}" ] ; then
-        echo "$(expr "$0" : '.*/\([^/]*\)'): Nothing to list" >&2 ; exit 1
+        printf "%s\\n" "$(expr "$0" : '.*/\([^/]*\)'): Nothing to list" >&2 ; exit 1
     fi
 
     OLDIFS="$IFS"; IFS=$'\n' #fix case where files have spaces
@@ -98,11 +98,11 @@ _list()
         | sed -e 's:^:|:g' -e 's:\.trashinfo.*=:|:g' | tr -d '\n'| sed -e 's:--:\n:g'); do
 
     IFS="$OLDIFS"
-    datetime=$(echo "$data_in_trashinfo" | cut -d\| -f5)
-    general_date=$(echo "$datetime" | cut -dT -f1)
-    detail_date=$(echo "$datetime" | cut -dT -f2)
-    name=$(echo "$data_in_trashinfo" | cut -d\| -f3)
-    real_file=$(echo "$data_in_trashinfo" | cut -d\| -f2 | sed -e 's:\/info\/:\/files\/:g')
+    datetime=$(printf "%s\\n" "$data_in_trashinfo" | cut -d\| -f5)
+    general_date=$(printf "%s\\n" "$datetime" | cut -dT -f1)
+    detail_date=$(printf "%s\\n" "$datetime" | cut -dT -f2)
+    name=$(printf "%s\\n" "$data_in_trashinfo" | cut -d\| -f3)
+    real_file=$(printf "%s\\n" "$data_in_trashinfo" | cut -d\| -f2 | sed -e 's:\/info\/:\/files\/:g')
     if [ -e "$real_file" ]; then
         size=$(du -sh "$real_file" | awk '{print $1}')
     else
@@ -112,19 +112,19 @@ _list()
     if [ -d "$real_file" ] ; then
         if [ "$verboselist" -gt 1 ]; then
             some="$(ls "$real_file" | wc -l | sed 's/[^[:digit:]]//g')"
-            echo -e "$some\t$size\t$general_date $detail_date $name/"
+            printf "%b\\n" "$some\t$size\t$general_date $detail_date $name/"
             if [ "$verboselist" -gt 2 ]; then
                 find "$real_file" | sed -e "s:$trash_dir/files::g" | sed -e 's:^:\t\t|_ ..:g'
             fi
         else
-            echo "$name/"
+            printf "%s\\n" "$name/"
         fi
     else
         if [ "$verboselist" -gt 1 ]; then
             some=1
-            echo -e "$some\t$size\t$general_date $detail_date $name"
+            printf "%b\\n" "$some\t$size\t$general_date $detail_date $name"
         else
-            echo "$name"
+            printf "%s\\n" "$name"
         fi
     fi
 done
@@ -151,13 +151,13 @@ _archive()
                 archive="$trash_dir/files/$(basename "$file")".$num
                 trashinfo="$trash_dir/info/$(basename "$file").$num.trashinfo"
                 #num+=1
-                num=$(($num+ 1))
+                num=$(expr $num + 1)
             done
 
             #put $file & $trashinfo vars between "" to capture spaces
-            echo "[Trash Info]"                         >  "$trashinfo"
-            echo "Path=$(_realpath "$file")"             >> "$trashinfo"
-            echo "DeletionDate=$(date +%Y-%m-%dT%T)"    >> "$trashinfo"
+            printf "%s\\n" "[Trash Info]"                         >  "$trashinfo"
+            printf "%s\\n" "Path=$(_realpath "$file")"             >> "$trashinfo"
+            printf "%s\\n" "DeletionDate=$(date +%Y-%m-%dT%T)"    >> "$trashinfo"
 
             mv "$file" "$archive"
         else
@@ -173,7 +173,7 @@ _recover()
     _list "$1"
 
     if [ -z "$yflag" ]; then
-        echo -n "Recover this items from trash? (Y/n) "
+        printf "%s" "Recover this items from trash? (Y/n) "
         answer=y
         read answer
     else
@@ -181,25 +181,25 @@ _recover()
     fi
 
     if [ ! X"$answer" = X"y" ]; then
-        echo "Nothing done" && exit 0
+        printf "%s\\n" "Nothing done" && exit 0
     else
         OLDIFS="$IFS"; IFS=$'\n' #fix case where files have spaces
         for data_in_trashinfo in $(find "$trash_dir"/info -name "*.trashinfo" -print0 | sort -z | xargs -0 grep -A 1 -Hri "path.*$1" \
             | sed -e 's:^:|:g' -e 's:\.trashinfo.*=:|:g' | tr -d '\n'| sed -e 's:--:\n:g'); do
         IFS="$OLDIFS"
 
-        datetime=$(echo "$data_in_trashinfo" | cut -d\| -f5)
-        general_date=$(echo "$datetime" | cut -dT -f1)
-        detail_date=$(echo "$datetime" | cut -dT -f2)
+        datetime=$(printf "%s\\n" "$data_in_trashinfo" | cut -d\| -f5)
+        general_date=$(printf "%s\\n" "$datetime" | cut -dT -f1)
+        detail_date=$(printf "%s\\n" "$datetime" | cut -dT -f2)
 
-        real_file=$(echo "$data_in_trashinfo" | cut -d\| -f2)
+        real_file=$(printf "%s\\n" "$data_in_trashinfo" | cut -d\| -f2)
         info_file="$trash_dir/info/$(basename "$real_file").trashinfo"
         file_file="$trash_dir/files/$(basename "$real_file")"
 
-        name=$(echo "$data_in_trashinfo" | cut -d\| -f3)
+        name=$(printf "%s\\n" "$data_in_trashinfo" | cut -d\| -f3)
 
         if [ ! -d $(_dirname "$name") ]; then
-            echo "mkdir -p $(_dirname $name)"
+            printf "%s\\n" "mkdir -p $(_dirname $name)"
         fi
 
         if [ -e "$name" ]; then
@@ -219,7 +219,7 @@ _clean()
     _list "$1"
 
     if [ -z "$yflag" ]; then
-        echo -n "Empty this items from trash? (Y/n) "
+        printf "%s" "Empty this items from trash? (Y/n) "
         answer=y
         read answer
     else
@@ -227,21 +227,21 @@ _clean()
     fi
 
     if [ ! X"$answer" = X"y" ]; then
-        echo "Nothing done" && exit 0
+        printf "%s\\n" "Nothing done" && exit 0
     else
         OLDIFS="$IFS"; IFS=$'\n' #fix case where files have spaces
         for data_in_trashinfo in $(find "$trash_dir"/info -name "*.trashinfo" -print0 | sort -z | xargs -0 grep -A 1 -Hri "path.*$1" \
             | sed -e 's:^:|:g' -e 's:\.trashinfo.*=:|:g' | tr -d '\n'| sed -e 's:--:\n:g'); do
         IFS="$OLDIFS"
 
-        real_file=$(echo "$data_in_trashinfo" | cut -d\| -f2)
+        real_file=$(printf "%s\\n" "$data_in_trashinfo" | cut -d\| -f2)
         info_file="$trash_dir/info/$(basename "$real_file").trashinfo"
         file_file="$trash_dir/files/$(basename "$real_file")"
 
         rm -rf "$info_file"
         rm -rf "$file_file"
-        #echo "rm: $info_file"
-        #echo "rm: $file_file"
+        #printf "%s\\n" "rm: $info_file"
+        #printf "%s\\n" "rm: $file_file"
     done
 fi
 }
@@ -251,17 +251,17 @@ while getopts ":fluhcry" options
 do
     case $options in
         f) exec rm -r "$@"                       ;;
-        l) verboselist=$(($verboselist+1))       ;;  # list verbose level 1-3
-        u) shift $(($OPTIND - 1)); _recover "$@" ;;  # remove the -u
+        l) verboselist=$(expr $verboselist + 1)       ;;  # list verbose level 1-3
+        u) shift $(expr $OPTIND - 1); _recover "$@" ;;  # remove the -u
         h) _usage                                ;;
-        c) shift $(($OPTIND - 1)); _clean "$@"   ;;  # remove the -c
+        c) shift $(expr $OPTIND - 1); _clean "$@"   ;;  # remove the -c
         r)                                       ;;
         y) yflag=yes                             ;;
         *) exec rm "$@"                          ;;  # send the rest to rm
     esac
 done
 
-shift $(($OPTIND - 1))
+shift $(expr $OPTIND - 1)
 
 if [ $verboselist -gt 0 ]; then
     _list "$@"
@@ -271,7 +271,7 @@ fi
 # Make sure that the $trash_dir exists
 if [ ! -d "$trash_dir" ] ; then
     if [ ! -w "$HOME" ] ; then
-        echo "$0 failed: can't create $trash_dir in $HOME" >&2
+        printf "%s\\n" "$(expr "$0" : '.*/\([^/]*\)') failed: can't create $trash_dir in $HOME" >&2
         exit 1
     fi
     mkdir -p "$trash_dir"/{expunged,files,info}

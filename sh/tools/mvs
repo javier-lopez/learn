@@ -12,7 +12,7 @@
 # $ virn a*
 
 die () {
-    echo "$@" >&2
+    printf "%s\\n" "$@" >&2
     exit -1
 }
 
@@ -25,7 +25,7 @@ ARGV=("$@")
 
 # Create targets file.
 TARGETS="/tmp/virn-$RANDOM"
-for FILE in "$@"; do echo "$FILE" >> $TARGETS; done
+for FILE in "$@"; do printf "%s\\n" "$FILE" >> $TARGETS; done
 
 # Start the $EDITOR so we can edit our file names.
 if $EDITOR $TARGETS; then

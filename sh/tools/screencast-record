@@ -42,11 +42,11 @@ common="$hd720_followscreen -r 24  -i :0.0 -vcodec flashsv -y"
 
 _usage()
 {
-    echo "Usage: `expr "$0" : '.*/\([^/]*\)'` [start|stop] [FILE.mkv]"
-    echo "           start      start recording"
-    echo "           stop       stop recording"
-    echo
-    echo "If not file is specified it'll generate a random name"
+    printf "%s\\n" "Usage: `expr "$0" : '.*/\([^/]*\)'` [start|stop] [FILE.mkv]"
+    printf "%s\\n" "           start      start recording"
+    printf "%s\\n" "           stop       stop recording"
+    printf "\\n"
+    printf "%s\\n" "If not file is specified it'll generate a random name"
     exit 0
 }
 
@@ -56,7 +56,7 @@ _exec()
     if [ X"$status" != X"0" ]; then
         exit $status
     fi
-    echo "[+] $@"
+    printf "%s\\n" "[+] $@"
     $@
 }
 
@@ -65,11 +65,11 @@ _notify ()
     if [ X"$TERM" = X"linux" ] || [ X"$TERM" = X"dumb" ]; then
         notify-send -t 3000 "${@}"
     else
-        echo -n "${1}: "
+        printf "%s" "${1}: "
         shift
         while [ -n "$*" ]
         do
-            echo "${1}"
+            printf "%s\\n" "${1}"
             shift
         done
     fi
@@ -81,7 +81,7 @@ _countdown ()
     #https://bugs.launchpad.net/ubuntu/+source/notify-osd/+bug/390508
     #notify-send -t 3000 "${@}" - using xmessage instead
     if [ X"$TERM" = X"linux" ] || [ X"$TERM" = X"dumb" ]; then
-        if [[ -d $HOME/data/musnd ]]; then
+        if [ -d $HOME/data/musnd ]; then
             mplayer $HOME/data/musnd/Sounds/num$1.ogg >> /dev/null 2>&1
             sleep 1
             for ((i=$1-1; i>=1; i--)); do
@@ -96,11 +96,11 @@ _countdown ()
                 sleep 1
             done
         fi
-        if [[ ! -z $(pidof notify-osd) ]]; then
+        if [ ! -z $(pidof notify-osd) ]; then
             killall notify-osd
         fi
     else
-        echo -n "    $1"
+        printf "%s" "    $1"
         sleep 1
         for ((i=$1-1; i>=1; i--)); do
             printf "\b%d" $i
@@ -110,19 +110,19 @@ _countdown ()
     fi
 }
 
-if [[ ! -e /usr/bin/ffmpeg ]]; then
+if [ ! -e /usr/bin/ffmpeg ]; then
     _notify "You need install ffmpeg before using `expr "$0" : '.*/\([^/]*\)'`" "In Ubuntu/Debian use: \$ sudo apt-get install ffmpeg"
     exit 1
 fi
 
-if [[ $(echo $common | grep -i "hd720") ]]; then
-    if [[ $height -lt 720 ]]; then
+if [ "$(printf "%s\\n" "$common" | grep -i "hd720")" ]; then
+    if [ $height -lt 720 ]; then
 	_notify "[-] hd720 is not supported in your hw" "max width=$width / max height=$height"
 	exit 1
     fi
 fi
 
-if [ -z $(pidof pulseaudio) ]; then
+if [ -z "$(pidof pulseaudio)" ]; then
     mic="-f alsa -i hw:0,0 -acodec pcm_s16le"
 else
     mic="-f alsa -i pulse -acodec pcm_s16le"
@@ -138,7 +138,7 @@ elif [ ! X"${keyword}" = X"start" ]; then
     _usage
 fi
 
-if [[ -z "$file" ]]; then
+if [ -z "$file" ]; then
     file=$HOME/`</dev/urandom tr -dc A-Za-z0-9 | head -c 8`.mkv
 fi
 

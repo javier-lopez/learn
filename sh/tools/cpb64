@@ -4,7 +4,7 @@
 [ "$#" -lt "1" ] && exit
 
 for file in $@; do
-    [ ! -r "$file" ] && { echo "$(expr "$0" : '.*/\([^/]*\)'): "$file" does not exist or is not readable"; exit 1; }
+    [ ! -r "$file" ] && { printf "%s\\n" "$(expr "$0" : '.*/\([^/]*\)'): "$file" does not exist or is not readable"; exit 1; }
 done
 
 str=$(tar cz $@ | openssl enc -base64; exit $PIPESTATUS) || return $?

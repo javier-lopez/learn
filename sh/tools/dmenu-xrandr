@@ -36,7 +36,7 @@ _barstatus.on.lvds()
 }
 
 DMENU='dmenu -p > -i -fn Bahamas-10 -nb #000000 -nf #FFFFFF -sb #000000 -sf #999999'
-choice=$(echo -e "above.hdmi_1920x1080\nabove.vga_1600x1200\noff.hdmi\noff.vga\nsame_as.hdmi\nsame_as.vga" | $DMENU)
+choice=$(printf "%b\\n" "above.hdmi_1920x1080\nabove.vga_1600x1200\noff.hdmi\noff.vga\nsame_as.hdmi\nsame_as.vga" | $DMENU)
 case "$choice" in
     above.hdmi_1920x1080) xrandr --output HDMI1 --mode 1920x1080 --above LVDS1; _barstatus.on.hdmi
         ;;

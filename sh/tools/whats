@@ -6,7 +6,7 @@ word="$1"
 
 _usage()
 {
-    echo "Usage: `expr "$0" : '.*/\([^/]*\)'` word" >&2
+    printf "%s\\n" "Usage: `expr "$0" : '.*/\([^/]*\)'` word" >&2
     exit 0
 }
 
@@ -14,18 +14,18 @@ _usage()
 
 _whats()
 {
-    [ -z "$1" ] && (echo "$0: Missing argument"; exit 1)
+    [ -z "$1" ] && (printf "%s\\n" "$0: Missing argument"; exit 1)
 
     [ -n "$2" ] || more_than_one=1
 
     for word
     do
         response=$(dig +short txt $word.wp.dg.cx)
-        echo "$response"
+        printf "%s\\n" "$response"
         if [ -z "$more_than_one" ]; then
-            echo
-            echo ":::::::::::::::::::::::::::::::::::::::::::::::::"
-            echo
+            printf "\\n"
+            printf "%s\\n" ":::::::::::::::::::::::::::::::::::::::::::::::::"
+            printf "\\n"
         fi
     done
 }
