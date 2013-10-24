@@ -32,7 +32,7 @@ _cmd()
     [ -z "$1" ] && return 0
 
     printf "%s\\n" "    $ $@"
-    $@
+    eval "$@"
 
     status=$?
     [ X"$status" != X"0" ] && exit $status || return
@@ -43,7 +43,7 @@ _cmdsudo()
     [ -z "$1" ] && return 0
 
     printf "%s\\n" "    $ $@"
-    printf "%s\\n" "$sudopwd" | $sudocmd $@
+    printf "%s\\n" "$sudopwd" | $sudocmd eval "$@"
 
     status=$?
     [ X"$status" != X"0" ] && exit $status || return
@@ -165,7 +165,7 @@ _waitfor()
     [ -z "$1" ] && return 1
 
     printf "%s" "    $ $@ ..."
-    $@ > /dev/null 2>&1 &
+    eval "$@" > /dev/null 2>&1 &
     sleep 1s
 
     _handscui $(pidof $1)
@@ -176,7 +176,7 @@ _waitforsudo()
     [ -z "$1" ] && return 1
 
     printf "%s" "    $ sudo $@ ..."
-    printf "%s\\n" "$sudopwd" | $sudocmd $@ > /dev/null 2>&1 &
+    printf "%s\\n" "$sudopwd" | $sudocmd eval "$@" > /dev/null 2>&1 &
     sleep 1s
 
     _handscui $(pidof $1)
@@ -1686,7 +1686,7 @@ _elasticsearch()
     _waitfor wget -c http://github.com/elasticsearch/elasticsearch-servicewrapper/archive/master.zip
 
     printf "%s\\n" "[+] uncompresing files ... "
-    _waitfor tar -zxvf elasticsearch-$elasticsearch_version.tar.gz
+    _waitfor "zcat < elasticsearch-$elasticsearch_version.tar.gz | tar xvf -"
     _waitfor unzip master.zip
 
     printf "%s\\n" "[+] installing ... "
@@ -1724,7 +1724,7 @@ _redis()
     _waitfor wget -c http://redis.googlecode.com/files/redis-$redis_version.tar.gz
 
     printf "%s\\n" "[+] uncompresing files ... "
-    _waitfor tar -zxvf redis-$redis_version.tar.gz
+    _waitfor "zcat < redis-$redis_version.tar.gz | tar xvf -"
     _cmd rm redis-$redis_version.tar.gz
 
     printf "%s\\n" "[+] compiling redis ... "
@@ -1786,7 +1786,7 @@ _kibana()
     _waitfor wget -c https://github.com/elasticsearch/kibana/archive/master.tar.gz -O kibana.tar.gz
 
     printf "%s\\n" "[+] uncompresing files ... "
-    _waitfor tar -zxvf kibana.tar.gz
+    _waitfor "zcat < kibana.tar.gz | tar xvf -"
     _cmd rm kibana.tar.gz
 
     printf "%s\\n" "[+] installing ... "

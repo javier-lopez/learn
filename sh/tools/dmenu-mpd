@@ -1,10 +1,17 @@
-#!/usr/bin/env bash
-#a simple dmenu script for mpd
+#!/usr/bin/env sh
+#description: dmenu for mpd
 #requires a dmenu version with xft: https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
+#usage: dmenu-mpd, best suited if launched from a shortcut
+
+#example: dmenu-mpd
+#appears a gui menu appears asking for which song to play
 
 #-sf yellow
 DMENU='dmenu -p > -i -fn Bahamas-10 -nb #000000 -nf #ffffff -sb #000000 -sf #cfd000'
-song=$(sed -n "s@^ *\([0-9]\+\);$(mpc playlist| $DMENU ||printf "%s\\n" ";;;")@\1@p" < <(mpc playlist|nl -s ';'))
+#song=$(sed -n "s@^ *\([0-9]\+\);$(mpc playlist| $DMENU ||printf "%s\\n" ";;;")@\1@p" < <(mpc playlist|nl -s ';'))
+song=$(mkfifo fifo; mpc playlist|nl -s ';' > fifo & sed -n "s@^ *\([0-9]\+\);$(mpc playlist| $DMENU ||printf "%s\\n" ";;;")@\1@p" fifo)
+song=$(printf "%s\\n" "$song" | head -1)
+rm -rf fifo
 
 if [ -z "${song}" ]; then
     exit 0;

@@ -1,4 +1,9 @@
-#!/bin/sh
+#!/usr/bin/env sh
+#description: control several music apps, currently mplayer && mplayer
+#usage: music-control [pause|next|previous]
+
+#example: music-control next
+#no-output
 
 _usage()
 {

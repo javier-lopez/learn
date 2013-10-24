@@ -1,11 +1,15 @@
-#!/usr/bin/env bash
-#notifies when a command finish
+#!/usr/bin/env sh
+#description: notifies when a command has finish
+#usage: run command
+
+#example: run ping -c 3 google.com
+#ping output
 
 "$@"
 error=$?
 
 if [ $error -eq 0 ]; then
-    notify-send "`hostname -s` | terminated:" "$1 $2" -i finish -t 0
+    notify-send "`hostname -s` | terminated:" "$1" -i finish -t 0
 else
-    notify-send "`hostname -s` | aborted:" "$1 $2" -u critical -i undo -t 0
+    notify-send "`hostname -s` | error:" "$1" -u critical -i undo -t 0
 fi

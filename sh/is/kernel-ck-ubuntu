@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #http://viajemotu.wordpress.com/2012/08/13/kernel-ck-for-ubuntu-precise/
 #https://github.com/chilicuil/learn/blob/master/sh/kernel-ck-ubuntu
 
@@ -193,12 +193,12 @@ _getroot()
 
     local tmp_path="/tmp"; local sudotest; local insudoers;
 
-    if [ ! "$LOGNAME" = root ]; then
+    if [ ! X"$LOGNAME" = X"root" ]; then
         printf "%s\\n" "Detecting user $LOGNAME (non-root) ..."
         printf "%s\\n" "Checking if sudo is available ..."
-        sudotest=`type sudo &>/dev/null ; printf "%s\\n" "$?"`
+        sudotest=`type sudo >/dev/null 2>/dev/null; printf "%s\\n" "$?"`
 
-        if [ "$sudotest" = 0 ]; then
+        if [ X"$sudotest" = X"0" ]; then
             printf "%s\\n" "    Requesting sudo's password, I'll be carefull I promise =)"
             sudo -K
             if [ -e "$tmp_path/sudo.test" ]; then
@@ -254,8 +254,9 @@ _waitfor()
 {
     [ -z $1 ] && return 1
 
-    printf "%s" "    $ $@ ..."
-    $@ > /dev/null 2>&1 &
+    printf "%s " "    $ $@ ..."
+    printf "\\n"
+    eval "$@" > /dev/null 2>&1 &
     sleep 1s
 
     _handscui $(pidof $1)
@@ -304,7 +305,7 @@ _waitfor wget -N http://kernel.ubuntu.com/~kernel-ppa/mainline/v$patchkernel-sau
 printf "%b\\n" "\033[1m-----------------------------\033[7m Applying the patches \033[0m\033[1m------------------------------\033[0m"
 printf "%s\\n" "[+] uncompresing kernel to $tmp_path/linux-$kernel/ ..."
 if [ ! -d "/$tmp_path/linux-$kernel/" ]; then
-    _waitfor tar -jxpf $tmp_path/linux-$kernel.tar.bz2
+    _waitfor "bzcat < $tmp_path/linux-$kernel.tar.bz2 | tar xvf -"
 fi
 
 printf "%s\\n" "[+] uncompresing patches ..."
@@ -312,7 +313,7 @@ _waitfor bunzip2 patch-$patchkernel.bz2 patch-$patchck.bz2
 
 printf "%s\\n" "[+] moving to $tmp_path/linux-$patchkernel-$ckk"
 _waitfor rm -rf linux-$patchkernel-$ckk
-_waitfor cp -r "linux-$kernel" "linux-$patchkernel-$ckk"
+_waitfor cp -R "linux-$kernel" "linux-$patchkernel-$ckk"
 _cmd cd linux-$patchkernel-$ckk
 _cmd printf "\\n"
 
@@ -380,7 +381,7 @@ _cmd printf "\\n"
 
 printf "%b\\n" "\033[1m-------------------------------------\033[7m DONE \033[0m\033[1m----------------------------------\033[0m"
 printf "%s\\n" "[+] copying debs files ..."
-_cmd cp -v ../linux-*.deb "$curr_path"
+_cmd cp ../linux-*.deb "$curr_path"
 printf "%s\\n" "[+] you may want to install the generated packages and reboot your system, run: $ sudo dpkg -i linux-*.deb"
 printf "%s\\n" "[+] have fun ^_^!"
 

@@ -1,13 +1,10 @@
-#!/usr/bin/env bash
-#screenshot in 3.., 2.., 1...
+#!/usr/bin/env sh
+#description: takes screenshot in 3.., 2.., 1, and saves the image in $HOME with a random name
+#usage: screenshot
 
 _notify ()
 {
-    if [ X"$TERM" = X"linux" ]; then
-        notify-send -t 1000 "${@}"
-    else
-        printf "%s\\n" "${@}"
-    fi
+    [ X"$TERM" = X"linux" ] && notify-send -t 1000 "${@}" || printf "%s\\n" "${@}"
 }
 
 _exec()
@@ -17,7 +14,7 @@ _exec()
         exit $status
     fi
     printf "%s\\n" "[+] $@"
-    $@
+    eval "$@"
 }
 
 if [ -f /usr/bin/scrot ]; then
@@ -33,7 +30,7 @@ file=$HOME/`</dev/urandom tr -dc A-Za-z0-9 | head -c 8`.png
 
 _notify "[+] Screenshot" "in 3.., 2.., 1.., smile =)!"
 _exec sleep 3
-_exec killall notify-osd
+_exec "kill $(ps -aef | grep "notify-osd" | grep -v grep | awk '{print $2}') >/dev/null 2>/dev/null"
 sleep .5
 _exec $screenshot_bin $file
 _notify "[+] Done" "$file"

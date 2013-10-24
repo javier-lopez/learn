@@ -1,7 +1,9 @@
-#!/usr/bin/env bash
-#$ cat file_spanish | say
-#$ cat file_english | say -e
-#$ say -e "something"
+#!/usr/bin/env sh
+#description: say phrase
+#usage: say [OPTION] phrase
+
+#example: say -e "hello world
+#no-output, only audio
 
 [ -f /usr/bin/mplayer ] || { printf "%b\\n" "$(expr "$0" : '.*/\([^/]*\)'): You need vim & mplayer to run this script\n$ sudo apt-get install vim-nox mplayer"; exit 1; }
 [ -f /usr/bin/vim ] || { printf "%b\\n" "$(expr "$0" : '.*/\([^/]*\)'): You need vim to run this script\n$ sudo apt-get install vim-nox"; exit 1; }

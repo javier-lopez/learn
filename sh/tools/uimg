@@ -1,5 +1,9 @@
-#!/usr/bin/env bash
-#upload tmp imgs to http://imgur.com
+#!/usr/bin/env sh
+#description: uploads imgs to http://imgur.com
+#usage: uimg img.png
+
+#example: uimg img.png
+#http://i.imgur.com/image.png
 
 _usage()
 {
@@ -20,12 +24,12 @@ upload_img()
                 *.jpg|*.JPG|*.jpeg|*.png|*.PNG)
                     if [ -f /usr/bin/xclip ]; then
                         curl -s -F "image=@$img" -F "key=486690f872c678126a2c09a9e196ce1b" http://imgur.com/api/upload.xml \
-                            | grep -E -o "<original_image>(.)*</original_image>" | \
-                            grep -E -o "http://i.imgur.com/[^<]*" | tee /dev/fd/2 | xclip 
+                            | egrep -o "<original_image>(.)*</original_image>" | \
+                            egrep -o "http://i.imgur.com/[^<]*" | tee /dev/fd/2 | xclip 
                     else
                         curl -s -F "image=@$img" -F "key=486690f872c678126a2c09a9e196ce1b" http://imgur.com/api/upload.xml \
-                            | grep -E -o "<original_image>(.)*</original_image>" | \
-                            grep -E -o "http://i.imgur.com/[^<]*"
+                            | egrep -o "<original_image>(.)*</original_image>" | \
+                            egrep -o "http://i.imgur.com/[^<]*"
                     fi
                     ;;
                 *)

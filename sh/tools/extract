@@ -1,6 +1,13 @@
-#!/usr/bin/env bash
-#$ extract file.format #http://bashscripts.org/forum/viewtopic.php?f=7&t=367
+#!/usr/bin/env sh
+#description: decompress files
+#usage: extract file.format
 
+#example: extract files.tar.gz
+#file1
+#file2
+#...
+
+#http://bashscripts.org/forum/viewtopic.php?f=7&t=367
 _usage()
 {
     printf "%s\\n" "Usage: `expr "$0" : '.*/\([^/]*\)'` [-s] FILES ..."
@@ -20,15 +27,6 @@ _exec()
     printf "\\n"
     eval "$@"
 }
-#_exec()
-#{
-    #status=$?
-    #if [ X"$status" != X"0" ]; then
-        #exit $status
-    #fi
-    #printf "%s\\n" "[+] $@"
-    #"$@"
-#}
 
 _extract()
 {

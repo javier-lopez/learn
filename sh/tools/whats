@@ -1,6 +1,9 @@
-#!/bin/bash
-#define words using wikipedia over dns
-#https://dgl.cx/wikipedia-dns
+#!/usr/bin/env sh
+#description: define words using wikipedia over dns, https://dgl.cx/wikipedia-dns
+#usage: whats word
+
+#example: whats dns
+#Domain Name System, internet system used...
 
 word="$1"
 

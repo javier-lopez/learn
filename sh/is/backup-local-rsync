@@ -1,5 +1,4 @@
-#!/usr/bin/env bash
-#chilicuil <chilicuil@gmail.com> 2011
+#!/usr/bin/env sh
 #custom simple backup script, you DONT wanna USE THIS
 #TODO 06-05-2011 02:07 => diff rsync && touch sobre esos archivos en localfs para referencia
 

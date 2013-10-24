@@ -1,5 +1,11 @@
-#!/usr/bin/env bash
-#$ compress files file.format
+#!/usr/bin/env sh
+#description: compress files
+#usage: compress file[s] file.format
+
+#example: compress * files.tar.gz
+#file1
+#file2
+#...
 
 _basename()
 {
@@ -30,7 +36,7 @@ _exec()
 _compress()
 {
     for COMPRESS_FILE; do true; done
-    FILES="${@:1:$(expr $# - 1)}"
+    FILES="$(expr "$*" : '\(.*\) .*')" #all but last argument, http://docstore.mik.ua/orelly/unix3/upt/ch36_23.htm
     for FILE in $FILES; do
         [ ! -r "$FILE" ] && { printf "%s\\n" "$(_basename $0): "$FILE" does not exist or is not readable"; exit 1; }
     done

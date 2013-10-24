@@ -1,5 +1,9 @@
-#!/usr/bin/env bash
-#translate strings
+#!/usr/bin/env sh
+#description: translate string
+#usage: translate [OPTION] string
+
+#example: translate -s "hola mundo"
+#hello world
 
 phrase="$@"
 #printf "%s\\n" "$PHRASE"
@@ -50,16 +54,17 @@ while getopts ":s:o:e:p:" option; do
     esac
 done
 
-if [[ -z "$lng1" ]]; then
+if [ -z "$lng1" ]; then
     lng1="es";
     lng2="en";
 fi
 
-shift;shift;
+[ -n "$1" ] && shift
+[ -n "$2" ] && shift
 
 #update 14-12-2012 05:06: thanks to johnraff > http://crunchbang.org/forums/viewtopic.php?id=17034
 page=$(curl -s -i --user-agent "" -d "sl=$lng1" -d "tl=$lng2" --data-urlencode "text=${phrase}" http://translate.google.com)
-encoding=$(awk '/Content-Type: .* charset=/ {sub(/^.*charset=["'\'']?/,""); sub(/[ "'\''].*$/,""); print}' <<<"$page")
-result=$(iconv -f $encoding <<<"$page" |  awk 'BEGIN {RS="</div>"};/<span[^>]* id=["'\'']?result_box["'\'']?/' | html2text -utf8)
+encoding=$(printf "%s\\n" "$page" | awk '/Content-Type: .* charset=/ {sub(/^.*charset=["'\'']?/,""); sub(/[ "'\''].*$/,""); print}')
+result=$(printf "%s\\n" "$page" | iconv -f "$encoding" |  awk 'BEGIN {RS="</div>"};/<span[^>]* id=["'\'']?result_box["'\'']?/' | html2text -utf8)
 printf "%s\\n" "$result"
-#iconv -f $encoding <<<"$page" |  awk 'BEGIN {RS="</div>"};/<span[^>]* id=["'\'']?result_box["'\'']?/' | printf "\\n"
+#printf "%s\\n" "$page" | iconv -f $encoding |  awk 'BEGIN {RS="</div>"};/<span[^>]* id=["'\'']?result_box["'\'']?/' | printf "\\n"

@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 
 updates="https://raw.github.com/chilicuil/learn/master/sh/is/apt-proxy"
 
@@ -8,6 +8,15 @@ _header()
     printf "%b\\n" "\033[1m-------------------------\033[7m Setup apt proxy \033[0m\033[1m----------------------------\033[0m"
     printf "%b\\n" "\033[1mUpdates:\033[0m $updates"
     printf "%b\\n" "\033[1m----------------------------------------------------------------------\033[0m"
+}
+
+_whereis()
+{
+    [ -z "$1" ] && return 1
+    [ -n "$2" ] && return 1
+    if ! command -v "$1" 2>/dev/null; then
+        return 1
+    fi
 }
 
 _existaptproxy()
@@ -56,21 +65,21 @@ _handscui()
 
 _getroot()
 {   #get sudo's password, define $sudopasswd and $sudocmd
+
     local tmp_path="/tmp"; local sudotest; local insudoers;
 
-    if [ ! "$LOGNAME" = root ]; then
+    if [ ! X"$LOGNAME" = X"root" ]; then
         printf "%s\\n" "Detecting user $LOGNAME (non-root) ..."
         printf "%s\\n" "Checking if sudo is available ..."
-        sudotest=`type sudo &>/dev/null ; printf "%s\\n" "$?"`
+        sudotest=`type sudo >/dev/null 2>/dev/null; printf "%s\\n" "$?"`
 
-        if [ "$sudotest" = 0 ]; then
-            printf "%s\\n" "    Requesting sudo's password, I'll be carefull I promise =)"
+        if [ X"$sudotest" = X"0" ]; then
             sudo -K
             if [ -e "$tmp_path/sudo.test" ]; then
                 rm -f "$tmp_path/sudo.test"
             fi
             while [ -z "$sudopwd" ]; do
-                printf "%s" "    - enter sudo-password: "
+                printf "%s" "   - enter sudo-password: "
                 stty -echo
                 read sudopwd
                 stty echo
@@ -118,17 +127,20 @@ _header
 _getroot
 
 printf "%s\\n" "[+] setting up an apt-get proxy ..."
-_waitforsudo apt-get update
-_waitforsudo apt-get install --no-install-recommends -y avahi-utils
+
+if ! _whereis avahi-browse >/dev/null; then
+    _waitforsudo apt-get update
+    _waitforsudo apt-get install --no-install-recommends -y avahi-utils
+fi
 
 if _existaptproxy; then
     apt_proxy_server=$(avahi-browse -a -t -r -p | grep apt-cacher-ng | grep = | cut -d";" -f8)
     printf "%s\\n" "[+] exists an apt-get proxy in the network at $apt_proxy_server, using it ..."
-    _waitforsudo apt-get install --no-install-recommends -y squid-deb-proxy-client
+    [ ! -f /usr/share/squid-deb-proxy-client/apt-avahi-discover ] && _waitforsudo apt-get install --no-install-recommends -y squid-deb-proxy-client
 else
     printf "%s\\n" "[+] no apt-get proxy found, installing one locally ..."
     _waitforsudo apt-get install --no-install-recommends -y squid-deb-proxy-client apt-cacher-ng
-    _waitforsudo wget http://javier.io/mirror/apt-cacher-ng.service -o /etc/avahi/services/apt-cacher-ng.service
+    [ ! -f /etc/avahi/services/apt-cacher-ng.service ] && _waitforsudo wget http://javier.io/mirror/apt-cacher-ng.service -o /etc/avahi/services/apt-cacher-ng.service
     if [ -d "$home"/misc/ubuntu/proxy/apt-cacher-ng/ ]; then
         printf "%s\\n" "[+] exporting files ..."
         _cmdsudo rm -rf /var/cache/apt-cacher-ng

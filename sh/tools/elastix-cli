@@ -1,4 +1,7 @@
 #!/bin/bash
+#description: cli utility for elastix
+#usage: elastix-cli [OPTION] TYPE ARGS..
+
 set -e                          #exit as soon as any command fail
 
 default_ssh_passwd="c2VjcmV0Cg=="

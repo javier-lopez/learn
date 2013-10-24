@@ -1,5 +1,11 @@
-#!/usr/bin/env bash
-#helps to edit custom scripts
+#!/usr/bin/env sh
+#description:  edit code of scripting utilities located in the system PATH
+#usage: vim-show script
+
+#example: vim-show vim-show
+#this
+#code
+#...
 
 program="$1"
 

@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
-#a simple dmenu for talking
+#description: dmenu based talking app
 #requires a dmenu version with xft: https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
+#usage: dmenu-tell
+
+#example: dmenu-tell
+#appears a gui menu appears asking for which phrase to tell, default to spanish voice
 
 #-sf blue
 DMENU='dmenu -p > -i -fn Bahamas-10 -nb #000000 -nf #ffffff -sb #000000 -sf #aaffaf'
@@ -16,6 +20,7 @@ else
     clipboard="ops"
 fi
 
+#TODO 24-10-2013 04:22 >> find replacement
 if [[ "${phrase}" == e.* ]] ; then
     #remove first 2 chars
     phrase=${phrase#"e"}

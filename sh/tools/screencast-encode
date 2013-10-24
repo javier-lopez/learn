@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-#encode screencasts
+#description: encode mkv screencast
+#usage: screencast-encode file.mkv
 
 _basename()
 {

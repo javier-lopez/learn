@@ -1,5 +1,6 @@
-#!/usr/bin/env bash
-#create a secure password with 8 chars by default
+#!/usr/bin/env sh
+#description: create a secure password with 8 chars by default
+#usage: mkpass [LENGTH]
 
 if [ ! "$1" ]; then
     mkpasswd_length=8
@@ -14,7 +15,7 @@ fi
 
 if [ -f /usr/bin/xclip ]; then
     #http://unix.stackexchange.com/questions/28503/how-can-i-send-stdout-to-multiple-commands
-    strings /dev/urandom | grep -o '[[:alnum:]]' | head -n $mkpasswd_length | tr -d '\n' | tee >(xclip); printf "\\n"
+    strings /dev/urandom | grep -o '[[:alnum:]]' | head -n $mkpasswd_length | tr -d '\n' | tee /dev/fd/2 | xclip; printf "\\n"
 else
     strings /dev/urandom | grep -o '[[:alnum:]]' | head -n $mkpasswd_length | tr -d '\n'; printf "\\n"
 fi

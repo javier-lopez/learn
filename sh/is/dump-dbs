@@ -65,7 +65,7 @@ mysql -u$DBUSER -p$DBPASSWD -A < $BACKUPDIR/kill_sleep.sql
 mysql -u$DBUSER -p$DBPASSWD -Ae"UNLOCK TABLES;"
 
 FILES=($BACKUPDIR/*sql)
-tar -czf $BACKUPDIR/dbs.tar.gz "${FILES[@]}"
+tar cvf -  "${FILES[@]}" | gzip > $BACKUPDIR/dbs.tar.gz
 
 END=$(date +%s)
 DIFF=$(expr $END - $START )

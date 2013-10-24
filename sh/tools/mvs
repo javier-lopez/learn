@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env sh
 # virn, Copyright (C) 2007-2010 by Jonas Kramer. All rights reserved.
 # Published under the terms of the GNU General Public License (GPL).
 
@@ -20,11 +20,10 @@ die () {
 [ -z "$EDITOR" ] && die '$EDITOR not defined.'
 
 # Exit before doing anything if there are no arguments anyway.
-ARGV=("$@")
 [ $# -eq 0 ] && exit
 
 # Create targets file.
-TARGETS="/tmp/virn-$RANDOM"
+TARGETS="/tmp/virn-$$"
 for FILE in "$@"; do printf "%s\\n" "$FILE" >> $TARGETS; done
 
 # Start the $EDITOR so we can edit our file names.
@@ -42,11 +41,11 @@ if $EDITOR $TARGETS; then
 	# Read targets file line by line and rename the source
 	# files from ARGV appropriately.
 	while read TARGET; do
-		SOURCE="${ARGV[$FILENO]}"
+		SOURCE="$1"
+                shift
 		if [ X"$SOURCE" != X"$TARGET" ]; then
 			mv -v -f -- "$SOURCE" "$TARGET"
 		fi
-		FILENO=$[$FILENO+1]
 	done < $TARGETS
 fi
 

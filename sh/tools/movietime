@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env sh
 #http://tinyurl.com/246hm8f
 #movietime - disables power savings to watch movies.
 
@@ -59,8 +59,8 @@ case $resumetime in
 esac
 
 # Name of suspend script
-tmploc="/tmp"
-suspinhscript="$tmploc"/"movietime-suspend-inhibit"
+tmploc="$HOME"
+suspinhscript="$tmploc"/."movietime-suspend-inhibit"
 
 # Program name from it's filename.
 prog=${0##*/}
@@ -137,7 +137,7 @@ esac
 
 # Suspend inhibit script (must be run as seperate process)
 suspinhibit () {
-    printf "%s\\n" '#!/bin/bash
+    printf "%s\\n" '#!/usr/bin/env sh
     for time in $(seq 1 '$resumetime'); do
     # Simulate user activity every minute
     xdotool keydown Shift_L keyup Shift_L
@@ -153,9 +153,9 @@ if [ X"$dispdpms" = X"Enabled" ] && [ -z "$suspinhtest" ]; then
   # Create script in tmp
   suspinhibit > "$suspinhscript"
   # Make script executable
-  chmod u+x "$suspinhscript"
+  chmod +x "$suspinhscript"
   # Run script
-  nohup "$suspinhscript" &> /dev/null &
+  "$suspinhscript" &> /dev/null &
 
   if _ismonitorattached; then
       if [ -f /usr/local/bin/lights/$(_arch)/lights ]; then
@@ -173,11 +173,12 @@ else
   # Kill script
   if [ -n $suspinhtest ]; then
 
-    kill -s 9 $(pgrep movietime-susp) &> /dev/null
+    kill -9 $(ps -aef | grep "movietime-susp" | grep -v grep | awk '{print $2}') &> /dev/null
     ps aux | grep [l]ights.jar >/dev/null
     if [ "$?" -eq 0 ]; then
         kill -s 9 $(ps aux | grep [l]ights.jar | awk '{print $2}')
     fi
+    rm -rf "$suspinhscript"
     printf "%s\\n" "[-] $prog stopped"
   fi
 fi

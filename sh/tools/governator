@@ -1,5 +1,10 @@
-#!/bin/bash
+#!/bin/sh
+#description: set and retrieve cpu governator on linux systems
 #https://bbs.archlinux.org/viewtopic.php?pid=431775#p431775
+#usage: governator [get|set]
+
+#example: governator set performance
+#no output, it however sets the best governator for performance
 
 #TODO 14-12-2012 03:52 >> add color, status
 

@@ -1,9 +1,12 @@
-#!/usr/bin/env bash
-#add it as a cronjob (every 3 min)
+#!/usr/bin/env sh
+#description: display a warning when the system is running out of energy, suspend the system before it shutdown
+#usage: watch-battery, it makes more sense to add it as a cron job
+
+#cronjob (every 3 min)
 #*/3 * * * * /path/to/this/script
 
 if ps aux | grep [u]powerd >/dev/null; then
-    exit
+    exit 1
 fi
 
 _notify()
@@ -46,14 +49,14 @@ if [ X"$STAT" = X"Discharging" ]; then
         else
             printf "%s\\n" "[-] Critical, battery under 5%, the system will hibernate in 30 seconds, unless you plugin the computer"
         fi
-
-        for (( i = 0; i < 30; i++ )); do
+        i=0 ; while [ "$i" -lt 30 ]; do
             sleep 1
             STAT=$(acpi -b | awk '{print $3}' | awk 'sub(".$", "")')
             if [ X"$STAT" != X"Discharging" ]; then
                 _notify  "[+] Charging" "charging now..."
                 break
             fi
+            i=$(expr $i + 1)
         done
 
         #check a last time if nobody has pluged in the machine, if not hibernate it

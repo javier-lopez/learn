@@ -1,4 +1,12 @@
-#!/bin/sh
+#!/usr/bin/env sh
+#description: dmenu helper, list commands available on the system
+#usage: dmenu-path
+
+#example: dmenu-path
+#commmand1
+#commmand2
+#...
+
 CACHE=$HOME/.dmenu_cache
 IFS=:
 

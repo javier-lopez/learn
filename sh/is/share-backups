@@ -1,4 +1,4 @@
-#! /usr/bin/env bash
+#! /usr/bin/env sh
 
 PASSWD=$(date +%s | sha256sum | base64 | head -c 8)
 USER="guest"
@@ -26,7 +26,7 @@ fi
 
 [ -f "$CERT" ] && SSL_OPTS="--ssl --certificate=$CERT"
 
-if [ -f /usr/local/bin/py.simple.server ] ; then
+if [ -f /usr/local/bin/simple-httpd ] ; then
     printf "%s\\n" "Starting simple.server..."
     printf "%s\\n" "  address: all interfaces"
     printf "%s\\n" "  port: $PORT"
@@ -38,8 +38,8 @@ if [ -f /usr/local/bin/py.simple.server ] ; then
     printf "%s\\n" "    $BACKUP_DIR"
 
     printf "%s\\n" "Run: $(_basename $0) stop, to stop sharing"
-    nohup py.simple.server -p $PORT --username=$USER --password=$PASSWD $SSL_OPTS $BACKUP_DIR &
+    nohup simple-httpd -p $PORT --username=$USER --password=$PASSWD $SSL_OPTS $BACKUP_DIR &
 else
-    printf "%s\\n" "No /usr/local/bin/py.simple.server found, download it at: https://raw.github.com/chilicuil/learn/master/python/py.simple.server"
+    printf "%s\\n" "No /usr/local/bin/simple-httpd found, download it at: https://raw.github.com/chilicuil/learn/master/python/simple-httpd"
     exit 1
 fi

@@ -1,5 +1,6 @@
-#!/usr/bin/env bash
-#send and watch messages in your "ke estas haciendo?"
+#!/usr/bin/env sh
+#description: send and watch messages in your "ke estas haciendo?" in mononeurona.org
+#usage: im "phrase"
 
 _notify ()
 {

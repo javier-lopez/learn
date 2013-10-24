@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-#rm_, is a wrapper for the existing rm command compatible with nautilus|pcman file managers
+#description: wrapper for rm compatible with nautilus|pcman trash management
+#usage: rm_ [OPTIONS] FILES
 
 # -f files are removed NOT archived
 # -l list archived files

@@ -1,5 +1,11 @@
-#!/usr/bin/env bash
-#show script code
+#!/usr/bin/env sh
+#description: show code of scripting utilities located in the system PATH
+#usage: cat-show script
+
+#example: cat-show cat-show
+#this
+#code
+#...
 
 program="$1"
 

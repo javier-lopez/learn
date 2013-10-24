@@ -1,6 +1,6 @@
-#! /usr/bin/env bash
-#https://wiki.ubuntu.com/Testing/TestCaseFormat
-#./test_case_format testcase
+#! /usr/bin/env sh
+#description: format file according to https://wiki.ubuntu.com/Testing/TestCaseFormat
+#usage: test-case-format files
 
 #set -x
 

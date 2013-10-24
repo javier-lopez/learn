@@ -1,5 +1,6 @@
-#!/usr/bin/env bash
-#resets ip on thompson routers
+#!/usr/bin/env sh
+#description: resets ip on thompson routers
+#usage: thompson
 
 _notify ()
 {

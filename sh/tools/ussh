@@ -1,4 +1,7 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
+#description: connect to a remote host through ssh
+#usage: ussh domain.tld
+
 if [ X"$#" = X"0" ]; then
     printf "%s\\n" "Unsafe SSH - Applies a few default configuration options to an SSH command." >&2
     printf "%s\\n" "Host key and IP will not be checked, nor will it be saved!" >&2

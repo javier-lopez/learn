@@ -1,7 +1,17 @@
-#!/usr/bin/env bash
-#print help for my personal setup
+#!/usr/bin/env sh
+#description: show help for my personal setup
+#usage: i3-help
 
-XMESSAGE=$(which gxmessage) || XMESSAGE=xmessage
+_whereis()
+{
+    [ -z "$1" ] && return 1
+    [ -n "$2" ] && return 1
+    if ! command -v "$1" 2>/dev/null; then
+        return 1
+    fi
+}
+
+XMESSAGE=$(_whereis gxmessage) || XMESSAGE=xmessage
 font="Monaco 9"
 
 [ X"$XMESSAGE" = X"xmessage" ] && font="fixed"

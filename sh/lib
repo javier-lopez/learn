@@ -280,7 +280,8 @@ _cmd()
 {   #print current command, exits on fail
     [ -z "$1" ] && return 0
 
-    printf "%s\\n" "    $ $@"
+    printf "%s " "    $ $@"
+    printf "\\n"
     eval "$@"
 
     local status=$?
@@ -295,8 +296,9 @@ _cmdsudo()
     [ -z "$1" ] && return 0
     local serr=$$
 
-    printf "%s\\n" "    $ sudo $@"
-    printf "%s\\n" "$sudopwd" | $sudocmd "$@" > /tmp/"$serr".out 2>&1
+    printf "%s " "    $ $@"
+    printf "\\n"
+    printf "%s\\n" "$sudopwd" | $sudocmd eval "$@" > /tmp/"$serr".out 2>&1
 
     local status=$?
     [ X"$status" != X"0" ] && { cat /tmp/"$serr".out; rm -rf /tmp/"$serr".out; exit $status; } || { rm -rf /tmp/"$serr".out; return; }
@@ -644,7 +646,7 @@ _getroot()
     if [ ! X"$LOGNAME" = X"root" ]; then
         printf "%s\\n" "Detecting user $LOGNAME (non-root) ..."
         printf "%s\\n" "Checking if sudo is available ..."
-        sudotest=`type sudo &>/dev/null ; printf "%s\\n" "$?"`
+        sudotest=`type sudo >/dev/null 2>/dev/null; printf "%s\\n" "$?"`
 
         if [ X"$sudotest" = X"0" ]; then
             sudo -K
@@ -1137,8 +1139,9 @@ _waitfor()
 {   #wait for a program, shows an animation
     [ -z "$1" ] && return 1
 
-    printf "%s" "    $ $@ ..."
-    $@ > /dev/null 2>&1 &
+    printf "%s " "    $ $@"
+    printf "\\n"
+    eval "$@" > /dev/null 2>&1 &
     sleep 1s
 
     running=$(pidof $1); running=$?
@@ -1187,7 +1190,7 @@ _waitfor()
     fi
 }
 #==================================================== Example ====
-#_waitfor tar -jxpf file.tar.bz2
+#_waitfor "bzcat file.tar.bz2 | tar xf -"
 #=================================================================
 
 _whereis()

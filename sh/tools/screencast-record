@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-#records screecasts using ffmpeg
-#./screecasts_record [start|stop]
+#description: record mkv screencast
+#usage: screencast-record [start|stop]
+
 #TODO 14-12-2012 03:52 >> add color, status
 
 #####################################################
@@ -97,7 +98,7 @@ _countdown ()
             done
         fi
         if [ ! -z $(pidof notify-osd) ]; then
-            killall notify-osd
+            kill $(ps -aef | grep "notify-osd" | grep -v grep | awk '{print $2}')
         fi
     else
         printf "%s" "    $1"

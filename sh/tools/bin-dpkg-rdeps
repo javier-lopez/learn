@@ -1,5 +1,12 @@
-#!/usr/bin/env bash
-#shows binary deps
+#!/usr/bin/env sh
+#description: show debian|ubuntu package deps of binaries
+#usage: bin-dpkg-rdeps /full/path/binary
+
+#example: bin-dpkg-rdeps /usr/bin/lsof
+#libc6
+#libc6-armel-cross
+#libc6-armhf-cross
+#libc6-i386
 
 if [ ! -e /usr/bin/apt-file ]; then
     printf "%s\\n" "You need to install apt-file: $ sudo apt-get install apt-file"
