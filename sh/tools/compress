@@ -22,8 +22,9 @@ _exec()
     if [ X"$status" != X"0" ]; then
         exit $status
     fi
-    printf "%s\\n" "[+] $@"
-    "$@"
+    printf "%s " "[+] $@"
+    printf "\\n"
+    eval "$@"
 }
 
 _compress()
@@ -40,10 +41,10 @@ _compress()
                 _exec ar rv "$COMPRESS_FILE" "$FILES"
                 ;;
             *.tar.bz2|*.tbz|*.tbz2)
-                _exec tar jcvf "$COMPRESS_FILE" "$FILES"
+                _exec "tar cvf - "$FILES" | bzip2 > "$COMPRESS_FILE""
                 ;;
             *.tar.gz|*.tgz)
-                _exec tar zcvf "$COMPRESS_FILE" "$FILES"
+                _exec "tar cvf - "$FILES" | gzip > "$COMPRESS_FILE""
                 ;;
             *.bz2)
                 local x=0
@@ -51,7 +52,8 @@ _compress()
                     x=$(expr $x + 1)
                 done
                 [ $x -gt 1 ] && { printf "%s\\n" "$(_basename $0): bz2 files can only be compressed one by one, use tar.bz2 if you require to compress several files at the same time"; exit 1; }
-                _exec "bunzip2 -cv \"$FILES\" | dd of=\"$COMPRESS_FILE\""
+                true
+                _exec "bzip2 -cv \"$FILES\" | dd of=\"$COMPRESS_FILE\""
                 ;;
             *.rar)
                 _exec rar a "$COMPRESS_FILE" "$FILES"
@@ -62,7 +64,8 @@ _compress()
                     x=$(expr $x + 1)
                 done
                 [ $x -gt 1 ] && { printf "%s\\n" "$(_basename $0): gz files can only be compressed one by one, use tar.gz if you require to compress several files at the same time"; exit 1; }
-                _exec "gunzip -cv \"$FILES\" | dd of=\"$COMPRESS_FILE\""
+                true
+                _exec "gzip -cv \"$FILES\" | dd of=\"$COMPRESS_FILE\""
                 ;;
             *.tar)
                 _exec tar cvf "$COMPRESS_FILE" "$FILES"
@@ -74,10 +77,10 @@ _compress()
                 _exec 7z a "$COMPRESS_FILE" "$FILES"
                 ;;
             *.tar.lzma)
-                _exec tar --lzma -cvf "$COMPRESS_FILE" "$FILES"
+                _exec "tar cvf - "$FILES" | lzma > "$COMPRESS_FILE""
                 ;;
             *.tar.xz)
-                _exec tar -Jcvf "$COMPRESS_FILE" "$FILES"
+                _exec "tar cvf - "$FILES" | xz > "$COMPRESS_FILE""
                 ;;
             *.jar)
                 _exec jar cvf "$COMPRESS_FILE" "$FILES"
@@ -95,10 +98,10 @@ _compress()
                 _exec ar r "$COMPRESS_FILE" "$FILES"
                 ;;
             *.tar.bz2|*.tbz|*.tbz2)
-                _exec tar jcf "$COMPRESS_FILE" "$FILES"
+                _exec "tar cf - "$FILES" | bzip2 > "$COMPRESS_FILE""
                 ;;
             *.tar.gz|*.tgz)
-                _exec tar zcf "$COMPRESS_FILE" "$FILES"
+                _exec "tar cf - "$FILES" | gzip > "$COMPRESS_FILE""
                 ;;
             *.bz2)
                 local x=0
@@ -106,7 +109,8 @@ _compress()
                     x=$(expr $x + 1)
                 done
                 [ $x -gt 1 ] && { printf "%s\\n" "$(_basename $0): bz2 files can only be compressed one by one, use tar.bz2 if you require to compress several files at the same time"; exit 1; }
-                _exec "bunzip2 -c \"$FILES\" | dd of=\"$COMPRESS_FILE\""
+                true
+                _exec "bzip2 -c \"$FILES\" | dd of=\"$COMPRESS_FILE\""
                 ;;
             *.rar)
                 _exec rar a "$COMPRESS_FILE" "$FILES"
@@ -117,7 +121,8 @@ _compress()
                     x=$(expr $x + 1)
                 done
                 [ $x -gt 1 ] && { printf "%s\\n" "$(_basename $0): gz files can only be compressed one by one, use tar.gz if you require to compress several files at the same time"; exit 1; }
-                _exec "gunzip -c \"$FILES\" | dd of=\"$COMPRESS_FILE\""
+                true
+                _exec "gzip -c \"$FILES\" | dd of=\"$COMPRESS_FILE\""
                 ;;
             *.tar)
                 _exec tar cf "$COMPRESS_FILE" "$FILES"
@@ -129,10 +134,10 @@ _compress()
                 _exec 7z a "$COMPRESS_FILE" "$FILES"
                 ;;
             *.tar.lzma)
-                _exec tar --lzma -cf "$COMPRESS_FILE" "$FILES"
+                _exec "tar cf - "$FILES" | lzma > "$COMPRESS_FILE""
                 ;;
             *.tar.xz)
-                _exec tar -Jcf "$COMPRESS_FILE" "$FILES"
+                _exec "tar cf - "$FILES" | xz > "$COMPRESS_FILE""
                 ;;
             *.jar)
                 _exec jar cf "$COMPRESS_FILE" "$FILES"

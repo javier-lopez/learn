@@ -281,7 +281,7 @@ _cmd()
     [ -z "$1" ] && return 0
 
     printf "%s\\n" "    $ $@"
-    "$@"
+    eval "$@"
 
     local status=$?
     [ X"$status" != X"0" ] && exit $status || return 0

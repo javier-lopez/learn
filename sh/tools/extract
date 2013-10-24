@@ -16,9 +16,19 @@ _exec()
     if [ X"$status" != X"0" ]; then
         exit $status
     fi
-    printf "%s\\n" "[+] $@"
-    "$@"
+    printf "%s " "[+] $@"
+    printf "\\n"
+    eval "$@"
 }
+#_exec()
+#{
+    #status=$?
+    #if [ X"$status" != X"0" ]; then
+        #exit $status
+    #fi
+    #printf "%s\\n" "[+] $@"
+    #"$@"
+#}
 
 _extract()
 {
@@ -31,10 +41,10 @@ _extract()
                         _exec ar xv "$FILE"
                         ;;
                     *.tar.bz2|*.tbz|*.tbz2)
-                        _exec tar jxvf "$FILE"
+                        _exec "bzcat < "$FILE" | tar xvf -"
                         ;;
                     *.tar.gz|*.tgz)
-                        _exec tar zxvf "$FILE"
+                        _exec "zcat < "$FILE" | tar xvf -"
                         ;;
                     *.bz2)
                         _exec bunzip2 -v "$FILE"
@@ -55,10 +65,10 @@ _extract()
                         _exec 7z x "$FILE"
                         ;;
                     *.tar.lzma)
-                        _exec tar --lzma -xvf "$FILE"
+                        _exec "lzcat < "$FILE" | tar xvf -"
                         ;;
                     *.tar.xz)
-                        _exec tar -Jxvf "$FILE"
+                        _exec "xzcat < "$FILE" | tar xvf -"
                         ;;
                     *.jar)
                         _exec jar xvf "$FILE"
@@ -80,13 +90,13 @@ _extract()
                         _exec ar x "$FILE"
                         ;;
                     *.tar.bz2|*.tbz|*.tbz2)
-                        _exec tar jxf "$FILE"
+                        _exec "bzcat < "$FILE" | tar xf -"
                         ;;
                     *.tar.gz|*.tgz)
-                        _exec tar zxf "$FILE"
+                        _exec "zcat < "$FILE" | tar xf -"
                         ;;
                     *.bz2)
-                        _exec bunzip2 "$FILE"
+                        _exec bzip2 "$FILE"
                         ;;
                     *.rar)
                         _exec rar x "$FILE"
@@ -104,10 +114,10 @@ _extract()
                         _exec 7z x "$FILE"
                         ;;
                     *.tar.lzma)
-                        _exec tar --lzma -xvf "$FILE"
+                        _exec "lzcat < "$FILE" | tar xf -"
                         ;;
                     *.tar.xz)
-                        _exec tar -Jxf "$FILE"
+                        _exec "xzcat < "$FILE" | tar xf -"
                         ;;
                     *.jar)
                         _exec jar xf "$FILE"
