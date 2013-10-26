@@ -937,10 +937,7 @@ _privport()
 #=================================================================
 
 _realpath()
-{   #convert relative to real paths
-
-    [ -z "$1" ] && return 1
-    #http://www.makkintosshu.com/journal/a-realpath-implementation-in-bash
+{
     local success=true
 
     # start with the file name (sans the trailing slash)
@@ -949,27 +946,23 @@ _realpath()
 
     # get the basename of the file (ignoring '.' & '..', because they're really part of the path)
     local file_basename="${path##*/}"
-    if [ X"$file_basename" = X"." ] || [ X"$file_basename" = X".." ]; then
+    if [ X"$file_basename" = X"." ] || [ X"$file_basename" = X".."  ]; then
         file_basename=""
     fi
 
     # extracts the directory component of the full path & attempt to change to it
     local directory="${path%$file_basename}"
     if [ "$directory" ]; then
-        if ! cd "$directory" &>/dev/null ; then
-            success=false
-        fi
-    fi
-
-    if $success; then
-        # does the filename exist?
+        abs_path="${directory}/${file_basename}"
+        printf "%s\\n" "$abs_path"
+    else
         if [ ! -z "$file_basename" ] && [ ! -e "$file_basename" ]; then
             success=false
         fi
 
         # get the absolute path of the current directory & change back to previous directory
         local abs_path="$(pwd -P)"
-        cd "-" &>/dev/null
+        #cd "-" &>/dev/null
 
         # Append base filename to absolute path
         abs_path="${abs_path}/${file_basename}"
