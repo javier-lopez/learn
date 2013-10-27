@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 #functions, copy and paste them in your own scripts
 
 #https://github.com/chilicuil/learn/blob/master/sh/lib
@@ -18,107 +18,6 @@ _addcron()
 }
 #==================================================== Example ====
 #_addcron "* * * * * /path/task"
-#=================================================================
-
-_animbarcui()
-{   #prints a bar of o@o moving
-    [ -z "$1" ] && { printf "%4s\n" ""; return 1; }
-    local pid=$1
-    local animation_state=1
-
-    if [ ! "$(ps -p $pid -o comm=)" ]; then
-        printf "%4s\n" ""
-        return
-    fi
-
-    printf "%s" " "
-    local c=0; j=0;
-
-    exec < /dev/tty
-    local oldstty=$(stty -g)
-    stty raw -echo min 0
-    printf "%b" "\033[6n" > /dev/tty
-    IFS=';' read -r -d R -a pos
-    stty $oldstty
-    local col=$(expr ${pos[1]} - 1)
-    col=$(expr $col + 4)
-
-    while [ "`ps -p $pid -o comm=`" ]; do
-        case $animation_state in
-            1)
-                printf "%s" "o@o"
-                animation_state=2
-                ;;
-            2)
-                if [ $j -lt $(expr $(tput cols) - $col) ]; then
-                    for (( i = 0; i < c+4; i++ )); do
-                        printf "%b" "\b";
-                    done
-                    printf "%*s%s" $(expr $c + 1) "" "o @o"
-                    j=$(expr $j + 1 )
-                    c=$(expr $c + 1 )
-                    if ! [ $j -lt $(expr $(tput cols) - $col) ]; then
-                        animation_state=3
-                    fi
-                fi
-                ;;
-            3)
-                for (( i = 0; i < c+3; i++ )); do
-                    printf "%b" "\b";
-                done
-                printf "%*s%s" $(expr $c) "" "o@o "
-                animation_state=4
-                ;;
-            4)
-                for (( i = 0; i < c+4; i++ )); do
-                    printf "%b" "\b";
-                done
-                printf "%*s%s" $(expr $c) "" "o@o?"
-                animation_state=5
-                ;;
-            5)
-                for (( i = 0; i < c+4; i++ )); do
-                    printf "%b" "\b";
-                done
-                printf "%*s%s" $(expr $c) "" "o@o "
-                animation_state=6
-                ;;
-            6)
-                if [ $j -gt > 0 ]; then
-                    for (( i = 0; i < c+4; i++ )); do
-                        printf "%b" "\b";
-                    done
-                    #set -x
-                    printf "%*s%s" $(expr $c - 1) "" "o@ o"
-                    printf "%*s" 1 ""
-                    printf "%b" "\b";
-                    #set +x
-
-                    j=$(expr  $j - 1 )
-                    c=$(expr  $c - 1 )
-                else
-                    for (( i = 0; i < 4; i++ )); do
-                        printf "%b" "\b";
-                    done
-                    printf "%4s" ""
-                    for (( i = 0; i < 4; i++ )); do
-                        printf "%b" "\b";
-                    done
-                    printf "%s" "o@o"
-                    animation_state=2
-                fi
-                ;;
-        esac
-        sleep 1
-    done
-    for (( i = 0; i < 4; i++ )); do
-        printf "%b" "\b";
-    done
-    printf "%4s\n" ""
-}
-#==================================================== Example ====
-#tar zxf big_file.tar.gz > /dev/null 2>&1 &
-#printf "%s" "[+] tar is running ..." && _animbarcui $(pidof tar)
 #=================================================================
 
 _animcui()
@@ -209,26 +108,6 @@ _animrotate()
 #printf "%s" "[+] tar" && _animrotate $(pidof tar)
 #=================================================================
 
-_cidr2mask()
-{
-  local i mask=""
-  local full_octets=$(expr $1 / 8)
-  local partial_octet=$(expr $1 % 8)
-
-  for ((i=0;i<4;i+=1)); do
-    if [ $i -lt $full_octets ]; then
-        mask=$(expr $mask + 255)
-    elif [ $i -eq $full_octets ]; then
-        mask+=$((256 - 2**(8-$partial_octet)))
-    else
-        mask=$(expr $mask + 0)
-    fi
-    [ $i -lt 3 ] && mask+=.
-  done
-
-  printf "%s\\n" "$mask"
-}
-
 _arch()
 {   #check for system arch, returns [64|32]
     local arch
@@ -255,7 +134,7 @@ _arch()
 
 _basename()
 {
-    [ -z "$1" ] && return 0
+    [ -z "$1" ] && return 1
     expr "$1" : '.*/\([^/]*\)'
 }
 #==================================================== Example ====
@@ -267,7 +146,7 @@ _cleanup()
     stty echo
     printf "\\n"
     printf "%s\\n" "[+] cleanup ..."
-    your_commands_here
+    #your_commands_here
 
     [ -z "$1" ] && exit
 }
@@ -278,7 +157,7 @@ _cleanup()
 
 _cmd()
 {   #print current command, exits on fail
-    [ -z "$1" ] && return 0
+    [ -z "$1" ] && return 1
 
     printf "%s " "    $ $@"
     printf "\\n"
@@ -293,7 +172,7 @@ _cmd()
 
 _cmdsudo()
 {   #print && execute a command, exits if command fails
-    [ -z "$1" ] && return 0
+    [ -z "$1" ] && return 1
     local serr=$$
 
     printf "%s " "    $ $@"
@@ -319,10 +198,12 @@ _decode64()
 
 _die()
 {   #print a stacktrace with a msg, exits with 1
-    local frame=0
-    while caller $frame; do
-        frame=$(expr $frame+1);
-    done
+    if [ -n "$BASH" ]; then
+        local frame=0
+        while caller $frame; do
+            frame=$(expr $frame+1);
+        done
+    fi
 
     printf "%s\\n" "$*"
     exit 1
@@ -333,15 +214,11 @@ _die()
 
 _dirname()
 {   #returns string containing dirname on success, 1 on fail
+    [ -z "$1" ] && return 1
 
-    #http://www.linuxmisc.com/12-unix-web-servers/d31beb238f7b5a6b.htm
-    if [ -z "$1" ]; then
-        return 1;
-    else
-        local dir="${1%${1##*/}}"
-        [ X"${dir:=./}" != X"/" ] && dir="${dir%?}"
-        printf "%s\\n" "$dir"
-    fi
+    #http://www.linuxselfhelp.com/gnu/autoconf/html_chapter/autoconf_10.html
+    dir=$(expr "x$1" : 'x\(.*\)/[^/]*' \| '.'      : '.')
+    printf "%s\\n" "$dir"
 }
 #==================================================== Example ====
 #_dirname /path/file #returns /path
@@ -349,7 +226,6 @@ _dirname()
 
 _distro()
 {   #return distro name in a lower string
-
     local DIST_INFO="/etc/lsb-release"
     if [ -r "$DIST_INFO" ]; then
         . "$DIST_INFO"
@@ -397,7 +273,7 @@ _distro()
         fi
     fi
 
-    printf "%s\\n" "$DISTRIB_ID" | tr '[:upper:]' '[:lower:]'
+    printf "%s\\n" "$DISTRIB_ID" | tr 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 'abcdefghijklmnopqrstuvwxyz'
 }
 #==================================================== Example ====
 #distro=$(_distro)
@@ -504,6 +380,7 @@ _existaptproxy()
 
 _existuser()
 {   #test if an user exists on the system, return 0 on sucess, 1 otherwise
+    [ -z "$1" ] && return 1
     if id -u $1 >/dev/null 2>&1; then
         return 0
     else
@@ -531,93 +408,20 @@ _fullpath()
 #_fullpath file #returns /path/file
 #=================================================================
 
-_getcol()
-{   #return an int with the col cursor position
-
-    #http://stackoverflow.com/questions/2575037/how-to-get-the-cursor-position-in-bash
-    exec < /dev/tty
-    local oldstty=$(stty -g)
-    stty raw -echo min 0
-    # on my system, the following line can be replaced by the line below it
-    printf "%b" "\033[6n" > /dev/tty
-    # tput u7 > /dev/tty    # when TERM=xterm (and relatives)
-    IFS=';' read -r -d R -a pos
-    stty $oldstty
-    # change from one-based to zero based so they work with: tput cup $row $col
-    local col=$(expr ${pos[1]} - 1)
-    printf "%s\\n" "$col"
-}
-#==================================================== Example ====
-#printf "%s" "Hi"
-#col=$(_getcol)
-#printf "%s" " - $col characters"
-#=================================================================
-
 _getfs()
-{
+{   #returns file system detected or 1 on error
     [ -z "$1" ] && return 1
     udevadm info -q all -n "$1" | grep -i ID_FS_TYPE | cut -f2 -d'='
 }
-
-_getopt()
-{   #define vars for cli arguments
-    local var=""
-    local wantarg=0
-    for $(( i=1; i<=$#; i+=1 )); do
-        local lastvar=$var
-        var=${!i}
-        if [ X"$var" = X"" ]; then
-            continue
-        fi
-        printf "%s\\n" "\ $var" | grep -q -- '='
-        if [ $? -eq 0 ]; then
-            ## -*param=value
-            local var=$(printf "%s\\n" "\ $var" | sed -r s/'^[ ]*-*'/''/)
-            local myvar=${var%=*}
-            local myval=${var#*=}
-            eval "${myvar}"="'$myval'"
-        else
-            printf "%s\\n" "\ $var" | grep -E -q -- '^[ ]*-'
-            if [ $? -eq 0 ]; then
-                ## -*param$
-                var=$(printf "%s\\n" "\ $var" | sed -r s/'^[ ]*-*'/''/)
-                eval "${var}"=1
-                local wantarg=1
-            else
-                printf "%s\\n" "\ $var" | grep -E -- '^[ ]*-'
-                if [ $? -eq 0 ]; then
-                    # the current one has a dash, so cannot be
-                    # the argument to the last parameter
-                    wantarg=0
-                fi
-                if [ $wantarg -eq 1 ]; then
-                    # parameter argument
-                    val=$var
-                    var=$lastvar
-                    eval "${var}"="'${val}'"
-                    wantarg=0
-                else
-                    # parameter
-                    if [ X"${!var}" = X"" ]; then
-                        eval "${var}"=1
-                    fi
-                    wantarg=0
-                fi
-            fi
-        fi
-    done
-}
 #==================================================== Example ====
-#OIFS=$IFS; IFS=$(printf "%b" "\n"); _getopt $@; IFS=$OIFS
-##./getopts --foo=bar -v -n 10 blah -one='last arg'
-#printf "%b" " foo:\t$foo v:\t$v n:\t$n blah:\t$blah one:\t$one "
+#_getfs /dev/sda1 #returns "ext4" or the format found
 #=================================================================
 
 _getpasswd()
 {   #define vars as passwords
     if [ -n "$1" ]
     then
-        local option=`tr '[:upper:]' '[:lower:]' <<< $1`
+        local option=$(printf "%s\\n" "$1" | tr '[:upper:]' '[:lower:]')
         printf "%s" "Enter your $option password: "
         stty -echo
         read ${option}passwd
@@ -687,45 +491,27 @@ _getroot()
 #printf "%s\\n" "$sudopwd" | $sudocmd rm file
 #=================================================================
 
-_getrow()
-{   #return an int with the col cursor position
-
-    #http://stackoverflow.com/questions/2575037/how-to-get-the-cursor-position-in-bash
-    exec < /dev/tty
-    local oldstty=$(stty -g)
-    stty raw -echo min 0
-    # on my system, the following line can be replaced by the line below it
-    printf "%b" "\033[6n" > /dev/tty
-    # tput u7 > /dev/tty    # when TERM=xterm (and relatives)
-    IFS=';' read -r -d R -a pos
-    stty $oldstty
-    # change from one-based to zero based so they work with: tput cup $row $col
-    local row=$(expr ${pos[0]:2} - 1)    # strip off the esc-[
-    printf "%s\\n" "$row"
-}
-#==================================================== Example ====
-row=$(_getrow)
-printf "%s" "$row"
-#=================================================================
-
 _getuuid()
-{
+{   #returns a uuid or 1 on error
     [ -z "$1" ] && return 1
     udevadm info -q all -n "$1" | grep -i uuid | egrep "^S:" | cut -f3 -d'/'
 }
 #==================================================== Example ====
+#_getuuid /dev/sda1 #returns "793e9a6d-d545-46f0-ac9c-49071c450b62"
 #=================================================================
 
 _inarray()
 {   #look for a value in an array, returns 0 on success, 1 otherwise
     [ -z "$1" ] && return 1
 
-    local needle="$1" element
-    shift
-    for element
-    do
-        [ X"$element" != X"$needle" ] || return 0
-    done
+    if [ -n "$BASH" ]; then
+        local needle="$1"
+        shift
+        for element
+        do
+            [ X"$element" != X"$needle" ] || return 0
+        done
+    fi
     return 1
 }
 #==================================================== Example ====
@@ -754,9 +540,9 @@ _internetavailable()
 _isalphanum()
 { #check for alphanum strings, return 0 if all upper+lower+digits, 1 otherwise
   # Remove all unacceptable chars
-  local compressed="$(printf "%s\\n" "$1" | sed -e 's/[^[:alnum:]]//g')"
+  _isalphanum_var_compressed="$(printf "%s\\n" "$1" | sed -e 's/[^[:alnum:]]//g')"
 
-  [ X"$compressed" != X"$input" ] && return 0 || return 1
+  [ X"$_isalphanum_var_compressed" != X"$1" ] && return 0 || return 1
 }
 #==================================================== Example ====
 #printf "%s" "Enter input: "
@@ -772,7 +558,9 @@ _isalphanum()
 
 _isarray()
 {   #detect if arg is an array, returns 0 on sucess, 1 otherwise
-    declare -p ${1} 2> /dev/null | grep 'declare \-a' >/dev/null && return 0
+    if [ -n "$BASH" ]; then
+        declare -p ${1} 2> /dev/null | grep 'declare \-a' >/dev/null && return 0
+    fi
     return 1
 }
 #==================================================== Example ====
@@ -818,7 +606,7 @@ _isnewer()
 
     [ $# -ne 2 ] && exit 1
 
-    if [ ! -f $1 -o ! -f $2 ]; then
+    if [ ! -f $1 ] || [ ! -f $2 ]; then
         return 1       # No
     fi
 
@@ -831,6 +619,7 @@ _isnewer()
 
 _isnum()
 {   #look for a number, returns 0 on success, 1 otherwise
+    [ -z "$1" ] && return 1
     printf "%s\\n" "$@" | grep -v "[^0-9]" >/dev/null
 }
 #==================================================== Example ====
@@ -847,8 +636,9 @@ _isnum()
 
 _isrunning()
 {
-    local name=$1
-    ps auxw | grep -v grep | grep ${name} >/dev/null && return 0
+    [ -z "$1" ] && return 1
+    _is_running_var_name=$1
+    ps auxw | grep -v grep | grep ${_is_running_var_name} >/dev/null && return 0
     return 1
 }
 
@@ -886,29 +676,30 @@ _notify()
 
 _printtime()
 {  #format seconds to a pretty string
-    NUM=$1
-    MIN=0
-    HOUR=0
-    DAY=0
-    if [ $NUM -gt 59 ]; then
-        SEC=$(expr $NUM % 60)
-        NUM=$(expr $NUM / 60)
-        if [ $NUM -gt 59 ]; then
-            MIN=$(expr $NUM % 60)
-            NUM=$(expr $NUM / 60)
-            if [ $NUM -gt 23 ]; then
-                HOUR=$(expr $NUM % 24)
-                DAY=$(expr $NUM / 24)
+    [ -z "$1" ] && return 1
+    _printtime_var_num=$1
+    _printtime_var_min=0
+    _printtime_var_hour=0
+    _printtime_var_day=0
+    if [ $_printtime_var_num -gt 59 ]; then
+        _printtime_var_sec=$(expr $_printtime_var_num % 60)
+        _printtime_var_num=$(expr $_printtime_var_num / 60)
+        if [ $_printtime_var_num -gt 59 ]; then
+            _printtime_var_min=$(expr $_printtime_var_num % 60)
+            _printtime_var_num=$(expr $_printtime_var_num / 60)
+            if [ $_printtime_var_num -gt 23 ]; then
+                _printtime_var_hour=$(expr $_printtime_var_num % 24)
+                _printtime_var_day=$(expr $_printtime_var_num / 24)
             else
-                HOUR=$NUM
+                _printtime_var_hour=$_printtime_var_num
             fi
         else
-            MIN=$NUM
+            _printtime_var_min=$_printtime_var_num
         fi
     else
-        SEC=$NUM
+        _printtime_var_sec=$_printtime_var_num
     fi
-    printf "%s\\n" ""$DAY"d "$HOUR"h "$MIN"m "$SEC"s"
+    printf "%s\\n" ""$_printtime_var_day"d "$_printtime_var_hour"h "$_printtime_var_min"m "$_printtime_var_sec"s"
 }
 #==================================================== Example ====
 #SECONDS=12345
@@ -987,10 +778,12 @@ _refarray()
 {   #exports an array to another
     #http://ihaveabackup.net/2012/01/29/a-workaround-for-passing-arrays-in-bash/
     [ -z "$1" ] && return 1
-    local varname="$1"
-    local export_as="$2"
-    local code=$(declare -p "$varname")
-    printf "%s\\n" "${code/$varname/$export_as}"
+    if [ -n "$BASH" ]; then
+        local varname="$1"
+        local export_as="$2"
+        local code=$(declare -p "$varname")
+        printf "%s\\n" "${code/$varname/$export_as}"
+    fi
 }
 #==================================================== Example ====
 #dump()
@@ -1014,26 +807,44 @@ _strlen()
     printf "%s\\n" "${#1}"
 }
 #==================================================== Example ====
+#_strlen "hello world!" #returns "12"
 #=================================================================
 
 _strreplace()
 {
     [ -z "$1" ] && return 1
-    printf "%s\\n" "${1//$2/$3}"
+    [ -z "$2" ] && return 1
+    [ -z "$3" ] && return 1
+    _strreplace_var_replace=$(printf "%s\\n" "$1" | sed -e "s/${2}/${3}/g")
+    printf "%s\\n" "${_strreplace_var_replace}"
 }
 #==================================================== Example ====
 #hello="hello world"
-#bye=$(_strreplace "$string" "hello" "bye")
-#world=$(_strreplace "$string" "world")
+#bye=$(_strreplace "$hello" "hello" "bye")
 #printf "%s\\n" "$bye"   #prints "bye world"
-#printf "%s\\n" "$world" #prints "world"
 #=================================================================
 
 _str2lower()
 {   #convert a string to lower string
     [ -z "$1" ] && return 1
-    printf "%s\\n" "$@" | tr '[:upper:]' '[:lower:]'
+    printf "%s\\n" "$@" | tr 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 'abcdefghijklmnopqrstuvwxyz' # tr '[:upper:]' '[:lower:]'
 }
+#==================================================== Example ====
+#hello="HELLO WORLD"
+#hello=$(_str2lower "$hello")
+#printf "%s\\n" "$hello"   #prints "hello world"
+#=================================================================
+
+_str2upper()
+{   #convert a string to lower string
+    [ -z "$1" ] && return 1
+    printf "%s\\n" "$@" | tr 'abcdefghijklmnopqrstuvwxyz' 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' # tr '[:upper:]' '[:lower:]'
+}
+#==================================================== Example ====
+#hello="hello world"
+#hello=$(_str2upper "$hello")
+#printf "%s\\n" "$hello"   #prints "HELLO WORLD"
+#=================================================================
 
 _uploadimg()
 {   #uploads an image, returns url on success, 1 otherwise
@@ -1079,7 +890,8 @@ _uploadimg()
     done
 }
 #==================================================== Example ====
-#_upload_img file.png
+#url=$(_upload_img file.png)
+#[ -z "$url" ] && printf "%s\\n" "Error"
 #=================================================================
 
 _usage()
@@ -1104,19 +916,22 @@ _validinterface()
 }
 #===================================================== Example ====
 #if ! _validinterface $interface
-    #printf "%s\\n" "$(expr "$0" : '.*/\([^/]*\)'): not valid interface $interface"
+    #printf "%s\\n" "not valid interface $interface"
 #fi
 #=================================================================
 
 _validip4()
 {   #return 0 if parameter is a valid ip4 address, non-zero otherwise
     #https://groups.google.com/forum/#!original/comp.unix.shell/NDu-kAL5cHs/7Zpc6Q2Hu5YJ
+    [ -z "$1" ] && return 1
     case "$*" in
         ""|*[!0-9.]*|*[!0-9]) return 1 ;;
     esac
 
-    local IFS=.  ## local is bash-specific
+    OLDIFS="$IFS"
+    IFS=.
     set -- $*
+    IFS="$OLDIFS"
 
     [ $# -eq 4 ] &&
         [ ${1:-666} -le 255 ] && [ ${2:-666} -le 255 ] &&
@@ -1125,7 +940,7 @@ _validip4()
 
 _verbose()
 {
-    [ ! X"$VERBOSE" = X"0" ] && printf "%s\\n" "$*"
+    [ -n "$VERBOSE" ] && printf "%s\\n" "$*"
 }
 
 _waitfor()
