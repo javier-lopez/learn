@@ -38,40 +38,61 @@ _usage()
 #http://www.makkintosshu.com/journal/a-realpath-implementation-in-bash
 _realpath()
 {
-    local success=true
+    _realpath_var_success=true
+    _realpath_var_path="$1"
 
-    # start with the file name (sans the trailing slash)
-    local path="$1"
-    path="${path%/}"
-
-    # get the basename of the file (ignoring '.' & '..', because they're really part of the path)
-    local file_basename="${path##*/}"
-    if [ X"$file_basename" = X"." ] || [ X"$file_basename" = X".."  ]; then
-        file_basename=""
-    fi
-
-    # extracts the directory component of the full path & attempt to change to it
-    local directory="${path%$file_basename}"
-    if [ "$directory" ]; then
-        abs_path="${directory}/${file_basename}"
-        printf "%s\\n" "$abs_path"
+    # make sure the string isn't empty as that implies something in further logic
+    if [ -z "$_realpath_var_path" ]; then
+        _realpath_var_success=false
     else
-        if [ ! -z "$file_basename" ] && [ ! -e "$file_basename" ]; then
-            success=false
+        # start with the file name (sans the trailing slash)
+        _realpath_var_path="${_realpath_var_path%/}"
+
+        # if we stripped off the trailing slash and were left with nothing, that means we're in the root directory
+        if [ -z "$_realpath_var_path" ]; then
+            _realpath_var_path="/"
         fi
 
-        # get the absolute path of the current directory & change back to previous directory
-        local abs_path="$(pwd -P)"
-        #cd "-" &>/dev/null
+        # get the basename of the file (ignoring '.' & '..', because they're really part of the path)
+        _realpath_var_file_basename="${_realpath_var_path##*/}"
+        if [ X"$_realpath_var_file_basename" = X"." ] || [ X"$_realpath_var_file_basename" = X".." ]; then
+            _realpath_var_file_basename=""
+        fi
 
-        # Append base filename to absolute path
-        abs_path="${abs_path}/${file_basename}"
+        # extracts the directory component of the full path, if it's empty then assume '.' (the current working directory)
+        _realpath_var_directory="${_realpath_var_path%$_realpath_var_file_basename}"
+        if [ -z "$_realpath_var_directory" ]; then
+            _realpath_var_directory='.'
+        fi
 
-        # output the absolute path
-        printf "%s\\n" "$abs_path"
+        # attempt to change to the directory
+        if ! \cd "$_realpath_var_directory" >/dev/null 2>/dev/null; then
+            _realpath_var_success=false
+        fi
+
+        if $_realpath_var_success; then
+            # does the filename exist?
+            if [ -n "$_realpath_var_file_basename" ] && [ ! -e "$_realpath_var_file_basename" ]; then
+                _realpath_var_success=false
+            fi
+
+            # get the absolute path of the current directory & change back to previous directory
+            _realpath_var_abs_path="$(pwd -P)"
+            \cd "-" >/dev/null 2>/dev/null
+
+            # Append base filename to absolute path
+            if [ X"${_realpath_var_abs_path}" = X"/" ]; then
+                _realpath_var_abs_path="${_realpath_var_abs_path}${_realpath_var_file_basename}"
+            else
+                _realpath_var_abs_path="${_realpath_var_abs_path}/${_realpath_var_file_basename}"
+            fi
+
+            # output the absolute path
+            printf "%s\\n" "$_realpath_var_abs_path"
+        fi
     fi
 
-    $success
+    $_realpath_var_success
 }
 
 #http://www.linuxmisc.com/12-unix-web-servers/d31beb238f7b5a6b.htm
