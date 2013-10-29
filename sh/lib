@@ -14,7 +14,7 @@
 _addcron()
 {   #adds cron job, returns 1 on error
     [ -z "$1" ] && return 1
-    crontab -l | { cat; printf "%s\\n" "$@"; } | crontab -
+    ( crontab -l; printf "%s\\n" "$1" ) | crontab -
 }
 #==================================================== Example ====
 #_addcron "* * * * * /path/task"
@@ -23,34 +23,35 @@ _addcron()
 _animcui()
 {
     [ -z "$1" ] && { printf "%5s\n" ""; return 1; }
-    local pid="$1"
-    local animation_state=1
+    printf "%s\\n" "$1" | grep -v "[^0-9]" >/dev/null || { printf "%5s\n" ""; return 1; }
+    _animcui_var_pid="$1"
+    _animcui_var_animation_state=1
 
-    if [ ! "$(ps -p $pid -o comm=)" ]; then
+    if [ ! "$(ps -p $_animcui_var_pid -o comm=)" ]; then
         printf "%5s\n" ""
-        return
+        return 1
     fi
 
     printf "%s" "      "
 
-    while [ "`ps -p $pid -o comm=`" ]; do
+    while [ "$(ps -p $_animcui_var_pid -o comm=)" ]; do
         printf "%b" "\b\b\b\b\b"
-        case $animation_state in
+        case $_animcui_var_animation_state in
             1)
                 printf "%s" '\o@o\'
-                animation_state=2
+                _animcui_var_animation_state=2
                 ;;
             2)
                 printf "%s" '|o@o|'
-                animation_state=3
+                _animcui_var_animation_state=3
                 ;;
             3)
                 printf "%s" '/o@o/'
-                animation_state=4
+                _animcui_var_animation_state=4
                 ;;
             4)
                 printf "%s" '|o@o|'
-                animation_state=1
+                _animcui_var_animation_state=1
                 ;;
         esac
         sleep 1
@@ -65,31 +66,38 @@ _animcui()
 _animrotate()
 {   #shows an animation as long as a process is in memory
     [ -z "$1" ] && return 1
-    local pid=$1
-    local animation_state=1
-    printf "%b" "    "
+    printf "%s\\n" "$1" | grep -v "[^0-9]" >/dev/null || { printf "%5s\n" ""; return 1; }
+    _animrotate_var_pid=$1
+    _animrotate_var_animation_state=1
 
-    while [ "`ps -p $pid -o comm=`" ]; do
+    if [ ! "$(ps -p $_animrotate_var_pid -o comm=)" ]; then
+        printf "%5s\n" ""
+        return 1
+    fi
+
+    printf "%s" "    "
+
+    while [ "$(ps -p $_animrotate_var_pid -o comm=)" ]; do
         # rotating star
         printf "%b" "\b\b\b"
-        case $animation_state in
+        case $_animrotate_var_animation_state in
             1)
                 printf "%s" "["
                 printf "%b" "\033[1m|\033[0m"
                 printf "%s" "]"
-                animation_state=2
+                _animrotate_var_animation_state=2
                 ;;
             2)
                 printf "%s" "["
                 printf "%b" "\033[1m/\033[0m"
                 printf "%s" "]"
-                animation_state=3
+                _animrotate_var_animation_state=3
                 ;;
             3)
                 printf "%s" "["
                 printf "%b" "\033[1m-\033[0m"
                 printf "%s" "]"
-                animation_state=4
+                _animrotate_var_animation_state=4
                 ;;
             4)
                 printf "%s" "["
@@ -97,7 +105,7 @@ _animrotate()
                 printf "%s" "\\"
                 printf "%b" "\033[0m"
                 printf "%s" "]"
-                animation_state=1
+                _animrotate_var_animation_state=1
                 ;;
         esac
         sleep 1
@@ -110,22 +118,21 @@ _animrotate()
 
 _arch()
 {   #check for system arch, returns [64|32]
-    local arch
-    [ -z "$MACHTYPE" ] && arch=$(uname -m) || arch=$(printf "%s\\n" "$MACHTYPE" | cut -d- -f1)
+    [ -z "$MACHTYPE" ] && _arch_var_arch=$(uname -m) || _arch_var_arch=$(printf "%s\\n" "$MACHTYPE" | cut -d- -f1)
 
-    case $arch in
+    case $_arch_var_arch in
         x86_64)
-            arch=64;
+            _arch_var_arch=64;
             ;;
         i686)
-            arch=32;
+            _arch_var_arch=32;
             ;;
         *)
-            exit 1
+            return 1
             ;;
     esac
 
-    printf "%s\\n" "$arch"
+    printf "%s\\n" "$_arch_var_arch"
 }
 #==================================================== Example ====
 #arch=$(_arch)
@@ -135,7 +142,10 @@ _arch()
 _basename()
 {
     [ -z "$1" ] && return 1
-    expr "$1" : '.*/\([^/]*\)'
+    case $1 in
+        /*|*/*) expr "$1" : '.*/\([^/]*\)' ;;
+        *) printf "%s\\n" "$1";;
+    esac
 }
 #==================================================== Example ====
 #_basename /path/file #returns file
@@ -163,8 +173,8 @@ _cmd()
     printf "\\n"
     eval "$@"
 
-    local status=$?
-    [ X"$status" != X"0" ] && exit $status || return 0
+    _cmd_var_status=$?
+    [ X"$_cmd_var_status" != X"0" ] && exit $_cmd_var_status || return 0
 }
 #==================================================== Example ====
 #_cmd rm file
@@ -173,14 +183,16 @@ _cmd()
 _cmdsudo()
 {   #print && execute a command, exits if command fails
     [ -z "$1" ] && return 1
-    local serr=$$
+    _cmdsudo_var_serr=$$
 
     printf "%s " "    $ $@"
     printf "\\n"
-    printf "%s\\n" "$sudopwd" | $sudocmd eval "$@" > /tmp/"$serr".out 2>&1
+    printf "%s\\n" "$sudopwd" | $sudocmd eval "$@" > /tmp/"$_cmdsudo_var_serr".out 2>&1
 
-    local status=$?
-    [ X"$status" != X"0" ] && { cat /tmp/"$serr".out; rm -rf /tmp/"$serr".out; exit $status; } || { rm -rf /tmp/"$serr".out; return; }
+    _cmdsudo_var_status=$?
+    [ X"$_cmdsudo_var_status" != X"0" ] && { cat /tmp/"$_cmdsudo_var_serr".out; \
+        rm -rf /tmp/"$_cmdsudo_var_serr".out; exit $_cmdsudo_var_status; } \
+        || { rm -rf /tmp/"$_cmdsudo_var_serr".out; return $_cmdsudo_var_status; }
 }
 #==================================================== Example ====
 #_cmdsudo rm /file
@@ -188,7 +200,7 @@ _cmdsudo()
 
 _decode64()
 {
-    [ -z "$1" ] && printf "\\n"
+    [ -z "$1" ] && return 1
     printf "%s\\n" "$1" | openssl enc -base64 -d
 }
 #==================================================== Example ====
@@ -199,14 +211,14 @@ _decode64()
 _die()
 {   #print a stacktrace with a msg, exits with 1
     if [ -n "$BASH" ]; then
-        local frame=0
+        _die_var_frame=0
         while caller $frame; do
-            frame=$(expr $frame+1);
+            _die_var_frame=$(expr $frame+1);
         done
     fi
 
     printf "%s\\n" "$*"
-    exit 1
+    exit
 }
 #==================================================== Example ====
 #[ -z "$var" ] && _die "error msg"
@@ -216,9 +228,13 @@ _dirname()
 {   #returns string containing dirname on success, 1 on fail
     [ -z "$1" ] && return 1
 
-    #http://www.linuxselfhelp.com/gnu/autoconf/html_chapter/autoconf_10.html
-    dir=$(expr "x$1" : 'x\(.*\)/[^/]*' \| '.'      : '.')
-    printf "%s\\n" "$dir"
+    case $1 in
+        /*|*/*) #http://www.linuxselfhelp.com/gnu/autoconf/html_chapter/autoconf_10.html
+            dir=$(expr "x$1" : 'x\(.*\)/[^/]*' \| '.'      : '.')
+            printf "%s\\n" "$dir"
+            ;;
+        *) printf "%s\\n" ".";;
+    esac
 }
 #==================================================== Example ====
 #_dirname /path/file #returns /path
@@ -226,84 +242,86 @@ _dirname()
 
 _distro()
 {   #return distro name in a lower string
-    local DIST_INFO="/etc/lsb-release"
-    if [ -r "$DIST_INFO" ]; then
-        . "$DIST_INFO"
+    _distro_var_DIST_INFO="/etc/lsb-release"
+    if [ -r "$_distro_var_DIST_INFO" ]; then
+        . "$_distro_var_DIST_INFO"
     fi
 
     if [ -z "$DISTRIB_ID" ]; then
-        local DISTRIB_ID="Unknown";
+        _distro_var_DISTRIB_ID="Unknown";
         if [ -f /etc/arch-release ]; then
-            DISTRIB_ID="Arch"
+            _distro_var_DISTRIB_ID="Arch"
         elif [ -r /etc/knoppix-version ]; then
-            DISTRIB_ID="Knoppix"
+            _distro_var_DISTRIB_ID="Knoppix"
         elif [ -r /etc/sidux-version ]; then
-            DISTRIB_ID="Sidux"
+            _distro_var_DISTRIB_ID="Sidux"
         elif [ -r /etc/debian_version ]; then
-            DISTRIB_ID="Debian"
+            _distro_var_DISTRIB_ID="Debian"
         elif [ -r /etc/issue ]; then
-            DISTRIB_ID=$(cat /etc/issue.net | awk '{print $1}')
-            if [ X"$DISTRIB_ID" = X"Ubuntu" ]; then
-                DISTRIB_ID=Ubuntu
+            _distro_var_DISTRIB_ID=$(cat /etc/issue.net | awk '{print $1}')
+            if [ X"$_distro_var_DISTRIB_ID" = X"Ubuntu" ]; then
+                _distro_var_DISTRIB_ID=Ubuntu
             fi
         elif [ -r /etc/gentoo-release ]; then
-            DISTRIB_ID="Gentoo"
+            _distro_var_DISTRIB_ID="Gentoo"
         elif [ -f /etc/lfs-version ]; then
-            DISTRIB_ID="LFS"
+            _distro_var_DISTRIB_ID="LFS"
         elif [ -r /etc/pclinuxos-release ]; then
-            DISTRIB_ID="PCLinuxOS"
+            _distro_var_DISTRIB_ID="PCLinuxOS"
         elif [ -f /etc/mandriva-release ] || [ -f /etc/mandrake-release ]; then
-            DISTRIB_ID="Mandriva"
+            _distro_var_DISTRIB_ID="Mandriva"
         elif [ -f /etc/redhat-release ]; then
-            DISTRIB_ID="RedHat"
+            _distro_var_DISTRIB_ID="RedHat"
         elif [ -f /etc/fedora-release ]; then
-            DISTRIB_ID="Fedora"
+            _distro_var_DISTRIB_ID="Fedora"
         elif [ -r /etc/vector-version ]; then
-            DISTRIB_ID="VectorLinux"
+            _distro_var_DISTRIB_ID="VectorLinux"
         elif [ -r /etc/slackware-version ]; then
-            DISTRIB_ID="$(cat /etc/slackware-version)"
+            _distro_var_DISTRIB_ID="$(cat /etc/slackware-version)"
         elif [ -f /etc/release ]; then
-            DISTRIB_ID="Solaris"
+            _distro_var_DISTRIB_ID="Solaris"
         elif [ -r /etc/SuSE-release ]; then
-            DISTRIB_ID="$(grep -i suse /etc/SuSE-release)"
+            _distro_var_DISTRIB_ID="$(grep -i suse /etc/SuSE-release)"
         elif [ -f /etc/yellowdog-release ]; then
-            DISTRIB_ID="YellowDog Linux"
+            _distro_var_DISTRIB_ID="YellowDog Linux"
         elif [ -f /etc/zenwalk-version  ]; then
-            DISTRIB_ID="Zenwalk"
+            _distro_var_DISTRIB_ID="Zenwalk"
         fi
+        printf "%s\\n" "$_distro_var_DISTRIB_ID" | tr 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 'abcdefghijklmnopqrstuvwxyz'
+    else
+        printf "%s\\n" "$DISTRIB_ID" | tr 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 'abcdefghijklmnopqrstuvwxyz'
     fi
-
-    printf "%s\\n" "$DISTRIB_ID" | tr 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 'abcdefghijklmnopqrstuvwxyz'
 }
 #==================================================== Example ====
 #distro=$(_distro)
 #=================================================================
 
 _download()
-{
-    #requires liburi-perl
-    local urll="$1"
-    local prot=$(printf "%s\\n" "$urll" | cut -d: -f1)
-    if [ X"$prot" = X"magnet" ]; then
+{   #requires liburi-perl, aria2c
+    [ -z "$1" ] && return 1
+
+    _download_var_urll="$1"
+    _download_var_prot=$(printf "%s\\n" "$_download_var_urll" | cut -d: -f1)
+    if [ X"$_download_var_prot" = X"magnet" ]; then
         return 1 #not supported
     fi
-    local path=$( printf "%s\\n" "$urll" | perl -MURI -le 'chomp($url = <>); print URI->new($url)->path' )
-    local fn=$(expr "$path" : '.*/\([^/]*\)')
-    local ext="${fn##*.}"
+    _download_var_path=$( printf "%s\\n" "$_download_var_urll" | perl -MURI -le 'chomp($url = <>); print URI->new($url)->path' )
+    _download_var_fn=$(expr "$_download_var_path" : '.*/\([^/]*\)')
+    _download_var_ext="${_download_var_fn##*.}"
 
-    case "$ext" in
+    case "$_download_var_ext" in
         mp4|ogv|mpg|flv|avi|mkv|mov|wmv|webm|3gpp)
-            local file=$(aria2c -q --bt-stop-timeout=120 --seed-time=0 --follow-torrent=mem --on-download-complete /bin/echo "$urll")
-            [ -z "$file" ] && printf "%s\\n" "1" || printf "%s\\n" "$file" | cut -d" " -f3
+            _download_var_file=$(aria2c -q --bt-stop-timeout=120 --seed-time=0 --follow-torrent=mem --on-download-complete /bin/echo "$_download_var_urll")
+            [ -z "$_download_var_file" ] && printf "%s\\n" "1" || printf "%s\\n" "$_download_var_file" | cut -d" " -f3
             ;;
         torrent)
             mkdir torrent && cd torrent
-            aria2c -q --bt-stop-timeout=120 --seed-time=0 --follow-torrent=mem "$urll" > /dev/null 2>&1
+            aria2c -q --bt-stop-timeout=120 --seed-time=0 --follow-torrent=mem "$_download_var_urll" > /dev/null 2>&1
             OLDIFS=$IFS && IFS=$'\n'
-            local files="$(find ./ -name "*.mp4" -o -name "*.ogv" -o -name "*.mpg" -o -name "*.flv" -o -name "*.avi" -o -name "*.mkv" -o -name "*.mov" -o -name "*.wmv" -o -name "*.webm" -o -name "*.3gpp" 2>/dev/null)"
+            _download_var_files="$(find ./ -name "*.mp4" -o -name "*.ogv" -o -name "*.mpg" -o -name "*.flv" -o -name "*.avi" -o -name "*.mkv" -o -name "*.mov" -o -name "*.wmv" -o -name "*.webm" -o -name "*.3gpp" 2>/dev/null)"
             # restore it
             IFS=$OLDIFS
-            [ -z "$files" ] && printf "%s\\n" "1" || printf "%s\\n" "$files"
+            [ -z "$_download_var_files" ] && printf "%s\\n" "1" || printf "%s\\n" "$_download_var_files"
             ;;
         *)
             printf "%s\\n" "1"
@@ -335,6 +353,8 @@ _echo()
 _email()
 {   #send email, return 0 on success, 1 otherwise
     #requires: libio-socket-ssl-perl, libnet-ssleay-perl and sendemail
+    [ -z "$1" ] && return 1
+
     case $1 in
         gmail)
             shift
@@ -393,21 +413,6 @@ _existuser()
 #fi
 #=================================================================
 
-_fullpath()
-{   #return full path of the argument, return string on success, 1 on fail
-    if [ -z "$1" ]; then
-        return 1;
-    else
-        if [ `expr substr ${1:-a} 1 2` != "/" ]; then
-            local full_file=`pwd`"/"$1
-        fi
-    fi
-    printf "%s\\n" "$full_file"
-}
-#==================================================== Example ====
-#_fullpath file #returns /path/file
-#=================================================================
-
 _getfs()
 {   #returns file system detected or 1 on error
     [ -z "$1" ] && return 1
@@ -419,12 +424,11 @@ _getfs()
 
 _getpasswd()
 {   #define vars as passwords
-    if [ -n "$1" ]
-    then
-        local option=$(printf "%s\\n" "$1" | tr '[:upper:]' '[:lower:]')
-        printf "%s" "Enter your $option password: "
+    if [ -n "$1" ]; then
+        _getpasswd_var_option=$(printf "%s\\n" "$1" | tr '[:upper:]' '[:lower:]')
+        printf "%s" "Enter your $_getpasswd_var_option password: "
         stty -echo
-        read ${option}passwd
+        read ${_getpasswd_var_option}passwd
         stty echo
         printf "\\n"
     else
@@ -444,18 +448,17 @@ _getpasswd()
 
 _getroot()
 {   #get sudo's password, define $sudopasswd and $sudocmd
-
-    local tmp_path="/tmp"; local sudotest; local insudoers;
+    _getroot_var_tmp_path="/tmp"
 
     if [ ! X"$LOGNAME" = X"root" ]; then
         printf "%s\\n" "Detecting user $LOGNAME (non-root) ..."
         printf "%s\\n" "Checking if sudo is available ..."
-        sudotest=`type sudo >/dev/null 2>/dev/null; printf "%s\\n" "$?"`
+        _getroot_var_sudotest=$(type sudo >/dev/null 2>/dev/null; printf "%s\\n" "$?")
 
-        if [ X"$sudotest" = X"0" ]; then
+        if [ X"$_getroot_var_sudotest" = X"0" ]; then
             sudo -K
-            if [ -e "$tmp_path/sudo.test" ]; then
-                rm -f "$tmp_path/sudo.test"
+            if [ -e "$_getroot_var_tmp_path/sudo.test" ]; then
+                rm -f "$_getroot_var_tmp_path/sudo.test"
             fi
             while [ -z "$sudopwd" ]; do
                 printf "%s" "   - enter sudo-password: "
@@ -464,21 +467,20 @@ _getroot()
                 stty echo
 
                 # password check
-                printf "%s\\n" "$sudopwd" | sudo -S touch "$tmp_path/sudo.test" > "$tmp_path/sudo.output" 2>&1
-                insudoers=$(grep -i "sudoers" "$tmp_path/sudo.output")
-                if [ -n "$insudoers" ]; then
-                    printf "%s\\n" "$sudopwd" | sudo -S rm "$tmp_path/sudo.output" > /dev/null 2>&1
+                printf "%s\\n" "$sudopwd" | sudo -S touch "$_getroot_var_tmp_path/sudo.test" > "$_getroot_var_tmp_path/sudo.output" 2>&1
+                _getroot_var_insudoers=$(grep -i "sudoers" "$_getroot_var_tmp_path/sudo.output")
+                if [ -n "$_getroot_var_insudoers" ]; then
+                    printf "%s\\n" "$sudopwd" | sudo -S rm "$_getroot_var_tmp_path/sudo.output" > /dev/null 2>&1
                     exit
-                fi
-
-                if [ ! -e "$tmp_path/sudo.test" ]; then
+                fi 
+                if [ ! -e "$_getroot_var_tmp_path/sudo.test" ]; then
                     sudopwd=""
                 fi
             done
 
             sudocmd="/usr/bin/sudo -S"
 
-            printf "%s\\n" "$sudopwd" | $sudocmd rm -f "$tmp_path/sudo.test" > /dev/null 2>&1
+            printf "%s\\n" "$sudopwd" | $sudocmd rm -f "$_getroot_var_tmp_path/sudo.test" > /dev/null 2>&1
             printf "\\n"
         else
             printf "%s\\n" "You're not root and sudo isn't available. Please run this script as root!"
@@ -505,11 +507,11 @@ _inarray()
     [ -z "$1" ] && return 1
 
     if [ -n "$BASH" ]; then
-        local needle="$1"
+        _inarray_var_needle="$1"
         shift
         for element
         do
-            [ X"$element" != X"$needle" ] || return 0
+            [ X"$element" != X"$_inarray_var_needle" ] || return 0
         done
     fi
     return 1
@@ -540,9 +542,10 @@ _internetavailable()
 _isalphanum()
 { #check for alphanum strings, return 0 if all upper+lower+digits, 1 otherwise
   # Remove all unacceptable chars
-  _isalphanum_var_compressed="$(printf "%s\\n" "$1" | sed -e 's/[^[:alnum:]]//g')"
+  [ -z "$1" ] && return 1
+  _isalphanum_var_compressed="$(printf "%s" "$1" | sed -e 's/[^[:alnum:]]//g')"
 
-  [ X"$_isalphanum_var_compressed" != X"$1" ] && return 0 || return 1
+  [ X"$_isalphanum_var_compressed" = X"$1" ] && return 0 || return 1
 }
 #==================================================== Example ====
 #printf "%s" "Enter input: "
@@ -558,6 +561,7 @@ _isalphanum()
 
 _isarray()
 {   #detect if arg is an array, returns 0 on sucess, 1 otherwise
+    [ -z "$1" ] && return 1
     if [ -n "$BASH" ]; then
         declare -p ${1} 2> /dev/null | grep 'declare \-a' >/dev/null && return 0
     fi
@@ -604,13 +608,13 @@ _isnewer()
 {   #compare the dates of two files, return true (0) if file1 has
     #been modified more recently otherwise 1
 
-    [ $# -ne 2 ] && exit 1
+    [ $# -ne 2 ] && return 1
 
     if [ ! -f $1 ] || [ ! -f $2 ]; then
         return 1       # No
     fi
 
-    if [ -n "`find $1 -newer $2 -print`" ]; then
+    if [ -n "$(find $1 -newer $2 -print)" ]; then
         return 0       # Yes
     else
         return 1       # No
@@ -677,6 +681,8 @@ _notify()
 _printtime()
 {  #format seconds to a pretty string
     [ -z "$1" ] && return 1
+    printf "%s\\n" "$1" | grep -v "[^0-9]" >/dev/null || return 1;
+
     _printtime_var_num=$1
     _printtime_var_min=0
     _printtime_var_hour=0
@@ -729,40 +735,57 @@ _privport()
 
 _realpath()
 {
-    local success=true
+    _realpath_var_success=true
+    _realpath_var_path="$1"
 
-    # start with the file name (sans the trailing slash)
-    local path="$1"
-    path="${path%/}"
-
-    # get the basename of the file (ignoring '.' & '..', because they're really part of the path)
-    local file_basename="${path##*/}"
-    if [ X"$file_basename" = X"." ] || [ X"$file_basename" = X".."  ]; then
-        file_basename=""
-    fi
-
-    # extracts the directory component of the full path & attempt to change to it
-    local directory="${path%$file_basename}"
-    if [ "$directory" ]; then
-        abs_path="${directory}/${file_basename}"
-        printf "%s\\n" "$abs_path"
+    # make sure the string isn't empty as that implies something in further logic
+    if [ -z "$_realpath_var_path" ]; then
+        _realpath_var_success=false
     else
-        if [ ! -z "$file_basename" ] && [ ! -e "$file_basename" ]; then
-            success=false
+        # start with the file name (sans the trailing slash)
+        _realpath_var_path="${_realpath_var_path%/}"
+
+        # if we stripped off the trailing slash and were left with nothing, that means we're in the root directory
+        [ -z "$_realpath_var_path" ] && _realpath_var_path="/"
+
+        # get the basename of the file (ignoring '.' & '..', because they're really part of the path)
+        _realpath_var_file_basename="${_realpath_var_path##*/}"
+        if [ X"$_realpath_var_file_basename" = X"." ] || [ X"$_realpath_var_file_basename" = X".." ]; then
+            _realpath_var_file_basename=""
         fi
 
-        # get the absolute path of the current directory & change back to previous directory
-        local abs_path="$(pwd -P)"
-        #cd "-" &>/dev/null
+        # extracts the directory component of the full path, if it's empty then assume '.' (the current working directory)
+        _realpath_var_directory="${_realpath_var_path%$_realpath_var_file_basename}"
+        [ -z "$_realpath_var_directory" ] && _realpath_var_directory='.'
 
-        # Append base filename to absolute path
-        abs_path="${abs_path}/${file_basename}"
+        # attempt to change to the directory
+        if ! \cd "$_realpath_var_directory" >/dev/null 2>/dev/null; then
+            _realpath_var_success=false
+        fi
 
-        # output the absolute path
-        printf "%s\\n" "$abs_path"
+        if $_realpath_var_success; then
+            # does the filename exist?
+            if [ -n "$_realpath_var_file_basename" ] && [ ! -e "$_realpath_var_file_basename" ]; then
+                _realpath_var_success=false
+            fi
+
+            # get the absolute path of the current directory & change back to previous directory
+            _realpath_var_abs_path="$(pwd -P)"
+            \cd "-" >/dev/null 2>/dev/null
+
+            # Append base filename to absolute path
+            if [ X"${_realpath_var_abs_path}" = X"/" ]; then
+                _realpath_var_abs_path="${_realpath_var_abs_path}${_realpath_var_file_basename}"
+            else
+                _realpath_var_abs_path="${_realpath_var_abs_path}/${_realpath_var_file_basename}"
+            fi
+
+            # output the absolute path
+            printf "%s\\n" "$_realpath_var_abs_path"
+        fi
     fi
 
-    $success
+    $_realpath_var_success
 }
 #==================================================== Example ====
 #relative_path="../Shared/"
@@ -779,10 +802,10 @@ _refarray()
     #http://ihaveabackup.net/2012/01/29/a-workaround-for-passing-arrays-in-bash/
     [ -z "$1" ] && return 1
     if [ -n "$BASH" ]; then
-        local varname="$1"
-        local export_as="$2"
-        local code=$(declare -p "$varname")
-        printf "%s\\n" "${code/$varname/$export_as}"
+        _refarray_var_name="$1"
+        _refarray_var_export_as="$2"
+        _refarray_var_code=$(declare -p "$_refarray_var_name")
+        printf "%s\\n" "${_refarray_var_code/$_refarray_var_name/$_refarray_var_export_as}"
     fi
 }
 #==================================================== Example ====
@@ -801,27 +824,13 @@ _refarray()
 #dump PERSON
 #=================================================================
 
-_strlen()
-{
+_rmcron()
+{   #remove cron job, returns 1 on error
     [ -z "$1" ] && return 1
-    printf "%s\\n" "${#1}"
+    crontab -l | grep -v "$1" | crontab
 }
 #==================================================== Example ====
-#_strlen "hello world!" #returns "12"
-#=================================================================
-
-_strreplace()
-{
-    [ -z "$1" ] && return 1
-    [ -z "$2" ] && return 1
-    [ -z "$3" ] && return 1
-    _strreplace_var_replace=$(printf "%s\\n" "$1" | sed -e "s/${2}/${3}/g")
-    printf "%s\\n" "${_strreplace_var_replace}"
-}
-#==================================================== Example ====
-#hello="hello world"
-#bye=$(_strreplace "$hello" "hello" "bye")
-#printf "%s\\n" "$bye"   #prints "bye world"
+#_rmcron "pattern"
 #=================================================================
 
 _str2lower()
@@ -846,39 +855,104 @@ _str2upper()
 #printf "%s\\n" "$hello"   #prints "HELLO WORLD"
 #=================================================================
 
+_strdiff()
+{
+    [ -z "$1" ] && return 1
+    [ -z "$2" ] && return 1
+
+    set -x
+    mkfifo $$.fifo1 && mkfifo $$.fifo2
+    if [ -e "$$.fifo1" ] && [ -e "$$.fifo2" ]; then 
+        _strdiff_var_1st_string=$(printf "%s" "$1" | sed 's: :\n:g')
+        _strdiff_var_2nd_string=$(printf "%s" "$2" | sed 's: :\n:g')
+        printf "%s\\n" "$_strdiff_var_1st_string" > "$$.fifo1" &
+        printf "%s\\n" "$_strdiff_var_2nd_string" > "$$.fifo2" &
+        _strdiff_var_diff=$(awk 'NR == FNR { A[$0]=1; next } !A[$0]' "$$.fifo1" "$$.fifo2")
+        rm -rf "$$.fifo1"; rm -rf "$$.fifo2"
+        printf "%s\\n" "$_strdiff_var_diff"
+    set +x
+    else
+        return 1
+    fi
+}
+#==================================================== Example ====
+#hello="hello world"
+#world="world"
+#diff=$(_strdiff "$world" "$hello")
+#printf "%s\\n"  "$diff"   #prints "hello"
+#=================================================================
+
+_strlen()
+{
+    [ -z "$1" ] && return 1
+    printf "%s\\n" "${#1}"
+}
+#==================================================== Example ====
+#_strlen "hello world!" #returns "12"
+#=================================================================
+
+_stronlyduplicates()
+{
+    [ -z "$1" ] && return 1
+    [ -z "$2" ] && return 1
+    printf "%s\\n" $@ | awk 'x[$0]++'
+}
+#==================================================== Example ====
+#hello="hello world"
+#bye="bye world"
+#world=$(_stronlyduplicates "$hello" "$bye")
+#printf "%s\\n"  "$world"   #prints "world"
+#=================================================================
+
+_strreplace()
+{
+    [ -z "$1" ] && return 1
+    [ -z "$2" ] && return 1
+    [ -z "$3" ] && return 1
+    _strreplace_var_replace=$(printf "%s\\n" "$1" | sed -e "s/${2}/${3}/g")
+    printf "%s\\n" "${_strreplace_var_replace}"
+}
+#==================================================== Example ====
+#hello="hello world"
+#bye=$(_strreplace "$hello" "hello" "bye")
+#printf "%s\\n" "$bye"   #prints "bye world"
+#=================================================================
+
+_strunique()
+{
+    [ -z "$1" ] && return 1
+    [ -z "$2" ] && return 1
+    _strunique_var_unique=$(printf "%s\\n" $@ | awk '!($0 in x) {x[$0];print}')  #faster
+    #printf "%s\\n" $@ | awk '!x[$0]++'
+    _strunique_var_unique=$(printf "%s" "$_strunique_var_unique" | tr '\n' ' ')
+    printf "%s\\n" "${_strunique_var_unique}"
+}
+#==================================================== Example ====
+#hello="hello world"
+#bye="bye world"
+#world=$(_strunique "$hello" "$bye")
+#printf "%s\\n"  "$world"   #prints "hello world bye"
+#=================================================================
+
 _uploadimg()
 {   #uploads an image, returns url on success, 1 otherwise
-    #requires curl
-
+    #requires curl, and optionally xclip
     [ -z "$1" ] && return 1
+
     for img
     do
         if [ -f "$img" ] ; then
             case "$img" in
-                *.jpg)
-                    curl -s -F "image=@$img" -F "key=486690f872c678126a2c09a9e196ce1b" http://imgur.com/api/upload.xml \
-                        | grep -E -o "<original_image>(.)*</original_image>" | \
-                        grep -E -o "http://i.imgur.com/[^<]*" | tee /dev/fd/2 | xclip
-                    ;;
-                *.JPG)
-                    curl -s -F "image=@$img" -F "key=486690f872c678126a2c09a9e196ce1b" http://imgur.com/api/upload.xml \
-                        | grep -E -o "<original_image>(.)*</original_image>" | \
-                        grep -E -o "http://i.imgur.com/[^<]*" | tee /dev/fd/2 | xclip
-                    ;;
-                *.jpeg)
-                    curl -s -F "image=@$img" -F "key=486690f872c678126a2c09a9e196ce1b" http://imgur.com/api/upload.xml \
-                        | grep -E -o "<original_image>(.)*</original_image>" | \
-                        grep -E -o "http://i.imgur.com/[^<]*" | tee /dev/fd/2 | xclip
-                    ;;
-                *.png)
-                    curl -s -F "image=@$img" -F "key=486690f872c678126a2c09a9e196ce1b" http://imgur.com/api/upload.xml \
-                        | grep -E -o "<original_image>(.)*</original_image>" | \
-                        grep -E -o "http://i.imgur.com/[^<]*" | tee /dev/fd/2 | xclip
-                    ;;
-                *.PNG)
-                    curl -s -F "image=@$img" -F "key=486690f872c678126a2c09a9e196ce1b" http://imgur.com/api/upload.xml \
-                        | grep -E -o "<original_image>(.)*</original_image>" | \
-                        grep -E -o "http://i.imgur.com/[^<]*" | tee /dev/fd/2 | xclip
+                *.jpg|*.JPG|*.jpeg|*.png|*.PNG)
+                    if [ -f /usr/bin/xclip ]; then
+                        curl -s -F "image=@$img" -F "key=486690f872c678126a2c09a9e196ce1b" http://imgur.com/api/upload.xml \
+                            | egrep -o "<original_image>(.)*</original_image>" | \
+                            egrep -o "http://i.imgur.com/[^<]*" | tee /dev/fd/2 | xclip 
+                    else
+                        curl -s -F "image=@$img" -F "key=486690f872c678126a2c09a9e196ce1b" http://imgur.com/api/upload.xml \
+                            | egrep -o "<original_image>(.)*</original_image>" | \
+                            egrep -o "http://i.imgur.com/[^<]*"
+                    fi
                     ;;
                 *)
                     return 1
@@ -924,6 +998,7 @@ _validip4()
 {   #return 0 if parameter is a valid ip4 address, non-zero otherwise
     #https://groups.google.com/forum/#!original/comp.unix.shell/NDu-kAL5cHs/7Zpc6Q2Hu5YJ
     [ -z "$1" ] && return 1
+
     case "$*" in
         ""|*[!0-9.]*|*[!0-9]) return 1 ;;
     esac
@@ -937,9 +1012,15 @@ _validip4()
         [ ${1:-666} -le 255 ] && [ ${2:-666} -le 255 ] &&
         [ ${3:-666} -le 255 ] && [ ${4:-666} -le 254 ]
 }
+#===================================================== Example ====
+#if ! _validip4 $ip
+    #printf "%s\\n" "not valid ip: $ip"
+#fi
+#=================================================================
 
 _verbose()
 {
+    [ -z "$1" ] && return 1
     [ -n "$VERBOSE" ] && printf "%s\\n" "$*"
 }
 
@@ -949,7 +1030,7 @@ _waitfor()
 
     printf "%s " "    $ $@"
     printf "\\n"
-    eval "$@" > /dev/null 2>&1 &
+    eval "$@" > /dev/null 2>/dev/null &
     sleep 1s
 
     running=$(pidof $1); running=$?
@@ -1004,7 +1085,6 @@ _waitfor()
 _whereis()
 {
     [ -z "$1" ] && return 1
-    [ -n "$2" ] && return 1
     if ! command -v "$1" 2>/dev/null; then
         return 1
     fi
@@ -1017,8 +1097,9 @@ _whereis()
 
 _xmessage()
 {   #prints a message using xmessage || gxmessage
+    [ -z "$1" ] && return 1
     XMESSAGE=$(command -v gxmessage 2>/dev/null) || XMESSAGE=$(command -v xmessage 2>/dev/null)
-    MESSAGE="$PROGNAME: $*"
+    MESSAGE="$(expr "$0" : '.*/\([^/]*\)'): $*"
     printf "%s\\n" "$MESSAGE" | fold -s -w ${COLUMNS:-80} >&2
     if [ -n "$DISPLAY" ] && [ -n "$XMESSAGE" ]; then
         printf "%s\\n" "$MESSAGE" | fold -s -w ${COLUMNS:-80} | $XMESSAGE -center -file -
