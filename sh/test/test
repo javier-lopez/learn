@@ -1,0 +1,100 @@
+#!/usr/bin/env sh
+##
+##  Based on the GNU shtool test suite driver
+##  Copyright (c) 1999-2008 Ralf S. Engelschall <rse@engelschall.com>
+##
+##  This file is part of shtool and free software; you can redistribute
+##  it and/or modify it under the terms of the GNU General Public
+##  License as published by the Free Software Foundation; either version
+##  2 of the License, or (at your option) any later version.
+##
+##  This file is distributed in the hope that it will be useful,
+##  but WITHOUT ANY WARRANTY; without even the implied warranty of
+##  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+##  General Public License for more details.
+##
+##  You should have received a copy of the GNU General Public License
+##  along with this program; if not, write to the Free Software
+##  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+##  USA, or contact Ralf S. Engelschall <rse@engelschall.com>.
+##
+
+lib=../lib
+bin=../tools
+test_lib=./test_lib.db
+test_bin=./test_bin.db
+
+#make sure the tool and database exists
+[ -f $lib ]|| exit 1
+[ -d $bin ]|| exit 1
+[ -f $test_lib ]|| exit 1
+[ -f $test_bin ]|| exit 1
+
+#override temp debug string, avoid "Bad substitution" errors
+PS4=">>"
+
+#test lib
+FUNCTIONS=$(grep '^_.*()' $lib | sed -e 's:()::')
+TESTS=$(grep '^@begin' $test_lib | sed -e 's/^@begin{//' -e 's/}.*$//')
+FUNCTIONS_WITH_TESTS=$(printf "%s\\n" $FUNCTIONS $TESTS | awk 'x[$0]++')
+
+mkfifo fifo1 && mkfifo fifo2
+if [ -e fifo1 ] && [ -e fifo2 ]; then 
+    printf "%s\\n" $FUNCTIONS_WITH_TESTS > fifo1 &
+    printf "%s\\n" $FUNCTIONS > fifo2 &
+    FUNCTIONS_WITHOUT_TESTS=$(awk 'NR == FNR { A[$0]=1; next } !A[$0]' fifo1 fifo2)
+    rm -rf fifo1; rm -rf fifo2
+fi
+
+if [ -n "$FUNCTIONS_WITHOUT_TESTS" ]; then
+    printf "%s\\n" "Warning - functions in $lib without tests!, create the missing tests in $test_lib"
+    printf "%s\\n" "$FUNCTIONS_WITHOUT_TESTS"
+    printf "\\n"
+fi
+#move to a tmp subdirectory
+rm -rf test.sd >/dev/null 2>&1
+mkdir test.sd || exit 1
+cd test.sd || exit 1
+
+failed=0
+passed=0
+ran=0
+
+printf "%s\\n\\n" "Info - running $lib tests:"
+
+for function in $FUNCTIONS_WITH_TESTS; do
+    rm -rf ./* >/dev/null 2>&1
+    printf "%s\\n" "${function}........................." | awk '{ printf("%s", substr($0, 0, 25)); }'
+    printf "%s\\n" ". ../$lib" >run.sh
+    sed -e "/^@begin{$function}/,/^@end{$function}/p" -e '1,$d' ../$test_lib |\
+    sed -e '/^@begin/d' -e '/^@end/d' \
+        -e 's/\([^\\]\)[ 	]*$/\1 || exit 1/g' >>run.sh
+    echo "exit 0" >>run.sh
+    sh -x run.sh >run.log 2>&1
+    if [ $? -ne 0 ]; then
+        #   generate report
+        echo "FAILED"
+        echo "+---Test------------------------------"
+        cat run.sh | sed -e 's/^/| /g'
+        echo "+---Trace-----------------------------"
+        cat run.log | sed -e 's/^/| /g'
+        failed=$(expr $failed + 1)
+        echo "+-------------------------------------"
+    else
+        passed=$(expr $passed + 1)
+        echo "ok"
+    fi
+    ran=$(expr $ran + 1)
+done
+
+#   cleanup
+cd ..
+rm -rf test.sd >/dev/null 2>&1
+
+#   result
+if [ $failed -gt 0 ]; then
+    echo "FAILED: passed: $passed/$ran, failed: $failed/$ran"
+else
+    echo "OK: passed: $passed/$ran"
+fi
+exit 0
