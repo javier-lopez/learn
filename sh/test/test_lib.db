@@ -174,6 +174,15 @@ _isalphanum 'abc123'; test X"$?" = X"0"
 _isarray; test X"$?" = X"1"
 @end{_isarray}
 
+@begin{_isempty}
+_isempty; test X"$?"      = X"1"
+touch file
+_isempty file; test X"$?" = X"0"
+echo string > file
+_isempty file; test X"$?" = X"1"
+rm -f file
+@end{_isempty}
+
 @begin{_islivecd}
 _islivecd; test X"$?" = X"1"
 @end{_islivecd}

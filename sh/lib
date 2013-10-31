@@ -576,6 +576,23 @@ _isarray()
 #fi
 #=================================================================
 
+_isempty()
+{  #detect if arg is an empty file, returns 0 on sucess, 1 otherwise
+    [ -z "$1" ] && return 1
+    if [ -f "$1" ] && [ X"$(wc -c "$1" | cut -d" " -f1)" = X"0" ]; then
+        return 0
+    else
+        return 1
+    fi
+}
+#==================================================== Example ====
+#if _isempty /path/file; then
+    #printf "%s\\n" "/path/file is empty"
+#else
+    #printf "%s\\n" "/path/file is not empty"
+#fi
+#=================================================================
+
 _islivecd()
 {   #detect a livecd system, return 0 on success, 1 otherwise
     grep boot=live /proc/cmdline >/dev/null && return 0
