@@ -1,7 +1,6 @@
 #basic bash completion for android utilities
 #chilicuil <chilicuil@gmail.com> 2011
 
-#have android && {
 _android()
 {
     #When the function or command is invoked, the first argument is the name of

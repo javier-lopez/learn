@@ -1,4 +1,3 @@
-#chilicuil <chilicuil@gmail.com> 2011
 # $ sudo cp vboxmanage.autocp /etc/bash_completion.d/
 # $ source $HOME/.bashrc
 

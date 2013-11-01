@@ -1,7 +1,5 @@
 #basic bash completion for recordmydesktop
-#chilicuil <chilicuil@gmail.com> 2012
 
-have recordmydesktop &&
 _recordmydesktop()
 {
     #When the function or command is invoked, the first argument is the name of
@@ -87,5 +85,6 @@ _recordmydesktop()
             fi
             ;;
     esac
-} &&
+}
+
 complete -F _recordmydesktop recordmydesktop
