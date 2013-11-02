@@ -1,7 +1,8 @@
 _vagrant()
 {
-    cur="${COMP_WORDS[COMP_CWORD]}"
-    prev="${COMP_WORDS[COMP_CWORD-1]}"
+    local cur prev words cword
+    _init_completion || return
+
     commands="box destroy halt help init package provision reload resume ssh ssh_config status suspend up version"
 
     if [ $COMP_CWORD == 1 ]
@@ -44,7 +45,7 @@ _vagrant()
       fi
     fi
 
-}
+} &&
 complete -F _vagrant vagrant
 
 # vim: set ts=8 sw=4 tw=0 ft=sh : 

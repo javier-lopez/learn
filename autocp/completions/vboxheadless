@@ -1,19 +1,8 @@
-# $ sudo cp vboxheadless.autocp /etc/bash_completion.d/
-# $ source $HOME/.bashrc
-
 _vboxheadless()
 {
-    #program_name=$1
-    #program_name="${COMP_WORDS[0]}"
-    #cur=$2
-    #prev=$3
-    #1st_parameter="${COMP_WORDS[1]}"
-    #2st_parameter="${COMP_WORDS[2]}"
+    local cur prev words cword
+    _init_completion || return
 
-    local cur prev opts
-    COMPREPLY=() #clean out last completions
-    cur=$(_get_cword)
-    prev="${COMP_WORDS[COMP_CWORD-1]}"
     number_of_words=${#COMP_WORDS[@]}
 
     #=======================================================
@@ -29,15 +18,15 @@ _vboxheadless()
     #=======================================================
     vrde_opts="on off config"
 
-    case $prev in
-        @(-s|-startvm|--startvm))
+    case "$prev" in
+        -s|-startvm|--startvm)
             OLDIFS="$IFS"
             IFS=$'\n'
             COMPREPLY=($(compgen -W "$(vboxmanage list vms | cut -d\" -f2)" -- $cur))
             IFS="$OLDIFS"
             return 0
             ;;
-        @(-v|-vrde|--vrde))
+        -v|-vrde|--vrde)
             COMPREPLY=( $( compgen -W "$vrde_opts" -- $cur ))
             return 0
             ;;
@@ -47,7 +36,7 @@ _vboxheadless()
         # relevant options completion
         COMPREPLY=( $( compgen -W "$OPTS" -- $cur ) )
     fi
-}
-
+} &&
 complete -F _vboxheadless VBoxHeadless vboxheadless
+
 # vim: set ts=8 sw=4 tw=80 ft=sh : 

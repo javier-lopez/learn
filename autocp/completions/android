@@ -1,5 +1,4 @@
-#basic bash completion for android utilities
-#chilicuil <chilicuil@gmail.com> 2011
+#android utilities completion
 
 _android()
 {
@@ -14,13 +13,12 @@ _android()
     #$4<---?
 
     #defining local vars
-    local cur prev opts
-    COMPREPLY=() #clean out last completions
-    cur="${COMP_WORDS[COMP_CWORD]}"
-    prev="${COMP_WORDS[COMP_CWORD-1]}"
+    local cur prev words cword
+    _init_completion || return
+
     number_of_words=${#COMP_WORDS[@]}
 
-    if [[ $number_of_words -gt 2 ]]; then
+    if [ $number_of_words -gt 2 ]; then
         prev_prev="${COMP_WORDS[COMP_CWORD-2]}"
     fi
 
@@ -48,8 +46,8 @@ _android()
                      --path -f -s --skin"
     create_project_opts="-n --name -t --target -p --path -k --package -a\
                      --activity"
-    create_test-project_opts="-p --path -m --main -n --name"
-    create_lib-project_opts="-n --name -p --path -t --target -k --package"
+    create_test_project_opts="-p --path -m --main -n --name"
+    create_lib_project_opts="-n --name -p --path -t --target -k --package"
 
     move_avd_opts="-p --path -n --name -r --rename"
     delete_avd_opts="-n --name"
@@ -57,8 +55,8 @@ _android()
     update_avd_opts="-n --name"
     update_project_opts="-p --path -l --library -n --name -t --target -s \
                         --subprojects"
-    update_test-project_opts="-m --main -p --path"
-    update_lib-project_opts="-p --path -t --target"
+    update_test_project_opts="-m --main -p --path"
+    update_lib_project_opts="-p --path -t --target"
     update_adb_opts=""
     update_sdk_opts="--proxy-port -f --force -u --no-ui -o --obsolete \
                     --proxy-host -t --filter -s --no-https -n --dry-mode"
@@ -73,7 +71,7 @@ _android()
     # -P preffix
     # -S suffix
 
-    if [[ -n $prev_prev ]]; then
+    if [ -n "$prev_prev" ]; then
         #2nd layer
         case "${prev_prev}" in
             create)
@@ -87,11 +85,11 @@ _android()
                         return 0
                         ;;
                     test-project)
-                        COMPREPLY=( $( compgen -W "$create_test-project_opts" -- $cur ))
+                        COMPREPLY=( $( compgen -W "$create_test_project_opts" -- $cur ))
                         return 0
                         ;;
                     lib-project)
-                        COMPREPLY=( $( compgen -W "$create_lib-project_opts" -- $cur ))
+                        COMPREPLY=( $( compgen -W "$create_lib_project_opts" -- $cur ))
                         return 0
                         ;;
                 esac
@@ -123,11 +121,11 @@ _android()
                         return 0
                         ;;
                     test-project)
-                        COMPREPLY=( $( compgen -W "$update_test-project-opts" -- $cur ))
+                        COMPREPLY=( $( compgen -W "$update_test_project_opts" -- $cur ))
                         return 0
                         ;;
                     lib-project)
-                        COMPREPLY=( $( compgen -W "$update_lib-project_opts" -- $cur ))
+                        COMPREPLY=( $( compgen -W "$update_lib_project_opts" -- $cur ))
                         return 0
                         ;;
                     sdk)
@@ -172,6 +170,6 @@ _android()
             COMPREPLY=( $( compgen -W "$COMMANDS" -- $cur ))
             ;;
     esac
-}
-
+} &&
 complete -F _android android
+# vim: set ts=8 sw=4 tw=0 ft=sh : 

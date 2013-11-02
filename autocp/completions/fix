@@ -1,0 +1,23 @@
+_fix()
+{
+    #defining local vars
+    local cur prev words cword
+    _init_completion || return
+
+    COMMANDS="apache ipw2200 wl iwlagn mpd webcam"
+    OPTS="-h --help -v --version"
+
+    case "${cur}" in
+        -*)
+            completions="$OPTS"
+            ;;
+        *)
+            completions="$COMMANDS"
+            ;;
+    esac
+
+    COMPREPLY=( $( compgen -W "$completions" -- $cur ))
+    return 0
+} &&
+complete -F _fix fix
+# vim: set ts=8 sw=4 tw=0 ft=sh : 

@@ -1,0 +1,30 @@
+_installcustom()
+{
+    #defining local vars
+    local cur prev words cword
+    _init_completion || return
+
+    case "${cur}" in
+    *)
+        COMPREPLY=( $( apt-cache --no-generate pkgnames "$cur" \
+                    2> /dev/null ) )
+        return 0
+        ;;
+    esac
+} &&
+complete -F _installcustom install
+
+_removecustom()
+{
+    local cur prev words cword
+    _init_completion || return
+
+    case "${cur}" in
+    *)
+        COMPREPLY=( $( _xfunc dpkg _comp_dpkg_installed_packages $cur ) )
+        return 0
+        ;;
+    esac
+} &&
+complete -F _removecustom remove purge
+# vim: set ts=8 sw=4 tw=0 ft=sh :

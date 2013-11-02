@@ -1,19 +1,8 @@
-# $ sudo cp vboxmanage.autocp /etc/bash_completion.d/
-# $ source $HOME/.bashrc
-
 _vboxmanage()
 {
-    #program_name=$1
-    #program_name="${COMP_WORDS[0]}"
-    #cur=$2
-    #prev=$3
-    #1st_parameter="${COMP_WORDS[1]}"
-    #2st_parameter="${COMP_WORDS[2]}"
+    local cur prev words cword
+    _init_completion || return
 
-    local cur prev opts
-    COMPREPLY=() #clean out last completions
-    cur=$(_get_cword)
-    prev="${COMP_WORDS[COMP_CWORD-1]}"
     number_of_words=${#COMP_WORDS[@]}
 
     #=======================================================
@@ -354,7 +343,7 @@ _vboxmanage()
     else
         COMPREPLY=( $( compgen -W "$COMMANDS" -- $cur ) )
     fi
-}
-
+} &&
 complete -F _vboxmanage VBoxManage vboxmanage
+
 # vim: set ts=8 sw=4 tw=80 ft=sh : 
