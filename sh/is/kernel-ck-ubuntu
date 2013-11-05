@@ -1,94 +1,24 @@
 #!/usr/bin/env bash
 #http://viajemotu.wordpress.com/2012/08/13/kernel-ck-for-ubuntu-precise/
-#https://github.com/chilicuil/learn/blob/master/sh/kernel-ck-ubuntu
+#https://github.com/chilicuil/learn/blob/master/sh/is/kernel-ck-ubuntu
 
 # $ time bash kernel-ck-ubuntu
 
 #####################################
-
-#####################################
-# 3.9
-#versão do kernel a ser compilado
-kernel=3.9
-#patch de atualização
-patchkernel=3.9.2
-#patch BFQ
-bfq=3.9.0-v6r1
-vbfq=v6r1
-#patch ck
-patchck=3.9-ck1
-#sufixo
+#kernel version base
+kernel=3.11
+#kernel specific version
+patchkernel=3.11.7
+#BFQ patch
+bfq=3.11.0-v6r2
+vbfq=v6r2
+#CK patch
+patchck=3.11-ck1
+#sufix
 ckk=ck1
 #arch
 arqt=$(dpkg --print-architecture)
 #####################################
-
-#####################################
-# 3.8
-#versão do kernel a ser compilado
-#kernel=3.8
-#patch de atualização
-#patchkernel=3.8.2
-#patch BFQ
-#bfq=3.8.0-v6
-#vbfq=v6
-#patch ck
-#patchck=3.8-ck1
-#sufixo
-#ckk=ck1
-#arch
-#arqt=$(dpkg --print-architecture)
-#####################################
-
-#####################################
-# 3.7
-#versão do kernel a ser compilado
-#kernel=3.7
-#patch de atualização
-#patchkernel=3.7.6
-#patch BFQ
-#bfq=3.7.0-v5r1
-#vbfq=v5r1
-#patch ck
-#patchck=3.7-ck1
-#sufixo
-#ckk=ck1
-#arch
-#arqt=$(dpkg --print-architecture)
-#####################################
-
-#####################################
-# 3.6
-#versão do kernel a ser compilado
-#kernel=3.6
-#path de atualização
-#patchkernel=3.6.5
-#patch BFQ
-#bfq=3.6.0-v5
-#patch ck
-#patchck=3.6-ck1
-#sufixo
-#ckk=ck1
-#arch
-#arqt=$(dpkg --print-architecture)
-#####################################
-
-#####################################
-# 3.4
-#versão do kernel a ser compilado
-#kernel=3.4
-#path de atualização
-#patchkernel=3.4.5
-#patch BFQ
-#bfq=3.4.0-v3r4
-#patch ck
-#patchck=3.4-ck3
-#sufixo
-#ckk=ck3
-#arch
-#arqt=$(dpkg --print-architecture)
-#####################################
-
 
 ####################################################################################################################################
 ##############################################DO NOT EDIT BELOW UNLESS YOU KNOW WHAT YOU'RE DOING###################################
@@ -99,8 +29,7 @@ tmp_path="$HOME/.tmp/kernel-ck-ubuntu-$patchkernel"
 curr_path=$PWD
 apps_default="kernel-package gcc-4.6 libncurses5 libncurses5-dev build-essential patch fakeroot bc"
 
-X=1
-CL=$(printf "%s\\n" "$(expr $(grep -c processor /proc/cpuinfo) + $X )")
+CL=$(printf "%s\\n" "$(expr $(grep -c processor /proc/cpuinfo) + 1 )")
 
 trap _cleanup SIGINT SIGTERM #trap ctrl-c
 
@@ -108,23 +37,23 @@ _header()
 {
     clear
     printf "%b\\n" "\033[1m-------------------------------\033[7m $0 $patchkernel \033[0m\033[1m------------------------------\033[0m"
-    printf "%b\\n" "\033[1m  Original:\033[0m        http://sourceforge.net/projects/scriptkernel/"
-    printf "%b\\n" "\033[1m  Inspired by:\033[0m     http://omicron.homeip.net/projects/#easy_e17.sh"
-    printf "%b\\n" "\033[1m  Updates:\033[0m         https://github.com/chilicuil/learn/blob/master/sh/kernel-ck-ubuntu"
-    printf "%s\\n"    "                                 send your push request!"
+    printf "%b\\n" "\033[1m  Original:\033[0m    http://sourceforge.net/projects/scriptkernel/"
+    printf "%b\\n" "\033[1m  Inspired by:\033[0m http://omicron.homeip.net/projects/#easy_e17.sh"
+    printf "%b\\n" "\033[1m  Updates:\033[0m     https://github.com/chilicuil/learn/blob/master/sh/is/kernel-ck-ubuntu"
+    printf "%s\\n"    "                             send your push request!"
     printf "\\n"
-    printf "%b\\n" "\033[1m  Patches:\033[0m         -bfq, -ck, -ubuntu"
-    printf "%b\\n" "\033[1m  Config:\033[0m          http://liquorix.net"
+    printf "%b\\n" "\033[1m  Patches:\033[0m     -bfq, -ck, -ubuntu"
+    printf "%b\\n" "\033[1m  Config:\033[0m      http://repo-ck.com/"
     printf "\\n"
     printf "%b\\n" "\033[1m----------------\033[7m Current Configuration: edit the script to change them \033[0m\033[1m--------------\033[0m"
-    printf "%s\\n" "  build path:         $tmp_path"
-    printf "%s\\n" "  kernel:             $patchkernel"
-    printf "%s\\n" "  -bfq patchset:      $bfq"
-    printf "%s\\n" "  -ck patchset:       $patchck"
-    printf "%s\\n" "  -ubuntu patchset:   v$patchkernel"
-    printf "%s\\n" "  sufix:              $ckk"
-    printf "%s\\n" "  arch:               $arqt"
-    printf "%s\\n" "  concurrency level:  $CL"
+    printf "%s\\n" "  build path:        $tmp_path"
+    printf "%s\\n" "  kernel:            $patchkernel"
+    printf "%s\\n" "  -bfq patchset:     $bfq"
+    printf "%s\\n" "  -ck patchset:      $patchck"
+    printf "%s\\n" "  -ubuntu patchset:  v$patchkernel"
+    printf "%s\\n" "  sufix:             $ckk"
+    printf "%s\\n" "  arch:              $arqt"
+    printf "%s\\n" "  concurrency level: $CL"
     printf "%b\\n" "\033[1m-------------------------------------------------------------------------------------\033[0m"
 }
 
@@ -132,22 +61,27 @@ _cmd()
 {   #print current command, exits on fail
     [ -z "$1" ] && return 0
 
-    printf "%s\\n" "    $ $@"
-    $@
+    printf "%s " "    $ $@"
+    printf "\\n"
+    eval "$@"
 
     status=$?
     [ X"$status" != X"0" ] && exit $status || return
 }
 
 _cmdsudo()
-{   #print current command, exits on fail
-    [ -z "$1" ] && return 0
+{   #print && execute a command, exits if command fails
+    [ -z "$1" ] && return 1
+    _cmdsudo_var_serr=$$
 
-    printf "%s\\n" "    $ sudo $@"
-    printf "%s\\n" "$sudopwd" | $sudocmd $@
+    printf "%s " "    $ $@"
+    printf "\\n"
+    printf "%s\\n" "$sudopwd" | $sudocmd eval "$@" > /tmp/"$_cmdsudo_var_serr".out 2>&1
 
-    status=$?
-    [ X"$status" != X"0" ] && exit $status || return
+    _cmdsudo_var_status=$?
+    [ X"$_cmdsudo_var_status" != X"0" ] && { cat /tmp/"$_cmdsudo_var_serr".out; \
+        rm -rf /tmp/"$_cmdsudo_var_serr".out; exit $_cmdsudo_var_status; } \
+        || { rm -rf /tmp/"$_cmdsudo_var_serr".out; return $_cmdsudo_var_status; }
 }
 
 _handscui()
@@ -245,17 +179,16 @@ _cleanup()
 
     #printf "%s\\n" "$sudopwd" | $sudocmd mount -o remount /tmp
     #rm -rf $tmp_path 2>/dev/null
-    if [ -z $1 ]; then
+    if [ -z "$1" ]; then
         exit
     fi
 }
 
 _waitfor()
 {
-    [ -z $1 ] && return 1
+    [ -z "$1" ] && return 1
 
     printf "%s " "    $ $@ ..."
-    printf "\\n"
     eval "$@" > /dev/null 2>&1 &
     sleep 1s
 
@@ -266,8 +199,8 @@ _waitforsudo()
 {
     [ -z "$1" ] && return 1
 
-    printf "%s" "    $ sudo $@ ..."
-    printf "%s\\n" "$sudopwd" | $sudocmd $@ > /dev/null 2>&1 &
+    printf "%s " "    $ sudo $@ ..."
+    printf "%s" "$sudopwd" | $sudocmd $@ > /dev/null 2>&1 &
     sleep 1s
 
     _handscui $(pidof $1)
@@ -296,13 +229,13 @@ _waitfor wget -N http://ck.kolivas.org/patches/3.0/$kernel/$patchck/patch-$patch
 printf "%s\\n" "[+] downloading bfq patches ..."
 _waitfor wget -N http://algo.ing.unimo.it/people/paolo/disk_sched/patches/$bfq/0001-block-cgroups-kconfig-build-bits-for-BFQ-$vbfq-$kernel.patch
 _waitfor wget -N http://algo.ing.unimo.it/people/paolo/disk_sched/patches/$bfq/0002-block-introduce-the-BFQ-$vbfq-I-O-sched-for-$kernel.patch
+_waitfor wget -N http://algo.ing.unimo.it/people/paolo/disk_sched/patches/$bfq/0003-block-bfq-add-Early-Queue-Merge-EQM-to-BFQ-$vbfq-for-$kernel.0.patch
 
 printf "%s\\n" "[+] downloading ubuntu patches ..."
 _waitfor wget -N http://kernel.ubuntu.com/~kernel-ppa/mainline/v$patchkernel-saucy/0001-base-packaging.patch
 _waitfor wget -N http://kernel.ubuntu.com/~kernel-ppa/mainline/v$patchkernel-saucy/0002-debian-changelog.patch
-_waitfor wget -N http://kernel.ubuntu.com/~kernel-ppa/mainline/v$patchkernel-saucy/0003-default-configs.patch
 
-printf "%b\\n" "\033[1m-----------------------------\033[7m Applying the patches \033[0m\033[1m------------------------------\033[0m"
+printf "%b\\n" "\033[1m--------------------------------------\033[7m Applying patches \033[0m\033[1m------------------------------\033[0m"
 printf "%s\\n" "[+] uncompresing kernel to $tmp_path/linux-$kernel/ ..."
 if [ ! -d "/$tmp_path/linux-$kernel/" ]; then
     _waitfor "bzcat < $tmp_path/linux-$kernel.tar.bz2 | tar xvf -"
@@ -315,34 +248,33 @@ printf "%s\\n" "[+] moving to $tmp_path/linux-$patchkernel-$ckk"
 _waitfor rm -rf linux-$patchkernel-$ckk
 _waitfor cp -R "linux-$kernel" "linux-$patchkernel-$ckk"
 _cmd cd linux-$patchkernel-$ckk
-_cmd printf "\\n"
 
 printf "%s\\n" "[+] applying patches (verbose output) ..."
 _cmd patch -p1 < ../patch-$patchkernel
 _cmd patch -p1 < ../patch-$patchck
 _cmd patch -p1 < ../0001-block-cgroups-kconfig-build-bits-for-BFQ-$vbfq-$kernel.patch
 _cmd patch -p1 < ../0002-block-introduce-the-BFQ-$vbfq-I-O-sched-for-$kernel.patch
+_cmd patch -p1 < ../0003-block-bfq-add-Early-Queue-Merge-EQM-to-BFQ-$vbfq-for-$kernel.0.patch
 _cmd patch -p1 < ../0001-base-packaging.patch
 _cmd patch -p1 < ../0002-debian-changelog.patch
-_cmd patch -p1 < ../0003-default-configs.patch
-_cmd printf "\\n"
 
 printf "%b\\n" "\033[1m-----------------------------\033[7m Configuring kernel \033[0m\033[1m----------------------------------\033[0m"
-#### criado por Stivekx #############
-#config_file=$(locate /boot/config-* | sort -r | head -1)
 
-printf "%s\\n" "[+] downloading optimized config from http://liquorix.net ...    "
-_cmd wget "http://liquorix.net/sources/$kernel/config.$arqt"
-#TODO 04-03-2013 21:19 >> check when liquorix update config for 3.8, using 3.7 config in the meantime
-#Same for 3.9
-#_waitfor wget "http://javier.io/mirror/3.9/config.$arqt"
+printf "%s\\n" "[+] downloading optimized config from http://repo-ck.com ...    "
+#_waitfor wget "http://liquorix.net/sources/$kernel/config.$arqt"
+##TODO 05-11-2013 20:30 >> liquorix.net current configuration breaks -ck kernel 
+#                          starting in >= 3.10, check from time to time if it can be reused
+
+#for now use config mirrored from http://repo-ck.com/
+_waitfor wget "http://javier.io/mirror/3.11/config.$arqt"
 _cmd cp "config.$arqt" .config
 
-#tmp fix for bug #663474
-#http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=663474
-if [ $arqt == "i386" ]; then
+##tmp fix for bug #663474, disable lguest hypervisor, http://lguest.ozlabs.org/lguest.txt
+##http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=663474
+if [ X"$arqt" = X"i386" ]; then
     sed -i "/CONFIG_LGUEST_GUEST/d" .config
-elif [ $arqt == "amd64" ]; then
+    sed -i "/CONFIG_LGUEST/d" .config
+elif [ X"$arqt" = X"amd64" ]; then
     if [ ! -d ./arch/amd64  ]; then
         cd arch
         ln -s x86 amd64
@@ -350,7 +282,7 @@ elif [ $arqt == "amd64" ]; then
     fi
 fi
 
-#thanks StefanescuCristian: https://github.com/chilicuil/learn/commit/c2d44556101f997d70eac4c5536ea241363ee63c#commitcomment-2390064
+##thanks to StefanescuCristian: https://github.com/chilicuil/learn/commit/c2d4455
 printf "%s\\n" "[+] making sure BFS and BFQ are enabled in config"
 sed -i "/CONFIG_SCHED_CFS=y/d" .config
 sed -i "s/# CONFIG_SCHED_BFS is not set/CONFIG_SCHED_BFS=y/g" .config
@@ -363,29 +295,27 @@ sed -i "s/CONFIG_DEFAULT_IOSCHED="deadline"/CONFIG_DEFAULT_IOSCHED="bfq"/g" .con
 sed -i "s/CONFIG_DEFAULT_IOSCHED="noop"/CONFIG_DEFAULT_IOSCHED="bfq"/g" .config
 sed -i "s/# CONFIG_DEFAULT_BFQ is not set/CONFIG_DEFAULT_BFQ=y/g" .config
 
-#printf "%s\\n" "[+] optimizying even more, using streamline_config.pl ...    "
-#chmod +x ./scripts/kconfig/streamline_config.pl && ./scripts/kconfig/streamline_config.pl > config_strip
-##make localmodconfig
-#mv config_strip .config
+printf "%s\\n" "[+] making sure CONFIG_HZ is set to 1000, better performance + fixes in resume|suspending issues"
+sed -i -e 's/^CONFIG_HZ_300=y/# CONFIG_HZ_300 is not set/' \
+    -i -e 's/^# CONFIG_HZ_1000 is not set/CONFIG_HZ_1000=y/' \
+    -i -e 's/^CONFIG_HZ=300/CONFIG_HZ=1000/' .config
 
-#printf "%s\\n" "[+] running menuconfig ...    "
-#make menuconfig
-_cmd printf "\\n"
+##printf "%s\\n" "[+] optimizying even more, using streamline_config.pl ...    "
+##chmod +x ./scripts/kconfig/streamline_config.pl && ./scripts/kconfig/streamline_config.pl > config_strip
+###make localmodconfig
+##mv config_strip .config
 
-printf "%b\\n" "\033[1m-----------------------------\033[7m Compiling kernel \033[0m\033[1m----------------------------------\033[0m"
+##printf "%s\\n" "[+] running menuconfig ...    "
+##make menuconfig
+
+printf "%b\\n" "\033[1m-------------------------------\033[7m Compiling kernel \033[0m\033[1m----------------------------------\033[0m"
 
 printf "%s\\n" "[+] running make-kpkg ...    "
 CONCURRENCY_LEVEL=$CL
 printf "\\n" | _cmd fakeroot make-kpkg --initrd kernel_image kernel_headers modules_image
-_cmd printf "\\n"
 
 printf "%b\\n" "\033[1m-------------------------------------\033[7m DONE \033[0m\033[1m----------------------------------\033[0m"
 printf "%s\\n" "[+] copying debs files ..."
 _cmd cp ../linux-*.deb "$curr_path"
 printf "%s\\n" "[+] you may want to install the generated packages and reboot your system, run: $ sudo dpkg -i linux-*.deb"
 printf "%s\\n" "[+] have fun ^_^!"
-
-#printf "%s\\n" "$sudopwd" | $sudocmd dpkg -i ../*.deb
-
-_cleanup 1
-
