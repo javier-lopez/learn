@@ -1046,7 +1046,6 @@ _waitfor()
     [ -z "$1" ] && return 1
 
     printf "%s " "    $ $@"
-    printf "\\n"
     eval "$@" > /dev/null 2>/dev/null &
     sleep 1s
 

@@ -108,6 +108,21 @@ _getroot()
     fi
 }
 
+_cmdsudo()
+{   #print && execute a command, exits if command fails
+    [ -z "$1" ] && return 1
+    _cmdsudo_var_serr=$$
+
+    printf "%s " "    $ $@"
+    printf "\\n"
+    printf "%s\\n" "$sudopwd" | $sudocmd eval "$@" > /tmp/"$_cmdsudo_var_serr".out 2>&1
+
+    _cmdsudo_var_status=$?
+    [ X"$_cmdsudo_var_status" != X"0" ] && { cat /tmp/"$_cmdsudo_var_serr".out; \
+        rm -rf /tmp/"$_cmdsudo_var_serr".out; exit $_cmdsudo_var_status; } \
+        || { rm -rf /tmp/"$_cmdsudo_var_serr".out; return $_cmdsudo_var_status; }
+}
+
 _waitforsudo()
 {
     [ -z "$1" ] && return 1
