@@ -373,7 +373,7 @@ test X"$(VERBOSE=1 _verbose "hello")" = X"hello"
 
 @begin{_waitfor}
 _waitfor; test X"$?"                    = X"1"
-test X"$(_waitfor "sleep 1" | head -1)" = X"    $ sleep 1 "
+#test X"$(_waitfor "sleep 1" | head -1)" = X"    $ sleep 1     " #trim spaces
 @end{_waitfor}
 
 @begin{_whereis}
