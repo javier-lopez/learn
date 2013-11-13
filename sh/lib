@@ -187,7 +187,7 @@ _cmdsudo()
 
     printf "%s " "    $ $@"
     printf "\\n"
-    printf "%s\\n" "$sudopwd" | $sudocmd eval "$@" > /tmp/"$_cmdsudo_var_serr".out 2>&1
+    printf "%s\\n" "$sudopwd" | $sudocmd "$@" > /tmp/"$_cmdsudo_var_serr".out 2>&1
 
     _cmdsudo_var_status=$?
     [ X"$_cmdsudo_var_status" != X"0" ] && { cat /tmp/"$_cmdsudo_var_serr".out; \
