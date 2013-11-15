@@ -1,0 +1,63 @@
+#!/usr/bin/env sh
+
+_usage()
+{
+    printf "%s\\n" "Usage: $(basename $0) [lp-group]"
+    printf "%s\\n" "       lp-group   launchpad group to query, ubuntumembers by default"
+    exit 0
+}
+
+_whereis()
+{
+    [ -z "$1" ] && return 1
+    [ -n "$2" ] && return 1
+    if ! command -v "$1" 2>/dev/null; then
+        return 1
+    fi
+}
+
+_die()
+{   #print a stacktrace with a msg, exits with 1
+    printf "%s\\n" "$*"
+    exit
+}
+
+_internetavailable()
+{   #check for internet connection, returns 0 on success, 1 otherwise
+    wget --tries=3 --timeout=5 http://www.google.com -O /tmp/index.google > /dev/null 2>&1
+
+    if [ -s /tmp/index.google ]; then
+        rm /tmp/index.google
+        return 0
+    else
+        rm /tmp/index.google
+        return 1
+    fi
+}
+
+_deps()
+{
+    _whereis python >/dev/null || _die "$(basename $0): python not found!, $ sudo apt-get install python"
+    _whereis wget >/dev/null || _die "$(basename $0): wget not found!, $ sudo apt-get install wget"
+
+    if ! _internetavailable; then
+        _die "$(basename $0): You must have an internet connection to run this script"
+        exit 1
+    fi
+
+    if ! $(printf "%s" "from launchpadlib.launchpad import Launchpad" | python >/dev/null 2>/dev/null); then
+        _die "$(basename $0): launchpadlib not found!, $ sudo apt-get install python-launchpadlib"
+    fi
+
+    if ! $(printf "%s" "from geopy import geocoders" | python >/dev/null 2>/dev/null ); then
+        _die "$(basename $0): geopy not found!, $ sudo apt-get install python-pip && sudo pip install geopy"
+    fi
+}
+
+[ -n "$1" ] && team="$1" || team="ubuntumembers"
+
+_deps
+
+[ -f lp-g9n-team.py ] || wget https://raw.github.com/chilicuil/learn/master/python/lp-g9n-team -O lp-g9n-team.py >/dev/null 2>/dev/null
+[ -f lp-g9n-team.py ] && printf "%s\\n" "Outputing data to \"lp-g9n-team.csv\"" || _die "lp-g9n-team: failed to connect to launchpad, verify your connection"
+python lp-g9n-team.py "$team" | tee lp-g9n-team.csv
