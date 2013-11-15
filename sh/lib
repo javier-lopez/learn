@@ -210,7 +210,7 @@ _decode64()
 
 _die()
 {   #print a stacktrace with a msg, exits with 1
-    if [ -n "$BASH" ]; then
+    if [ -n "$bash" ]; then
         _die_var_frame=0
         while caller $_die_var_frame; do
             _die_var_frame=$(expr $_die_var_frame + 1);
@@ -1002,7 +1002,7 @@ _usage()
 _validinterface()
 {   #return 0 if parameter is a valid network interface, 1 otherwise
     [ -z "$1" ] && return 1
-    ip addr | grep "$1" >/dev/null && return 0
+    ip addr show | grep "$1": >/dev/null && return 0
     return 1
 }
 #===================================================== Example ====
@@ -1057,7 +1057,7 @@ _waitfor()
         animation_state=1
         printf "%b" "    "
 
-        while [ "`ps -p $pid -o comm=`" ]; do
+        while [ "$(ps -p $pid -o comm=)" ]; do
             # rotating star
             printf "%b" "\b\b\b"
             case $animation_state in

@@ -5,7 +5,7 @@
 #dhcpd.py pure python dhcp server pxe capable
 #psychomario - https://github.com/psychomario
 
-import socket,binascii,time
+import socket,binascii,time,IN
 from sys import exit
 from optparse import OptionParser
 
@@ -85,23 +85,23 @@ def getlease(hwaddr): #return the lease of mac address, or create if doesn't exi
 
 if __name__ == "__main__":
     parser = OptionParser(description='%prog - a simple DHCP server', usage='%prog [options]')
+    parser.add_option("-a", "--address", dest="address", action="store", help='server ip address (required).')
     parser.add_option("-i", "--interface", dest="interface", action="store", help='network interface to use (default all interfaces).')
     parser.add_option("-p", "--port", dest="port", action="store", help='server port to bind (default 67).')
-    parser.add_option("-a", "--address", dest="address", action="store", help='server ip address (default active interface ip).')
-    parser.add_option("-f", "--from", dest="offerfrom", action="store", help='ip pool from (default x.x.x.150).')
-    parser.add_option("-t", "--to", dest="offerto", action="store", help='ip pool to (default x.x.x.250).')
+    parser.add_option("-f", "--from", dest="offerfrom", action="store", help='ip pool from (default x.x.x.100).')
+    parser.add_option("-t", "--to", dest="offerto", action="store", help='ip pool to (default x.x.x.150).')
+    parser.add_option("-b", "--broadcast", dest="broadcast", action="store", help='broadcast ip to reply (x.x.x.254).')
     parser.add_option("-n", "--netmask", dest="netmask", action="store", help='netmask (default 255.255.255.0).')
-    parser.add_option("-b", "--broadcast", dest="broadcast", action="store", help='broadcast ip to reply (default x.x.x.255).')
-    parser.add_option("-t", "--tftp", dest="tftp", action="store", help='tftp ip address (default active interface ip).')
+    parser.add_option("-s", "--tftp", dest="tftp", action="store", help='tftp ip address (default ip address provided).')
     parser.add_option("-d", "--dns", dest="dns", action="store", help='dns ip address (default 8.8.8.8).')
-    parser.add_option("-g", "--gateway", dest="gateway", action="store", help='gateway ip address (default active interface ip).')
+    parser.add_option("-g", "--gateway", dest="gateway", action="store", help='gateway ip address (default ip address provided).')
     parser.add_option("-x", "--pxefilename", dest="pxefilename", action="store", help='pxe filename (default pxelinux.0).')
 
     (options, args) = parser.parse_args()
 
-    #if not (args or options.interface):
-        #parser.print_help()
-        #exit(1)
+    if not (args or options.address):
+        parser.print_help()
+        exit(1)
 
     if options.interface:
         interface = options.interface
@@ -112,36 +112,43 @@ if __name__ == "__main__":
         port = options.port
     else:
         port = '67'
+	port = int(port)
 
     if options.address:
         address = options.address
+        elements_in_address = address.split('.')
+        if len(elements_in_address) != 4:
+            sys.exit(os.path.basename(__file__) + ": invalid ip address")
     else:
-        address = '0.0.0.0' #TODO 01-10-2013 00:17 >> autodetect
+        exit(1)
 
     if options.offerfrom:
         offerfrom = options.offerfrom
     else:
-        offerfrom = 'x.x.x.150' #TODO 01-10-2013 00:17 >> fix it
+        offerfrom = '.'.join(elements_in_address[0:3])
+        offerfrom = offerfrom + '.100'
 
     if options.offerto:
         offerto = options.offerto
     else:
-        offerto = 'x.x.x.250' #TODO 01-10-2013 00:17 >> fix it
-
-    if options.netmask:
-        netmask = options.netmask
-    else:
-        netmask = '255.255.255.0' #TODO 01-10-2013 00:17 >> fix it
+        offerto = '.'.join(elements_in_address[0:3])
+        offerto = offerto + '.150'
 
     if options.broadcast:
         broadcast = options.broadcast
     else:
-        broadcast = 'x.x.x.255' #TODO 01-10-2013 00:17 >> fix it
+        broadcast = '.'.join(elements_in_address[0:3])
+        broadcast = broadcast + '.254'
+
+    if options.netmask:
+        netmask = options.netmask
+    else:
+        netmask = '255.255.255.0'
 
     if options.tftp:
-        tftp = options.timeout
+        tftp = options.tftp
     else:
-        tftp = '0.0.0.0' #TODO 01-10-2013 00:17 >> fix it
+        tftp = address
 
     if options.dns:
         dns = options.dns
@@ -151,61 +158,31 @@ if __name__ == "__main__":
     if options.gateway:
         gateway = options.gateway
     else:
-        gateway = '0.0.0.0' #TODO 01-10-2013 00:17 >> fix it
+        gateway = address
 
     if options.pxefilename:
         pxefilename = options.pxefilename
     else:
-        pxefilename = '0.0.0.0' #TODO 01-10-2013 00:17 >> fix it
+        pxefilename = 'pxelinux.0'
 
-    interface = ''
-    port = 67
-    address='192.168.2.3'
-    offerfrom='192.168.2.100'
-    offerto='192.168.2.150'
-    netmask='255.255.255.0'
-    broadcast='192.168.2.255'
-    gateway='192.168.2.1'
-    dns='8.8.8.8'
     leasetime=86400 #int
-    
-    tftp='192.168.2.3'
-    pxefilename='pxelinux.0'
 
-#ipaddr=$(ip addr show $1 | grep inet | sed "s/ brd.*//;s/.*inet //;s/\/.*//")
-#broadcast=$(ip addr show $1 | grep inet.\*brd | sed "s/.*brd\ //;s/\ scope.*//g")
-#offerfrom=$(echo $ipaddr | sed "s/[0-9]*$//;s/$/100/")
-#offerto=$(echo $ipaddr | sed "s/[0-9]*$//;s/$/150/")
-#netmask=$(cidr2mask $(ip addr show $1 | grep inet | sed "s/ brd.*//;s/.*inet //;s/.*\///"))
-#gateway=$(ip route | grep $1 | grep default | sed "s/.*via\ //;s/\ dev.*//")
-#nameserver=$(cat /etc/resolv.conf|grep nameserver|head -n1|sed s/nameserver\ //)
-#network=$(echo $ipaddr | sed "s/[0-9]*$//")
-#sed -i "s/^serverhost=.*/serverhost='$ipaddr'/" dhcpd.py
-#sed -i "s/^tftpserver=.*/tftpserver='$ipaddr'/" dhcpd.py
-#sed -i "s/^offerfrom=.*/offerfrom='$offerfrom'/" dhcpd.py
-#sed -i "s/^offerto=.*/offerto='$offerto'/" dhcpd.py
-#sed -i "s/^subnetmask=.*/subnetmask='$subnetmask'/" dhcpd.py
-#sed -i "s/^broadcast=.*/broadcast='$broadcast'/" dhcpd.py
-#sed -i "s/^gateway=.*/gateway='$gateway'/" dhcpd.py
-#sed -i "s/^dnsserver=.*/dnsserver='$nameserver'/" dhcpd.py
-#sed -i "s/^for\ ip\ in\ \['[0-9]*.[0-9]*.[0-9]*.'/for\ ip\ in\ \['$network'/" dhcpd.py
-    
     leases=[]
     #next line creates the (blank) leases table. This probably isn't necessary.
-    for ip in ['192.168.2.'+str(x) for x in range(int(offerfrom[offerfrom.rfind('.')+1:]),int(offerto[offerto.rfind('.')+1:])+1)]:
+    for ip in ['.'.join(elements_in_address[0:3])+'.'+str(x) for x in range(int(offerfrom[offerfrom.rfind('.')+1:]),int(offerto[offerto.rfind('.')+1:])+1)]:
         leases.append([ip,False,'000000000000',0])
     
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.setsockopt(socket.SOL_SOCKET,IN.SO_BINDTODEVICE,interface+'\0') #experimental
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-    s.bind((interface,port))
+    s.bind(('',port))
     #s.sendto(data,(ip,port))
-    
     
     while 1: #main loop
         try:
-            message, address = s.recvfrom(8192)
-            if not message.startswith('\x01') and not address[0] == '0.0.0.0':
+            message, addressf = s.recvfrom(8192)
+            if not message.startswith('\x01') and not addressf[0] == '0.0.0.0':
                 continue #only serve if a dhcp request
             data=reqparse(message) #handle request
             if data:
