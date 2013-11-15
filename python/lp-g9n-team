@@ -12,7 +12,9 @@ if __name__ == "__main__":
             return cache[city]
         else:
             time.sleep(1)
-            holder, (lat, lng) = geocoder.geocode(city)
+            places = geocoder.geocode(city, exactly_one=False)
+            it = iter(places) #I'm a little bit confused with lists
+            holder, (lat, lng) = it.next()
             cache[city] = str(lat) + "," + str(lng)
             return cache[city]
 
@@ -39,4 +41,3 @@ if __name__ == "__main__":
         city=basename(member.time_zone)
         coordinates = lookup(city.encode('utf-8'), google)
         print name.encode('utf-8') + "," + city.encode('utf-8') + "," + coordinates
-
