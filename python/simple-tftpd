@@ -22,14 +22,14 @@ while 1:
            message=message.split('\x00')
            filename=message[1][1:]
            print address,"wants",repr(filename)
-           if not os.path.exists('.'+filename):
+           if not os.path.exists(filename):
               s.sendto('\x00\x05\x00\x01no such file exists',address)
               continue
-           fsize=os.path.getsize('.'+filename)
+           fsize=os.path.getsize(filename)
            s.sendto('\x00\x06blksize\x00512\x00tsize\x00%s\x00' % fsize,address)
         elif message.startswith('\x00\x04'): #OptACK
            last=address
-           f=open('.'+filename,'r')
+           f=open(filename,'r')
            data=f.read()
            dataset=group(data,512)
            if len(dataset) > 65534: print "Won't work, too large... >64MB"
