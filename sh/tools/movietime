@@ -1,11 +1,12 @@
 #!/usr/bin/env sh
-#http://tinyurl.com/246hm8f
 #movietime - disables power savings to watch movies.
+#usage: movietime
 
 #Movietime options
 #Resume time - resume normal display pm and suspend after set time.
 #0 = disabled, time in minutes
 
+#http://tinyurl.com/246hm8f
 _die()
 {   #print a stacktrace with a msg, exits with 1
     local frame=0

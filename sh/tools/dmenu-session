@@ -1,11 +1,11 @@
 #!/usr/bin/env sh
 #description: dmenu based session menu
-#requires a dmenu version with xft: https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
 #usage: dmenu-session
 
 #example: dmenu-session
 #appears a gui menu appears asking for which action to take
 
+#requires a dmenu version with xft: https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
 DMENU='dmenu -p > -i -fn Bahamas-10 -nb #000000 -nf #FFFFFF -sb #000000 -sf #999999'
 choice=$(printf "%b\\n" "lock\nlogout\nrestart\nshutdown\nreboot\nsuspend\nhibernate" | $DMENU)
 

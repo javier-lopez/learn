@@ -2,9 +2,9 @@
 #description: compress files
 #usage: compress file[s] file.format
 
-#example: compress * files.tar.gz
-#file1
-#file2
+#example: compress files/ files.tar.gz
+#files/file1
+#files/file2
 #...
 
 _basename()

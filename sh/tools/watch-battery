@@ -1,7 +1,9 @@
 #!/usr/bin/env sh
-#description: display a warning when the system is running out of energy, suspend the system before it shutdown
-#usage: watch-battery, it makes more sense to add it as a cron job
+#description: display a warning when the system is running out of energy
+#             suspend the system if not action is taken
+#usage: watch-battery
 
+#it makes more sense to add it as a cron job
 #cronjob (every 3 min)
 #*/3 * * * * /path/to/this/script
 

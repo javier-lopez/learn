@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 #description: dmenu based talking app
-#requires a dmenu version with xft: https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
 #usage: dmenu-tell
 
 #example: dmenu-tell
 #appears a gui menu appears asking for which phrase to tell, default to spanish voice
 
+#requires a dmenu version with xft: https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
 #-sf blue
 DMENU='dmenu -p > -i -fn Bahamas-10 -nb #000000 -nf #ffffff -sb #000000 -sf #aaffaf'
 phrase=$($DMENU <&- && printf "\\n")

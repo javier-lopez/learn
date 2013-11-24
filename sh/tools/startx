@@ -1,7 +1,8 @@
 #!/usr/bin/env sh
 #description: start X on next available display
-#http://bbs.archlinux.org/viewtopic.php?pid=484915
 #usage: startx
+
+#http://bbs.archlinux.org/viewtopic.php?pid=484915
 
 if [ $# -eq 0 ]      # check to see if arguements are given (color depth)
        then a=24    # default color depth

@@ -1,11 +1,12 @@
 #!/usr/bin/env sh
 #description: create a playlist of tracks and play it
-#see http://www.mplayerhq.hu/DOCS/tech/slave.txt
-#and https://github.com/chilicuil/learn/tree/master/sh/tools/music-control
 #usage: mplayerd files
 
 #example: mplayerd *.mp3
 #no-output
+
+#see http://www.mplayerhq.hu/DOCS/tech/slave.txt
+#and https://github.com/chilicuil/learn/tree/master/sh/tools/music-control
 
 prog=$(expr "$0" : '.*/\([^/]*\)')
 mkfifo /tmp/mplayer.fifo > /dev/null 2>&1
