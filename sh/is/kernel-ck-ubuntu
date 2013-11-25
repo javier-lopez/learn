@@ -6,14 +6,14 @@
 
 #####################################
 #kernel version base
-kernel=3.11
+kernel=3.12
 #kernel specific version
-patchkernel=3.11.7
+patchkernel=3.12.1
 #BFQ patch
-bfq=3.11.0-v6r2
+bfq=3.12.0-v6r2
 vbfq=v6r2
 #CK patch
-patchck=3.11-ck1
+patchck=3.12-ck1
 #sufix
 ckk=ck1
 #arch
@@ -232,8 +232,8 @@ _waitfor wget -N http://algo.ing.unimo.it/people/paolo/disk_sched/patches/$bfq/0
 _waitfor wget -N http://algo.ing.unimo.it/people/paolo/disk_sched/patches/$bfq/0003-block-bfq-add-Early-Queue-Merge-EQM-to-BFQ-$vbfq-for-$kernel.0.patch
 
 printf "%s\\n" "[+] downloading ubuntu patches ..."
-_waitfor wget -N http://kernel.ubuntu.com/~kernel-ppa/mainline/v$patchkernel-saucy/0001-base-packaging.patch
-_waitfor wget -N http://kernel.ubuntu.com/~kernel-ppa/mainline/v$patchkernel-saucy/0002-debian-changelog.patch
+_waitfor wget -N http://kernel.ubuntu.com/~kernel-ppa/mainline/v$patchkernel-trusty/0001-base-packaging.patch
+_waitfor wget -N http://kernel.ubuntu.com/~kernel-ppa/mainline/v$patchkernel-trusty/0002-debian-changelog.patch
 
 printf "%b\\n" "\033[1m--------------------------------------\033[7m Applying patches \033[0m\033[1m------------------------------\033[0m"
 printf "%s\\n" "[+] uncompresing kernel to $tmp_path/linux-$kernel/ ..."
@@ -266,7 +266,7 @@ printf "%s\\n" "[+] downloading optimized config from http://repo-ck.com ...    
 #                          starting in >= 3.10, check from time to time if it can be reused
 
 #for now use config mirrored from http://repo-ck.com/
-_waitfor wget "http://javier.io/mirror/3.11/config.$arqt"
+_waitfor wget "http://javier.io/mirror/3.12/config.$arqt"
 _cmd cp "config.$arqt" .config
 
 ##tmp fix for bug #663474, disable lguest hypervisor, http://lguest.ozlabs.org/lguest.txt
