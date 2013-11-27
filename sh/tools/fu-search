@@ -29,7 +29,7 @@ YELLOW="$(printf "\\033[0;33m")"
 
 _usage()
 {
-    printf "%s\\n" "Usage: `expr "$0" : '.*/\([^/]*\)'` [-c] pattern"
+    printf "%s\\n" "Usage: $(expr "$0" : '.*/\([^/]*\)') [-c] pattern"
     printf "\\n"
     printf "%s\\n" "          -c     Colorize the output"
     exit 0
@@ -61,5 +61,4 @@ else
             s:^#.*:$PURPLE&$DEFAULT:g" -e "
             s:[^#].*:$LIGHT_GREEN&$DEFAULT:g" -e "
             /#/!s/\<$PATTERN\>/$YELLOW&$LIGHT_GREEN/g" #for some reason if I change / for : it doesn't work
-            # I couldn't find any way to run :#:!s:\<$PATTERN\>/$RED&$LIGHT_GREEN\$/g in only 1 sed, actually I could ^-^
 fi

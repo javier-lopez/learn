@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-#description: display selected images in $viewer, browse all other images in the directory as well
+#description: display selected images in $viewer
+#             browse all other images in the directory as well
 #https://wiki.archlinux.org/index.php/Feh#File_Browser_Image_Launcher
 #usage: vw file
 

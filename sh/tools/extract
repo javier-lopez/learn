@@ -10,7 +10,7 @@
 #http://bashscripts.org/forum/viewtopic.php?f=7&t=367
 _usage()
 {
-    printf "%s\\n" "Usage: `expr "$0" : '.*/\([^/]*\)'` [-s] FILES ..."
+    printf "%s\\n" "Usage: $(expr "$0" : '.*/\([^/]*\)') [-s] FILES ..."
     printf "%s\\n" "           -s       quiet mode"
     exit 0
 }

@@ -8,8 +8,8 @@ _basename()
 }
 
 LOGFILE="/tmp/$(_basename $0).log"
-HOME="/home/chilicuil"
-REMOTEUSER="admin"
+HOME="/home/chilicuil"              #required if used from root crontab
+REMOTEUSER="admin"                  #requires ssh key authentication
 REMOTESERVER="backup.javier.io"
 
 exec 9>/tmp/$(_basename $0).lock #verify that only one instance is running

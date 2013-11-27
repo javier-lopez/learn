@@ -10,8 +10,8 @@
 
 _usage()
 {
-    printf "%s\\n" "Usage:  $(expr "$0" : '.*/\([^/]*\)') get"
-    printf "%s\\n" "        $(expr "$0" : '.*/\([^/]*\)') set powersave|conservative|ondemand|performance"
+    printf "%s\\n" "Usage: $(expr "$0" : '.*/\([^/]*\)') get"
+    printf "%s\\n" "       $(expr "$0" : '.*/\([^/]*\)') set powersave|conservative|ondemand|performance"
     exit 0
 }
 

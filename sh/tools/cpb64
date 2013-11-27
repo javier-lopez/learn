@@ -1,5 +1,6 @@
 #!/usr/bin/env sh
-#description: helper to copy files through systems without scp, http://rrr.thetruth.de/2009/04/remote-copy-without-scp/
+#description: helper to copy files through systems without scp
+#             http://rrr.thetruth.de/2009/04/remote-copy-without-scp/
 #usage: cpb64 file[s]
 
 #example: cpb64 ~/.bashrc

@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-#description: connect to a remote host through ssh
+#description: connect to a remote host through ssh without verification
 #usage: ussh domain.tld
 
 if [ X"$#" = X"0" ]; then

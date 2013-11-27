@@ -1,5 +1,6 @@
 #!/usr/bin/env sh
-#description: takes screenshot in 3.., 2.., 1, and saves the image in $HOME with a random name
+#description: take screenshot in 3.., 2.., 1
+#             save image in $HOME with a random name
 #usage: screenshot
 
 _notify ()
