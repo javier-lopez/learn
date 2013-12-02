@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 #description: encrypt and password-protect execution of any script
-#usage: crypt file
+#usage: crypt script
 
 #example: crypt script
 #creates script.crypt
