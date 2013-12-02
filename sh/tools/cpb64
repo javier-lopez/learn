@@ -21,7 +21,7 @@ line3="E=O=F"
 
 cmd=${line1}'\n'${line2}'\n'${line3}'\n'
 
-if command -v "xclip" 2>/dev/null; then
+if command -v "xclip" >/dev/null 2>/dev/null; then
     printf "$cmd" | tee /dev/fd/2 | xclip
 else
     printf "$cmd"
