@@ -49,7 +49,7 @@ _autocp()
 
     for file
     do
-        _exec sudo cp "$file" /etc/bash_completion.d/
+        _exec sudo cp "$file" /usr/share/bash-completion/completions/
     done
     exit 0
 }
