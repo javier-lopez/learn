@@ -1,0 +1,33 @@
+_setup()
+{
+    #defining local vars
+    local cur prev words cword
+    _init_completion || return
+
+    COMMANDS="autocp script"
+    OPTS="-h --help -v --version"
+
+    case "${prev}" in
+        script)
+           _filedir
+          return 0 
+          ;;
+        autocp)
+            _filedir
+            return 0
+            ;;
+    esac
+
+    #general options
+    case "${cur}" in
+        -*)
+            COMPREPLY=( $( compgen -W "$OPTS" -- $cur ))
+            ;;
+        *)
+            COMPREPLY=( $( compgen -W "$COMMANDS" -- $cur ))
+            ;;
+    esac
+} &&
+complete -F _setup setup st ztup
+
+# vim: set ts=8 sw=4 tw=0 ft=sh : 
