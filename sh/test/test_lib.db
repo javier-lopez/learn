@@ -365,6 +365,12 @@ _validip4 "1.1.1.1.1"; test X"$?"       = X"1"
 _validip4 "254.254.254.255"; test X"$?" = X"1"
 @end{_validip4}
 
+@begin{_validmail}
+_validmail; test X"$?"                   = X"1"
+_validmail string; test X"$?"            = X"1"
+_validmail "user@domain.ltd"; test X"$?" = X"0"
+@end{_validmail}
+
 @begin{_verbose}
 _verbose; test X"$?"                  = X"1"
 test X"$(_verbose "hello")"           = X""

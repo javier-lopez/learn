@@ -1006,7 +1006,7 @@ _validinterface()
     return 1
 }
 #===================================================== Example ====
-#if ! _validinterface $interface
+#if ! _validinterface "$interface"; then
     #printf "%s\\n" "not valid interface $interface"
 #fi
 #=================================================================
@@ -1030,8 +1030,23 @@ _validip4()
         [ ${3:-666} -le 255 ] && [ ${4:-666} -le 254 ]
 }
 #===================================================== Example ====
-#if ! _validip4 $ip
+#if ! _validip4 "$ip"; then
     #printf "%s\\n" "not valid ip: $ip"
+#fi
+#=================================================================
+
+_validmail()
+{
+    [ -z "$1" ] && return 1
+
+    case "$1" in
+        *@*) return 0 ;;
+        *) return 1 ;; 
+    esac
+}
+#===================================================== Example ====
+#if ! _validip4 "$address"; then
+    #printf "%s\\n" "not valid email address: $address"
 #fi
 #=================================================================
 
