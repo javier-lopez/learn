@@ -127,7 +127,7 @@ _waitforsudo()
 {
     [ -z "$1" ] && return 1
 
-    printf "%s" "    $ sudo $@ ..."
+    printf "%s " "    $ sudo $@..."
     printf "%s\\n" "$sudopwd" | $sudocmd $@ > /dev/null 2>&1 &
     sleep 1s
 
