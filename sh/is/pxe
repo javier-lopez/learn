@@ -209,6 +209,20 @@ APPEND lang=us keymap=us ip=dhcp ksdevice=eth0 noipv6 initrd=ubuntu/1204/amd64/i
 TEXT HELP
 Install Ubuntu 12.04 (64-bit)
 ENDTEXT
+LABEL 3
+MENU LABEL Ubuntu minimal 12.04 (32-bit)(hands-free)
+KERNEL ubuntu/1204/i386/linux
+APPEND priority=critical locale=en_US netcfg/get_nameservers=8.8.8.8 url=http://people.ubuntu.com/~chilicuil/conf/preseed/cubuntu.preseed ip=dhcp ksdevice=eth0 noipv6 initrd=ubuntu/1204/i386/initrd.gz
+TEXT HELP
+Install Ubuntu 12.04 (32-bit)
+ENDTEXT
+LABEL 4
+MENU LABEL Ubuntu minimal 12.04 (64-bit)(hands-free)
+KERNEL ubuntu/1204/amd64/linux
+APPEND priority=critical locale=en_US netcfg/get_nameservers=8.8.8.8 url=http://people.ubuntu.com/~chilicuil/conf/preseed/cubuntu.preseed ip=dhcp ksdevice=eth0 noipv6 initrd=ubuntu/1204/amd64/initrd.gz
+TEXT HELP
+Install Ubuntu 12.04 (64-bit)
+ENDTEXT
 EOF
     printf "%s\\n" "  - creating $1/pxe/fedora/fedora.menu ..."
     mkdir -p "$1"/fedora/19/amd64
