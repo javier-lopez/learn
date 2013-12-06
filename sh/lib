@@ -210,7 +210,7 @@ _decode64()
 
 _die()
 {   #print a stacktrace with a msg, exits with 1
-    if [ -n "$bash" ]; then
+    if [ -n "$BASH" ]; then
         _die_var_frame=0
         while caller $_die_var_frame; do
             _die_var_frame=$(expr $_die_var_frame + 1);

@@ -57,9 +57,9 @@ _printtime()
 _init()
 {
     [ -z "$init" ] || return 0 #run only once
-    printf "%s\\n" "=============================================================== | tee $LOGFILE
-    printf "%s\\n" "$(date)" | tee -a $LOGFILE
-    printf "%s\\n" "=============================================================== | tee -a $LOGFILE
+    printf "%s\\n" "===============================================================" | tee $LOGFILE
+    printf "%s " "$(date)" | tee -a $LOGFILE
+    printf "\\n%s\\n" "===============================================================" | tee -a $LOGFILE
     printf "\\n"
 
     # logic for incremental backups
