@@ -198,28 +198,34 @@ EOF
 LABEL 1
 MENU LABEL Ubuntu minimal 12.04 (32-bit)
 KERNEL ubuntu/1204/i386/linux
-APPEND lang=us keymap=us ip=dhcp ksdevice=eth0 noipv6 initrd=ubuntu/1204/i386/initrd.gz
+IPAPPEND 2
+APPEND lang=us interface=auto initrd=ubuntu/1204/i386/initrd.gz
 TEXT HELP
 Install Ubuntu 12.04 (32-bit)
 ENDTEXT
 LABEL 2
 MENU LABEL Ubuntu minimal 12.04 (64-bit)
 KERNEL ubuntu/1204/amd64/linux
-APPEND lang=us keymap=us ip=dhcp ksdevice=eth0 noipv6 initrd=ubuntu/1204/amd64/initrd.gz
+IPAPPEND 2
+APPEND lang=us interface=auto initrd=ubuntu/1204/amd64/initrd.gz
 TEXT HELP
 Install Ubuntu 12.04 (64-bit)
 ENDTEXT
 LABEL 3
 MENU LABEL Ubuntu minimal 12.04 (32-bit)(hands-free)
 KERNEL ubuntu/1204/i386/linux
-APPEND priority=critical locale=en_US netcfg/get_nameservers=8.8.8.8 url=http://people.ubuntu.com/~chilicuil/conf/preseed/cubuntu.preseed ip=dhcp ksdevice=eth0 noipv6 initrd=ubuntu/1204/i386/initrd.gz
+IPAPPEND 2
+APPEND DEBCONF_DEBUG=5 priority=critical locale=en_US interface=auto netcfg/get_nameservers=8.8.8.8 url=http://people.ubuntu.com/~chilicuil/conf/preseed/cubuntu.preseed initrd=ubuntu/1204/i386/initrd.gz
+#APPEND DEBCONF_DEBUG=5 priority=critical locale=en_US interface=auto proxy=http://10.99.88.1:3142 netcfg/get_nameservers=8.8.8.8 url=http://people.ubuntu.com/~chilicuil/conf/preseed/cubuntu.preseed initrd=ubuntu/1204/i386/initrd.gz
 TEXT HELP
 Install Ubuntu 12.04 (32-bit)
 ENDTEXT
 LABEL 4
 MENU LABEL Ubuntu minimal 12.04 (64-bit)(hands-free)
 KERNEL ubuntu/1204/amd64/linux
-APPEND priority=critical locale=en_US netcfg/get_nameservers=8.8.8.8 url=http://people.ubuntu.com/~chilicuil/conf/preseed/cubuntu.preseed ip=dhcp ksdevice=eth0 noipv6 initrd=ubuntu/1204/amd64/initrd.gz
+IPAPPEND 2
+APPEND DEBCONF_DEBUG=5 priority=critical locale=en_US interface=auto netcfg/get_nameservers=8.8.8.8 url=http://people.ubuntu.com/~chilicuil/conf/preseed/cubuntu.preseed initrd=ubuntu/1204/amd64/initrd.gz
+#APPEND DEBCONF_DEBUG=5 priority=critical locale=en_US interface=auto proxy=http://10.99.88.1:3142 netcfg/get_nameservers=8.8.8.8 url=http://people.ubuntu.com/~chilicuil/conf/preseed/cubuntu.preseed initrd=ubuntu/1204/amd64/initrd.gz
 TEXT HELP
 Install Ubuntu 12.04 (64-bit)
 ENDTEXT
@@ -231,14 +237,14 @@ EOF
 LABEL 1
 MENU LABEL Fedora minimal 19 (32-bit)
 KERNEL fedora/19/i386/linux
-APPEND lang=us keymap=us ip=dhcp ksdevice=eth0 noipv6 initrd=fedora/19/i386/initrd.gz
+APPEND lang=us keymap=us ip=dhcp ksdevice=eth0 initrd=fedora/19/i386/initrd.gz
 TEXT HELP
 Install Fedora 19 (32-bit)
 ENDTEXT
 LABEL 2
 MENU LABEL Fedora minimal 19 (64-bit)
 KERNEL fedora/19/amd64/linux
-APPEND lang=us keymap=us ip=dhcp ksdevice=eth0 noipv6 initrd=fedora/6/amd64/initrd.gz
+APPEND lang=us keymap=us ip=dhcp ksdevice=eth0 initrd=fedora/6/amd64/initrd.gz
 TEXT HELP
 Install Fedora 19 (64-bit)
 ENDTEXT
