@@ -312,7 +312,7 @@ printf "%b\\n" "\033[1m-------------------------------\033[7m Compiling kernel \
 
 printf "%s\\n" "[+] running make-kpkg ...    "
 CONCURRENCY_LEVEL=$CL
-printf "\\n" | _cmd fakeroot make-kpkg --initrd kernel_image kernel_headers modules_image
+printf "\\n" | _cmd fakeroot \"make-kpkg --initrd kernel_image kernel_headers modules_image\"
 
 printf "%b\\n" "\033[1m-------------------------------------\033[7m DONE \033[0m\033[1m----------------------------------\033[0m"
 printf "%s\\n" "[+] copying debs files ..."
