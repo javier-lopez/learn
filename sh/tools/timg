@@ -60,7 +60,7 @@ curl -s -b /tmp/MNc -F "data[Image][file]=@$MNimg;type=image/png"  http://monone
     grep "final" |awk '{print $3}' | sed -e 's:\"::g' > /tmp/MN.img
 MN_url=`cat /tmp/MN.img`
 
-if [ -e /usr/bin/xclip ]; then
+if command -v "xclip" >/dev/null 2>/dev/null; then
     printf "%s\\n" "http://www.mononeurona.org/img/imgusers/$MN_url" | tee /dev/fd/2 | xclip
 else
     printf "%s\\n" "http://www.mononeurona.org/img/imgusers/$MN_url"

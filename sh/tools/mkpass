@@ -13,7 +13,7 @@ else
     esac
 fi
 
-if [ -f /usr/bin/xclip ]; then
+if command -v "xclip" >/dev/null 2>/dev/null; then
     #http://unix.stackexchange.com/questions/28503/how-can-i-send-stdout-to-multiple-commands
     strings /dev/urandom | grep -o '[[:alnum:]]' | head -n $mkpasswd_length | tr -d '\n' | tee /dev/fd/2 | xclip; printf "\\n"
 else

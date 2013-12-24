@@ -155,11 +155,11 @@ if _existaptproxy; then
 else
     printf "%s\\n" "[+] no apt-get proxy found, installing one locally ..."
     _waitforsudo apt-get install --no-install-recommends -y squid-deb-proxy-client apt-cacher-ng
-    [ ! -f /etc/avahi/services/apt-cacher-ng.service ] && _waitforsudo wget http://javier.io/mirror/apt-cacher-ng.service -o /etc/avahi/services/apt-cacher-ng.service
-    if [ -d "$home"/misc/ubuntu/proxy/apt-cacher-ng/ ]; then
+    [ ! -f /etc/avahi/services/apt-cacher-ng.service ] && _waitforsudo wget http://javier.io/mirror/apt-cacher-ng.service -O /etc/avahi/services/apt-cacher-ng.service
+    if [ -d "$HOME"/misc/ubuntu/proxy/apt-cacher-ng/ ]; then
         printf "%s\\n" "[+] exporting files ..."
         _cmdsudo rm -rf /var/cache/apt-cacher-ng
-        _cmdsudo ln -s $home/misc/ubuntu/proxy/apt-cacher-ng/ /var/cache/apt-cacher-ng
+        _cmdsudo ln -s "$HOME"/misc/ubuntu/proxy/apt-cacher-ng/ /var/cache/apt-cacher-ng
     fi
 fi
 

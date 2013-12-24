@@ -58,6 +58,6 @@ _deps()
 
 _deps
 
-[ -f lp-g9n-team.py ] || wget https://raw.github.com/chilicuil/learn/master/python/lp-g9n-team -O lp-g9n-team.py >/dev/null 2>/dev/null
-[ -f lp-g9n-team.py ] && printf "%s\\n" "Outputing data to \"lp-g9n-team.csv\"" || _die "lp-g9n-team: failed to connect to launchpad, verify your connection"
-python lp-g9n-team.py "$team" | tee lp-g9n-team.csv
+[ -f lp-g9n.py ] || wget https://raw.github.com/chilicuil/learn/master/python/lp-g9n -O lp-g9n.py >/dev/null 2>/dev/null
+[ -f lp-g9n.py ] && printf "%s\\n" "Outputing data to \"lp-g9n-team.csv\"" || _die "lp-g9n-team: failed to connect to launchpad, verify your connection"
+python lp-g9n.py "$team" | tee lp-g9n-team.csv

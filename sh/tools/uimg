@@ -22,7 +22,7 @@ upload_img()
         if [ -f "$img" ] ; then
             case "$img" in
                 *.jpg|*.JPG|*.jpeg|*.png|*.PNG)
-                    if [ -f /usr/bin/xclip ]; then
+                    if command -v "xclip" >/dev/null 2>/dev/null; then
                         curl -s -F "image=@$img" -F "key=486690f872c678126a2c09a9e196ce1b" http://imgur.com/api/upload.xml \
                             | egrep -o "<original_image>(.)*</original_image>" | \
                             egrep -o "http://i.imgur.com/[^<]*" | tee /dev/fd/2 | xclip 
