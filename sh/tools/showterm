@@ -1,0 +1,58 @@
+#!/usr/bin/env sh
+# A simple Linux-only pure-shell showterm client for those without Ruby.
+#
+# Mac users (and Linux users with Ruby installed) should use the ruby client:
+#   (sudo) gem install showterm
+#
+# Dependencies (please let me know if you don't have them all already)
+#   mktemp (coreutils)
+#   script (util-linux)
+#   tput   (ncurses)
+#   sh
+#   curl
+#
+# To install. Just copy this file to your computer, and chmod +x showterm.
+#
+#   curl showterm.io/showterm > ~/bin/showterm
+#   chmod +x ~/bin/showterm
+#   ~/bin/showterm
+#
+# Otherwise you can run this file without installing:
+#
+#   sh <(curl record.showterm.io)
+#
+
+record_base_url="showterm.io/record"
+upload_base_url="showterm.io"
+
+if ! tty >/dev/null; then
+    printf "%s\\n" "Usage: sh <(curl $record_base_url)"
+    exit 1
+fi
+
+scriptfile="$(mktemp /tmp/XXXXX.script)"
+timingfile="$(mktemp /tmp/XXXXX.timing)"
+
+cols="$(tput cols)"
+lines="$(tput lines)"
+
+[ -n "$SHOWTERM_SERVER" ] && server="$SHOWTERM_SERVER" || server="$upload_base_url" 
+url="${server%/}/scripts"
+
+if [ "$*" ]; then
+    printf "%s\\n" "$*"
+    args=-c "$*"
+fi
+
+printf "%s\\n" "showterm recording. (Exit shell when done.)"
+script $args -q -t"$timingfile" "$scriptfile"
+printf "%s\\n" "Uploading..."
+
+if curl --fail "$url" --data-urlencode "cols=$cols" --data-urlencode "lines=$lines" --data-urlencode "scriptfile@$scriptfile" --data-urlencode "timingfile@$timingfile"; then
+    printf "\\n"
+    rm "$scriptfile" "$timingfile"
+    exit 0
+else
+    printf "%s\\n" "Uploading failed, but don't worry! Your work is safe. You can try uploading again with:"
+    printf "%s\\n" "curl $url --data-urlencode cols=$cols --data-urlencode lines=$lines --data-urlencode scriptfile@$scriptfile --data-urlencode timingfile@$timingfile"
+fi
