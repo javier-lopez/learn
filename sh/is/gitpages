@@ -181,12 +181,13 @@ _waitforsudo()
 
 _header
 _getroot
+_printfl
 _printfs "installing deps ..."
 _waitforsudo apt-get update
 _waitforsudo apt-get install --no-install-recommends -y $apps_deps
 _waitforsudo gem install $gems_deps
-printf "%s\\n" "source 'https://rubygems.org'" > Gemfile
-printf "%s\\n" "gem 'github-pages'"            > Gemfile
+printf "%s\\n" "source 'https://rubygems.org'"  > Gemfile
+printf "%s\\n" "gem 'github-pages'"            >> Gemfile
 _waitforsudo bundle install
 
 
