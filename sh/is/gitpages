@@ -4,7 +4,7 @@ manual="https://help.github.com/articles/using-jekyll-with-pages#troubleshooting
 updates="https://github.com/chilicuil/learn/blob/master/sh/is/gitpages"
 
 apps_deps="ruby1.9.1 build-essential ruby1.9.1-dev libgsl0-dev"
-gems_deps"bundler gsl"
+gems_deps="bundler gsl"
 
 _header()
 {
@@ -179,19 +179,35 @@ _waitforsudo()
     fi
 }
 
+_cmdsudo()
+{   #print && execute a command, exit on fail
+    [ -z "$1" ] && return 1
+
+    printf "%s \\n" "    $ sudo $*"
+    _cmdsudo_var_output=$(printf "%s\\n" "$sudopwd" | $sudocmd sh -c "eval $*" 2>&1)
+    _cmdsudo_var_status="$?"
+
+    if [ X"$_cmdsudo_var_status" != X"0" ]; then
+        printf "> %s:%s\\n" "$*" "$_cmdsudo_var_output"
+        exit "$_cmdsudo_var_status"
+    else
+        return "$_cmdsudo_var_status";
+    fi
+}
+
 _header
 _getroot
 _printfl
 _printfs "installing deps ..."
 _waitforsudo apt-get update
 _waitforsudo apt-get install --no-install-recommends -y $apps_deps
-_waitforsudo gem install $gems_deps
+_cmdsudo gem install $gems_deps
 printf "%s\\n" "source 'https://rubygems.org'"  > Gemfile
 printf "%s\\n" "gem 'github-pages'"            >> Gemfile
-_waitforsudo bundle install
+_cmdsudo bundle install
 
 
 _printfl "DONE"
 printf "\\n"
-printf "%s\\n" "Clone your page and use $ bundle exec jekyll serve"
+printf "%s\\n" "Clone your page and use $ jekyll serve"
 printf "%s\\n" "Have fun n@n/"
