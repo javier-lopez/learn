@@ -12,7 +12,6 @@ _header()
     _printfl "Gitpages Environment"
     printf "%b\\n" "\033[1m Manual:\033[0m   $manual"
     printf "%b\\n" "\033[1m Updates:\033[0m  $updates"
-    printf "\\n"
     if [ "$(id -u)" != "0" ]; then
         _printfl
     fi
@@ -40,6 +39,12 @@ _printfl()
         printf "%b" "\033[0m" #back to normal
         printf "\\n"
     fi
+}
+
+_printfs()
+{   #print step
+    [ -z "$1" ] && return 1
+    printf "%s\\n" "[+] $*"
 }
 
 _getroot()
