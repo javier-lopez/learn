@@ -1,0 +1,191 @@
+#!/usr/bin/env sh
+
+manual="https://help.github.com/articles/using-jekyll-with-pages#troubleshooting"
+updates="https://github.com/chilicuil/learn/blob/master/sh/is/gitpages"
+
+apps_deps="ruby1.9.1 build-essential ruby1.9.1-dev libgsl0-dev"
+gems_deps"bundler gsl"
+
+_header()
+{
+    clear
+    _printfl "Gitpages Environment"
+    printf "%b\\n" "\033[1m Manual:\033[0m   $manual"
+    printf "%b\\n" "\033[1m Updates:\033[0m  $updates"
+    printf "\\n"
+    if [ "$(id -u)" != "0" ]; then
+        _printfl
+    fi
+}
+
+_printfl()
+{   #print lines
+    _printfl_var_max_len="80"
+    if [ -n "$1" ]; then
+        _printfl_var_word_len=$(expr ${#1} + 2)
+        _printfl_var_sub=$(expr $_printfl_var_max_len - $_printfl_var_word_len)
+        _printfl_var_half=$(expr $_printfl_var_sub / 2)
+        _printfl_var_other_half=$(expr $_printfl_var_sub - $_printfl_var_half)
+        printf "%b" "\033[1m" #white strong
+        printf '%*s' "$_printfl_var_half" '' | tr ' ' -
+        printf "%b" "\033[7m" #white background
+        printf " %s " "$1"
+        printf "%b" "\033[0m\033[1m" #white strong
+        printf '%*s' "$_printfl_var_other_half" '' | tr ' ' -
+        printf "%b" "\033[0m" #back to normal
+        printf "\\n"
+    else
+        printf "%b" "\033[1m" #white strong
+        printf '%*s' "$_printfl_var_max_len" '' | tr ' ' -
+        printf "%b" "\033[0m" #back to normal
+        printf "\\n"
+    fi
+}
+
+_getroot()
+{   #get sudo's password, define $sudopwd and $sudocmd
+    if [ ! X"$LOGNAME" = X"root" ]; then
+        printf "%s\\n" "Detecting user $LOGNAME (non-root) ..."
+        printf "%s\\n" "Checking if sudo is available ..."
+
+        if command -v "sudo" >/dev/null 2>&1; then
+            sudo -K
+
+            if [ -n "$sudopwd" ]; then
+                # password check
+                _getroot_var_test=$(printf "%s\\n" "$sudopwd" | sudo -S ls 2>&1)
+                _getroot_var_status="$?"
+                _getroot_var_not_allowed=$(printf "%s" "$_getroot_var_test" | \
+                                         grep -i "sudoers")
+
+                if [ -n "$_getroot_var_not_allowed" ]; then
+                    printf "%s %s\\n" "You're not allowed to use sudo," \
+                    "get in contact with your local administrator"
+                    exit
+                fi 
+
+                if [ X"$_getroot_var_status" != X"0" ]; then
+                    sudopwd=""
+                    printf "%s\\n" "Incorrect preseed password"
+                    exit
+                else
+                    sudocmd="sudo -S"
+                fi 
+                printf "%s\\n" "    - all set ..."
+                return
+            fi
+
+            i=0 ; while [ "$i" -lt 3 ]; do
+                i=$(expr $i + 1);
+                printf "%s" "   - enter sudo password: "
+                stty -echo
+                read sudopwd
+                stty echo
+
+                # password check
+                _getroot_var_test=$(printf "%s\\n" "$sudopwd" | sudo -S ls 2>&1)
+                _getroot_var_status="$?"
+                _getroot_var_not_allowed=$(printf "%s" "$_getroot_var_test" | \
+                                         grep -i "sudoers")
+
+                if [ -n "$_getroot_var_not_allowed" ]; then
+                    printf "\\n%s %s\\n" "You're not allowed to use sudo," \
+                    "get in contact with your local administrator"
+                    exit
+                fi 
+
+                printf "\\n"
+                if [ X"$_getroot_var_status" != X"0" ]; then
+                    sudopwd=""
+                else
+                    sudocmd="sudo -S"
+                    break
+                fi 
+            done
+
+            if [ -z "$sudopwd" ]; then
+                printf "%s\\n" "Failed authentication"
+                exit
+            fi
+        else
+            printf "%s %s\\n" "You're not root and sudo isn't available." \
+            "Please run this script as root!"
+            exit
+        fi
+    fi
+}
+
+_animcui()
+{   #wait animation
+    [ -z "$1" ] && { printf "%5s\n" ""; return 1; }
+
+    if ! printf "%s" "$1" | grep -v "[^0-9]" >/dev/null; then
+        printf "%5s\n" ""
+        return 1; 
+    fi
+
+    _animcui_var_pid="$1"
+    _animcui_var_animation_state="1"
+
+    if [ ! "$(ps -p "$_animcui_var_pid" -o comm=)" ]; then
+        printf "%5s\n" ""
+        return 1
+    fi
+
+    printf "%5s" ""
+
+    while [ "$(ps -p "$_animcui_var_pid" -o comm=)" ]; do
+        printf "%b" "\b\b\b\b\b"
+        case "$_animcui_var_animation_state" in
+            1)
+                printf "%s" '\o@o\'
+                _animcui_var_animation_state=2
+                ;;
+            2)
+                printf "%s" '|o@o|'
+                _animcui_var_animation_state=3
+                ;;
+            3)
+                printf "%s" '/o@o/'
+                _animcui_var_animation_state=4
+                ;;
+            4)
+                printf "%s" '|o@o|'
+                _animcui_var_animation_state=1
+                ;;
+        esac
+        sleep 1
+    done
+    printf "%b" "\b\b\b\b\b" && printf "%5s\n" ""
+}
+
+_waitforsudo()
+{   #print, execute and wait for a command to finish
+    [ -z "$1" ] && return 1
+
+    printf "%s " "    $ sudo $@ ..."
+    printf "%s\\n" "$sudopwd" | $sudocmd sh -c "eval $*" >/dev/null 2>&1 &
+    sleep 1s
+
+    if [ X"$1" = X"DEBIAN_FRONTEND=noninteractive" ]; then
+        _animcui $(pidof "$2")
+    else
+        _animcui $(pidof "$1")
+    fi
+}
+
+_header
+_getroot
+_printfs "installing deps ..."
+_waitforsudo apt-get update
+_waitforsudo apt-get install --no-install-recommends -y $apps_deps
+_waitforsudo gem install $gems_deps
+printf "%s\\n" "source 'https://rubygems.org'" > Gemfile
+printf "%s\\n" "gem 'github-pages'"            > Gemfile
+_waitforsudo bundle install
+
+
+_printfl "DONE"
+printf "\\n"
+printf "%s\\n" "Clone your page and use $ bundle exec jekyll serve"
+printf "%s\\n" "Have fun n@n/"
