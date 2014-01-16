@@ -1,7 +1,8 @@
 #!/usr/bin/env sh
 #description: take screenshot in 3.., 2.., 1
-#             save image in $HOME with a random name
-#usage: screenshot
+#             if no name is provided save image in $HOME with a random name
+#             otherwise use the full name provided and add a .png sufix
+#usage: screenshot [output]
 
 _notify ()
 {
@@ -27,11 +28,15 @@ else
     exit 1
 fi
 
-file=$HOME/`</dev/urandom tr -dc A-Za-z0-9 | head -c 8`.png
+if [ -n "$1" ]; then
+    file="$1".png
+else
+    file=$HOME/`</dev/urandom tr -dc A-Za-z0-9 | head -c 8`.png
+fi
 
 _notify "[+] Screenshot" "in 3.., 2.., 1.., smile =)!"
-_exec sleep 3
+_exec "sleep 3"
 _exec "kill $(ps -aef | grep "notify-osd" | grep -v grep | awk '{print $2}') >/dev/null 2>/dev/null"
 sleep .5
-_exec $screenshot_bin $file
+_exec "$screenshot_bin $file"
 _notify "[+] Done" "$file"
