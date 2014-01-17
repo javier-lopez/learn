@@ -2,41 +2,49 @@
 #description: take screenshot in 3.., 2.., 1
 #             if no name is provided save image in $HOME with a random name
 #             otherwise use the full name provided and add a .png sufix
-#usage: screenshot [output]
+#usage: screenshot [-s] [output]
 
 _notify ()
 {
     [ X"$TERM" = X"linux" ] && notify-send -t 1000 "${@}" || printf "%s\\n" "${@}"
 }
 
-_exec()
+_screenshot()
 {
-    status=$?
-    if [ X"$status" != X"0" ]; then
-        exit $status
+    [ -z "$1" ] && return 0
+
+    if command -v "scrot" >/dev/null; then
+        _screenshot_var_bin="scrot"
+        [ -n "$flag_select" ] && _screenshot_var_opt="-s" || _screenshot_var_opt=""
+    elif command -v "gnome-screenshot" >/dev/null; then
+        _screenshot_var_bin="gnome-screenshot"
+        [ -n "$flag_select" ] && _screenshot_var_opt="-a" || _screenshot_var_opt=""
+    elif command -v "import" >/dev/null; then
+        _screenshot_var_bin="import"
+        [ -n "$flag_select" ] && _screenshot_var_opt=""   || _screenshot_var_opt="-window root"
+    else
+        _notify "[-] Error, install either scrot, gnome-screenshot or imagemagick"
+        exit 1
     fi
-    printf "%s\\n" "[+] $@"
-    eval "$@"
+
+    eval "$_screenshot_var_bin $_screenshot_var_opt $1"
 }
 
-if [ -f /usr/bin/scrot ]; then
-    screenshot_bin="scrot"
-elif [ -f /usr/bin/import ]; then
-    screenshot_bin="import -window root"
-else
-    _notify "[-] Error, install either import or scrot"
-    exit 1
-fi
-
-if [ -n "$1" ]; then
-    file="$1".png
-else
+if [ $# -eq 0 ]; then
     file=$HOME/`</dev/urandom tr -dc A-Za-z0-9 | head -c 8`.png
+else
+    for var in "$@"; do #parse options
+        case "${var}" in
+            -s) flag_select="y"; shift; ;;
+        esac
+    done
+    [ -z "$1" ] && file=$HOME/`</dev/urandom tr -dc A-Za-z0-9 | head -c 8`.png || file="$1".png
 fi
 
 _notify "[+] Screenshot" "in 3.., 2.., 1.., smile =)!"
-_exec "sleep 3"
-_exec "kill $(ps -aef | grep "notify-osd" | grep -v grep | awk '{print $2}') >/dev/null 2>/dev/null"
+sleep 3
+kill $(ps -aef | grep "notify-osd" | grep -v grep | awk '{print $2}') >/dev/null 2>/dev/null
 sleep .5
-_exec "$screenshot_bin $file"
-_notify "[+] Done" "$file"
+[ -n "$flag_select" ] && _notify "[+] Select" "a rectangle to save"
+_screenshot "$file"
+[ -f "$file" ] && _notify "[+] Done" "$file" || _notify "[+] Error" "couldn't take screenshot"
