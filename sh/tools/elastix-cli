@@ -13,8 +13,8 @@ _basename()
     expr "$1" : '.*/\([^/]*\)'
 }
 
-exec 9>/tmp/$(_basename $0).lock #verify only one instance is running
-if ! flock -n 9 ; then #http://mywiki.wooledge.org/BashFAQ/045
+exec 9>/tmp/$(_basename $0).lock  #http://mywiki.wooledge.org/BashFAQ/045
+if ! flock -n 9 ; then
     printf "%s\\n" "$(_basename $0): another instance is running";
     exit 1
 fi
@@ -107,7 +107,7 @@ _isdomainvalid()
 }
 
 _elastixfileformatisvalid()
-{   #return 0 if parameter is file contain a valid format, non-zero otherwise
+{   #return 0 if parameter in file contain a valid format, non-zero otherwise
     elastix_format_trunk="$(cat "$1" | grep "^trunk" | cut -f2 -d"=")"
     elastix_format_host="$(cat "$1" | grep "^host" | cut -f2 -d"=")"
     elastix_format_proxy="$(cat "$1" | grep "^proxy" | cut -f2 -d"=")"
@@ -195,7 +195,7 @@ _trunk()
     if [ -n "$elastix_credentials" ]; then
         [ ! -f "$elastix_credentials" ] && _die "Not a file: $elastix_credentials"
 
-        #we're sendying sensitive data to elastix instances, let's try to verify if our credentials are correct
+        #we're sending sensitive data to elastix instances, let's try to verify if our credentials are correct
         printf "%s\\n" "Verifying credentials defined in $elastix_credentials ..."
         if _haswhitespaces "$elastix_credentials" ; then
             _die "$elastix_credentials doesn't contain a valid format"
@@ -416,7 +416,11 @@ _trunk()
 }
 
 [ $# -eq 0 ] && _usage # no options
-[ ! -f /usr/bin/sshpass ] && _die "sshpass not found!, $ sudo apt-get install sshpass"
+if ! command -v "sshpass" >/dev/null; then
+    #it may be slow but it doesn't requires anything on the server side besides plain password protected ssh access
+    #addional remote control mediums are welcome
+    _die "sshpass not found!, $ sudo apt-get install sshpass"
+fi
 
 for var in "$@"; do #parse options
     case "${var}" in
