@@ -2,7 +2,7 @@
 #description: say phrase
 #usage: say [OPTION] phrase
 
-#example: say -e "hello world"
+#example: say -en "hello world"
 #no-output, only audio
 
 [ -f /usr/bin/mplayer ] || { printf "%b\\n" "$(expr "$0" : '.*/\([^/]*\)'): You need vim & mplayer to run this script\n$ sudo apt-get install vim-nox mplayer"; exit 1; }
@@ -10,12 +10,28 @@
 
 _usage()
 {
-    printf "%s\\n" "Usage: `expr "$0" : '.*/\([^/]*\)'` [-s|-p|-e] phrase"
+    printf "%s\\n" "Usage: `expr "$0" : '.*/\([^/]*\)'` [-sl] phrase"
     printf "\\n"
-    printf "%s\\n" "          -s     Spanish (default)"
-    printf "%s\\n" "          -p     Portuguese"
-    printf "%s\\n" "          -e     English"
+    printf "%s\\n" "       sl     source language (auto by default)"
     exit 1
+}
+
+_say()
+{
+    [ -z "$1" ] && return 1
+    phrase="$*"
+
+    while [ ${#phrase} -gt 100 ]; do
+        tmp=$(printf "%b" "${phrase:0:100}" | xxd -plain | tr -d '\n' | sed 's/\(..\)/%\1/g')
+        mplayer -really-quiet "http://translate.google.com/translate_tts?ie=UTF-8&tl=$sl&q=$tmp" > /dev/null 2>&1
+        phrase=${phrase:100:${#phrase}}
+        #http://stackoverflow.com/questions/4988155/is-there-a-bash-command-that-can-tell-the-size-of-a-shell-variable
+    done
+
+    #http://stackoverflow.com/questions/296536/urlencode-from-a-bash-script
+    phrase=$(printf "%b" "$phrase" | xxd -plain | tr -d '\n' | sed 's/\(..\)/%\1/g')
+    [ -n "$1" ] && shift;
+    mplayer -really-quiet "http://translate.google.com/translate_tts?ie=UTF-8&tl=$sl&q=$phrase" > /dev/null 2>&1
 }
 
 if [ -t 0 ]; then
@@ -25,54 +41,20 @@ if [ -t 0 ]; then
     fi
 else
     #http://www.unix.com/302331138-post4.html
-    read PHRASE < /dev/stdin
+    read phrase < /dev/stdin
 fi
 
-while getopts ":spe" option; do
-    case $option in
-        s)
-          lang="es";
-          shift
-          [ -z "$PHRASE" ] && PHRASE="$@"
-          ;;
-        p)
-          lang="pt";
-          shift
-          [ -z "$PHRASE" ] && PHRASE="$@"
-          ;;
-        e)
-          lang="en";
-          shift
-          [ -z "$PHRASE" ] && PHRASE="$@"
-          ;;
-        :)
-          if [ -z "$PHRASE" ]; then
-              printf "%s\\n" "Option -$OPTARG requires an argument"
-              _usage
-          fi
-          ;;
-        \?)
-          printf "%s\\n" "Invalid option: -$OPTARG"
-          _usage
-          ;;
-    esac
-done
+case "$1" in
+    -*)
+        sl=$(printf "%s" "$1"  | cut -d'-' -f2)
+        if [ -z "$sl" ]; then
+            #maybe returning an error message is better
+            sl="en";
+        fi
+        shift
+        ;;
+    *)  sl="en";
+        ;;
+esac
 
-if [ -z "$lang" ]; then
-    lang="es";
-    if [ -z "$PHRASE" ]; then
-        PHRASE="$@"
-    fi
-fi
-
-while [ ${#PHRASE} -gt 100 ]; do
-    tmp=$(printf "%b" "${PHRASE:0:100}" | xxd -plain | tr -d '\n' | sed 's/\(..\)/%\1/g')
-    mplayer -really-quiet "http://translate.google.com/translate_tts?ie=UTF-8&tl=$lang&q=$tmp" > /dev/null 2>&1
-    PHRASE=${PHRASE:100:${#PHRASE}}
-    #http://stackoverflow.com/questions/4988155/is-there-a-bash-command-that-can-tell-the-size-of-a-shell-variable
-done
-
-#http://stackoverflow.com/questions/296536/urlencode-from-a-bash-script
-PHRASE=$(printf "%b" "$PHRASE" | xxd -plain | tr -d '\n' | sed 's/\(..\)/%\1/g')
-shift;shift;
-mplayer -really-quiet "http://translate.google.com/translate_tts?ie=UTF-8&tl=$lang&q=$PHRASE" > /dev/null 2>&1
+_say "$@"
