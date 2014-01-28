@@ -22,9 +22,9 @@ _say()
     phrase="$*"
 
     while [ ${#phrase} -gt 100 ]; do
-        tmp=$(printf "%b" "${phrase:0:100}" | xxd -plain | tr -d '\n' | sed 's/\(..\)/%\1/g')
+        tmp=$(printf "%b" "${phrase}" | cut -c1-100 | xxd -plain | tr -d '\n' | sed 's/\(..\)/%\1/g')
         mplayer -really-quiet "http://translate.google.com/translate_tts?ie=UTF-8&tl=$sl&q=$tmp" > /dev/null 2>&1
-        phrase=${phrase:100:${#phrase}}
+        phrase=$(printf "%b" "${phrase}" | cut -c100-${#phrase})
         #http://stackoverflow.com/questions/4988155/is-there-a-bash-command-that-can-tell-the-size-of-a-shell-variable
     done
 
