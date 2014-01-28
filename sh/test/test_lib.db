@@ -10,20 +10,6 @@ test X"$(crontab -l | grep test_lib.db)" = X"0 21 * * * /test_lib.db"
 crontab -l | grep -v test_lib.db | crontab
 @end{_addcron}
 
-@begin{_animcui}
-#TODO 27-10-2013 22:51 >> add tests for running stage
-_animcui;       test X"$?" = X"1"
-_animcui init;  test X"$?" = X"1"
-_animcui 65535; test X"$?" = X"1"
-@end{_animcui}
-
-@begin{_animrotate}
-#TODO 27-10-2013 22:51 >> add tests for running stage
-_animrotate;       test X"$?" = X"1"
-_animrotate init;  test X"$?" = X"1"
-_animrotate 65535; test X"$?" = X"1"
-@end{_animrotate}
-
 @begin{_arch}
 archx=$(_arch)
 (test X"$archx" = X"32" || test X"$archx" = X"64")
@@ -51,13 +37,6 @@ test -d     test
 _cmd rm -rf test
 @end{_cmd}
 
-@begin{_cmdsudo}
-_cmdsudo;       test X"$?" = X"1"
-_cmdsudo mkdir  test
-test -d         test
-_cmdsudo rm -rf test
-@end{_cmdsudo}
-
 @begin{_decode64}
 _decode64; test X"$?"                      = X"1"
 test X"$(_decode64 "aGVsbG8K")"            = X"hello"
@@ -83,11 +62,6 @@ test X"$(_dirname /usr/local/bin/test)" = X"/usr/local/bin"
 _distro | grep ".*"
 @end{_distro}
 
-@begin{_download}
-#TODO 28-10-2013 00:11 >> figure out how to test this
-_download; test X"$?" = X"1"
-@end{_download}
-
 @begin{_echo}
 test X"$(_echo)"              = X"$(printf "\\n")"
 test X"$(_echo hello)"        = X"hello"
@@ -100,21 +74,11 @@ hello="$hello"$(_echo -ne "w\borld")
 test X"$(_echo "$hello")"     = X"$(printf "hellow\borld")"
 @end{_echo}
 
-@begin{_email}
-#TODO 28-10-2013 00:11 >> figure out how to test this
-_email; test X"$?" = X"1"
-@end{_email}
-
 @begin{_encode64}
 _encode64; test X"$?"                = X"1"
 test X"$(_encode64 "hello")"         = X"aGVsbG8K"
 test X"$(_encode64 "hello" "world")" = X"aGVsbG8K"
 @end{_encode64}
-
-@begin{_existaptproxy}
-#TODO 28-10-2013 00:11 >> figure out how to test this
-true
-@end{_existaptproxy}
 
 @begin{_existuser}
 _existuser; test X"$?"            = X"1"
@@ -127,16 +91,6 @@ _getfs; test X"$?"            = X"1"
 drive="$(grep "swap" /etc/fstab | grep -o "/dev/.*" | cut -d" " -f1)"
 test X"$(_getfs "$drive")" = X"swap"
 @end{_getfs}
-
-@begin{_getpasswd}
-#TODO 28-10-2013 00:11 >> figure out how to test this
-true
-@end{_getpasswd}
-
-@begin{_getroot}
-#TODO 28-10-2013 00:11 >> figure out how to test this
-true
-@end{_getroot}
 
 @begin{_getuuid}
 _getuuid; test X"$?"            = X"1"
@@ -186,11 +140,6 @@ rm -f file
 @begin{_islivecd}
 _islivecd; test X"$?" = X"1"
 @end{_islivecd}
-
-@begin{_ismonitorattached}
-#TODO 28-10-2013 00:11 >> figure out how to test this
-true
-@end{_ismonitorattached}
 
 @begin{_isnewer}
 _isnewer; test X"$?"             = X"1"
@@ -333,16 +282,30 @@ test X"$(_strreplace "$hello" "hello" "bye")" = X"bye world"
 @end{_strreplace}
 
 @begin{_strunique}
-_strunique; test X"$?"                    = X"1"
-_strunique string; test X"$?"             = X"1"
+_strunique; test X"$?"                = X"1"
+_strunique string; test X"$?"         = X"1"
 hello="hello world"; bye="bye world"
 test X"$(_strunique "$hello" "$bye")" = X"hello world bye"
 @end{_strunique}
 
-@begin{_uploadimg}
-#TODO 28-10-2013 00:11 >> figure out how to test this
-_uploadimg; test X"$?" = X"1"
-@end{_uploadimg}
+@begin{_substr}
+_substr; test X"$?"               = X"1"
+_substr string; test X"$?"        = X"1"
+_substr string 1; test X"$?"      = X"0"
+test X"$(_substr "abcdef" -1)"    = X"f"
+test X"$(_substr "abcdef" -2)"    = X"ef"
+test X"$(_substr "abcdef" -3 1)"  = X"d"
+test X"$(_substr "abcdef" 0 -1)"  = X"abcde"
+test X"$(_substr "abcdef" 2 -1)"  = X"cde"
+test X"$(_substr "abcdef" 4 -4)"  = X""
+test X"$(_substr 4 -4)"           = X""
+test X"$(_substr "abcdef" -3 -1)" = X"de"
+test X"$(_substr "abcdef" 1)"     = X"bcdef"
+test X"$(_substr "abcdef" 1 3)"   = X"bcd"
+test X"$(_substr "abcdef" 0 4)"   = X"abcd"
+test X"$(_substr "abcdef" 0 8)"   = X"abcdef"
+test X"$(_substr "abcdef" -1 1)"  = X"f"
+@end{_substr}
 
 @begin{_usage}
 _usage
@@ -387,8 +350,3 @@ _whereis; test X"$?"            = X"1"
 _whereis foobartest; test X"$?" = X"1"
 test X"$(_whereis sh)"          = X"/bin/sh"
 @end{_whereis}
-
-@begin{_xmessage}
-_xmessage; test X"$?"            = X"1"
-#TODO 28-10-2013 00:11 >> figure out how to test this
-@end{_xmessage}
