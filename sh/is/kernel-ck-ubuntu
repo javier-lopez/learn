@@ -20,32 +20,63 @@ ckk=ck1
 arqt=$(dpkg --print-architecture)
 #####################################
 
-####################################################################################################################################
-##############################################DO NOT EDIT BELOW UNLESS YOU KNOW WHAT YOU'RE DOING###################################
-####################################################################################################################################
+################################################################################
+############DO NOT EDIT BELOW UNLESS YOU KNOW WHAT YOU'RE DOING#################
+################################################################################
 
 #the /tmp partitions usually have noexec
 tmp_path="$HOME/.tmp/kernel-ck-ubuntu-$patchkernel"
 curr_path=$PWD
-apps_default="kernel-package gcc-4.6 libncurses5 libncurses5-dev build-essential patch fakeroot bc"
+apps_default="kernel-package gcc-4.6 libncurses5 libncurses5-dev build-essential
+patch fakeroot bc"
 
 CL=$(printf "%s\\n" "$(expr $(grep -c processor /proc/cpuinfo) + 1 )")
 
 trap _cleanup SIGINT SIGTERM #trap ctrl-c
 
+_printfl()
+{   #print lines
+    _printfl_var_max_len="80"
+    if [ -n "$1" ]; then
+        _printfl_var_word_len=$(expr ${#1} + 2)
+        _printfl_var_sub=$(expr $_printfl_var_max_len - $_printfl_var_word_len)
+        _printfl_var_half=$(expr $_printfl_var_sub / 2)
+        _printfl_var_other_half=$(expr $_printfl_var_sub - $_printfl_var_half)
+        printf "%b" "\033[1m" #white strong
+        printf '%*s' "$_printfl_var_half" '' | tr ' ' -
+        printf "%b" "\033[7m" #white background
+        printf " %s " "$1"
+        printf "%b" "\033[0m\033[1m" #white strong
+        printf '%*s' "$_printfl_var_other_half" '' | tr ' ' -
+        printf "%b" "\033[0m" #back to normal
+        printf "\\n"
+    else
+        printf "%b" "\033[1m" #white strong
+        printf '%*s' "$_printfl_var_max_len" '' | tr ' ' -
+        printf "%b" "\033[0m" #back to normal
+        printf "\\n"
+    fi
+}
+
+_printfs()
+{   #print step
+    [ -z "$1" ] && return 1
+    printf "%s\\n" "[+] $*"
+}
+
 _header()
 {
     clear
-    printf "%b\\n" "\033[1m-------------------------------\033[7m $0 $patchkernel \033[0m\033[1m------------------------------\033[0m"
-    printf "%b\\n" "\033[1m  Original:\033[0m    http://sourceforge.net/projects/scriptkernel/"
-    printf "%b\\n" "\033[1m  Inspired by:\033[0m http://omicron.homeip.net/projects/#easy_e17.sh"
-    printf "%b\\n" "\033[1m  Updates:\033[0m     https://github.com/chilicuil/learn/blob/master/sh/is/kernel-ck-ubuntu"
-    printf "%s\\n"    "                             send your push request!"
+    _printfl "$patchkernel"
+    printf "%b\\n" "\033[1m Original:\033[0m    http://sourceforge.net/projects/scriptkernel/"
+    printf "%b\\n" "\033[1m Inspired by:\033[0m http://omicron.homeip.net/projects/#easy_e17.sh"
+    printf "%b\\n" "\033[1m Updates:\033[0m     https://github.com/chilicuil/learn/blob/master/sh/is/kernel-ck-ubuntu"
+    printf "%s\\n"    "                            send your push request!"
     printf "\\n"
-    printf "%b\\n" "\033[1m  Patches:\033[0m     -bfq, -ck, -ubuntu"
-    printf "%b\\n" "\033[1m  Config:\033[0m      http://repo-ck.com/"
+    printf "%b\\n" "\033[1m Patches:\033[0m     -bfq, -ck, -ubuntu"
+    printf "%b\\n" "\033[1m Config:\033[0m      http://repo-ck.com/"
     printf "\\n"
-    printf "%b\\n" "\033[1m----------------\033[7m Current Configuration: edit the script to change them \033[0m\033[1m--------------\033[0m"
+    _printfl "Current configuration: edit the script to change it"
     printf "%s\\n" "  build path:        $tmp_path"
     printf "%s\\n" "  kernel:            $patchkernel"
     printf "%s\\n" "  -bfq patchset:     $bfq"
@@ -54,67 +85,77 @@ _header()
     printf "%s\\n" "  sufix:             $ckk"
     printf "%s\\n" "  arch:              $arqt"
     printf "%s\\n" "  concurrency level: $CL"
-    printf "%b\\n" "\033[1m-------------------------------------------------------------------------------------\033[0m"
+    _printfl
 }
 
 _cmd()
-{   #print current command, exits on fail
-    [ -z "$1" ] && return 0
+{   #print and execute a command, exit on fail
+    [ -z "$1" ] && return 1
 
-    printf "%s " "    $ $@"
-    printf "\\n"
-    eval "$@"
+    printf "%s \\n" "    $ $*"
+    _cmd_var_output="$(eval $@ 2>&1)"
+    _cmd_var_status="$?"
 
-    status=$?
-    [ X"$status" != X"0" ] && exit $status || return
+    if [ X"$_cmd_var_status" != X"0" ]; then
+        printf "> %s:%s" "$*" "$_cmd_var_output"
+        exit "$_cmd_var_status"
+    else
+        return "$_cmd_var_status"
+    fi
 }
 
 _cmdsudo()
-{   #print && execute a command, exits if command fails
+{   #print && execute a command, exit on fail
     [ -z "$1" ] && return 1
-    _cmdsudo_var_serr=$$
 
-    printf "%s " "    $ $@"
-    printf "\\n"
-    printf "%s\\n" "$sudopwd" | $sudocmd eval "$@" > /tmp/"$_cmdsudo_var_serr".out 2>&1
+    printf "%s \\n" "    $ sudo $*"
+    _cmdsudo_var_output=$(printf "%s\\n" "$sudopwd" | $sudocmd sh -c "eval $*" 2>&1)
+    _cmdsudo_var_status="$?"
 
-    _cmdsudo_var_status=$?
-    [ X"$_cmdsudo_var_status" != X"0" ] && { cat /tmp/"$_cmdsudo_var_serr".out; \
-        rm -rf /tmp/"$_cmdsudo_var_serr".out; exit $_cmdsudo_var_status; } \
-        || { rm -rf /tmp/"$_cmdsudo_var_serr".out; return $_cmdsudo_var_status; }
+    if [ X"$_cmdsudo_var_status" != X"0" ]; then
+        printf "> %s:%s\\n" "$*" "$_cmdsudo_var_output"
+        exit "$_cmdsudo_var_status"
+    else
+        return "$_cmdsudo_var_status";
+    fi
 }
 
-_handscui()
-{
-    [ -z $1 ] && { printf "%5s\n" ""; return 1; }
-    pid=$1
-    animation_state=1
+_animcui()
+{   #wait animation
+    [ -z "$1" ] && { printf "%5s\n" ""; return 1; }
 
-    if [ ! "$(ps -p $pid -o comm=)" ]; then
+    if ! printf "%s" "$(pidof "$1")" | grep "[0-9].*" >/dev/null; then
         printf "%5s\n" ""
-        return
+        return 1; 
     fi
 
-    printf "%s" "      "
+    _animcui_var_animation_state="1"
 
-    while [ "`ps -p $pid -o comm=`" ]; do
+    if [ ! "$(ps -p "$(pidof "$1")" -o comm= 2>/dev/null)" ]; then
+        printf "%5s\n" ""
+        return 1
+    fi
+
+    printf "%5s" ""
+
+    while [ "$(ps -p "$(pidof "$1")" -o comm= 2>/dev/null)" ]; do
         printf "%b" "\b\b\b\b\b"
-        case $animation_state in
+        case "$_animcui_var_animation_state" in
             1)
                 printf "%s" '\o@o\'
-                animation_state=2
+                _animcui_var_animation_state=2
                 ;;
             2)
                 printf "%s" '|o@o|'
-                animation_state=3
+                _animcui_var_animation_state=3
                 ;;
             3)
                 printf "%s" '/o@o/'
-                animation_state=4
+                _animcui_var_animation_state=4
                 ;;
             4)
                 printf "%s" '|o@o|'
-                animation_state=1
+                _animcui_var_animation_state=1
                 ;;
         esac
         sleep 1
@@ -123,46 +164,73 @@ _handscui()
 }
 
 _getroot()
-{   #get sudo's password, define $sudopasswd and $sudocmd
-
-    local tmp_path="/tmp"; local sudotest; local insudoers;
-
+{   #get sudo's password, define $sudopwd and $sudocmd
     if [ ! X"$LOGNAME" = X"root" ]; then
         printf "%s\\n" "Detecting user $LOGNAME (non-root) ..."
         printf "%s\\n" "Checking if sudo is available ..."
-        sudotest=`type sudo >/dev/null 2>/dev/null; printf "%s\\n" "$?"`
 
-        if [ X"$sudotest" = X"0" ]; then
-            printf "%s\\n" "    Requesting sudo's password, I'll be carefull I promise =)"
+        if command -v "sudo" >/dev/null 2>&1; then
             sudo -K
-            if [ -e "$tmp_path/sudo.test" ]; then
-                rm -f "$tmp_path/sudo.test"
+
+            if [ -n "$sudopwd" ]; then
+                # password check
+                _getroot_var_test=$(printf "%s\\n" "$sudopwd" | sudo -S ls 2>&1)
+                _getroot_var_status="$?"
+                _getroot_var_not_allowed=$(printf "%s" "$_getroot_var_test" | \
+                                         grep -i "sudoers")
+
+                if [ -n "$_getroot_var_not_allowed" ]; then
+                    printf "%s %s\\n" "You're not allowed to use sudo," \
+                    "get in contact with your local administrator"
+                    exit
+                fi 
+
+                if [ X"$_getroot_var_status" != X"0" ]; then
+                    sudopwd=""
+                    printf "%s\\n" "Incorrect preseed password"
+                    exit
+                else
+                    sudocmd="sudo -S"
+                fi 
+                printf "%s\\n" "    - all set ..."
+                return 0
             fi
-            while [ -z "$sudopwd" ]; do
-                printf "%s" "    - enter sudo-password: "
+
+            i=0 ; while [ "$i" -lt 3 ]; do
+                i=$(expr $i + 1);
+                printf "%s" "   - enter sudo password: "
                 stty -echo
                 read sudopwd
                 stty echo
 
                 # password check
-                printf "%s\\n" "$sudopwd" | sudo -S touch "$tmp_path/sudo.test" > "$tmp_path/sudo.output" 2>&1
-                insudoers=$(grep -i "sudoers" "$tmp_path/sudo.output")
-                if [ -n "$insudoers" ]; then
-                    printf "%s\\n" "$sudopwd" | sudo -S rm "$tmp_path/sudo.output" > /dev/null 2>&1
-                    exit
-                fi
+                _getroot_var_test=$(printf "%s\\n" "$sudopwd" | sudo -S ls 2>&1)
+                _getroot_var_status="$?"
+                _getroot_var_not_allowed=$(printf "%s" "$_getroot_var_test" | \
+                                         grep -i "sudoers")
 
-                if [ ! -e "$tmp_path/sudo.test" ]; then
+                if [ -n "$_getroot_var_not_allowed" ]; then
+                    printf "\\n%s %s\\n" "You're not allowed to use sudo," \
+                    "get in contact with your local administrator"
+                    exit
+                fi 
+
+                printf "\\n"
+                if [ X"$_getroot_var_status" != X"0" ]; then
                     sudopwd=""
-                fi
+                else
+                    sudocmd="sudo -S"
+                    break
+                fi 
             done
 
-            sudocmd="/usr/bin/sudo -S"
-
-            printf "%s\\n" "$sudopwd" | $sudocmd rm -f "$tmp_path/sudo.test" > /dev/null 2>&1
-            printf "\\n" 
+            if [ -z "$sudopwd" ]; then
+                printf "%s\\n" "Failed authentication"
+                exit
+            fi
         else
-            printf "%s\\n" "You're not root and sudo isn't available. Please run this script as root!"
+            printf "%s %s\\n" "You're not root and sudo isn't available." \
+            "Please run this script as root!"
             exit
         fi
     fi
@@ -171,8 +239,8 @@ _getroot()
 _cleanup()
 {
     stty echo
-    printf "%b\\n" "\033[1m-------------------\033[7m Cleanup \033[0m\033[1m-------------------\033[0m"
-    printf "%s\\n" "[+] deleting files at $tmp_path ..."
+    _printfl "Cleanup"
+    _printfs "deleting files at $tmp_path ..."
     #printf "%s\\n" "$sudopwd" | $sudocmd rm -v $tmp_path/patch*
     #printf "%s\\n" "$sudopwd" | $sudocmd rm -v $tmp_path/*.patch
     printf "%s\\n" "$sudopwd" | _cmd $sudocmd rm -rf $tmp_path/linux-$patchkernel-$ckk
@@ -185,71 +253,75 @@ _cleanup()
 }
 
 _waitfor()
-{
+{   #print, execute and wait for a command to finish
     [ -z "$1" ] && return 1
 
     printf "%s " "    $ $@ ..."
-    eval "$@" > /dev/null 2>&1 &
+    eval "$@" >/dev/null 2>&1 &
     sleep 1s
 
-    _handscui $(pidof $1)
+    _animcui $1
 }
 
 _waitforsudo()
-{
+{   #print, execute and wait for a command to finish
     [ -z "$1" ] && return 1
 
     printf "%s " "    $ sudo $@ ..."
-    printf "%s" "$sudopwd" | $sudocmd $@ > /dev/null 2>&1 &
+    printf "%s\\n" "$sudopwd" | $sudocmd sh -c "eval $*" >/dev/null 2>&1 &
     sleep 1s
 
-    _handscui $(pidof $1)
+    if [ X"$1" = X"DEBIAN_FRONTEND=noninteractive" ]; then
+        _animcui $2
+    else
+        _animcui $1
+    fi
 }
 
 _header
 _getroot
 
-printf "%b\\n" "\033[1m--------------------------------\033[7m Fixing dependencies \033[0m\033[1m--------------------------------\033[0m"
+_printfl "Fixing dependencies"
 _waitforsudo apt-get update
 _waitforsudo apt-get install --no-install-recommends -y $apps_default
 
 
-printf "%b\\n" "\033[1m--------------------------------\033[7m Downloading archives \033[0m\033[1m-------------------------------\033[0m"
-printf "%s\\n" "[+] downloading main vanilla kernel tree ..."
+_printfl "Downloading archives"
+_printfs "downloading main vanilla kernel tree ..."
 _cmd mkdir -p $tmp_path
 _cmd cd $tmp_path
 _waitfor wget --no-check-certificate -N http://www.kernel.org/pub/linux/kernel/v3.x/linux-$kernel.tar.bz2
 
-printf "%s\\n" "[+] downloading mainstream patches ..."
+_printfs "downloading mainstream patches ..."
 _waitfor wget --no-check-certificate -N http://www.kernel.org/pub/linux/kernel/v3.x/patch-$patchkernel.bz2
 
-printf "%s\\n" "[+] downloading -ck patches ..."
+_printfs "downloading -ck patches ..."
 _waitfor wget -N http://ck.kolivas.org/patches/3.0/$kernel/$patchck/patch-$patchck.bz2
 
-printf "%s\\n" "[+] downloading bfq patches ..."
+_printfs "downloading bfq patches ..."
 _waitfor wget -N http://algo.ing.unimo.it/people/paolo/disk_sched/patches/$bfq/0001-block-cgroups-kconfig-build-bits-for-BFQ-$vbfq-$kernel.patch
 _waitfor wget -N http://algo.ing.unimo.it/people/paolo/disk_sched/patches/$bfq/0002-block-introduce-the-BFQ-$vbfq-I-O-sched-for-$kernel.patch
 _waitfor wget -N http://algo.ing.unimo.it/people/paolo/disk_sched/patches/$bfq/0003-block-bfq-add-Early-Queue-Merge-EQM-to-BFQ-$vbfq-for-$kernel.0.patch
 
-printf "%s\\n" "[+] downloading ubuntu patches ..."
+_printfs "downloading ubuntu patches ..."
 _waitfor wget -N http://kernel.ubuntu.com/~kernel-ppa/mainline/v$patchkernel-trusty/0001-base-packaging.patch
 _waitfor wget -N http://kernel.ubuntu.com/~kernel-ppa/mainline/v$patchkernel-trusty/0002-debian-changelog.patch
 
-printf "%b\\n" "\033[1m--------------------------------------\033[7m Applying patches \033[0m\033[1m------------------------------\033[0m"
-printf "%s\\n" "[+] uncompresing kernel to $tmp_path/linux-$kernel/ ..."
+_printfl "Applying patches"
+_printfs "uncompresing kernel to $tmp_path/linux-$kernel/ ..."
 if [ ! -d "/$tmp_path/linux-$kernel/" ]; then
     _waitfor "bzcat < $tmp_path/linux-$kernel.tar.bz2 | tar xvf -"
 fi
 
-printf "%s\\n" "[+] uncompresing patches ..."
+_printfs "uncompresing patches ..."
 _waitfor bunzip2 patch-$patchkernel.bz2 patch-$patchck.bz2
 
-printf "%s\\n" "[+] moving to $tmp_path/linux-$patchkernel-$ckk"
+_printfs "moving to $tmp_path/linux-$patchkernel-$ckk"
 _waitfor rm -rf linux-$patchkernel-$ckk
 _waitfor cp -R "linux-$kernel" "linux-$patchkernel-$ckk"
 _cmd cd linux-$patchkernel-$ckk
 
-printf "%s\\n" "[+] applying patches (verbose output) ..."
+_printfs "applying patches (verbose output) ..."
 _cmd patch -p1 < ../patch-$patchkernel
 _cmd patch -p1 < ../patch-$patchck
 _cmd patch -p1 < ../0001-block-cgroups-kconfig-build-bits-for-BFQ-$vbfq-$kernel.patch
@@ -258,9 +330,8 @@ _cmd patch -p1 < ../0003-block-bfq-add-Early-Queue-Merge-EQM-to-BFQ-$vbfq-for-$k
 _cmd patch -p1 < ../0001-base-packaging.patch
 _cmd patch -p1 < ../0002-debian-changelog.patch
 
-printf "%b\\n" "\033[1m-----------------------------\033[7m Configuring kernel \033[0m\033[1m----------------------------------\033[0m"
-
-printf "%s\\n" "[+] downloading optimized config from http://repo-ck.com ...    "
+_printfl "Configuring kernel"
+_printfs "downloading optimized config from http://repo-ck.com ...    "
 #_waitfor wget "http://liquorix.net/sources/$kernel/config.$arqt"
 ##TODO 05-11-2013 20:30 >> liquorix.net current configuration breaks -ck kernel 
 #                          starting in >= 3.10, check from time to time if it can be reused
@@ -283,7 +354,7 @@ elif [ X"$arqt" = X"amd64" ]; then
 fi
 
 ##thanks to StefanescuCristian: https://github.com/chilicuil/learn/commit/c2d4455
-printf "%s\\n" "[+] making sure BFS and BFQ are enabled in config"
+_printfs "making sure BFS and BFQ are enabled in config ..."
 sed -i "/CONFIG_SCHED_CFS=y/d" .config
 sed -i "s/# CONFIG_SCHED_BFS is not set/CONFIG_SCHED_BFS=y/g" .config
 sed -i "s/# CONFIG_IOSCHED_BFQ is not set/CONFIG_IOSCHED_BFQ=y/g" .config
@@ -295,27 +366,18 @@ sed -i "s/CONFIG_DEFAULT_IOSCHED="deadline"/CONFIG_DEFAULT_IOSCHED="bfq"/g" .con
 sed -i "s/CONFIG_DEFAULT_IOSCHED="noop"/CONFIG_DEFAULT_IOSCHED="bfq"/g" .config
 sed -i "s/# CONFIG_DEFAULT_BFQ is not set/CONFIG_DEFAULT_BFQ=y/g" .config
 
-printf "%s\\n" "[+] making sure CONFIG_HZ is set to 1000, better performance + fixes in resume|suspending issues"
+_printfs "making sure CONFIG_HZ is set to 1000, better performance + fixes in resume|suspending issues ..."
 sed -i -e 's/^CONFIG_HZ_300=y/# CONFIG_HZ_300 is not set/' \
     -i -e 's/^# CONFIG_HZ_1000 is not set/CONFIG_HZ_1000=y/' \
     -i -e 's/^CONFIG_HZ=300/CONFIG_HZ=1000/' .config
 
-##printf "%s\\n" "[+] optimizying even more, using streamline_config.pl ...    "
-##chmod +x ./scripts/kconfig/streamline_config.pl && ./scripts/kconfig/streamline_config.pl > config_strip
-###make localmodconfig
-##mv config_strip .config
-
-##printf "%s\\n" "[+] running menuconfig ...    "
-##make menuconfig
-
-printf "%b\\n" "\033[1m-------------------------------\033[7m Compiling kernel \033[0m\033[1m----------------------------------\033[0m"
-
-printf "%s\\n" "[+] running make-kpkg ...    "
+_printfl "Compiling kernel"
+_printfs "running make-kpkg ..."
 CONCURRENCY_LEVEL=$CL
 printf "\\n" | _cmd fakeroot \"make-kpkg --initrd kernel_image kernel_headers modules_image\"
 
-printf "%b\\n" "\033[1m-------------------------------------\033[7m DONE \033[0m\033[1m----------------------------------\033[0m"
-printf "%s\\n" "[+] copying debs files ..."
+_printfl "DONE"
+_printfs "copying debs files ..."
 _cmd cp ../linux-*.deb "$curr_path"
-printf "%s\\n" "[+] you may want to install the generated packages and reboot your system, run: $ sudo dpkg -i linux-*.deb"
-printf "%s\\n" "[+] have fun ^_^!"
+_printfs "you may want to install the generated packages and reboot your system, run: $ sudo dpkg -i linux-*.deb"
+_printfs "have fun ^_^!"
