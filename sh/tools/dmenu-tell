@@ -20,32 +20,8 @@ else
     clipboard="ops"
 fi
 
-#TODO 24-10-2013 04:22 >> find replacement
-if [[ "${phrase}" == e.* ]] ; then
-    #remove first 2 chars
-    phrase=${phrase#"e"}
-    phrase=${phrase#"."}
-    if [[ "${phrase}" == -* ]] ; then
-        phrase=$($clipboard)
-    fi
-    say -en "${phrase}"
-elif [[ "${phrase}" == p.* ]] ; then
-    phrase=${phrase#"p"}
-    phrase=${phrase#"."}
-    if [[ "${phrase}" == -* ]] ; then
-        phrase=$($clipboard)
-    fi
-    say -pt "${phrase}"
-elif [[ "${phrase}" == s.* ]] ; then
-    phrase=${phrase#"s"}
-    phrase=${phrase#"."}
-    if [[ "${phrase}" == -* ]] ; then
-        phrase=$($clipboard)
-    fi
-    say -es "${phrase}"
-elif [[ "${phrase}" == - ]] ; then
-    phrase=$($clipboard)
-    say -es "${phrase}"
-else
-    say "${phrase}"
+if [ X"$(printf "%s" "$phrase" | cut -d' ' -f2)" = X"-" ]; then
+    phrase="$(printf "%s" "$phrase" | cut -d' ' -f1) $($clipboard)"
 fi
+
+say $phrase
