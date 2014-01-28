@@ -28,24 +28,24 @@ if [[ "${phrase}" == e.* ]] ; then
     if [[ "${phrase}" == -* ]] ; then
         phrase=$($clipboard)
     fi
-    say -e "${phrase}"
+    say -en "${phrase}"
 elif [[ "${phrase}" == p.* ]] ; then
     phrase=${phrase#"p"}
     phrase=${phrase#"."}
     if [[ "${phrase}" == -* ]] ; then
         phrase=$($clipboard)
     fi
-    say -p "${phrase}"
+    say -pt "${phrase}"
 elif [[ "${phrase}" == s.* ]] ; then
     phrase=${phrase#"s"}
     phrase=${phrase#"."}
     if [[ "${phrase}" == -* ]] ; then
         phrase=$($clipboard)
     fi
-    say -s "${phrase}"
+    say -es "${phrase}"
 elif [[ "${phrase}" == - ]] ; then
     phrase=$($clipboard)
-    say -e "${phrase}"
+    say -es "${phrase}"
 else
     say "${phrase}"
 fi
