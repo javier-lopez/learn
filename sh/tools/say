@@ -21,16 +21,15 @@ _say()
     [ -z "$1" ] && return 1
     phrase="$*"
 
-    while [ ${#phrase} -gt 100 ]; do
-        tmp=$(printf "%b" "${phrase}" | cut -c1-100 | xxd -plain | tr -d '\n' | sed 's/\(..\)/%\1/g')
+    while [ ${#phrase} -gt 99 ]; do
+        tmp=$(printf "%b" "${phrase}" | cut -c1-99 | xxd -plain | tr -d '\n' | sed 's/\(..\)/%\1/g')
         mplayer -really-quiet "http://translate.google.com/translate_tts?ie=UTF-8&tl=$sl&q=$tmp" > /dev/null 2>&1
-        phrase=$(printf "%b" "${phrase}" | cut -c100-${#phrase})
+        phrase=$(printf "%b" "${phrase}" | cut -c99-$(expr ${#phrase} + 1))
         #http://stackoverflow.com/questions/4988155/is-there-a-bash-command-that-can-tell-the-size-of-a-shell-variable
     done
 
     #http://stackoverflow.com/questions/296536/urlencode-from-a-bash-script
     phrase=$(printf "%b" "$phrase" | xxd -plain | tr -d '\n' | sed 's/\(..\)/%\1/g')
-    [ -n "$1" ] && shift;
     mplayer -really-quiet "http://translate.google.com/translate_tts?ie=UTF-8&tl=$sl&q=$phrase" > /dev/null 2>&1
 }
 
