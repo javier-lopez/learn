@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 #description: dmenu based talking app
 #usage: dmenu-tell
+#usage: dmenu-tell is best suited to be launched from a shortcut
 
 #example: dmenu-tell
 #appears a gui menu appears asking for which phrase to tell, default to spanish voice

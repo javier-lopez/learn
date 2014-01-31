@@ -1,9 +1,9 @@
 #!/usr/bin/env sh
 #description: dmenu for mpd
-#usage: dmenu-mpd, best suited if launched from a shortcut
+#usage: dmenu-mpd is best suited to be launched from a shortcut
 
 #example: dmenu-mpd
-#appears a gui menu appears asking for which song to play
+#a gui menu appears asking for which song to play
 
 #requires a dmenu version with xft: https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
 #-sf yellow

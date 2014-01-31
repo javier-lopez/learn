@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 #description: dmenu based multimonitor menu
-#usage: dmenu-xrandr
+#usage: dmenu-xrandr is best suited to be launched from a shortcut
 
 #example: dmenu-xrandr
 #appears a gui menu appears asking for which monitor to use

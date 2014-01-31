@@ -1,9 +1,9 @@
 #!/usr/bin/env sh
 #description: dmenu for killall
-#usage: dmenu-killall, best suited if launched from a shortcut
+#usage: dmenu-killall is best suited to belaunched from a shortcut
 
 #example: dmenu-killall
-#appears a gui menu appears asking for which app to kill
+#a gui menu appears asking for which app to kill
 
 #requires a dmenu version with xft: https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
 #-sf red
