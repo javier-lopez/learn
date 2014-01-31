@@ -1,0 +1,229 @@
+#!/usr/bin/env sh
+#description: dmenu based countdown
+#usage: dmenu-countdown is best suited to be launched from a shortcut
+
+#example: dmenu-countdown
+#a gui menu appears asking for the amount of time to countdown
+#format: HH:MM[:SS]
+
+#requires a dmenu version with xft: https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
+#-sf red
+DMENU='dmenu -p > -i -fn Bahamas-10 -nb #000000 -nf #ffffff -sb #000000 -sf #ffffff'
+tune_64='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
+         dwAoAAA='
+
+_arch()
+{   #check for system arch, returns [64|32]
+    if [ -z "$MACHTYPE" ]; then
+        _arch_var_arch=$(uname -m)
+    else
+        _arch_var_arch=$(printf "%s" "$MACHTYPE" | cut -d- -f1)
+    fi
+
+    case "$_arch_var_arch" in
+        x86_64) _arch_var_arch="64" ;;
+        i686)   _arch_var_arch="32" ;;
+        *)      return 1 ;;
+    esac
+
+    printf "%s" "$_arch_var_arch"
+}
+
+_isnum()
+{   #look for a number, returns 0 on success, 1 otherwise
+    [ -z "$1" ] && return 1
+    printf "%s\\n" "$@" | grep -v "[^0-9]" >/dev/null
+}
+
+_invalidformat()
+{
+    _notify "[-] Invalid format" "$0: HH:MM[:SS]"
+    exit
+}
+
+_notify ()
+{
+    if [ X"$TERM" = X"linux" ]; then
+        if ps aux | grep [n]otify- >/dev/null; then
+            notify-send -t 1000 "${@}" 
+        elif command -v "gxmessage" 2>/dev/null; then
+            font="Monaco 9"
+            gxmessage ${font:+-fn "$font"} "${@}" "got it"
+        else
+            font="fixed"
+            xmessage ${font:+-fn "$font"} "${@}" "got it"
+        fi
+    else
+        printf "%s\\n" "${@}"
+    fi
+}
+
+_printtime()
+{  #format seconds to a pretty string
+    [ -z "$1" ] && return 1
+    printf "%s\\n" "$1" | grep -v "[^0-9]" >/dev/null || return 1;
+
+    _printtime_var_num=$1
+    _printtime_var_min=0
+    _printtime_var_hour=0
+    _printtime_var_day=0
+    if [ $_printtime_var_num -gt 59 ]; then
+        _printtime_var_sec=$(expr $_printtime_var_num % 60)
+        _printtime_var_num=$(expr $_printtime_var_num / 60)
+        if [ $_printtime_var_num -gt 59 ]; then
+            _printtime_var_min=$(expr $_printtime_var_num % 60)
+            _printtime_var_num=$(expr $_printtime_var_num / 60)
+            if [ $_printtime_var_num -gt 23 ]; then
+                _printtime_var_hour=$(expr $_printtime_var_num % 24)
+                _printtime_var_day=$(expr $_printtime_var_num / 24)
+            else
+                _printtime_var_hour=$_printtime_var_num
+            fi
+        else
+            _printtime_var_min=$_printtime_var_num
+        fi
+    else
+        _printtime_var_sec=$_printtime_var_num
+    fi
+    printf "%s\\n" ""$_printtime_var_hour":"$_printtime_var_min":"$_printtime_var_sec""
+}
+
+eval "tune=\$tune_$(_arch)"
+time=$($DMENU <&- && printf "\\n")
+
+if [ X"$time" = X"stop" ]; then
+    rm -f /tmp/dmenu-countdown.lock
+    exit
+fi
+
+if ! printf "%s" "$time" | grep : >/dev/null; then
+    _invalidformat
+fi
+
+time_copy="$time"
+_var_i=0
+
+while [ "$time_copy" ]; do
+    time_option=${time_copy%%:*}
+    _var_i=$(expr $_var_i + 1)
+    [ X"$time_option" = X"$time_copy" ] && time_copy='' || time_copy="${time_copy#*:}"
+done
+
+if [ $_var_i -lt 2 ] || [ $_var_i -gt 3 ]; then
+    _invalidformat
+fi
+
+h=$(printf "%s" "$time" | cut -d: -f1)
+m=$(printf "%s" "$time" | cut -d: -f2)
+s=$(printf "%s" "$time" | cut -d: -f3)
+
+if ! _isnum "$h" || ! _isnum "$m" ; then
+    _invalidformat
+else
+    if [ -n "$s" ]; then
+        if ! _isnum "$s"; then
+            _invalidformat
+        fi
+    fi
+fi
+
+if mount | grep /tmp | grep noexec >/dev/null; then
+    mkdir "$HOME"/.dmenu_countdown
+    printf "%s" "$tune" | openssl enc -base64 -d | zcat | tar xf - -C "$HOME"/.dmenu_countdown
+    tune="$HOME"/.dmenu_countdown/dmenu-countdown.tone
+else
+    printf "%s" "$tune" | openssl enc -base64 -d | zcat | tar xf - -C /tmp
+    tune=/tmp/dmenu-countdown.tone
+fi
+chmod +x "$tune"
+touch /tmp/dmenu-countdown.lock
+
+if [ -z "$s" ]; then
+    secs=$(expr ${h} \* 3600 + ${m} \* 60)
+else
+    secs=$(expr ${h} \* 3600 + ${m} \* 60 + ${s} )
+fi
+
+half=$(expr ${secs} / 2)
+quarter=$(expr ${secs} / 4)
+almost=$(expr ${secs} / 10)
+
+_notify "[+] Countdown" "time left: $time"
+while [ $secs -gt 0 ]; do
+    if [ ! -f /tmp/dmenu-countdown.lock ]; then
+        _notify "[+] Cancel" "countdown canceled!"
+        exit
+    fi
+    case $secs in
+        $half)    _notify "[+] Countdown" "time left: $(_printtime $secs)" ;;
+        $quarter) _notify "[+] Countdown" "time left: $(_printtime $secs)" ;;
+        $almost)  _notify "[+] Almost!"   "time left: $(_printtime $secs)" ;;
+    esac
+    sleep 1 &
+    secs=$(expr $secs - 1 )
+    wait
+done
+
+_notify "[+] ALARM" "countdown done!"
+"$tune" | aplay &
+
+while :; do
+    if [ ! -f /tmp/dmenu-countdown.lock ]; then
+        _notify "[+] Stop" "countdown stopped!"
+        killall aplay
+        rm -rf "$HOME"/.dmenu_countdown
+        rm -rf "$tune"
+        exit
+    fi
+    sleep 1
+done
