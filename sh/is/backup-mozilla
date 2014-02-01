@@ -1,4 +1,10 @@
 #!/usr/bin/env sh
 
-rm -rf $HOME/.mozilla.backup.tar.gz
-tar cvf - $HOME/.mozilla | gzip > $HOME/.mozilla.backup.tar.gz
+mkdir "$HOME"/.mozilla-backups
+tar cvf - "$HOME"/.mozilla | gzip > "$HOME"/.mozilla-backups/mozilla-$(date +%Y-%m-%d:%H:%M).tar.gz
+
+files=$(find "$HOME"/.mozilla-backups -maxdepth 1 -type f|wc -l)
+
+if [ $files -gt 5 ]; then
+    rm -rf $(find "$HOME"/.mozilla-backups -type f -printf '%T+ %p\n' | sort | head -1 | awk '{print $2}')
+fi
