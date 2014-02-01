@@ -87,7 +87,7 @@ _isnum()
 
 _invalidformat()
 {
-    _notify "[-] Invalid format" "$0: HH:MM[:SS]"
+    _notify "[-] Invalid format" "$(basename $0): HH:MM[:SS]"
     exit
 }
 
@@ -140,6 +140,8 @@ _printtime()
 
 eval "tune=\$tune_$(_arch)"
 time=$($DMENU <&- && printf "\\n")
+
+[ -z "$time" ] && exit 1
 
 if [ X"$time" = X"stop" ]; then
     rm -f /tmp/dmenu-countdown.lock
