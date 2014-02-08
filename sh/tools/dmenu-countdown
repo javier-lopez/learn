@@ -222,7 +222,8 @@ _notify "[+] ALARM" "countdown done!"
 while :; do
     if [ ! -f /tmp/dmenu-countdown.lock ]; then
         _notify "[+] Stop" "countdown stopped!"
-        killall aplay
+        killall aplay 2>/dev/null
+        killall dmenu-countdown.tone 2>/dev/null
         rm -rf "$HOME"/.dmenu_countdown
         rm -rf "$tune"
         exit
