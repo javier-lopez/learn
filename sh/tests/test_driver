@@ -20,22 +20,18 @@
 ##
 
 lib=../lib
-bin=../tools
-test_lib=./test_lib.db
-test_bin=./test_bin.db
+lib_db=./lib.db
 
 #make sure the tool and database exists
 [ -f $lib ]|| exit 1
-[ -d $bin ]|| exit 1
-[ -f $test_lib ]|| exit 1
-[ -f $test_bin ]|| exit 1
+[ -f $lib_db ]|| exit 1
 
 #override temp debug string, avoid "Bad substitution" errors
 PS4=">>"
 
 #test lib
 FUNCTIONS=$(grep '^_.*()' $lib | sed -e 's:()::')
-TESTS=$(grep '^@begin' $test_lib | sed -e 's/^@begin{//' -e 's/}.*$//')
+TESTS=$(grep '^@begin' $lib_db | sed -e 's/^@begin{//' -e 's/}.*$//')
 FUNCTIONS_WITH_TESTS=$(printf "%s\\n" $FUNCTIONS $TESTS | awk 'x[$0]++')
 
 mkfifo fifo1 && mkfifo fifo2
@@ -47,7 +43,7 @@ if [ -e fifo1 ] && [ -e fifo2 ]; then
 fi
 
 if [ -n "$FUNCTIONS_WITHOUT_TESTS" ]; then
-    printf "%s\\n" "Warning - functions in $lib without tests!, create the missing tests in $test_lib"
+    printf "%s\\n" "Warning - functions in $lib without tests!, create the missing tests in $lib_db"
     printf "%s\\n" "$FUNCTIONS_WITHOUT_TESTS"
     printf "\\n"
 fi
@@ -66,7 +62,7 @@ for function in $FUNCTIONS_WITH_TESTS; do
     rm -rf ./* >/dev/null 2>&1
     printf "%s\\n" "${function}........................." | awk '{ printf("%s", substr($0, 0, 25)); }'
     printf "%s\\n" ". ../$lib" >run.sh
-    sed -e "/^@begin{$function}/,/^@end{$function}/p" -e '1,$d' ../$test_lib |\
+    sed -e "/^@begin{$function}/,/^@end{$function}/p" -e '1,$d' ../$lib_db |\
     sed -e '/^@begin/d' -e '/^@end/d' \
         -e 's/\([^\\]\)[ 	]*$/\1 || exit 1/g' >>run.sh
     echo "exit 0" >>run.sh
