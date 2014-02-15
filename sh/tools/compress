@@ -9,8 +9,11 @@
 
 _basename()
 {
-    [ -z "$1" ] && return 0
-    expr "$1" : '.*/\([^/]*\)'
+    [ -z "$1" ] && return 1
+    case $1 in
+        /*|*/*) expr "$1" : '.*/\([^/]*\)' ;;
+        *) printf "%s\\n" "$1";;
+    esac
 }
 
 _usage()
@@ -22,35 +25,38 @@ _usage()
 
 [ "$#" -lt 2 ] && _usage
 
-_exec()
-{
-    status=$?
-    if [ X"$status" != X"0" ]; then
-        exit $status
-    fi
-    printf "%s " "[+] $@"
-    printf "\\n"
-    eval "$@"
-}
-
 _compress()
 {
-    for COMPRESS_FILE; do true; done
-    FILES="$(expr "$*" : '\(.*\) .*')" #all but last argument, http://docstore.mik.ua/orelly/unix3/upt/ch36_23.htm
-    for FILE in $FILES; do
+    i=0
+    for COMPRESS_FILE; do :; done
+    for FILE; do
+        i=$(expr $i + 1);
+        [ "$#" -eq $i ] && continue
         [ ! -r "$FILE" ] && { printf "%s\\n" "$(_basename $0): "$FILE" does not exist or is not readable"; exit 1; }
+        FILES="$FILE""|""$FILES"
     done
+
+    FILES_FORMAT="$(printf "%s" "$FILES" | sed 's:|: :g')"
+    OLDIFS="$IFS"
+    IFS="|"
 
     if [ -z "$SFLAG" ]; then
         case "$COMPRESS_FILE" in
+            #TODO 15-02-2014 01:02 >> add _exec function which prints and executes current command
             *.deb|*.udeb)
-                _exec ar rv "$COMPRESS_FILE" "$FILES"
+                printf "%s " "[+] ar rv $COMPRESS_FILE $FILES_FORMAT"
+                printf "\\n"
+                ar rv "$COMPRESS_FILE" $FILES
                 ;;
             *.tar.bz2|*.tbz|*.tbz2)
-                _exec "tar cvf - "$FILES" | bzip2 > "$COMPRESS_FILE""
+                printf "%s " "[+] tar cvf - $FILES_FORMAT | bzip2 > $COMPRESS_FILE"
+                printf "\\n"
+                tar cvf - $FILES | bzip2 > "$COMPRESS_FILE"
                 ;;
             *.tar.gz|*.tgz)
-                _exec "tar cvf - "$FILES" | gzip > "$COMPRESS_FILE""
+                printf "%s " "[+] tar cvf - $FILES_FORMAT | gzip > $COMPRESS_FILE"
+                printf "\\n"
+                tar cvf - $FILES | gzip > "$COMPRESS_FILE"
                 ;;
             *.bz2)
                 local x=0
@@ -59,10 +65,14 @@ _compress()
                 done
                 [ $x -gt 1 ] && { printf "%s\\n" "$(_basename $0): bz2 files can only be compressed one by one, use tar.bz2 if you require to compress several files at the same time"; exit 1; }
                 true
-                _exec "bzip2 -cv \"$FILES\" | dd of=\"$COMPRESS_FILE\""
+                printf "%s " "[+] bzip2 -cv $FILES_FORMAT | dd of=$COMPRESS_FILE"
+                printf "\\n"
+                bzip2 -cv $FILES | dd of="$COMPRESS_FILE"
                 ;;
             *.rar)
-                _exec rar a "$COMPRESS_FILE" "$FILES"
+                printf "%s " "[+] rar a $COMPRESS_FILE $FILES_FORMAT"
+                printf "\\n"
+                rar a "$COMPRESS_FILE" $FILES
                 ;;
             *.gz)
                 local x=0
@@ -71,28 +81,44 @@ _compress()
                 done
                 [ $x -gt 1 ] && { printf "%s\\n" "$(_basename $0): gz files can only be compressed one by one, use tar.gz if you require to compress several files at the same time"; exit 1; }
                 true
-                _exec "gzip -cv \"$FILES\" | dd of=\"$COMPRESS_FILE\""
+                printf "%s " "[+] gzip -cv $FILES_FORMAT | dd of=$COMPRESS_FILE"
+                printf "\\n"
+                gzip -cv $FILES | dd of="$COMPRESS_FILE"
                 ;;
             *.tar)
-                _exec tar cvf "$COMPRESS_FILE" "$FILES"
+                printf "%s " "[+] tar cvf $COMPRESS_FILE $FILES_FORMAT"
+                printf "\\n"
+                tar cvf "$COMPRESS_FILE" $FILES
                 ;;
             *.zip|*.xpi)
-                _exec zip -r "$COMPRESS_FILE" "$FILES"
+                printf "%s " "[+] zip -r $COMPRESS_FILE $FILES_FORMAT"
+                printf "\\n"
+                zip -r "$COMPRESS_FILE" $FILES
                 ;;
             *.7z)
-                _exec 7z a "$COMPRESS_FILE" "$FILES"
+                printf "%s " "[+] 7z a $COMPRESS_FILE $FILES_FORMAT"
+                printf "\\n"
+                7z a "$COMPRESS_FILE" $FILES
                 ;;
             *.tar.lzma)
-                _exec "tar cvf - "$FILES" | lzma > "$COMPRESS_FILE""
+                printf "%s " "[+] tar cvf - $FILES_FORMAT | lzma > $COMPRESS_FILE"
+                printf "\\n"
+                tar cvf - $FILES | lzma > "$COMPRESS_FILE"
                 ;;
             *.tar.xz)
-                _exec "tar cvf - "$FILES" | xz > "$COMPRESS_FILE""
+                printf "%s " "[+] tar cvf - $FILES_FORMAT | xz > $COMPRESS_FILE"
+                printf "\\n"
+                tar cvf - $FILES | xz > "$COMPRESS_FILE"
                 ;;
             *.jar)
-                _exec jar cvf "$COMPRESS_FILE" "$FILES"
+                printf "%s " "[+] jar cvf $COMPRESS_FILE $FILES_FORMAT"
+                printf "\\n"
+                jar cvf "$COMPRESS_FILE" $FILES
                 ;;
             *.iso)
-                _exec 7z a "$COMPRESS_FILE" "$FILES"
+                printf "%s " "[+] 7z a $COMPRESS_FILE $FILES_FORMAT"
+                printf "\\n"
+                7z a "$COMPRESS_FILE" $FILES
                 ;;
             *)
                 printf "%s\\n" "'$COMPRESS_FILE' is not a valid compressed file"
@@ -101,12 +127,19 @@ _compress()
     else
         case "$COMPRESS_FILE" in
             *.deb|*.udeb)
-                _exec ar r "$COMPRESS_FILE" "$FILES"
+                printf "%s " "[+] ar r $COMPRESS_FILE $FILES_FORMAT"
+                printf "\\n"
+                ar r "$COMPRESS_FILE" $FILES
                 ;;
             *.tar.bz2|*.tbz|*.tbz2)
-                _exec "tar cf - "$FILES" | bzip2 > "$COMPRESS_FILE""
+                printf "%s " "[+] tar cf - $FILES_FORMAT | bzip2 > $COMPRESS_FILE"
+                printf "\\n"
+                tar cf - $FILES | bzip2 > "$COMPRESS_FILE"
                 ;;
             *.tar.gz|*.tgz)
+                printf "%s " "[+] tar cf - $FILES_FORMAT | gzip > $COMPRESS_FILE"
+                printf "\\n"
+                tar cf - $FILES | gzip > "$COMPRESS_FILE"
                 _exec "tar cf - "$FILES" | gzip > "$COMPRESS_FILE""
                 ;;
             *.bz2)
@@ -116,10 +149,14 @@ _compress()
                 done
                 [ $x -gt 1 ] && { printf "%s\\n" "$(_basename $0): bz2 files can only be compressed one by one, use tar.bz2 if you require to compress several files at the same time"; exit 1; }
                 true
-                _exec "bzip2 -c \"$FILES\" | dd of=\"$COMPRESS_FILE\""
+                printf "%s " "[+] bzip2 -c $FILES_FORMAT | dd of=$COMPRESS_FILE"
+                printf "\\n"
+                bzip2 -c $FILES | dd of="$COMPRESS_FILE"
                 ;;
             *.rar)
-                _exec rar a "$COMPRESS_FILE" "$FILES"
+                printf "%s " "[+] rar a $COMPRESS_FILE $FILES_FORMAT"
+                printf "\\n"
+                rar a "$COMPRESS_FILE" $FILES
                 ;;
             *.gz)
                 local x=0
@@ -128,34 +165,51 @@ _compress()
                 done
                 [ $x -gt 1 ] && { printf "%s\\n" "$(_basename $0): gz files can only be compressed one by one, use tar.gz if you require to compress several files at the same time"; exit 1; }
                 true
-                _exec "gzip -c \"$FILES\" | dd of=\"$COMPRESS_FILE\""
+                printf "%s " "[+] gzip -c $FILES_FORMAT | dd of=$COMPRESS_FILE"
+                printf "\\n"
+                gzip -c $FILES | dd of="$COMPRESS_FILE"
                 ;;
             *.tar)
-                _exec tar cf "$COMPRESS_FILE" "$FILES"
+                printf "%s " "[+] tar cf $COMPRESS_FILE $FILES_FORMAT"
+                printf "\\n"
+                tar cf "$COMPRESS_FILE" $FILES
                 ;;
             *.zip|*.xpi)
-                _exec zip -r "$COMPRESS_FILE" "$FILES"
+                printf "%s " "[+] zip -r $COMPRESS_FILE $FILES_FORMAT"
+                printf "\\n"
+                zip -r "$COMPRESS_FILE" $FILES
                 ;;
             *.7z)
-                _exec 7z a "$COMPRESS_FILE" "$FILES"
+                printf "%s " "[+] 7z a $COMPRESS_FILE $FILES_FORMAT"
+                printf "\\n"
+                7z a "$COMPRESS_FILE" $FILES
                 ;;
             *.tar.lzma)
-                _exec "tar cf - "$FILES" | lzma > "$COMPRESS_FILE""
+                printf "%s " "[+] tar cf - $FILES_FORMAT | lzma > $COMPRESS_FILE"
+                printf "\\n"
+                tar cf - $FILES | lzma > "$COMPRESS_FILE"
                 ;;
             *.tar.xz)
-                _exec "tar cf - "$FILES" | xz > "$COMPRESS_FILE""
+                printf "%s " "[+] tar cf - $FILES_FORMAT | xz > $COMPRESS_FILE"
+                printf "\\n"
+                tar cf - $FILES | xz > "$COMPRESS_FILE"
                 ;;
             *.jar)
-                _exec jar cf "$COMPRESS_FILE" "$FILES"
+                printf "%s " "[+] jar cf $COMPRESS_FILE $FILES_FORMAT"
+                printf "\\n"
+                jar cf "$COMPRESS_FILE" $FILES
                 ;;
             *.iso)
-                _exec 7z a "$COMPRESS_FILE" "$FILES"
+                printf "%s " "[+] 7z a $COMPRESS_FILE $FILES_FORMAT"
+                printf "\\n"
+                7z a "$COMPRESS_FILE" $FILES
                 ;;
             *)
                 printf "%s\\n" "'$COMPRESS_FILE' is not a valid compressed file"
                 ;;
         esac
     fi
+    IFS="$OLDIFS"
 }
 
 while getopts ":s:" option; do
