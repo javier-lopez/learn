@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 #description: display selected images in $viewer
 #             browse all other images in the directory as well
 #https://wiki.archlinux.org/index.php/Feh#File_Browser_Image_Launcher
@@ -10,29 +10,42 @@ elif [ -f /usr/bin/feh ]; then
     viewer=feh
 else
     printf "%s\\n" "[-] No viewer available, install sxiv or feh to run this script"
-    exit 255
+    exit 1
 fi
-
-shopt -s nullglob
 
 if [ ! -f "$1" ]; then
     printf "%s\\n" "$(expr "$0" : '.*/\([^/]*\)'): first argument is not a file" >&2
     exit 1
 fi
 
+_dirname()
+{   #returns string containing dirname on success, 1 on fail
+    [ -z "$1" ] && return 1
+
+    case $1 in
+        /*|*/*) #http://www.linuxselfhelp.com/gnu/autoconf/html_chapter/autoconf_10.html
+            dir=$(expr "x$1" : 'x\(.*\)/[^/]*' \| '.'      : '.')
+            printf "%s\\n" "$dir"
+            ;;
+        *) printf "%s\\n" ".";;
+    esac
+}
+
 file=$(expr "$1" : '.*/\([^/]*\)')
-dir=$(dirname -- "$1")
-arr=()
+dir=$(_dirname "$1")
 arg=$1
+arr="$arg"
 shift
 
 cd -- "$dir"
 
 for i in *; do
-    [ -f "$i" ] || continue
-    arr+=("$i")
-    [ X"$i" = X"$file" ] && c=$(expr ${#arr[@]} - 1)
+    [ ! -f "$i" ]        && continue
+    [ X"$i" = X"$arg"  ] && continue
+    case $i in
+        *png|*PNG|*jpg|*JPG|*jpeg|*JPEG) arr="$arr"" ""$i" ;;
+    esac
 done
 
 printf "%s\\n" "[+] $viewer $arg"
-exec $viewer -f "${arr[@]:c}" "${arr[@]:0:c}"
+exec $viewer -f $arr

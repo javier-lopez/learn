@@ -5,8 +5,7 @@
 #example: say -en "hello world"
 #no-output, only audio
 
-[ -f /usr/bin/mplayer ] || { printf "%b\\n" "$(expr "$0" : '.*/\([^/]*\)'): You need vim & mplayer to run this script\n$ sudo apt-get install vim-nox mplayer"; exit 1; }
-[ -f /usr/bin/vim ] || { printf "%b\\n" "$(expr "$0" : '.*/\([^/]*\)'): You need vim to run this script\n$ sudo apt-get install vim-nox"; exit 1; }
+[ -f /usr/bin/mplayer ] || { printf "%b\\n" "$(expr "$0" : '.*/\([^/]*\)'): You need mplayer to run this script\n$ sudo apt-get install mplayer"; exit 1; }
 
 _usage()
 {

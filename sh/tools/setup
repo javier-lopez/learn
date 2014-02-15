@@ -47,8 +47,7 @@ _autocp()
 {
     [ -n "$1" ] || (printf "%s\\n" "$(expr "$0" : '.*/\([^/]*\)'): Missing parameter, looking for an .autocp file"; exit 1)
 
-    for file
-    do
+    for file; do
         _exec sudo cp "$file" /usr/share/bash-completion/completions/
     done
     exit 0

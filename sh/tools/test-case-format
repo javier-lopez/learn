@@ -8,11 +8,14 @@ INDENTATION=4
 
 _basename()
 {
-    [ -z "$1" ] && return 0
-    expr "$1" : '.*/\([^/]*\)'
+    [ -z "$1" ] && return 1
+    case $1 in
+        /*|*/*) expr "$1" : '.*/\([^/]*\)' ;;
+        *) printf "%s\\n" "$1";;
+    esac
 }
 
-[ -f /usr/bin/vim ] || { printf "%b\\n" "$(_basename $0): You need vim & tidy to run this script\n$ sudo apt-get install vim tidy"; exit 1; }
+[ -f /usr/bin/vim ]  || { printf "%b\\n" "$(_basename $0): You need vim & tidy to run this script\n$ sudo apt-get install vim tidy"; exit 1; }
 [ -f /usr/bin/tidy ] || { printf "%b\\n" "$(_basename $0): You need tidy to run this script\n$ sudo apt-get install tidy"; exit 1; }
 
 _usage()

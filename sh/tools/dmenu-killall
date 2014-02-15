@@ -12,4 +12,4 @@ npid=$(printf "%s\\n" "$(command ps axo command= |  sed -e "s/ .*//; s:.*/::; s/
 
 [ -n "${npid}" ] || exit 0
 
-kill $(ps -aef | grep "$npid" | grep -v grep | awk '{print $2}')
+kill $(ps -aef | awk -v npid="$npid" '$0 ~ npid {if ($0 !~ "awk") print $2}')

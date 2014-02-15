@@ -30,6 +30,16 @@ if ! tty >/dev/null; then
     exit 1
 fi
 
+if [ X"$1" = X"-d" ] || [ X"$1" = X"--delete" ]; then
+    if [ -z "$2" ]; then
+        printf "%s\\n" "Usage: sh <(curl $record_base_url) --delete <url>"
+    else
+        url="$2"
+        curl --fail "$url" -X "DELETE" --data-urlencode "secret@$HOME/.showterm"
+    fi
+    exit
+fi
+
 scriptfile="$(mktemp /tmp/XXXXX.script)"
 timingfile="$(mktemp /tmp/XXXXX.timing)"
 
@@ -44,15 +54,22 @@ if [ "$*" ]; then
     args=-c "$*"
 fi
 
+[ ! -f "$HOME/.showterm" ] && printf "%s" "$(openssl rand -hex 16)" > "$HOME/.showterm"
+
 printf "%s\\n" "showterm recording. (Exit shell when done.)"
 script $args -q -t"$timingfile" "$scriptfile"
 printf "%s\\n" "Uploading..."
 
-if curl --fail "$url" --data-urlencode "cols=$cols" --data-urlencode "lines=$lines" --data-urlencode "scriptfile@$scriptfile" --data-urlencode "timingfile@$timingfile"; then
-    printf "\\n"
+
+curl_output=$(curl -s --fail "$url" --data-urlencode "cols=$cols" --data-urlencode \
+    "lines=$lines" --data-urlencode "scriptfile@$scriptfile"      \
+    --data-urlencode "timingfile@$timingfile" "secret@$HOME/.showterm"|grep showterm.io)
+
+if [ -n "$curl_output" ]; then
+    printf "%s\\n" "$curl_output"
     rm "$scriptfile" "$timingfile"
     exit 0
 else
     printf "%s\\n" "Uploading failed, but don't worry! Your work is safe. You can try uploading again with:"
-    printf "%s\\n" "curl $url --data-urlencode cols=$cols --data-urlencode lines=$lines --data-urlencode scriptfile@$scriptfile --data-urlencode timingfile@$timingfile"
+    printf "%s\\n" "curl $url --data-urlencode cols=$cols --data-urlencode lines=$lines --data-urlencode scriptfile@$scriptfile --data-urlencode timingfile@$timingfile secret@$HOME/.showterm"
 fi

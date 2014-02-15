@@ -9,7 +9,7 @@
 #libc6-i386
 
 if ! command -v "apt-file" >/dev/null; then
-    printf "%s\\n" "You need to install apt-file: $ sudo apt-get install apt-file"
+    printf "%s\\n" "apt-file not found: $ sudo apt-get install apt-file"
     exit 1
 fi
 
@@ -18,4 +18,4 @@ if [ "$#" -lt "1" ]; then
     exit 1
 fi
 
-ldd $(command -v "$1") | sort -n | uniq | awk '{print $1}' | xargs -i apt-file search {} | cut -d':' -f1|sort|uniq
+ldd $(command -v "$1") | sort -n | uniq | awk '{print $1}' | xargs -i apt-file search {} | cut -d':' -f1 | sort | uniq

@@ -26,18 +26,18 @@ _notify()
     fi
 }
 
-if [ ! -e /usr/bin/notify-send ] || [ ! -e /usr/sbin/hibernate ] || [ ! -e /usr/bin/acpi ]; then
+if [ ! -f "$(command -v notify-send)" ] || [ ! -f "$(command -v hibernate)" ] || [ ! -f "$(command -v acpi)" ]; then
     _notify  "[+] You need install acpi, notify-send and hibernate" "\$ sudo apt-get install acpi libnotify-bin hibernate"
     exit 1
 fi
 
 #=====VARS=====
 # Current battery status (Charging/Discharging/AC/Unknown)
-STAT=$(acpi -b | awk '{print $3}' | awk 'sub(".$", "")')
+STAT=$(acpi -b | awk '{sub(",", ""); print $3}')
 # Battery percentage
-BATT=$(acpi -b | awk '{print $4}' | awk 'sub("..$", "")')
+BATT=$(acpi -b |awk '{if ($0 ~ "%,") sub("%,", ""); else sub("%", ""); print $4}')
 # Actions
-ACTION="/usr/sbin/hibernate"
+ACTION="$(command -v hibernate)"
 WATCH_BATTERY_CURRENT=$(cat /tmp/$(expr "$0" : '.*/\([^/]*\)') 2>/dev/null)
 
 # If Discharging...
@@ -53,7 +53,7 @@ if [ X"$STAT" = X"Discharging" ]; then
         fi
         i=0 ; while [ "$i" -lt 30 ]; do
             sleep 1
-            STAT=$(acpi -b | awk '{print $3}' | awk 'sub(".$", "")')
+            STAT=$(acpi -b | awk '{sub(",", ""); print $3}')
             if [ X"$STAT" != X"Discharging" ]; then
                 _notify  "[+] Charging" "charging now..."
                 break
@@ -62,7 +62,7 @@ if [ X"$STAT" = X"Discharging" ]; then
         done
 
         #check a last time if nobody has pluged in the machine, if not hibernate it
-        STAT=$(acpi -b | awk '{print $3}' | awk 'sub(".$", "")')
+        STAT=$(acpi -b | awk '{sub(",", ""); print $3}')
 
         if [ X"$STAT" = X"Discharging" ]; then
             if [ -e /usr/bin/mpc ]; then

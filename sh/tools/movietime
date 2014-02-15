@@ -18,66 +18,7 @@ _die()
     exit 1
 }
 
-_ismonitorattached()
-{
-    xrandr | grep "^VGA" | grep " connected" >/dev/null && return 0
-    xrandr | grep "^HDMI" | grep " connected" >/dev/null && return 0
-    return 1
-}
-
-_arch()
-{   #check for system arch, returns [64|32]
-    local arch
-    [ -z "$MACHTYPE" ] && arch=$(uname -m) || arch=$(printf "%s\\n" "$MACHTYPE" | cut -d- -f1)
-
-    case $arch in
-        x86_64)
-            arch=64;
-            ;;
-        i686)
-            arch=32;
-            ;;
-        *)
-            exit 1
-            ;;
-    esac
-
-    printf "%s\\n" "$arch"
-}
-
-
-[ ! -f /usr/bin/xdotool ] && _die "You need to install xdotool: $ sudo apt-get install xdotool"
-
-resumetime=0
-
-if [ X"$resumetime" = X"0" ]; then
-  resumetime=1440 # Re-enable resume after a full day
-fi
-
-# Check that values for 'resumetime' are numbers
-case $resumetime in
-    ''|*[!0-9]*) printf "%s\\n" "Error, $resumetime is not a number";exit 1;;
-esac
-
-# Name of suspend script
-tmploc="$HOME"
-suspinhscript="$tmploc"/."movietime-suspend-inhibit"
-
-# Program name from it's filename.
-prog=${0##*/}
-
-# Text color variables
-txtund=$(tput sgr 0 1)          # Underline
-txtbld=$(tput bold)             # Bold
-bldblu=${txtbld}$(tput setaf 4) #  blue
-bldwht=${txtbld}$(tput setaf 7) #  white
-bldred=${txtbld}$(tput setaf 1) #  red
-txtrst=$(tput sgr0)             # Reset
-info=${bldwht}*${txtrst}        # Feedback
-pass=${bldblu}*${txtrst}
-warn=${bldred}*${txtrst}
-
-usage()
+_usage()
 {
     # Help message.
     printf "\\n"
@@ -108,6 +49,62 @@ usage()
     exit 0
 }
 
+_ismonitorattached()
+{
+    xrandr | grep "^VGA" | grep " connected" >/dev/null && return 0
+    xrandr | grep "^HDMI" | grep " connected" >/dev/null && return 0
+    return 1
+}
+
+_arch()
+{   #check for system arch, returns [64|32]
+    local arch
+    [ -z "$MACHTYPE" ] && arch=$(uname -m) || arch=$(printf "%s\\n" "$MACHTYPE" | cut -d- -f1)
+
+    case $arch in
+        x86_64)
+            arch=64;
+            ;;
+        i686)
+            arch=32;
+            ;;
+        *)
+            exit 1
+            ;;
+    esac
+
+    printf "%s\\n" "$arch"
+}
+
+[ ! -f /usr/bin/xdotool ] && _die "You need to install xdotool: $ sudo apt-get install xdotool"
+
+resumetime=0
+
+[ X"$resumetime" = X"0" ] && resumetime=1440 # Re-enable resume after a full day
+
+# Check that values for 'resumetime' are numbers
+case $resumetime in
+    ''|*[!0-9]*) printf "%s\\n" "Error, $resumetime is not a number";exit 1;;
+esac
+
+# Name of suspend script
+tmploc="$HOME"
+suspinhscript="$tmploc"/."movietime-suspend-inhibit"
+
+# Program name from it's filename.
+prog=${0##*/}
+
+# Text color variables
+txtund=$(tput sgr 0 1)          # Underline
+txtbld=$(tput bold)             # Bold
+bldblu=${txtbld}$(tput setaf 4) #  blue
+bldwht=${txtbld}$(tput setaf 7) #  white
+bldred=${txtbld}$(tput setaf 1) #  red
+txtrst=$(tput sgr0)             # Reset
+info=${bldwht}*${txtrst}        # Feedback
+pass=${bldblu}*${txtrst}
+warn=${bldred}*${txtrst}
+
 # Check that Xorg server is running
 if [ -z "$(ps aux | grep /usr/bin/X)" ]; then
   printf "%s\\n" "$warn The Xorg server is not running."
@@ -121,19 +118,19 @@ if [ X"$(whoami)" = X"root" ]; then
 fi
 
 # Current DPMS times (in minutes)
-dispdpms=$(xset -q | grep "DPMS is" | awk '{ printf $3 }') # Enab. or Disb.
-dispstand=$(xset -q | grep "^  Standby: " | awk '{ printf $2/60 }')
-dispsusp=$(xset -q | grep "^  Standby: " | awk '{ printf $4/60 }')
-dispoff=$(xset -q | grep "^  Standby: " | awk '{ printf $6/60 }')
-dispblank=$(xset -q | grep "^  timeout:  " | awk '{ printf $2/60 }')
+dispdpms=$(xset -q  | awk '/DPMS is/ { printf $3 }') # Enab. or Disb.
+dispstand=$(xset -q | awk '/^  Standby: / { printf $2/60 }')
+dispsusp=$(xset -q  | awk '/^  Standby: / { printf $4/60 }')
+dispoff=$(xset -q   | awk '/^  Standby: / { printf $6/60 }')
+dispblank=$(xset -q | awk '/^  timeout: / { printf $2/60 }')
 
 # Resume time in hours
 resumetimehr=$(printf "%s\\n" "scale=1;${resumetime}/60" | bc)
 
 # Display help
 case $1 in
-  -h | --help | h | help ) usage;;
-  [a-g,i-z,A-G,I-Z,0-9,-]* ) usage;;
+  -h|--help|h|help) _usage;;
+  [a-g,i-z,A-G,I-Z,0-9,-]*) _usage;;
 esac
 
 # Suspend inhibit script (must be run as seperate process)
@@ -160,6 +157,7 @@ if [ X"$dispdpms" = X"Enabled" ] && [ -z "$suspinhtest" ]; then
 
   if _ismonitorattached; then
       if [ -f /usr/local/bin/lights/$(_arch)/lights ]; then
+          #TODO 13-02-2014 01:30 >> only run when connected
           /usr/local/bin/lights/$(_arch)/lights > /dev/null 2>&1 &
       else
           printf "%s\\n" "To enjoy fully the movietime experience install: /usr/local/bin/lights/"$_arch"/lights"
@@ -173,11 +171,10 @@ else
   xset s on; xset +dpms
   # Kill script
   if [ -n $suspinhtest ]; then
-
-    kill -9 $(ps -aef | grep "movietime-susp" | grep -v grep | awk '{print $2}') &> /dev/null
+    kill -9 $(ps -aef | awk '/movietime-susp/ {if ($0 !~ "awk" ) print $2}') &> /dev/null
     ps aux | grep [l]ights.jar >/dev/null
     if [ "$?" -eq 0 ]; then
-        kill -s 9 $(ps aux | grep [l]ights.jar | awk '{print $2}')
+        kill -s 9 $(ps -aef | awk '/lights.jar/ {if ($0 !~ "awk" ) print $2}')
     fi
     rm -rf "$suspinhscript"
     printf "%s\\n" "[-] $prog stopped"

@@ -79,6 +79,15 @@ _arch()
     printf "%s" "$_arch_var_arch"
 }
 
+_basename()
+{
+    [ -z "$1" ] && return 1
+    case $1 in
+        /*|*/*) expr "$1" : '.*/\([^/]*\)' ;;
+        *) printf "%s\\n" "$1";;
+    esac
+}
+
 _isnum()
 {   #look for a number, returns 0 on success, 1 otherwise
     [ -z "$1" ] && return 1
@@ -87,7 +96,7 @@ _isnum()
 
 _invalidformat()
 {
-    _notify "[-] Invalid format" "$(basename $0): HH:MM[:SS]"
+    _notify "[-] Invalid format" "$(_basename $0): HH:MM[:SS]"
     exit
 }
 

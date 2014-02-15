@@ -12,13 +12,11 @@ _usage()
     exit 1
 }
 
-
 [ $# -eq 0 ] && _usage
 
 upload_img()
 {
-    for img
-    do
+    for img; do
         if [ -f "$img" ] ; then
             case "$img" in
                 *.jpg|*.JPG|*.jpeg|*.png|*.PNG)
@@ -37,7 +35,7 @@ upload_img()
                     ;;
             esac
         else
-                printf "%s\\n" "'$img' doesn't exist"
+            printf "%s\\n" "'$img' doesn't exist"
         fi
     done
 }

@@ -7,17 +7,12 @@
 
 layouts="latam,ru" #modify this string to reflect keyboard layouts it will rotate on
                    #see /usr/share/X11/xkb/rules/base.lst
-_whereis()
-{
-    [ -z "$1" ] && return 1
-    if ! command -v "$1" 2>/dev/null; then
-        return 1
-    fi
-}
 
-if ! _whereis setxkbmap >/dev/null; then exit 1; fi
+if ! command -v "setxkbmap" >/dev/null; then
+    printf "%s\\n" "You need to install setxkbmap: $ sudo apt-get install x11-xkb-utils"
+fi
 
-current_layout=$(setxkbmap -query | grep layout | cut -d: -f2  | sed 's: ::g')
+current_layout=$(setxkbmap -query | awk '/layout/ {print $2}')
 d_layouts="$layouts"
 c_layouts="$layouts"
 c=0;d=0

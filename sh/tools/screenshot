@@ -43,7 +43,7 @@ fi
 
 _notify "[+] Screenshot" "in 3.., 2.., 1.., smile =)!"
 sleep 3
-kill $(ps -aef | grep "notify-osd" | grep -v grep | awk '{print $2}') >/dev/null 2>/dev/null
+kill $(ps -aef | awk '/notify-osd/ {if ($0 !~ "awk") print $2}') >/dev/null 2>/dev/null
 sleep .5
 [ -n "$flag_select" ] && _notify "[+] Select" "a rectangle to save"
 _screenshot "$file"

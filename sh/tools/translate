@@ -33,7 +33,6 @@ _translate()
         awk '/Content-Type: .* charset=/ {sub(/^.*charset=["'\'']?/,""); sub(/[ "'\''].*$/,""); print}')
     result=$(printf "%s\\n" "$page" | iconv -f "$encoding" |  awk 'BEGIN {RS="</div>"};/<span[^>]* id=["'\'']?result_box["'\'']?/' | html2text -utf8)
     printf "%s\\n" "$result"
-    #printf "%s\\n" "$page" | iconv -f $encoding |  awk 'BEGIN {RS="</div>"};/<span[^>]* id=["'\'']?result_box["'\'']?/' | printf "\\n"
 }
 
 [ $# -eq 0 ] && _usage
