@@ -1,12 +1,13 @@
 #!/usr/bin/env sh
 #description: display selected images in $viewer
 #             browse all other images in the directory as well
-#https://wiki.archlinux.org/index.php/Feh#File_Browser_Image_Launcher
 #usage: vw file
 
-if [ -f /usr/bin/sxiv ]; then
+#https://wiki.archlinux.org/index.php/Feh#File_Browser_Image_Launcher
+
+if [ -f "$(command -v sxiv)" ]; then
     viewer=sxiv
-elif [ -f /usr/bin/feh ]; then
+elif [ -f "$(command -v feh)" ]; then
     viewer=feh
 else
     printf "%s\\n" "[-] No viewer available, install sxiv or feh to run this script"
@@ -43,9 +44,11 @@ for i in *; do
     [ ! -f "$i" ]        && continue
     [ X"$i" = X"$arg"  ] && continue
     case $i in
-        *png|*PNG|*jpg|*JPG|*jpeg|*JPEG) arr="$arr"" ""$i" ;;
+        *png|*PNG|*jpg|*JPG|*jpeg|*JPEG) arr="$i""|""$arr" ;;
     esac
 done
 
+OLDIFS="$IFS"
+IFS="|"
 printf "%s\\n" "[+] $viewer $arg"
 exec $viewer -f $arr
