@@ -209,7 +209,6 @@ _gen_mix_opts()
     printf "%s" "$_gen_position_opts_var_string"
 }
 
-
 if ! command -v "dmenu" >/dev/null; then
     printf "%s\\n" "dmenu was not found"
     exit 1

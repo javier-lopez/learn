@@ -11,13 +11,13 @@
 # $ virn *
 # $ virn a*
 
-die () {
+_die() {
     printf "%s\\n" "$@" >&2
     exit -1
 }
 
 # Verify that there's an $EDITOR defined.
-[ -z "$EDITOR" ] && die '$EDITOR not defined.'
+[ -z "$EDITOR" ] && _die '$EDITOR not defined.'
 
 # Exit before doing anything if there are no arguments anyway.
 [ $# -eq 0 ] && exit
@@ -35,7 +35,7 @@ if $EDITOR $TARGETS; then
 	# targets file differ.
 	if [ "$COUNT" -ne "$#" ]; then
 		rm $TARGETS
-        die 'Numbers of files mismatch.'
+        _die 'Numbers of files mismatch.'
 	fi
 
 	# Read targets file line by line and rename the source

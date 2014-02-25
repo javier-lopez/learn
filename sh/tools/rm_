@@ -267,14 +267,14 @@ verboselist=0
 while getopts ":fluhcry" options
 do
     case $options in
-        f) exec rm -r "$@"                       ;;
-        l) verboselist=$(expr $verboselist + 1)       ;;  # list verbose level 1-3
+        f) exec rm -r "$@"                          ;;
+        l) verboselist=$(expr $verboselist + 1)     ;;  # list verbose level 1-3
         u) shift $(expr $OPTIND - 1); _recover "$@" ;;  # remove the -u
-        h) _usage                                ;;
+        h) _usage                                   ;;
         c) shift $(expr $OPTIND - 1); _clean "$@"   ;;  # remove the -c
-        r)                                       ;;
-        y) yflag=yes                             ;;
-        *) exec rm "$@"                          ;;  # send the rest to rm
+        r)                                          ;;
+        y) yflag=yes                                ;;
+        *) exec rm "$@"                             ;;  # send the rest to rm
     esac
 done
 

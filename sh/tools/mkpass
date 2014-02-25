@@ -19,5 +19,3 @@ if command -v "xclip" >/dev/null 2>/dev/null; then
 else
     strings /dev/urandom | grep -o '[[:alnum:]]' | head -n $mkpasswd_length | tr -d '\n'; printf "\\n"
 fi
-
-exit 0
