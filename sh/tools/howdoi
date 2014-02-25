@@ -99,7 +99,7 @@ _howdoi()
 
     _howdoi_var_so_answers_len=$(printf "%s" "$_howdoi_var_so_answers" | awk '/-----/ {i++} END {print i}')
 
-    [ $_howdoi_var_so_answers_len -lt 1 ] && _die "No answers for your question"
+    [ -z "$_howdoi_var_so_answers" ] && _die "No answers for your question"
 
     if [ -z "$HOWDOI_DISABLE_CACHE" ]; then
         [ ! -d ~/.cache/howdoi/ ] && mkdir ~/.cache/howdoi/
