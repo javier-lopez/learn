@@ -76,7 +76,9 @@ _arch()
     printf "%s\\n" "$arch"
 }
 
-[ ! -f /usr/bin/xdotool ] && _die "You need to install xdotool: $ sudo apt-get install xdotool"
+if ! command -v "xdotool" >/dev/null; then
+    _die "You need to install xdotool: $ sudo apt-get install xdotool"
+fi
 
 resumetime=0
 

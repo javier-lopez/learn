@@ -5,6 +5,11 @@
 #example: crypt script
 #creates script.crypt
 
+if ! command -v "gpg" >/dev/null; then
+    printf "%s\\n" "You need to install gnupg: $ sudo apt-get install gnupg"
+    exit 1
+fi
+
 _usage()
 {
     printf "%s\\n" "Usage: $(expr "$0" : '.*/\([^/]*\)') file ..."
@@ -29,11 +34,5 @@ _crypt()
         fi
     done
 }
-
-if ! command -v "gpg" >/dev/null; then
-    printf "%s\\n" "You need to install gnupg: $ sudo apt-get install gnupg"
-    _usage
-    exit 1
-fi
 
 _crypt "$@"
