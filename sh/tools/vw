@@ -36,15 +36,16 @@ file=$(expr "$1" : '.*/\([^/]*\)')
 dir=$(_dirname "$1")
 arg=$1
 arr="$arg"
+arr_b="$(basename "$arg")"
 shift
 
 cd -- "$dir"
 
 for i in *; do
-    [ ! -f "$i" ]        && continue
-    [ X"$i" = X"$arg"  ] && continue
+    [ ! -f "$i" ]          && continue
+    [ X"$i" = X"$arr_b"  ] && continue
     case $i in
-        *png|*PNG|*jpg|*JPG|*jpeg|*JPEG) arr="$i""|""$arr" ;;
+        *png|*PNG|*jpg|*JPG|*jpeg|*JPEG) arr="$arr""|""$i" ;;
     esac
 done
 
