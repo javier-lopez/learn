@@ -1,0 +1,137 @@
+#!/usr/bin/env sh
+#description: instant coding answers via the command line
+#usage: howdoi [-h|-p POS|-a|-l|-c|-n NUM_ANSWERS|-C] query
+
+#example: howdoi format date bash
+#DATE=`date +%Y-%m-%d`
+
+if ! command -v "wget" >/dev/null; then
+    printf "%s\\n" "wget not found: $ sudo apt-get install wget"
+    exit 1
+fi
+
+_usage()
+{
+    printf "%b\\n" "Usage: $(expr "$0" : '.*/\([^/]*\)') [-h|-p POS|-a|-l|-c|-n NUM_ANSWERS|-C] QUERY ..."
+    printf "\\n"
+    printf "%b\\n" "instant coding answers via the command line"
+    printf "\\n"
+    printf "%b\\n" "positional arguments:"
+    printf "%b\\n" "  QUERY                the question to answer"
+    printf "\\n"
+    printf "%b\\n" "optional arguments:"
+    printf "%b\\n" "  -h                   show this help message and exit"
+    printf "%b\\n" "  -p POS               select answer in specified position (default: 1)"
+    printf "%b\\n" "  -a                   display all the answers in full text"
+    printf "%b\\n" "  -l                   display only the answer link"
+    printf "%b\\n" "  -c                   enable colorized output"
+    printf "%b\\n" "  -C                   clear cache"
+    printf "%b\\n" "  -n NUM_ANSWERS       number of answers to return"
+    exit
+}
+
+[ "$#" -eq 0 ] && _usage
+
+_die()
+{
+    printf "%b\\n" "$(expr "$0" : '.*/\([^/]*\)'): $*"
+    exit 1
+}
+
+_howdoi()
+{
+    [ -z "$1" ] && return 1
+    [ -z "$pflag" ] && pflag=1 || {
+        case "$pflag" in
+            *[!0-9]) pflag=1 ;;
+        esac
+    }
+    [ -z "$nflag" ] && nflag=1 || {
+        case "$nflag" in
+            *[!0-9]) nflag=1 ;;
+        esac
+    }
+
+    _howdoi_var_question="$*"
+    _howdoi_var_question_format=$(printf "%s" "$*" | tr ' ' '_')
+
+    if [ -z "$HOWDOI_DISABLE_CACHE" ]; then
+        _howdoi_var_google_links=$(find ~/.cache/howdoi/ -iname "$_howdoi_var_question_format.links" 2>/dev/null | head -n 1)
+        _howdoi_var_google_links=$(cat "$_howdoi_var_google_links" 2>/dev/null)
+    fi
+
+    #the google api for some reason don't return the same results
+    #http://ajax.googleapis.com/ajax/services/search/web?v=1.0
+    if [ -z "$_howdoi_var_google_links" ]; then
+        _howdoi_var_google_links=$(wget -q -U "Firefox/3.0.5" "http://www.google.com/search?q=site:stackoverflow.com%20$_howdoi_var_question" -O- |\
+            awk 'match($0,/http:\/\/stackoverflow.com\/questions\/[0-9]*\/[A-Za-z-]+/) {print substr($0,RSTART,RLENGTH)}')
+    fi
+
+    if [ -z "$HOWDOI_DISABLE_CACHE" ]; then
+        [ ! -d ~/.cache/howdoi/ ] && mkdir ~/.cache/howdoi/
+        [ ! -f ~/.cache/howdoi/"$_howdoi_var_question_format".links ] && printf "%s\\n" "$_howdoi_var_google_links" > ~/.cache/howdoi/"$_howdoi_var_question_format".links
+    fi
+
+    [ -z "$_howdoi_var_google_links" ] && _die "No results"
+
+    _howdoi_var_google_link=$(printf "%s\\n" "$_howdoi_var_google_links" | awk -v l=$pflag 'NR == l {print; exit}')
+    [ -n "$lflag" ] && { printf "%s\\n" "$_howdoi_var_google_link"; exit; }
+
+    #if user request a result too high, let's use the latest available
+    [ -z "$_howdoi_var_google_link" ] && _howdoi_var_google_link=$(printf "%s\\n" "$_howdoi_var_google_links" | awk 'END {print}')
+    _howdoi_var_so_basename=$(expr "$_howdoi_var_google_link" : '.*/\([^/]*\)')
+
+    if [ -z "$HOWDOI_DISABLE_CACHE" ]; then
+        _howdoi_var_so_answers=$(find ~/.cache/howdoi/ -iname "$_howdoi_var_so_basename".answers 2>/dev/null | head -n 1)
+        _howdoi_var_so_answers=$(cat "$_howdoi_var_so_answers" 2>/dev/null)
+    fi
+
+    #the stackoverflow api doesn't print answers body
+    #http://api.stackoverflow.com/2.0/usage
+    if [ -z "$_howdoi_var_so_answers" ]; then
+        _howdoi_var_so_answers=$(wget -q -U "Firefox/3.0.5" $(printf $_howdoi_var_google_link) -O- | \
+            awk '/answercell/,/div>/ {if ($0 ~ "div>") print "-----"; else print;}' | \
+            awk '/<pre><code>/,/<\/code><\/pre>/ {gsub(/^[ \t]+<pre>/, ""); print ">>", $0}1' | \
+            awk '/>>/ {print $0; getline; next}1' | \
+            awk '{gsub("<[^>]*>", ""); gsub(/^[ \t]+|[ \t]+$/, ""); gsub(/>>$/, ""); gsub(/>>[ \t]/, ">");
+                 gsub(/&lt;/, "<"); gsub(/&gt;/, ">"); sub(/\r$/,""); if ($0 != "") print}')
+    fi
+
+    _howdoi_var_so_answers_len=$(printf "%s" "$_howdoi_var_so_answers" | awk '/-----/ {i++} END {print i}')
+
+    [ $_howdoi_var_so_answers_len -lt 1 ] && _die "No answers for your question"
+
+    if [ -z "$HOWDOI_DISABLE_CACHE" ]; then
+        [ ! -d ~/.cache/howdoi/ ] && mkdir ~/.cache/howdoi/
+        [ ! -f ~/.cache/howdoi/"$_howdoi_var_so_basename".answers ] && printf "%s\\n" "$_howdoi_var_so_answers" > ~/.cache/howdoi/"$_howdoi_var_so_basename".answers
+    fi
+
+    [ -n "$aflag" ] && { printf "%s\\n" "$_howdoi_var_so_answers" | awk '{gsub(/>/, "   "); print $0}'; printf "%s\\n" "$_howdoi_var_google_link"; exit; }
+
+    if [ $nflag -lt 2 ] || [ $_howdoi_var_so_answers_len -lt 2 ]; then
+        printf "%s" "$_howdoi_var_so_answers" | awk '/^>/ {sub(/^>/, ""); print $0; getline t; if ( t ~ "^>") {sub(/^>/, "", t); print t;} else exit }'
+    else
+        printf "%s" "$_howdoi_var_so_answers" | awk -v l=$nflag 'BEGIN {i++} /^>/ {if (flagend !~ "set") {print "--- Answer", i, "---"; sub(/^>/, ""); print $0; getline; while ( $0 ~ "^>") {sub(/^>/, ""); print; getline;} i++; flagend="set";} else { if ($0 !~ "^-----$") flagend="none"} if (i == l+1) exit}'
+    fi
+}
+
+while getopts ":hp:alcCn:" options; do
+    case $options in
+        h) _usage            ;;
+        p) pflag="$OPTARG"   ;;
+        a) aflag="yes"       ;;
+        l) lflag="yes"       ;;
+        c) cflag="yes"       ;;
+        C) rm -rf ~/.cache/howdoi && \
+           printf "%s\\n" "Cache cleared successfully"
+           exit 0            ;;
+        n) nflag="$OPTARG"   ;;
+        *) printf "%s\\n" "Invalid option: -$OPTARG"
+           _usage
+          ;;
+    esac
+done
+
+shift $(expr $OPTIND - 1)
+
+_howdoi "$@"
