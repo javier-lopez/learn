@@ -11,6 +11,9 @@ _whereis()
     fi
 }
 
+running="$(ps aux | awk '/got it/ {if ($0 !~ "awk") print $2}')"
+[ -n "$running" ] && exit
+
 XMESSAGE=$(_whereis gxmessage) || XMESSAGE=xmessage
 font="Monaco 9"
 
