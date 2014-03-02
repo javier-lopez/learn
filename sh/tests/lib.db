@@ -3,13 +3,6 @@
 ##  Copyright (c) 1999-2008 Ralf S. Engelschall <rse@engelschall.com>
 ##
 
-@begin{_addcron}
-_addcron; test X"$?" = X"1" #test it return correct value on error
-_addcron "0 21 * * * /test_lib.db"
-test X"$(crontab -l | grep test_lib.db)" = X"0 21 * * * /test_lib.db"
-crontab -l | grep -v test_lib.db | crontab
-@end{_addcron}
-
 @begin{_arch}
 archx=$(_arch)
 (test X"$archx" = X"32" || test X"$archx" = X"64")
@@ -79,6 +72,15 @@ _encode64; test X"$?"                = X"1"
 test X"$(_encode64 "hello")"         = X"aGVsbG8K"
 test X"$(_encode64 "hello" "world")" = X"aGVsbG8K"
 @end{_encode64}
+
+@begin{_ensurecron}
+_ensurecron; test X"$?" = X"1" #test it return correct value on error
+_ensurecron "0 21 * * * /test_lib.db"
+test X"$(crontab -l | grep test_lib.db)" = X"0 21 * * * /test_lib.db"
+_ensurecron "0 21 * * * /test_lib.db"
+test X"$(crontab -l | grep test_lib.db | wc -l )" = X"1"
+crontab -l | grep -v test_lib.db | crontab
+@end{_ensurecron}
 
 @begin{_existuser}
 _existuser; test X"$?"            = X"1"

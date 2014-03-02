@@ -20,15 +20,6 @@ _abs()
 #_abs -2 #return 2
 #=================================================================
 
-_addcron()
-{   #adds cron job, returns 1 on error
-    [ -z "$1" ] && return 1
-    ( crontab -l 2>/dev/null; printf "%s\\n" "$1" ) | crontab -
-}
-#==================================================== Example ====
-#_addcron "* * * * * /path/task"
-#=================================================================
-
 _animcui()
 {   #wait animation
     [ -z "$1" ] && { printf "%5s\n" ""; return 1; }
@@ -259,7 +250,7 @@ _distro()
         elif [ -r /etc/debian_version ]; then
             _distro_var_DISTRIB_ID="Debian"
         elif [ -r /etc/issue ]; then
-            _distro_var_DISTRIB_ID=$(cat /etc/issue.net | awk '{print $1}')
+            _distro_var_DISTRIB_ID=$(awk '{print $1}' /etc/issue.net)
             if [ X"$_distro_var_DISTRIB_ID" = X"Ubuntu" ]; then
                 _distro_var_DISTRIB_ID="Ubuntu"
             fi
@@ -285,7 +276,7 @@ _distro()
             _distro_var_DISTRIB_ID="$(grep -i suse /etc/SuSE-release)"
         elif [ -f /etc/yellowdog-release ]; then
             _distro_var_DISTRIB_ID="YellowDog Linux"
-        elif [ -f /etc/zenwalk-version  ]; then
+        elif [ -f /etc/zenwalk-version ]; then
             _distro_var_DISTRIB_ID="Zenwalk"
         fi
         printf "%s\\n" "$_distro_var_DISTRIB_ID" | \
@@ -326,6 +317,17 @@ _encode64()
 #[ -z "$string" ] && printf "%s\\n" "fail, empty string"
 #=================================================================
 
+_ensurecron()
+{   #adds cron job, returns 1 on error
+    [ -z "$1" ] && return 1
+    _ensurecron_var_exist=$(crontab -l 2>/dev/null | awk -v p="$1" '{ if ($0 == p) {print p}}')
+    [ -n "$_ensurecron_var_exist" ] && return 0
+    ( crontab -l 2>/dev/null; printf "%s\\n" "$1" ) | crontab -
+}
+#==================================================== Example ====
+#_ensurecron "* * * * * /path/task"
+#=================================================================
+
 _existaptproxy()
 {   #test if an apt proxy exist on the local network
     #return 0 on sucess, 1 otherwise
@@ -357,7 +359,7 @@ _existuser()
 _getfs()
 {   #returns file system detected or 1 on error
     [ -z "$1" ] && return 1
-    udevadm info -q all -n "$1" | grep -i ID_FS_TYPE | cut -f2 -d'='
+    udevadm info -q all -n "$1" | awk -F"=" '/ID_FS_TYPE/ {print $2 }'
 }
 #==================================================== Example ====
 #_getfs /dev/sda1 #returns "ext4" or the format found
@@ -393,8 +395,7 @@ _getrelease()
         _getrelease_var_release=$(lsb_release -s -c)
     else
         if [ -f /etc/apt/sources.list ]; then
-            _getrelease_var_release=$(cat /etc/apt/sources.list | grep '^deb .*' \
-                                  | head -1 | cut -d' ' -f 3)
+            _getrelease_var_release=$(awk -F" " '/^deb .*/ {print $3; exit}' /etc/apt/sources.list)
         fi
     fi
 
@@ -484,7 +485,7 @@ _getroot()
 _getuuid()
 {   #returns a uuid or 1 on error
     [ -z "$1" ] && return 1
-    udevadm info -q all -n "$1" | grep -i uuid | egrep "^S:" | cut -f3 -d'/'
+    udevadm info -q all -n "$1" | awk -F"/" '/^S.*uuid.*/ {print $3}'
 }
 #==================================================== Example ====
 #_getuuid /dev/sda1 #returns "793e9a6d-d545-46f0-ac9c-49071c450b62"
