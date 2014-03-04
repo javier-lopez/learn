@@ -143,7 +143,7 @@ NOESCAPE 1
 ALLOWOPTIONS 1
 PROMPT 0
 
-MENU TITLE  PXE
+MENU TITLE PXE: Press ENTER to boot or TAB to edit a menu entry
 MENU WIDTH 80
 MENU ROWS 14
 MENU TABMSGROW 24
@@ -216,7 +216,7 @@ MENU LABEL Ubuntu minimal 12.04 (32-bit)(hands-free)
 KERNEL ubuntu/1204/i386/linux
 IPAPPEND 2
 APPEND DEBCONF_DEBUG=5 priority=critical locale=en_US interface=auto netcfg/get_nameservers=8.8.8.8 url=http://people.ubuntu.com/~chilicuil/conf/preseed/minimal.preseed initrd=ubuntu/1204/i386/initrd.gz
-#APPEND DEBCONF_DEBUG=5 priority=critical locale=en_US interface=auto proxy=http://10.99.88.1:3142 netcfg/get_nameservers=8.8.8.8 url=http://people.ubuntu.com/~chilicuil/conf/preseed/minimal.preseed initrd=ubuntu/1204/i386/initrd.gz
+#APPEND DEBCONF_DEBUG=5 priority=critical locale=en_US user=joe interface=auto proxy=http://10.99.88.1:3142 netcfg/get_nameservers=8.8.8.8 url=http://people.ubuntu.com/~chilicuil/conf/preseed/minimal.preseed initrd=ubuntu/1204/i386/initrd.gz
 TEXT HELP
 Install Ubuntu 12.04 (32-bit)
 ENDTEXT
@@ -225,7 +225,7 @@ MENU LABEL Ubuntu minimal 12.04 (64-bit)(hands-free)
 KERNEL ubuntu/1204/amd64/linux
 IPAPPEND 2
 APPEND DEBCONF_DEBUG=5 priority=critical locale=en_US interface=auto netcfg/get_nameservers=8.8.8.8 url=http://people.ubuntu.com/~chilicuil/conf/preseed/minimal.preseed initrd=ubuntu/1204/amd64/initrd.gz
-#APPEND DEBCONF_DEBUG=5 priority=critical locale=en_US interface=auto proxy=http://10.99.88.1:3142 netcfg/get_nameservers=8.8.8.8 url=http://people.ubuntu.com/~chilicuil/conf/preseed/minimal.preseed initrd=ubuntu/1204/amd64/initrd.gz
+#APPEND DEBCONF_DEBUG=5 priority=critical locale=en_US user=joe interface=auto proxy=http://10.99.88.1:3142 netcfg/get_nameservers=8.8.8.8 url=http://people.ubuntu.com/~chilicuil/conf/preseed/minimal.preseed initrd=ubuntu/1204/amd64/initrd.gz
 TEXT HELP
 Install Ubuntu 12.04 (64-bit)
 ENDTEXT
