@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 #setup a pxe environment
-trap _cleanup SIGINT SIGTERM
+trap _cleanup 0 15
 
 updates="https://raw.github.com/chilicuil/learn/master/sh/is/pxe"
 
@@ -215,8 +215,8 @@ LABEL 3
 MENU LABEL Ubuntu minimal 12.04 (32-bit)(hands-free)
 KERNEL ubuntu/1204/i386/linux
 IPAPPEND 2
-APPEND DEBCONF_DEBUG=5 priority=critical locale=en_US interface=auto netcfg/get_nameservers=8.8.8.8 url=http://people.ubuntu.com/~chilicuil/conf/preseed/cubuntu.preseed initrd=ubuntu/1204/i386/initrd.gz
-#APPEND DEBCONF_DEBUG=5 priority=critical locale=en_US interface=auto proxy=http://10.99.88.1:3142 netcfg/get_nameservers=8.8.8.8 url=http://people.ubuntu.com/~chilicuil/conf/preseed/cubuntu.preseed initrd=ubuntu/1204/i386/initrd.gz
+APPEND DEBCONF_DEBUG=5 priority=critical locale=en_US interface=auto netcfg/get_nameservers=8.8.8.8 url=http://people.ubuntu.com/~chilicuil/conf/preseed/minimal.preseed initrd=ubuntu/1204/i386/initrd.gz
+#APPEND DEBCONF_DEBUG=5 priority=critical locale=en_US interface=auto proxy=http://10.99.88.1:3142 netcfg/get_nameservers=8.8.8.8 url=http://people.ubuntu.com/~chilicuil/conf/preseed/minimal.preseed initrd=ubuntu/1204/i386/initrd.gz
 TEXT HELP
 Install Ubuntu 12.04 (32-bit)
 ENDTEXT
@@ -224,8 +224,8 @@ LABEL 4
 MENU LABEL Ubuntu minimal 12.04 (64-bit)(hands-free)
 KERNEL ubuntu/1204/amd64/linux
 IPAPPEND 2
-APPEND DEBCONF_DEBUG=5 priority=critical locale=en_US interface=auto netcfg/get_nameservers=8.8.8.8 url=http://people.ubuntu.com/~chilicuil/conf/preseed/cubuntu.preseed initrd=ubuntu/1204/amd64/initrd.gz
-#APPEND DEBCONF_DEBUG=5 priority=critical locale=en_US interface=auto proxy=http://10.99.88.1:3142 netcfg/get_nameservers=8.8.8.8 url=http://people.ubuntu.com/~chilicuil/conf/preseed/cubuntu.preseed initrd=ubuntu/1204/amd64/initrd.gz
+APPEND DEBCONF_DEBUG=5 priority=critical locale=en_US interface=auto netcfg/get_nameservers=8.8.8.8 url=http://people.ubuntu.com/~chilicuil/conf/preseed/minimal.preseed initrd=ubuntu/1204/amd64/initrd.gz
+#APPEND DEBCONF_DEBUG=5 priority=critical locale=en_US interface=auto proxy=http://10.99.88.1:3142 netcfg/get_nameservers=8.8.8.8 url=http://people.ubuntu.com/~chilicuil/conf/preseed/minimal.preseed initrd=ubuntu/1204/amd64/initrd.gz
 TEXT HELP
 Install Ubuntu 12.04 (64-bit)
 ENDTEXT
