@@ -14,9 +14,9 @@ _whereis()
 running="$(ps aux | awk '/got it/ {if ($0 !~ "awk") print $2}')"
 [ -n "$running" ] && exit
 
-XMESSAGE=$(_whereis gxmessage) || XMESSAGE=xmessage
+XMESSAGE=$(_whereis gxmessage) && geometry="-geometry 500x600" || XMESSAGE=xmessage
 font="Monaco 9"
 
 [ X"$XMESSAGE" = X"xmessage" ] && font="fixed"
 
-$XMESSAGE ${font:+-fn "$font"} -file $HOME/.i3/shortcuts -buttons "got it"
+$XMESSAGE $geometry ${font:+-fn "$font"} -file $HOME/.i3/shortcuts -buttons "got it"
