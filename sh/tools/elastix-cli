@@ -9,8 +9,11 @@ default_mysql_passwd="c2VjcmV0Cg=="
 
 _basename()
 {
-    [ -z "$1" ] && return 0
-    expr "$1" : '.*/\([^/]*\)'
+    [ -z "$1" ] && return 1
+    case $1 in
+        /*|*/*) expr "$1" : '.*/\([^/]*\)' ;;
+        *) printf "%s\\n" "$1";;
+    esac
 }
 
 exec 9>/tmp/$(_basename $0).lock  #http://mywiki.wooledge.org/BashFAQ/045

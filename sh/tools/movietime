@@ -8,12 +8,7 @@
 
 #http://tinyurl.com/246hm8f
 _die()
-{   #print a stacktrace with a msg, exits with 1
-    local frame=0
-    while caller $frame; do
-        frame=$(expr $frame + 1);
-    done
-
+{
     printf "%s\\n" "$*"
     exit 1
 }
@@ -58,22 +53,19 @@ _ismonitorattached()
 
 _arch()
 {   #check for system arch, returns [64|32]
-    local arch
-    [ -z "$MACHTYPE" ] && arch=$(uname -m) || arch=$(printf "%s\\n" "$MACHTYPE" | cut -d- -f1)
+    if [ -z "$MACHTYPE" ]; then
+        _arch_var_arch=$(uname -m)
+    else
+        _arch_var_arch=$(printf "%s" "$MACHTYPE" | cut -d- -f1)
+    fi
 
-    case $arch in
-        x86_64)
-            arch=64;
-            ;;
-        i686)
-            arch=32;
-            ;;
-        *)
-            exit 1
-            ;;
+    case "$_arch_var_arch" in
+        x86_64) _arch_var_arch="64" ;;
+        i686)   _arch_var_arch="32" ;;
+        *)      return 1 ;;
     esac
 
-    printf "%s\\n" "$arch"
+    printf "%s" "$_arch_var_arch"
 }
 
 if ! command -v "xdotool" >/dev/null; then

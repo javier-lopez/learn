@@ -21,8 +21,7 @@ _whats()
 
     [ -n "$2" ] || more_than_one=1
 
-    for word
-    do
+    for word; do
         response=$(dig +short txt $word.wp.dg.cx)
         printf "%s\\n" "$response"
         if [ -z "$more_than_one" ]; then

@@ -34,8 +34,7 @@ _script()
 
     [ -z "$1" ] && (printf "%s\\n" "$(expr "$0" : '.*/\([^/]*\)'): Missing argument, looking for a .sh|.py|.rb|etc script"; exit 1)
 
-    for file
-    do
+    for file; do
         _exec chmod +x "$file"
         _exec sudo cp "$file" /usr/local/bin
     done
