@@ -23,7 +23,7 @@ _screenshot()
         _screenshot_var_bin="import"
         [ -n "$flag_select" ] && _screenshot_var_opt=""   || _screenshot_var_opt="-window root"
     else
-        _notify "[-] Error, install either scrot, gnome-screenshot or imagemagick"
+        _notify "[-] Error" "install either scrot, gnome-screenshot or imagemagick"
         exit 1
     fi
 
