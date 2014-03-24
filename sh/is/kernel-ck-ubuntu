@@ -6,14 +6,13 @@
 
 #####################################
 #kernel version base
-kernel=3.12
+kernel=3.13
 #kernel specific version
-patchkernel=3.12.1
+patchkernel=3.13.7
 #BFQ patch
-bfq=3.12.0-v6r2
-vbfq=v6r2
+bfq=3.13.0-v7r2
 #CK patch
-patchck=3.12-ck1
+patchck=3.13-ck1
 #sufix
 ckk=ck1
 #arch
@@ -31,6 +30,7 @@ apps_default="kernel-package gcc-4.6 libncurses5 libncurses5-dev build-essential
 patch fakeroot bc"
 
 CL=$(printf "%s\\n" "$(expr $(grep -c processor /proc/cpuinfo) + 1 )")
+vbfq=$(printf "%s" "$bfq" | cut -d'-' -f2)
 
 trap _cleanup SIGINT SIGTERM #trap ctrl-c
 
@@ -62,6 +62,12 @@ _printfs()
 {   #print step
     [ -z "$1" ] && return 1
     printf "%s\\n" "[+] $*"
+}
+
+_die()
+{
+    printf "%b\\n" "[-] Error: $*"
+    exit 1
 }
 
 _header()
@@ -271,19 +277,29 @@ _printfl "Downloading archives"
 _printfs "downloading main vanilla kernel tree ..."
 _cmd mkdir -p $tmp_path
 _cmd cd $tmp_path
-_waitfor wget --no-check-certificate -N http://www.kernel.org/pub/linux/kernel/v3.x/linux-$kernel.tar.bz2
+_waitfor wget --no-check-certificate -N http://www.kernel.org/pub/linux/kernel/v3.x/linux-$kernel.tar.gz
+[ ! -f linux-$kernel.tar.gz ] && _die "couldn't get http://www.kernel.org/pub/linux/kernel/v3.x/linux-$kernel.tar.gz"
 
 _printfs "downloading mainstream patches ..."
-_waitfor wget --no-check-certificate -N http://www.kernel.org/pub/linux/kernel/v3.x/patch-$patchkernel.bz2
+_waitfor wget --no-check-certificate -N http://www.kernel.org/pub/linux/kernel/v3.x/patch-$patchkernel.gz
+[ ! -f patch-$patchkernel.gz ] && _die "couldn't get http://www.kernel.org/pub/linux/kernel/v3.x/patch-$patchkernel.gz"
 
 _printfs "downloading -ck patches ..."
 _waitfor wget -N http://ck.kolivas.org/patches/3.0/$kernel/$patchck/patch-$patchck.bz2
+[ ! -f patch-$patchck.bz2 ] && _die "couldn't get http://ck.kolivas.org/patches/3.0/$kernel/$patchck/patch-$patchck.bz2"
 
 _printfs "downloading bfq patches ..."
 _waitfor wget -N http://algo.ing.unimo.it/people/paolo/disk_sched/patches/$bfq/0001-block-cgroups-kconfig-build-bits-for-BFQ-$vbfq-$kernel.patch
+[ ! -f 0001-block-cgroups-kconfig-build-bits-for-BFQ-$vbfq-$kernel.patch ] && \
+    _die "couldn't get http://algo.ing.unimo.it/people/paolo/disk_sched/patches/$bfq/0001-block-cgroups-kconfig-build-bits-for-BFQ-$vbfq-$kernel.patch"
 _waitfor wget -N http://algo.ing.unimo.it/people/paolo/disk_sched/patches/$bfq/0002-block-introduce-the-BFQ-$vbfq-I-O-sched-for-$kernel.patch
+[ ! -f 0002-block-introduce-the-BFQ-$vbfq-I-O-sched-for-$kernel.patch ] && \
+    _die "couldn't get http://algo.ing.unimo.it/people/paolo/disk_sched/patches/$bfq/0002-block-introduce-the-BFQ-$vbfq-I-O-sched-for-$kernel.patch"
 _waitfor wget -N http://algo.ing.unimo.it/people/paolo/disk_sched/patches/$bfq/0003-block-bfq-add-Early-Queue-Merge-EQM-to-BFQ-$vbfq-for-$kernel.0.patch
+[ ! -f 0003-block-bfq-add-Early-Queue-Merge-EQM-to-BFQ-$vbfq-for-$kernel.0.patch ] && \
+    _die "couldn't get http://algo.ing.unimo.it/people/paolo/disk_sched/patches/$bfq/0003-block-bfq-add-Early-Queue-Merge-EQM-to-BFQ-$vbfq-for-$kernel.0.patch"
 
+#not necesary since packaging is done with make-kpkg
 #_printfs "downloading ubuntu patches ..."
 #_waitfor wget -N http://kernel.ubuntu.com/~kernel-ppa/mainline/v$patchkernel-trusty/0001-base-packaging.patch
 #_waitfor wget -N http://kernel.ubuntu.com/~kernel-ppa/mainline/v$patchkernel-trusty/0002-debian-changelog.patch
@@ -291,11 +307,13 @@ _waitfor wget -N http://algo.ing.unimo.it/people/paolo/disk_sched/patches/$bfq/0
 _printfl "Applying patches"
 _printfs "uncompresing kernel to $tmp_path/linux-$kernel/ ..."
 if [ ! -d "/$tmp_path/linux-$kernel/" ]; then
-    _waitfor tar jxf $tmp_path/linux-$kernel.tar.bz2
+    _waitfor tar zxf $tmp_path/linux-$kernel.tar.gz
+    [ ! -d $tmp_path/linux-$kernel ] && _die "couldn't unpack $tmp_path/linux-$kernel.tar.gz"
 fi
 
 _printfs "uncompresing patches ..."
-_waitfor bunzip2 patch-$patchkernel.bz2 patch-$patchck.bz2
+_waitfor gunzip patch-$patchkernel.gz; [ ! -f patch-$patchkernel ] && _die "couldn't unpack patch-$patchkernel.gz"
+_waitfor bunzip2 patch-$patchck.bz2;   [ ! -f patch-$patchck ]     && _die "couldn't unpack patch-$patchck.bz2"
 
 _printfs "moving to $tmp_path/linux-$patchkernel-$ckk"
 _waitfor rm -rf linux-$patchkernel-$ckk
@@ -318,7 +336,7 @@ _printfs "downloading optimized config from http://repo-ck.com ...    "
 #                          starting in >= 3.10, check from time to time if it can be reused
 
 #for now use config mirrored from http://repo-ck.com/
-_waitfor wget "http://javier.io/mirror/3.12/config.$arqt"
+_waitfor wget "http://javier.io/mirror/$kernel/config.$arqt"
 _cmd cp "config.$arqt" .config
 
 ##tmp fix for bug #663474, disable lguest hypervisor, http://lguest.ozlabs.org/lguest.txt
