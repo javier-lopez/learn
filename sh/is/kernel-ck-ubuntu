@@ -1,8 +1,8 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 #http://viajemotu.wordpress.com/2012/08/13/kernel-ck-for-ubuntu-precise/
 #https://github.com/chilicuil/learn/blob/master/sh/is/kernel-ck-ubuntu
 
-# $ time bash kernel-ck-ubuntu
+# $ time sh kernel-ck-ubuntu
 
 #####################################
 #kernel version base
@@ -24,7 +24,7 @@ arqt=$(dpkg --print-architecture)
 ############DO NOT EDIT BELOW UNLESS YOU KNOW WHAT YOU'RE DOING#################
 ################################################################################
 
-#the /tmp partitions usually have noexec
+#/tmp partition could have noexec
 tmp_path="$HOME/.tmp/kernel-ck-ubuntu-$patchkernel"
 curr_path=$PWD
 apps_default="kernel-package gcc-4.6 libncurses5 libncurses5-dev build-essential
@@ -73,7 +73,7 @@ _header()
     printf "%b\\n" "\033[1m Updates:\033[0m     https://github.com/chilicuil/learn/blob/master/sh/is/kernel-ck-ubuntu"
     printf "%s\\n"    "                            send your push request!"
     printf "\\n"
-    printf "%b\\n" "\033[1m Patches:\033[0m     -bfq, -ck, -ubuntu"
+    printf "%b\\n" "\033[1m Patches:\033[0m     -bfq, -ck"
     printf "%b\\n" "\033[1m Config:\033[0m      http://repo-ck.com/"
     printf "\\n"
     _printfl "Current configuration: edit the script to change it"
@@ -81,7 +81,6 @@ _header()
     printf "%s\\n" "  kernel:            $patchkernel"
     printf "%s\\n" "  -bfq patchset:     $bfq"
     printf "%s\\n" "  -ck patchset:      $patchck"
-    printf "%s\\n" "  -ubuntu patchset:  v$patchkernel"
     printf "%s\\n" "  sufix:             $ckk"
     printf "%s\\n" "  arch:              $arqt"
     printf "%s\\n" "  concurrency level: $CL"
@@ -89,35 +88,26 @@ _header()
 }
 
 _cmd()
-{   #print and execute a command, exit on fail
-    [ -z "$1" ] && return 1
+{   #print current command, exits on fail
+    [ -z "$1" ] && return 0
 
-    printf "%s \\n" "    $ $*"
-    _cmd_var_output="$(eval $@ 2>&1)"
-    _cmd_var_status="$?"
+    printf "%s " "    $ $@"
+    printf "%s\\n"
+    eval "$@" 2>&1 >/tmp/kernel-ck-ubuntu.error
 
-    if [ X"$_cmd_var_status" != X"0" ]; then
-        printf "> %s:%s" "$*" "$_cmd_var_output"
-        exit "$_cmd_var_status"
-    else
-        return "$_cmd_var_status"
-    fi
+    status=$?
+    [ "$status" != 0 ] && { cat /tmp/kernel-ck-ubuntu.error; exit $status; } || return
 }
 
 _cmdsudo()
-{   #print && execute a command, exit on fail
-    [ -z "$1" ] && return 1
+{   #print current command, exits on fail
+    [ -z "$1" ] && return 0
 
-    printf "%s \\n" "    $ sudo $*"
-    _cmdsudo_var_output=$(printf "%s\\n" "$sudopwd" | $sudocmd sh -c "eval $*" 2>&1)
-    _cmdsudo_var_status="$?"
+    printf "%s " "    $ sudo $@"
+    printf "%s\\n" "$sudopwd" | $sudocmd $@ 2>&1 >/tmp/kernel-ck-ubuntu.error
 
-    if [ X"$_cmdsudo_var_status" != X"0" ]; then
-        printf "> %s:%s\\n" "$*" "$_cmdsudo_var_output"
-        exit "$_cmdsudo_var_status"
-    else
-        return "$_cmdsudo_var_status";
-    fi
+    status=$?
+    [ "$status" != 0 ] && { cat /tmp/kernel-ck-ubuntu.error; exit $status; } || return
 }
 
 _animcui()
@@ -141,22 +131,14 @@ _animcui()
     while [ "$(ps -p "$(pidof "$1")" -o comm= 2>/dev/null)" ]; do
         printf "%b" "\b\b\b\b\b"
         case "$_animcui_var_animation_state" in
-            1)
-                printf "%s" '\o@o\'
-                _animcui_var_animation_state=2
-                ;;
-            2)
-                printf "%s" '|o@o|'
-                _animcui_var_animation_state=3
-                ;;
-            3)
-                printf "%s" '/o@o/'
-                _animcui_var_animation_state=4
-                ;;
-            4)
-                printf "%s" '|o@o|'
-                _animcui_var_animation_state=1
-                ;;
+            1) printf "%s" '\o@o\'
+               _animcui_var_animation_state=2 ;;
+            2) printf "%s" '|o@o|'
+               _animcui_var_animation_state=3 ;;
+            3) printf "%s" '/o@o/'
+               _animcui_var_animation_state=4 ;;
+            4) printf "%s" '|o@o|'
+               _animcui_var_animation_state=1 ;;
         esac
         sleep 1
     done
@@ -239,6 +221,7 @@ _getroot()
 _cleanup()
 {
     stty echo
+    printf "\\n"
     _printfl "Cleanup"
     _printfs "deleting files at $tmp_path ..."
     #printf "%s\\n" "$sudopwd" | $sudocmd rm -v $tmp_path/patch*
@@ -247,9 +230,7 @@ _cleanup()
 
     #printf "%s\\n" "$sudopwd" | $sudocmd mount -o remount /tmp
     #rm -rf $tmp_path 2>/dev/null
-    if [ -z "$1" ]; then
-        exit
-    fi
+    [ -z "$1" ] && exit
 }
 
 _waitfor()
@@ -257,7 +238,7 @@ _waitfor()
     [ -z "$1" ] && return 1
 
     printf "%s " "    $ $@ ..."
-    eval "$@" >/dev/null 2>&1 &
+    $@ > /dev/null 2>&1 &
     sleep 1s
 
     _animcui $1
@@ -268,7 +249,7 @@ _waitforsudo()
     [ -z "$1" ] && return 1
 
     printf "%s " "    $ sudo $@ ..."
-    printf "%s\\n" "$sudopwd" | $sudocmd sh -c "eval $*" >/dev/null 2>&1 &
+    printf "%s\\n" "$sudopwd" | $sudocmd $* >/dev/null 2>&1 &
     sleep 1s
 
     if [ X"$1" = X"DEBIAN_FRONTEND=noninteractive" ]; then
@@ -303,14 +284,14 @@ _waitfor wget -N http://algo.ing.unimo.it/people/paolo/disk_sched/patches/$bfq/0
 _waitfor wget -N http://algo.ing.unimo.it/people/paolo/disk_sched/patches/$bfq/0002-block-introduce-the-BFQ-$vbfq-I-O-sched-for-$kernel.patch
 _waitfor wget -N http://algo.ing.unimo.it/people/paolo/disk_sched/patches/$bfq/0003-block-bfq-add-Early-Queue-Merge-EQM-to-BFQ-$vbfq-for-$kernel.0.patch
 
-_printfs "downloading ubuntu patches ..."
-_waitfor wget -N http://kernel.ubuntu.com/~kernel-ppa/mainline/v$patchkernel-trusty/0001-base-packaging.patch
-_waitfor wget -N http://kernel.ubuntu.com/~kernel-ppa/mainline/v$patchkernel-trusty/0002-debian-changelog.patch
+#_printfs "downloading ubuntu patches ..."
+#_waitfor wget -N http://kernel.ubuntu.com/~kernel-ppa/mainline/v$patchkernel-trusty/0001-base-packaging.patch
+#_waitfor wget -N http://kernel.ubuntu.com/~kernel-ppa/mainline/v$patchkernel-trusty/0002-debian-changelog.patch
 
 _printfl "Applying patches"
 _printfs "uncompresing kernel to $tmp_path/linux-$kernel/ ..."
 if [ ! -d "/$tmp_path/linux-$kernel/" ]; then
-    _waitfor "bzcat < $tmp_path/linux-$kernel.tar.bz2 | tar xvf -"
+    _waitfor tar jxf $tmp_path/linux-$kernel.tar.bz2
 fi
 
 _printfs "uncompresing patches ..."
@@ -321,14 +302,14 @@ _waitfor rm -rf linux-$patchkernel-$ckk
 _waitfor cp -R "linux-$kernel" "linux-$patchkernel-$ckk"
 _cmd cd linux-$patchkernel-$ckk
 
-_printfs "applying patches (verbose output) ..."
-_cmd patch -p1 < ../patch-$patchkernel
-_cmd patch -p1 < ../patch-$patchck
-_cmd patch -p1 < ../0001-block-cgroups-kconfig-build-bits-for-BFQ-$vbfq-$kernel.patch
-_cmd patch -p1 < ../0002-block-introduce-the-BFQ-$vbfq-I-O-sched-for-$kernel.patch
-_cmd patch -p1 < ../0003-block-bfq-add-Early-Queue-Merge-EQM-to-BFQ-$vbfq-for-$kernel.0.patch
-_cmd patch -p1 < ../0001-base-packaging.patch
-_cmd patch -p1 < ../0002-debian-changelog.patch
+_printfs "applying patches ..."
+_cmd "patch -p1 < ../patch-$patchkernel"
+_cmd "patch -p1 < ../patch-$patchck"
+_cmd "patch -p1 < ../0001-block-cgroups-kconfig-build-bits-for-BFQ-$vbfq-$kernel.patch"
+_cmd "patch -p1 < ../0002-block-introduce-the-BFQ-$vbfq-I-O-sched-for-$kernel.patch"
+_cmd "patch -p1 < ../0003-block-bfq-add-Early-Queue-Merge-EQM-to-BFQ-$vbfq-for-$kernel.0.patch"
+#_cmd "patch -p1 < ../0001-base-packaging.patch"
+#_cmd "patch -p1 < ../0002-debian-changelog.patch"
 
 _printfl "Configuring kernel"
 _printfs "downloading optimized config from http://repo-ck.com ...    "
@@ -374,7 +355,7 @@ sed -i -e 's/^CONFIG_HZ_300=y/# CONFIG_HZ_300 is not set/' \
 _printfl "Compiling kernel"
 _printfs "running make-kpkg ..."
 CONCURRENCY_LEVEL=$CL
-printf "\\n" | _cmd fakeroot \"make-kpkg --initrd kernel_image kernel_headers modules_image\"
+printf "\\n" | _cmd fakeroot make-kpkg --initrd kernel_image kernel_headers modules_image
 
 _printfl "DONE"
 _printfs "copying debs files ..."
