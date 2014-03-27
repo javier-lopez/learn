@@ -15,11 +15,11 @@
        bar
    fi
 
-   if [ -f file ]; then
+   if [ -z "${foo}" ]; then
        single_cmd
    fi
 
-   if [ -f file ]; then
+   if [ -z "${foo}" ]; then
        single_cmd
    else
        other_cmd
@@ -36,9 +36,9 @@
        bar
    fi
 
-   [ -f file ] && single_cmd
+   [ -z "${foo}" ] && single_cmd
 
-   [ -f file ] && single_cmd || other_cmd
+   [ -z "${foo}" ] && single_cmd || other_cmd
 
    _function()
    {
