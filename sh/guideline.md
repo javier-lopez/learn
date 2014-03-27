@@ -88,8 +88,8 @@
    printf "%s\\n" "${foo}"
    ```
 - Avoid `[[`, use `[` or `test` instead 
-- Avoid `which` use `command -v` or `type` instead 
-- Avoid `basename` use `expr` instead
+- Avoid `which`, use `command -v` or `type` instead 
+- Avoid `basename`, use `expr` instead
 - Avoid fixed paths:
 
   **Bad**
@@ -106,7 +106,7 @@
 
   **Best**
    ```sh
-   [ -f "$(command -v sxiv)" ] && single_cmd
+   [ -f "$(command -v "mplayer")" ] && single_cmd
    ```
 - Avoid -q in grep
 
