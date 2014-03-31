@@ -35,7 +35,7 @@ TESTS=$(grep '^@begin' $lib_db | sed -e 's/^@begin{//' -e 's/}.*$//')
 FUNCTIONS_WITH_TESTS=$(printf "%s\\n" $FUNCTIONS $TESTS | awk 'x[$0]++')
 
 mkfifo fifo1 && mkfifo fifo2
-if [ -e fifo1 ] && [ -e fifo2 ]; then 
+if [ -e fifo1 ] && [ -e fifo2 ]; then
     printf "%s\\n" $FUNCTIONS_WITH_TESTS > fifo1 &
     printf "%s\\n" $FUNCTIONS > fifo2 &
     FUNCTIONS_WITHOUT_TESTS=$(awk 'NR == FNR { A[$0]=1; next } !A[$0]' fifo1 fifo2)

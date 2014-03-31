@@ -2,20 +2,20 @@
 #description: create a secure password with 8 chars by default
 #usage: mkpass [LENGTH]
 
-if [ ! "$1" ]; then
-    mkpasswd_length=8
+if [ ! "${1}" ]; then
+    mkpasswd_length="8"
 else
     #isnum?
     #http://stackoverflow.com/questions/806906/how-do-i-test-if-a-variable-is-a-number-in-bash
-    case $1 in
-        ''|*[!0-9]*) printf "%s\\n" "Error, not a number: $1"; exit 1;;
-        *) mkpasswd_length=$1;;
+    case "${1}" in
+        ''|*[!0-9]*) printf "%s\\n" "Error, not a number: ${1}"; exit 1;;
+        *) mkpasswd_length="${1}";;
     esac
 fi
 
 if command -v "xclip" >/dev/null 2>/dev/null; then
     #http://unix.stackexchange.com/questions/28503/how-can-i-send-stdout-to-multiple-commands
-    strings /dev/urandom | grep -o '[[:alnum:]]' | head -n $mkpasswd_length | tr -d '\n' | tee /dev/fd/2 | xclip; printf "\\n"
+    strings /dev/urandom | grep -o '[[:alnum:]]' | head -n "${mkpasswd_length}" | tr -d '\n' | tee /dev/fd/2 | xclip; printf "\\n"
 else
-    strings /dev/urandom | grep -o '[[:alnum:]]' | head -n $mkpasswd_length | tr -d '\n'; printf "\\n"
+    strings /dev/urandom | grep -o '[[:alnum:]]' | head -n "${mkpasswd_length}" | tr -d '\n'; printf "\\n"
 fi

@@ -7,37 +7,38 @@
 
 _usage()
 {
-    printf "%s\\n" "Usage: `expr "$0" : '.*/\([^/]*\)'` img1 img2 imgN ..."
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') img1 img2 imgN ..."
     printf "%s\\n" "        img must be a valid image file: *.[png|jpg|..]"
     exit 1
 }
 
-[ $# -eq 0 ] && _usage
+[ "${#}" -eq "0" ] && _usage
 
 upload_img()
 {
     for img; do
-        if [ -f "$img" ] ; then
-            case "$img" in
+        if [ -f "${img}" ] ; then
+            case "${img}" in
                 *.jpg|*.JPG|*.jpeg|*.png|*.PNG)
                     if command -v "xclip" >/dev/null 2>/dev/null; then
-                        curl -s -F "image=@$img" -F "key=486690f872c678126a2c09a9e196ce1b" http://imgur.com/api/upload.xml \
-                            | egrep -o "<original_image>(.)*</original_image>" | \
-                            egrep -o "http://i.imgur.com/[^<]*" | tee /dev/fd/2 | xclip 
+                        curl -s -F "image=@${img}" \
+                            -F "key=486690f872c678126a2c09a9e196ce1b" \
+                            http://imgur.com/api/upload.xml | \
+                            egrep -o "<original_image>(.)*</original_image>" | \
+                            egrep -o "http://i.imgur.com/[^<]*" | tee /dev/fd/2 | xclip
                     else
-                        curl -s -F "image=@$img" -F "key=486690f872c678126a2c09a9e196ce1b" http://imgur.com/api/upload.xml \
-                            | egrep -o "<original_image>(.)*</original_image>" | \
+                        curl -s -F "image=@${img}" \
+                            -F "key=486690f872c678126a2c09a9e196ce1b" \
+                            http://imgur.com/api/upload.xml | \
+                            egrep -o "<original_image>(.)*</original_image>" | \
                             egrep -o "http://i.imgur.com/[^<]*"
-                    fi
-                    ;;
-                *)
-                    printf "%s\\n" "'$img' is not a valid img file"
-                    ;;
+                    fi ;;
+                *)  printf "%s\\n" "'${img}' is not a valid img file" ;;
             esac
         else
-            printf "%s\\n" "'$img' doesn't exist"
+            printf "%s\\n" "'${img}' doesn't exist"
         fi
     done
 }
 
-upload_img "$@"
+upload_img "${@}"

@@ -1,45 +1,50 @@
 #! /usr/bin/env sh
 
-PASSWD=$(date +%s | sha256sum | base64 | head -c 8)
+PASSWD="$(date +%s | sha256sum | base64 | head -c 8)"
 USER="guest"
 PORT="26769"
 BACKUP_DIR="/path/backup"
 CERT="/path/server.pem"
 
-if [ "$1" = stop ] ; then
-    ID=$(ps aux | grep [s]imple | awk '{ print $2 }')
-    [ -n "$ID" ] && { kill -9 $ID; printf "%s\\n" "Stopped"; } || printf "%s\\n" "No instance found"
+if [ X"$1" = X"stop" ]; then
+    ID="$(ps aux | grep [s]imple | awk '{ print $2 }')"
+    [ -n "$ID" ] && { kill -9 "${ID}"; printf "%s\\n" "Stopped"; } || printf "%s\\n" "No instance found"
     exit
 fi
 
 _basename()
 {
-    [ -z "$1" ] && return 0
-    expr "$1" : '.*/\([^/]*\)'
+    [ -z "${1}" ] && return 1
+    case "${1}" in
+        /*|*/*) expr "${1}" : '.*/\([^/]*\)' ;;
+        *) printf "%s\\n" "${1}";;
+    esac
 }
 
-exec 9> /tmp/$(_basename $0).lock #verify only one instance is running
-if ! flock -n 9  ; then                #http://mywiki.wooledge.org/BashFAQ/045
-    printf "%s\\n" "$(_basename $0): another instance is running";
+exec 9> /tmp/$(_basename ${0}).lock #verify only one instance is running
+if ! flock -n 9; then               #http://mywiki.wooledge.org/BashFAQ/045
+    printf "%s\\n" "$(_basename ${0}): another instance is running";
     exit 1
 fi
 
-[ -f "$CERT" ] && SSL_OPTS="--ssl --certificate=$CERT"
+[ -f "${CERT}" ] && SSL_OPTS="--ssl --certificate=${CERT}"
 
-if [ -f /usr/local/bin/simple-httpd ] ; then
+#TODO 29-03-2014 18:09 >> remote fixed path
+if [ -f /usr/local/bin/simple-httpd ]; then
     printf "%s\\n" "Starting simple.server..."
-    printf "%s\\n" "  address: all interfaces"
-    printf "%s\\n" "  port: $PORT"
-    printf "%s\\n" "  authentication"
-    printf "%s\\n" "    username: $USER"
-    printf "%s\\n" "    password: $PASSWD"
-    printf "%s\\n" "    ssl: $SSL_OPTS"
+    printf "%s\\n" "  address   : all interfaces"
+    printf "%s\\n" "  port      : ${PORT}"
+    printf "%s\\n"
+    printf "%s\\n" "  username: ${USER}"
+    printf "%s\\n" "  password: ${PASSWD}"
+    printf "%s\\n" "  ssl     : ${SSL_OPTS}"
     printf "%s\\n" "  serving:"
-    printf "%s\\n" "    $BACKUP_DIR"
+    printf "%s\\n" "    ${BACKUP_DIR}"
 
-    printf "%s\\n" "Run: $(_basename $0) stop, to stop sharing"
-    nohup simple-httpd -p $PORT --username=$USER --password=$PASSWD $SSL_OPTS $BACKUP_DIR &
+    printf "%s\\n" "Run: $(_basename ${0}) stop, to stop sharing"
+    nohup simple-httpd -p "${PORT}" --username="${USER}" --password="${PASSWD}" "${SSL_OPTS}" "${BACKUP_DIR}" &
 else
-    printf "%s\\n" "No /usr/local/bin/simple-httpd found, download it at: https://raw.github.com/chilicuil/learn/master/python/simple-httpd"
+    printf "%s\\n" "Error: simple-httpd was not found!"
+    printf "%s\\n" "Info : download it at: https://raw.github.com/chilicuil/learn/master/python/simple-httpd"
     exit 1
 fi

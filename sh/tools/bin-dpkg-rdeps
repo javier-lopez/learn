@@ -13,9 +13,9 @@ if ! command -v "apt-file" >/dev/null; then
     exit 1
 fi
 
-if [ "$#" -lt "1" ]; then
-    printf "%s\\n" "usage: $(expr "$0" : '.*/\([^/]*\)') binary"
+if [ "${#}" -lt "1" ]; then
+    printf "%s\\n" "usage: $(expr "${0}" : '.*/\([^/]*\)') binary"
     exit 1
 fi
 
-ldd $(command -v "$1") | sort -n | uniq | awk '{print $1}' | xargs -i apt-file search {} | cut -d':' -f1 | sort | uniq
+ldd "$(command -v "${1}")" | sort -n | uniq | awk '{print $1}' | xargs -i apt-file search {} | cut -d':' -f1 | sort | uniq

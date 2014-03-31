@@ -2,28 +2,32 @@
 #description: resets ip on thompson routers
 #usage: thompson
 
-_notify ()
+_notify()
 {
-    if [ X"$TERM" = X"linux" ] || [ X"$TERM" = X"dumb" ]; then
-        notify-send -t 3000 "${@}"
+    [ -z "${1}" ] && return 1
+    [ -z "${2}" ] && return 1
+    if [ X"${TERM}" = X"linux" ] || [ -z "${TERM}" ]; then
+        if ! DISPLAY=:0 notify-send -t 1000 "${1}"  "${2}"; then
+            if command -v "gxmessage" 2>/dev/null; then
+                font="Monaco 9"
+                gxmessage "${font:+-fn "$font"}" "${1} ${2}" "got it"
+            else
+                font="fixed"
+                xmessage "${font:+-fn "$font"}" "${1} ${2}" "got it"
+            fi
+        fi
     else
-        printf "%s" "${1}: "
-        shift
-        while [ -n "$*" ]
-        do
-            printf "%s\\n" "${1}"
-            shift
-        done
+        printf "%s: %s\\n" "${1}" "${2}"
     fi
 }
 
-if [ ! -e /usr/bin/expect ]; then
+if [ ! -f "$(command -v "expect")" ]; then
     _notify "You need to install expect" "\$ sudo apt-get install expect"
     exit 1
 fi
 
 printf "%s\\n" "Resetting router..."
-printf "%s\\n" "[+] old ip      -> `curl -s ifconfig.me`"
+printf "%s\\n" "[+] old ip      -> $(curl -s ifconfig.me)"
 thompson.expect > /dev/null
 sleep 1
-printf "%s\\n" "[+] current ip  -> `curl -s ifconfig.me`"
+printf "%s\\n" "[+] current ip  -> $(curl -s ifconfig.me)"

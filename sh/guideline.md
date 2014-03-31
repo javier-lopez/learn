@@ -1,6 +1,7 @@
 ## Personal guidelines for sh scripting
 
 - Don't use syntax or semantics unique to Bash, for example, array contructs
+- Use `/usr/bin/env sh` over `/bin/sh`
 - Use `$(foo)` over `foo`
 - Use `$(expr $i + 1)` over `$((i+1))`
 - Use spaces over tabs

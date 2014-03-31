@@ -14,42 +14,40 @@ else
     exit 1
 fi
 
-if [ ! -f "$1" ]; then
-    printf "%s\\n" "$(expr "$0" : '.*/\([^/]*\)'): first argument is not a file" >&2
+if [ ! -f "${1}" ]; then
+    printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): first argument is not a file" >&2
     exit 1
 fi
 
 _dirname()
 {   #returns string containing dirname on success, 1 on fail
-    [ -z "$1" ] && return 1
+    [ -z "${1}" ] && return 1
 
-    case $1 in
+    case "${1}" in
         /*|*/*) #http://www.linuxselfhelp.com/gnu/autoconf/html_chapter/autoconf_10.html
-            dir=$(expr "x$1" : 'x\(.*\)/[^/]*' \| '.'      : '.')
-            printf "%s\\n" "$dir"
+            dir=$(expr "x${1}" : 'x\(.*\)/[^/]*' \| '.'      : '.')
+            printf "%s\\n" "${dir}"
             ;;
         *) printf "%s\\n" ".";;
     esac
 }
 
-file=$(expr "$1" : '.*/\([^/]*\)')
-dir=$(_dirname "$1")
-arg=$1
-arr="$arg"
-arr_b="$(basename "$arg")"
+dir="$(_dirname "${1}")"
+arg="${1}"
+arr="${arg}"
+arr_b="$(basename "${arg}")"
 shift
 
-cd -- "$dir"
+cd -- "${dir}"
 
 for i in *; do
-    [ ! -f "$i" ]          && continue
-    [ X"$i" = X"$arr_b"  ] && continue
-    case $i in
-        *png|*PNG|*jpg|*JPG|*jpeg|*JPEG) arr="$arr""|""$i" ;;
+    [ ! -f "${i}" ]            && continue
+    [ X"${i}" = X"${arr_b}"  ] && continue
+    case "${i}" in
+        *png|*PNG|*jpg|*JPG|*jpeg|*JPEG) arr="${arr}""|""${i}" ;;
     esac
 done
 
-OLDIFS="$IFS"
 IFS="|"
-printf "%s\\n" "[+] $viewer $arg"
-exec $viewer -f $arr
+printf "%s\\n" "[+] ${viewer} ${arg}"
+exec ${viewer} -f ${arr}

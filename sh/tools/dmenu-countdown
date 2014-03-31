@@ -6,7 +6,8 @@
 #a gui menu appears asking for the amount of time to countdown
 #format: HH:MM[:SS]
 
-#requires a dmenu version with xft: https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
+#requires a dmenu version with xft:
+#https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
 #-sf red
 DMENU='dmenu -p > -i -fn Bahamas-10 -nb #000000 -nf #ffffff -sb #000000 -sf #ffffff'
 tune_64='H4sIAP2Y61IAA+1ZfWxbVxW/tvPhtInjdCnL2rIa6kpp1bixmw+PduA0H30pXpql
@@ -64,177 +65,179 @@ tune_64='H4sIAP2Y61IAA+1ZfWxbVxW/tvPhtInjdCnL2rIa6kpp1bixmw+PduA0H30pXpql
 
 _arch()
 {   #check for system arch, returns [64|32]
-    if [ -z "$MACHTYPE" ]; then
-        _arch_var_arch=$(uname -m)
+    if [ -z "${MACHTYPE}" ]; then
+        _arch_var_arch="$(uname -m)"
     else
-        _arch_var_arch=$(printf "%s" "$MACHTYPE" | cut -d- -f1)
+        _arch_var_arch="$(printf "%s" "${MACHTYPE}" | cut -d- -f1)"
     fi
 
-    case "$_arch_var_arch" in
+    case "${_arch_var_arch}" in
         x86_64) _arch_var_arch="64" ;;
         i686)   _arch_var_arch="32" ;;
         *)      return 1 ;;
     esac
 
-    printf "%s" "$_arch_var_arch"
+    printf "%s" "${_arch_var_arch}"
 }
 
 _basename()
 {
-    [ -z "$1" ] && return 1
-    case $1 in
-        /*|*/*) expr "$1" : '.*/\([^/]*\)' ;;
-        *) printf "%s\\n" "$1";;
+    [ -z "${1}" ] && return 1
+    case "${1}" in
+        /*|*/*) expr "${1}" : '.*/\([^/]*\)' ;;
+        *) printf "%s\\n" "${1}";;
     esac
 }
 
 _isnum()
 {   #look for a number, returns 0 on success, 1 otherwise
-    [ -z "$1" ] && return 1
-    printf "%s\\n" "$@" | grep -v "[^0-9]" >/dev/null
+    [ -z "${1}" ] && return 1
+    printf "%s\\n" "${@}" | grep -v "[^0-9]" >/dev/null
 }
 
 _invalidformat()
 {
-    _notify "[-] Invalid format" "$(_basename $0): HH:MM[:SS]"
+    _notify "[-] Invalid format" "$(_basename ${0}): HH:MM[:SS]"
     exit
 }
 
-_notify ()
+_notify()
 {
-    if [ X"$TERM" = X"linux" ]; then
-        if ps aux | grep [n]otify- >/dev/null; then
-            notify-send -t 1000 "${@}" 
-        elif command -v "gxmessage" 2>/dev/null; then
-            font="Monaco 9"
-            gxmessage ${font:+-fn "$font"} "${@}" "got it"
-        else
-            font="fixed"
-            xmessage ${font:+-fn "$font"} "${@}" "got it"
+    [ -z "${1}" ] && return 1
+    [ -z "${2}" ] && return 1
+    if [ X"${TERM}" = X"linux" ] || [ -z "${TERM}" ]; then
+        if ! DISPLAY=:0 notify-send -t 1000 "${1}"  "${2}"; then
+            if command -v "gxmessage" 2>/dev/null; then
+                font="Monaco 9"
+                gxmessage "${font:+-fn "$font"}" "${1} ${2}" "got it"
+            else
+                font="fixed"
+                xmessage "${font:+-fn "$font"}" "${1} ${2}" "got it"
+            fi
         fi
     else
-        printf "%s\\n" "${@}"
+        printf "%s: %s\\n" "${1}" "${2}"
     fi
 }
 
 _printtime()
 {  #format seconds to a pretty string
-    [ -z "$1" ] && return 1
-    printf "%s\\n" "$1" | grep -v "[^0-9]" >/dev/null || return 1;
+    [ -z "${1}" ] && return 1
+    printf "%s\\n" "${1}" | grep -v "[^0-9]" >/dev/null || return 1;
 
-    _printtime_var_num=$1
-    _printtime_var_min=0
-    _printtime_var_hour=0
-    _printtime_var_day=0
-    if [ $_printtime_var_num -gt 59 ]; then
-        _printtime_var_sec=$(expr $_printtime_var_num % 60)
-        _printtime_var_num=$(expr $_printtime_var_num / 60)
-        if [ $_printtime_var_num -gt 59 ]; then
-            _printtime_var_min=$(expr $_printtime_var_num % 60)
-            _printtime_var_num=$(expr $_printtime_var_num / 60)
-            if [ $_printtime_var_num -gt 23 ]; then
-                _printtime_var_hour=$(expr $_printtime_var_num % 24)
-                _printtime_var_day=$(expr $_printtime_var_num / 24)
+    _printtime_var_num="${1}"
+    _printtime_var_min="0"
+    _printtime_var_hour="0"
+    _printtime_var_day="0"
+    if [ "${_printtime_var_num}" -gt "59" ]; then
+        _printtime_var_sec="$(expr "${_printtime_var_num}" % 60)"
+        _printtime_var_num="$(expr "${_printtime_var_num}" / 60)"
+        if [ "${_printtime_var_num}" -gt "59" ]; then
+            _printtime_var_min="$(expr "${_printtime_var_num}" % 60)"
+            _printtime_var_num="$(expr "${_printtime_var_num}" / 60)"
+            if [ "${_printtime_var_num}" -gt "23" ]; then
+                _printtime_var_hour="$(expr "${_printtime_var_num}" % 24)"
+                _printtime_var_day="$(expr "${_printtime_var_num}" / 24)"
             else
-                _printtime_var_hour=$_printtime_var_num
+                _printtime_var_hour="${_printtime_var_num}"
             fi
         else
-            _printtime_var_min=$_printtime_var_num
+            _printtime_var_min="${_printtime_var_num}"
         fi
     else
-        _printtime_var_sec=$_printtime_var_num
+        _printtime_var_sec="${_printtime_var_num}"
     fi
-    printf "%s\\n" ""$_printtime_var_hour":"$_printtime_var_min":"$_printtime_var_sec""
+    printf "%s\\n" "${_printtime_var_hour}:${_printtime_var_min}:${_printtime_var_sec}"
 }
 
 eval "tune=\$tune_$(_arch)"
-time=$($DMENU <&- && printf "\\n")
+time="$(${DMENU} <&- && printf "\\n")"
 
-[ -z "$time" ] && exit 1
+[ -z "${time}" ] && exit 1
 
-if [ X"$time" = X"stop" ]; then
+if [ X"${time}" = X"stop" ]; then
     rm -f /tmp/dmenu-countdown.lock
     exit
 fi
 
-if ! printf "%s" "$time" | grep : >/dev/null; then
+if ! printf "%s" "${time}" | grep : >/dev/null; then
     _invalidformat
 fi
 
-time_copy="$time"
-_var_i=0
+time_copy="${time}"
+_var_i="0"
 
-while [ "$time_copy" ]; do
-    time_option=${time_copy%%:*}
-    _var_i=$(expr $_var_i + 1)
-    [ X"$time_option" = X"$time_copy" ] && time_copy='' || time_copy="${time_copy#*:}"
+while [ "${time_copy}" ]; do
+    time_option="${time_copy%%:*}"
+    _var_i="$(expr "${_var_i}" + 1)"
+    [ X"${time_option}" = X"${time_copy}" ] && time_copy='' || time_copy="${time_copy#*:}"
 done
 
-if [ $_var_i -lt 2 ] || [ $_var_i -gt 3 ]; then
+if [ "${_var_i}" -lt "2" ] || [ "${_var_i}" -gt "3" ]; then
     _invalidformat
 fi
 
-h=$(printf "%s" "$time" | cut -d: -f1)
-m=$(printf "%s" "$time" | cut -d: -f2)
-s=$(printf "%s" "$time" | cut -d: -f3)
+h="$(printf "%s" "${time}" | cut -d: -f1)"
+m="$(printf "%s" "${time}" | cut -d: -f2)"
+s="$(printf "%s" "${time}" | cut -d: -f3)"
 
-if ! _isnum "$h" || ! _isnum "$m" ; then
+if ! _isnum "${h}" || ! _isnum "${m}" ; then
     _invalidformat
 else
-    if [ -n "$s" ]; then
-        if ! _isnum "$s"; then
+    if [ -n "${s}" ]; then
+        if ! _isnum "${s}"; then
             _invalidformat
         fi
     fi
 fi
 
 if mount | grep /tmp | grep noexec >/dev/null; then
-    mkdir "$HOME"/.dmenu_countdown
-    printf "%s" "$tune" | openssl enc -base64 -d | zcat | tar xf - -C "$HOME"/.dmenu_countdown
-    tune="$HOME"/.dmenu_countdown/dmenu-countdown.tone
+    mkdir "${HOME}"/.dmenu_countdown
+    printf "%s" "${tune}" | openssl enc -base64 -d | zcat | tar xf - -C "${HOME}"/.dmenu_countdown
+    tune="${HOME}"/.dmenu_countdown/dmenu-countdown.tone
 else
-    printf "%s" "$tune" | openssl enc -base64 -d | zcat | tar xf - -C /tmp
+    printf "%s" "${tune}" | openssl enc -base64 -d | zcat | tar xf - -C /tmp
     tune=/tmp/dmenu-countdown.tone
 fi
-chmod +x "$tune"
+chmod +x "${tune}"
 touch /tmp/dmenu-countdown.lock
 
-if [ -z "$s" ]; then
-    secs=$(expr ${h} \* 3600 + ${m} \* 60)
+if [ -z "${s}" ]; then
+    secs="$(expr "${h}" \* 3600 + "${m}" \* 60)"
 else
-    secs=$(expr ${h} \* 3600 + ${m} \* 60 + ${s} )
+    secs="$(expr "${h}" \* 3600 + "${m}" \* 60 + "${s}" )"
 fi
 
-half=$(expr ${secs} / 2)
-quarter=$(expr ${secs} / 4)
-almost=$(expr ${secs} / 10)
+half="$(expr "${secs}" / 2)"
+quarter="$(expr "${secs}" / 4)"
+almost="$(expr "${secs}" / 10)"
 
-_notify "[+] Countdown" "time left: $time"
-while [ $secs -gt 0 ]; do
+_notify "[+] Countdown" "time left: ${time}"
+while [ "${secs}" -gt "0" ]; do
     if [ ! -f /tmp/dmenu-countdown.lock ]; then
         _notify "[+] Cancel" "countdown canceled!"
         exit
     fi
-    case $secs in
-        $half)    _notify "[+] Countdown" "time left: $(_printtime $secs)" ;;
-        $quarter) _notify "[+] Countdown" "time left: $(_printtime $secs)" ;;
-        $almost)  _notify "[+] Almost!"   "time left: $(_printtime $secs)" ;;
+    case "${secs}" in
+        "${half}")    _notify "[+] Countdown" "time left: $(_printtime "${secs}")" ;;
+        "${quarter}") _notify "[+] Countdown" "time left: $(_printtime "${secs}")" ;;
+        "${almost}")  _notify "[+] Almost!"   "time left: $(_printtime "${secs}")" ;;
     esac
     sleep 1 &
-    secs=$(expr $secs - 1 )
+    secs="$(expr "${secs}" - 1 )"
     wait
 done
 
 _notify "[+] ALARM" "countdown done!"
-"$tune" | aplay &
+"${tune}" | aplay &
 
 while :; do
     if [ ! -f /tmp/dmenu-countdown.lock ]; then
         _notify "[+] Stop" "countdown stopped!"
         killall aplay 2>/dev/null
         killall dmenu-countdown.tone 2>/dev/null
-        rm -rf "$HOME"/.dmenu_countdown
-        rm -rf "$tune"
+        rm -rf "${HOME}"/.dmenu_countdown
+        rm -rf "${tune}"
         exit
     fi
     sleep 1

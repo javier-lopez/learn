@@ -5,8 +5,10 @@
 
 trap _cleanup SIGINT SIGTERM #trap ctrl-c
 
-apps_deps="git-core byobu htop rsync curl bzip2 gzip html2text ncurses-bin command-not-found openjdk-7-jre-headless build-essential ntp unzip apache2"
-apps_purge="xinetd sasl2-bin sendmail-base sendmail-bin sensible-mda rmail bsd-mailx sendmail"
+apps_deps="git-core byobu htop rsync curl bzip2 gzip html2text ncurses-bin
+command-not-found openjdk-7-jre-headless build-essential ntp unzip apache2"
+apps_purge="xinetd sasl2-bin sendmail-base sendmail-bin sensible-mda rmail
+bsd-mailx sendmail"
 
 logstash_version="1.1.13"
 elasticsearch_version="0.20.6"
@@ -20,38 +22,38 @@ _header()
 {
     clear
     printf "%b\\n" "\033[1m----------------------\033[7m log setup stack \033[0m\033[1m--------------------------\033[0m"
-    printf "%b\\n" "\033[1m  logstash:\033[0m        $logstash_version"
-    printf "%b\\n" "\033[1m  elasticsearch:\033[0m   $elasticsearch_version"
-    printf "%b\\n" "\033[1m  redis:\033[0m           $redis_version"
+    printf "%b\\n" "\033[1m  logstash:\033[0m        ${logstash_version}"
+    printf "%b\\n" "\033[1m  elasticsearch:\033[0m   ${elasticsearch_version}"
+    printf "%b\\n" "\033[1m  redis:\033[0m           ${redis_version}"
     printf "%b\\n" "\033[1m--------------------------------------------------------------------\033[0m"
     printf "\\n"
 }
 
 _cmd()
 {   #print current command, exits on fail
-    [ -z "$1" ] && return 0
+    [ -z "${1}" ] && return 0
 
-    printf "%s\\n" "    $ $@"
-    eval "$@"
+    printf "%s\\n" "    $ ${@}"
+    eval "${@}"
 
-    status=$?
-    [ X"$status" != X"0" ] && exit $status || return
+    status="${?}"
+    [ X"${status}" != X"0" ] && exit "${status}" || return
 }
 
 _cmdsudo()
 {   #print current command, exits on fail
-    [ -z "$1" ] && return 0
+    [ -z "${1}" ] && return 0
 
-    printf "%s\\n" "    $ $@"
-    printf "%s\\n" "$sudopwd" | $sudocmd eval "$@"
+    printf "%s\\n" "    $ ${@}"
+    printf "%s\\n" "${sudopwd}" | ${sudocmd} eval "${@}"
 
-    status=$?
-    [ X"$status" != X"0" ] && exit $status || return
+    status="${?}"
+    [ X"${status}" != X"0" ] && exit "${status}" || return
 }
 
 _userexist()
 {
-    if id -u $1 >/dev/null 2>&1; then
+    if id -u "${1}" >/dev/null 2>&1; then
         return 0
     else
         return 1
@@ -60,36 +62,28 @@ _userexist()
 
 _handscui()
 {
-    [ -z "$1" ] && { printf "%5s\n" ""; return 1; }
-    pid="$1"
-    animation_state=1
+    [ -z "${1}" ] && { printf "%5s\n" ""; return 1; }
+    pid="${1}"
+    animation_state="1"
 
-    if [ ! "$(ps -p $pid -o comm=)" ]; then
+    if [ ! "$(ps -p "${pid}" -o comm=)" ]; then
         printf "%5s\n" ""
         return
     fi
 
     printf "%s" "      "
 
-    while [ "`ps -p $pid -o comm=`" ]; do
+    while [ "$(ps -p "${pid}" -o comm=)" ]; do
         printf "%b" "\b\b\b\b\b"
-        case $animation_state in
-            1)
-                printf "%s" '\o@o\'
-                animation_state=2
-                ;;
-            2)
-                printf "%s" '|o@o|'
-                animation_state=3
-                ;;
-            3)
-                printf "%s" '/o@o/'
-                animation_state=4
-                ;;
-            4)
-                printf "%s" '|o@o|'
-                animation_state=1
-                ;;
+        case "${animation_state}" in
+            1) printf "%s" '\o@o\'
+               animation_state="2" ;;
+            2) printf "%s" '|o@o|'
+               animation_state="3" ;;
+            3) printf "%s" '/o@o/'
+               animation_state="4" ;;
+            4) printf "%s" '|o@o|'
+               animation_state="1" ;;
         esac
         sleep 1
     done
@@ -97,46 +91,73 @@ _handscui()
 }
 
 _getroot()
-{   #get sudo's password, define $sudopasswd and $sudocmd
-
-    local tmp_path="/tmp"; local sudotest; local insudoers;
-
-    if [ ! "$LOGNAME" = root ]; then
-        printf "%s\\n" "Detecting user $LOGNAME (non-root) ..."
+{   #get sudo's password, define $sudopwd and $sudocmd
+    if [ ! X"${LOGNAME}" = X"root" ]; then
+        printf "%s\\n" "Detecting user ${LOGNAME} (non-root) ..."
         printf "%s\\n" "Checking if sudo is available ..."
-        sudotest=`type sudo &>/dev/null ; printf "%s\\n" $?`
 
-        if [ "$sudotest" = 0 ]; then
-            printf "%s\\n" "    Requesting sudo's password, I'll be carefull I promise =)"
+        if command -v "sudo" >/dev/null 2>&1; then
             sudo -K
-            if [ -e "$tmp_path/sudo.test" ]; then
-                rm -f "$tmp_path/sudo.test"
+
+            if [ -n "${sudopwd}" ]; then
+                # password check
+                _getroot_var_test="$(printf "%s\\n" "${sudopwd}" | sudo -S ls 2>&1)"
+                _getroot_var_status="${?}"
+                _getroot_var_not_allowed="$(printf "%s" "${_getroot_var_test}" | \
+                                         grep -i "sudoers")"
+
+                if [ -n "${_getroot_var_not_allowed}" ]; then
+                    printf "%s %s\\n" "You're not allowed to use sudo," \
+                    "get in contact with your local administrator"
+                    exit
+                fi
+
+                if [ X"${_getroot_var_status}" != X"0" ]; then
+                    sudopwd=""
+                    printf "%s\\n" "Incorrect preseed password"
+                    exit
+                else
+                    sudocmd="sudo -S"
+                fi
+                printf "%s\\n" "    - all set ..."
+                return
             fi
-            while [ -z "$sudopwd" ]; do
-                printf "%s" "    - enter sudo-password: "
+
+            i=0 ; while [ "${i}" -lt "3" ]; do
+                i="$(expr ${i} + 1)"
+                printf "%s" "   - enter sudo password: "
                 stty -echo
                 read sudopwd
                 stty echo
 
                 # password check
-                printf "%s\\n" "$sudopwd" | sudo -S touch "$tmp_path/sudo.test" > "$tmp_path/sudo.output" 2>&1
-                insudoers=$(grep -i "sudoers" "$tmp_path/sudo.output")
-                if [ -n "$insudoers" ]; then
-                    printf "%s\\n" "$sudopwd" | sudo -S rm "$tmp_path/sudo.output" > /dev/null 2>&1
+                _getroot_var_test="$(printf "%s\\n" "${sudopwd}" | sudo -S ls 2>&1)"
+                _getroot_var_status="${?}"
+                _getroot_var_not_allowed="$(printf "%s" "${_getroot_var_test}" | \
+                                         grep -i "sudoers")"
+
+                if [ -n "${_getroot_var_not_allowed}" ]; then
+                    printf "\\n%s %s\\n" "You're not allowed to use sudo," \
+                    "get in contact with your local administrator"
                     exit
                 fi
 
-                if [ ! -e "$tmp_path/sudo.test" ]; then
+                printf "\\n"
+                if [ X"${_getroot_var_status}" != X"0" ]; then
                     sudopwd=""
+                else
+                    sudocmd="sudo -S"
+                    break
                 fi
             done
 
-            sudocmd="/usr/bin/sudo -S"
-
-            printf "%s\\n" "$sudopwd" | $sudocmd rm -f "$tmp_path/sudo.test" > /dev/null 2>&1
-            printf "\\n"
+            if [ -z "${sudopwd}" ]; then
+                printf "%s\\n" "Failed authentication"
+                exit
+            fi
         else
-            printf "%s\\n" "You're not root and sudo isn't available. Please run this script as root!"
+            printf "%s %s\\n" "You're not root and sudo isn't available." \
+            "Please run this script as root!"
             exit
         fi
     fi
@@ -147,9 +168,9 @@ _cleanup()
     printf "\\n"
     printf "%b\\n" "\033[1m-------------------\033[7m Cleanup \033[0m\033[1m-------------------\033[0m"
     printf "%s\\n" "[+] removing files ..."
-    _cmdsudo rm -rf rm -rf $ES_HOME
-    _cmdsudo rm -rf rm -rf $LOGSTASH_HOME
-    _cmdsudo rm -rf rm -rf $REDIS_HOME
+    _cmdsudo rm -rf rm -rf ${ES_HOME}
+    _cmdsudo rm -rf rm -rf ${LOGSTASH_HOME}
+    _cmdsudo rm -rf rm -rf ${REDIS_HOME}
 
     _cmdsudo rm -rf /etc/init.d/elasticsearch
     _cmdsudo rm -rf /etc/init.d/redis
@@ -157,29 +178,29 @@ _cleanup()
     _cmdsudo rm -rf /etc/init.d/logstash-shipper
     _cmdsudo rm -rf /var/www/*
 
-    [ -z "$1" ] && exit
+    [ -z "${1}" ] && exit
 }
 
 _waitfor()
 {
-    [ -z "$1" ] && return 1
+    [ -z "${1}" ] && return 1
 
-    printf "%s" "    $ $@ ..."
-    eval "$@" > /dev/null 2>&1 &
+    printf "%s" "    $ ${@} ..."
+    eval "${@}" > /dev/null 2>&1 &
     sleep 1s
 
-    _handscui $(pidof $1)
+    _handscui "$(pidof ${1})"
 }
 
 _waitforsudo()
 {
-    [ -z "$1" ] && return 1
+    [ -z "${1}" ] && return 1
 
-    printf "%s" "    $ sudo $@ ..."
-    printf "%s\\n" "$sudopwd" | $sudocmd eval "$@" > /dev/null 2>&1 &
+    printf "%s" "    $ sudo ${@} ..."
+    printf "%s\\n" "${sudopwd}" | ${sudocmd} eval "${@}" > /dev/null 2>&1 &
     sleep 1s
 
-    _handscui $(pidof $1)
+    _handscui "$(pidof ${1})"
 }
 
 _mk_conf_files()
@@ -833,9 +854,9 @@ dbfilename dump.rdb
 #
 # The DB will be written inside this directory, with the filename specified
 # above using the 'dbfilename' configuration directive.
-# 
+#
 # The Append Only File will also be created inside this directory.
-# 
+#
 # Note that you must specify a directory here, not a file name.
 dir ./
 
@@ -937,7 +958,7 @@ slave-priority 100
 #
 # This should stay commented out for backward compatibility and because most
 # people do not need auth (e.g. they run their own servers).
-# 
+#
 # Warning: since Redis is pretty fast an outside user can try up to
 # 150k passwords per second against a good box. This means that you should
 # use a very strong password otherwise it will be very easy to break.
@@ -1003,14 +1024,14 @@ slave-priority 100
 
 # MAXMEMORY POLICY: how Redis will select what to remove when maxmemory
 # is reached. You can select among five behaviors:
-# 
+#
 # volatile-lru -> remove the key with an expire set using an LRU algorithm
 # allkeys-lru -> remove any key accordingly to the LRU algorithm
 # volatile-random -> remove a random key with an expire set
 # allkeys-random -> remove a random key, any key
 # volatile-ttl -> remove the key with the nearest expire time (minor TTL)
 # noeviction -> don't expire at all, just return an error on write operations
-# 
+#
 # Note: with any of the above policies, Redis will return an error on write
 #       operations, when there are not suitable keys for eviction.
 #
@@ -1058,7 +1079,7 @@ appendonly no
 # appendfilename appendonly.aof
 
 # The fsync() call tells the Operating System to actually write data on disk
-# instead to wait for more data in the output buffer. Some OS will really flush 
+# instead to wait for more data in the output buffer. Some OS will really flush
 # data on disk, some other OS will just try to do it ASAP.
 #
 # Redis supports three different modes:
@@ -1099,7 +1120,7 @@ appendfsync everysec
 # the same as "appendfsync none". In practical terms, this means that it is
 # possible to lose up to 30 seconds of log in the worst scenario (with the
 # default Linux settings).
-# 
+#
 # If you have latency problems turn this to "yes". Otherwise leave it as
 # "no" that is the safest pick from the point of view of durability.
 no-appendfsync-on-rewrite no
@@ -1107,7 +1128,7 @@ no-appendfsync-on-rewrite no
 # Automatic rewrite of the append only file.
 # Redis is able to automatically rewrite the log file implicitly calling
 # BGREWRITEAOF when the AOF log size grows by the specified percentage.
-# 
+#
 # This is how it works: Redis remembers the size of the AOF file after the
 # latest rewrite (if no rewrite has happened since the restart, the size of
 # the AOF at startup is used).
@@ -1150,7 +1171,7 @@ lua-time-limit 5000
 # but just the time needed to actually execute the command (this is the only
 # stage of command execution where the thread is blocked and can not serve
 # other requests in the meantime).
-# 
+#
 # You can configure the slow log with two parameters: one tells Redis
 # what is the execution time, in microseconds, to exceed in order for the
 # command to get logged, and the other parameter is the length of the
@@ -1200,7 +1221,7 @@ zset-max-ziplist-value 64
 # that is rehashing, the more rehashing "steps" are performed, so if the
 # server is idle the rehashing is never complete and some more memory is used
 # by the hash table.
-# 
+#
 # The default is to use this millisecond 10 times every second in order to
 # active rehashing the main dictionaries, freeing memory when possible.
 #
@@ -1622,12 +1643,12 @@ printf "\\n"
 exit 0
 EOF
 
-    [ ! -f elasticsearch.yml ] && { printf "%s\\n" "Generation failed: elasticsearch.yml"; exit 1; }
+    [ ! -f elasticsearch.yml ]  && { printf "%s\\n" "Generation failed: elasticsearch.yml"; exit 1; }
     [ ! -f elasticsearch.conf ] && { printf "%s\\n" "Generation failed: elasticsearch.conf"; exit 1; }
-    [ ! -f redis.conf ] && { printf "%s\\n" "Generation failed: redis.conf"; exit 1; }
-    [ ! -f redis ] && { printf "%s\\n" "Generation failed: redis"; exit 1; }
-    [ ! -f indexer.conf ] && { printf "%s\\n" "Generation failed: indexer.conf"; exit 1; }
-    [ ! -f shipper.conf ] && { printf "%s\\n" "Generation failed: shipper.conf"; exit 1; }
+    [ ! -f redis.conf ]         && { printf "%s\\n" "Generation failed: redis.conf"; exit 1; }
+    [ ! -f redis ]              && { printf "%s\\n" "Generation failed: redis"; exit 1; }
+    [ ! -f indexer.conf ]       && { printf "%s\\n" "Generation failed: indexer.conf"; exit 1; }
+    [ ! -f shipper.conf ]       && { printf "%s\\n" "Generation failed: shipper.conf"; exit 1; }
 }
 
 _fixdependencies()
@@ -1635,28 +1656,26 @@ _fixdependencies()
     printf "%b\\n" "\033[1m----------------------\033[7m Fixing dependencies \033[0m\033[1m-------------------------\033[0m"
 
     if [ -f /usr/bin/lsb_release ]; then
-        DISTRO=$(lsb_release -si)
-        RELEASE=$(lsb_release -s -c)
+        DISTRO="$(lsb_release -si)"
+        RELEASE="$(lsb_release -s -c)"
     else
         if [ -d /etc/dpkg ]; then
-            DISTRO=$(cat /etc/dpkg/origins/default | grep -i vendor | head -1 | cut -d' ' -f2)
-            RELEASE=$(cat /etc/apt/sources.list | grep '^deb .*' | head -1 | cut -d' ' -f 3)
+            DISTRO="$(grep -i vendor /etc/dpkg/origins/default | head -1 | cut -d' ' -f2)"
+            RELEASE="$(grep '^deb .*' /etc/apt/sources.list | head -1 | cut -d' ' -f 3)"
         fi
     fi
 
-    case $DISTRO in
-        Ubuntu)
-            printf "%s\\n" "deb http://archive.ubuntu.com/ubuntu/ $RELEASE multiverse" > multiverse.list
-            printf "%s\\n" "$sudopwd" | $sudocmd mv multiverse.list /etc/apt/sources.list.d/ > /dev/null 2>&1
-            ;;
+    case "${DISTRO}" in
+        Ubuntu) printf "%s\\n" "deb http://archive.ubuntu.com/ubuntu/ ${RELEASE} multiverse" > multiverse.list
+                printf "%s\\n" "${sudopwd}" | ${sudocmd} mv multiverse.list /etc/apt/sources.list.d/ > /dev/null 2>&1 ;;
     esac
 
     printf "%s\\n" "[+] installing deps ..."
     _waitforsudo apt-get update
-    _waitforsudo apt-get install --no-install-recommends -y $apps_deps
+    _waitforsudo apt-get install --no-install-recommends -y ${apps_deps}
 
     printf "%s\\n" "[+] purging non essential apps ..."
-    _waitforsudo apt-get purge -y $apps_purge
+    _waitforsudo apt-get purge -y ${apps_purge}
 
     printf "%s\\n" "[+] reconfiguring time zone to America/Mexico_City ..."
     printf "%s\\n" "America/Mexico_City" > .timezone
@@ -1677,37 +1696,37 @@ _elasticsearch()
     #TODO 18-07-2013 18:45 >> remove '/home/elasticsearch' hardcoded vars, use sed
     if ! _userexist elasticsearch; then
         printf "%s\\n" "[+] creating user for service ... "
-        _cmdsudo useradd -d $ES_HOME -s /bin/sh elasticsearch
+        _cmdsudo useradd -d ${ES_HOME} -s /bin/sh elasticsearch
     fi
-    printf "%s\\n" "export  ES_HOME=$ES_HOME" > .root_bash_profile
+    printf "%s\\n" "export  ES_HOME=${ES_HOME}" > .root_bash_profile
 
     printf "%s\\n" "[+] downloading app ... "
-    _waitfor wget -c https://download.elasticsearch.org/elasticsearch/elasticsearch/elasticsearch-$elasticsearch_version.tar.gz
+    _waitfor wget -c https://download.elasticsearch.org/elasticsearch/elasticsearch/elasticsearch-${elasticsearch_version}.tar.gz
     _waitfor wget -c http://github.com/elasticsearch/elasticsearch-servicewrapper/archive/master.zip
 
     printf "%s\\n" "[+] uncompresing files ... "
-    _waitfor "zcat < elasticsearch-$elasticsearch_version.tar.gz | tar xvf -"
+    _waitfor "zcat < elasticsearch-${elasticsearch_version}.tar.gz | tar xvf -"
     _waitfor unzip master.zip
 
     printf "%s\\n" "[+] installing ... "
-    _cmd mv elasticsearch-servicewrapper-master/service/ elasticsearch-$elasticsearch_version/bin/
-    _cmd mv elasticsearch.yml ./elasticsearch-$elasticsearch_version/config/
-    _cmd mv elasticsearch.conf ./elasticsearch-$elasticsearch_version/bin/service
-    _cmd ./elasticsearch-$elasticsearch_version/bin/plugin -install mobz/elasticsearch-head
+    _cmd mv elasticsearch-servicewrapper-master/service/ elasticsearch-${elasticsearch_version}/bin/
+    _cmd mv elasticsearch.yml ./elasticsearch-${elasticsearch_version}/config/
+    _cmd mv elasticsearch.conf ./elasticsearch-${elasticsearch_version}/bin/service
+    _cmd ./elasticsearch-${elasticsearch_version}/bin/plugin -install mobz/elasticsearch-head
 
-    _cmd rm  -r elasticsearch-servicewrapper-master elasticsearch-$elasticsearch_version.tar.gz master.zip 
-    _cmd mkdir ./elasticsearch-$elasticsearch_version/data
-    _cmdsudo mv elasticsearch-$elasticsearch_version $ES_HOME
-    _cmdsudo $ES_HOME/bin/service/elasticsearch install
+    _cmd rm  -r elasticsearch-servicewrapper-master elasticsearch-${elasticsearch_version}.tar.gz master.zip
+    _cmd mkdir ./elasticsearch-${elasticsearch_version}/data
+    _cmdsudo mv elasticsearch-${elasticsearch_version} ${ES_HOME}
+    _cmdsudo ${ES_HOME}/bin/service/elasticsearch install
 
-    printf "%s\\n" "$sudopwd" | $sudocmd sed -i -e "/#RUN_AS_USER/ s:.*:RUN_AS_USER=elasticsearch:" /etc/init.d/elasticsearch
-    printf "%s\\n" "$sudopwd" | $sudocmd sed -i -e "/#ULIMIT_N/ s:.*:ULIMIT_N=65535:" /etc/init.d/elasticsearch
-    printf "%s\\n" "$sudopwd" | $sudocmd sed -i -e "/export ES_HOME/ s:.*:export ES_HOME=\"$ES_HOME\":" /etc/init.d/elasticsearch
-    printf "%s\\n" "$sudopwd" | $sudocmd sed -i -e "/^PIDDIR=/ s:.*:PIDDIR=\"$ES_HOME\":" /etc/init.d/elasticsearch
+    printf "%s\\n" "${sudopwd}" | ${sudocmd} sed -i -e "/#RUN_AS_USER/ s:.*:RUN_AS_USER=elasticsearch:" /etc/init.d/elasticsearch
+    printf "%s\\n" "${sudopwd}" | ${sudocmd} sed -i -e "/#ULIMIT_N/ s:.*:ULIMIT_N=65535:" /etc/init.d/elasticsearch
+    printf "%s\\n" "${sudopwd}" | ${sudocmd} sed -i -e "/export ES_HOME/ s:.*:export ES_HOME=\"${ES_HOME}\":" /etc/init.d/elasticsearch
+    printf "%s\\n" "${sudopwd}" | ${sudocmd} sed -i -e "/^PIDDIR=/ s:.*:PIDDIR=\"${ES_HOME}\":" /etc/init.d/elasticsearch
     _cmdsudo chmod +x /etc/init.d/elasticsearch
     #_cmdsudo update-rc.d elasticsearch defaults #not needed
 
-    _cmdsudo chown -R elasticsearch:elasticsearch $ES_HOME
+    _cmdsudo chown -R elasticsearch:elasticsearch ${ES_HOME}
 }
 
 _redis()
@@ -1716,33 +1735,33 @@ _redis()
 
     if ! _userexist redis; then
         printf "%s\\n" "[+] creating user for service ... "
-        _cmdsudo useradd -d $REDIS_HOME -s /bin/sh redis
+        _cmdsudo useradd -d ${REDIS_HOME} -s /bin/sh redis
     fi
-    printf "%s\\n" "export  REDIS_HOME=$REDIS_HOME" >> .root_bash_profile
-    
+    printf "%s\\n" "export  REDIS_HOME=${REDIS_HOME}" >> .root_bash_profile
+
     printf "%s\\n" "[+] downloading app ... "
-    _waitfor wget -c http://redis.googlecode.com/files/redis-$redis_version.tar.gz
+    _waitfor wget -c http://redis.googlecode.com/files/redis-${redis_version}.tar.gz
 
     printf "%s\\n" "[+] uncompresing files ... "
-    _waitfor "zcat < redis-$redis_version.tar.gz | tar xvf -"
-    _cmd rm redis-$redis_version.tar.gz
+    _waitfor "zcat < redis-${redis_version}.tar.gz | tar xvf -"
+    _cmd rm redis-${redis_version}.tar.gz
 
     printf "%s\\n" "[+] compiling redis ... "
-    make -C ./redis-$redis_version distclean > /dev/null 2>&1
-    make -C ./redis-$redis_version > /dev/null 2>&1
+    make -C ./redis-${redis_version} distclean > /dev/null 2>&1
+    make -C ./redis-${redis_version} > /dev/null 2>&1
 
     printf "%s\\n" "[+] installing redis ... "
-    _cmd cp redis.conf ./redis-$redis_version
+    _cmd cp redis.conf ./redis-${redis_version}
     _cmdsudo mkdir -p /etc/redis/
     _cmdsudo mv redis.conf /etc/redis/
     _cmdsudo mv redis /etc/init.d/redis
     _cmdsudo chmod +x /etc/init.d/redis
     _cmdsudo update-rc.d redis defaults
-    printf "%s\\n" "$sudopwd" | $sudocmd sed -i -e "/^logfile/ s:.*:logfile $REDIS_HOME/redis.log:" /etc/redis/redis.conf
+    printf "%s\\n" "${sudopwd}" | ${sudocmd} sed -i -e "/^logfile/ s:.*:logfile ${REDIS_HOME}/redis.log:" /etc/redis/redis.conf
 
-    _cmdsudo mv redis-$redis_version $REDIS_HOME
-    _cmdsudo chown -R redis:redis $REDIS_HOME
-    _cmdsudo chmod 700 $REDIS_HOME
+    _cmdsudo mv redis-${redis_version} ${REDIS_HOME}
+    _cmdsudo chown -R redis:redis ${REDIS_HOME}
+    _cmdsudo chmod 700 ${REDIS_HOME}
 }
 
 _logstash()
@@ -1751,19 +1770,19 @@ _logstash()
 
     if ! _userexist logstash; then
         printf "%s\\n" "[+] creating user for service ... "
-        _cmdsudo useradd -d $LOGSTASH_HOME -s /bin/sh logstash
+        _cmdsudo useradd -d ${LOGSTASH_HOME} -s /bin/sh logstash
     fi
-    #printf "%s\\n" "export  REDIS_HOME=$REDIS_HOME" >> .root_bash_profile
+    #printf "%s\\n" "export  REDIS_HOME=${REDIS_HOME}" >> .root_bash_profile
 
     printf "%s\\n" "[+] downloading app ... "
 
     #source <(cat .root_bash_profile)
-    _waitfor wget -c http://logstash.objects.dreamhost.com/release/logstash-$logstash_version-flatjar.jar
-    [ ! -f ./logstash-$logstash_version-flatjar.jar ] && { printf "%s\\n" "Download step failed"; exit 1; }
+    _waitfor wget -c http://logstash.objects.dreamhost.com/release/logstash-${logstash_version}-flatjar.jar
+    [ ! -f ./logstash-"${logstash_version}"-flatjar.jar ] && { printf "%s\\n" "Download step failed"; exit 1; }
 
-    printf "%s\\n" "[+] installing ... " 
+    printf "%s\\n" "[+] installing ... "
     _cmd mkdir -p logstash
-    _cmd mv logstash-$logstash_version-flatjar.jar logstash/logstash.jar
+    _cmd mv logstash-${logstash_version}-flatjar.jar logstash/logstash.jar
     _cmd mv indexer.conf logstash
     _cmd mv shipper.conf logstash
 
@@ -1774,8 +1793,8 @@ _logstash()
     _cmdsudo update-rc.d logstash-shipper defaults
 
     _cmdsudo mv logstash /home
-    _cmdsudo chown -R logstash:logstash $LOGSTASH_HOME
-    _cmdsudo chmod 700 $LOGSTASH_HOME
+    _cmdsudo chown -R logstash:logstash ${LOGSTASH_HOME}
+    _cmdsudo chmod 700 ${LOGSTASH_HOME}
 }
 
 _kibana()
@@ -1816,14 +1835,14 @@ _party()
         _cmdsudo sudo service logstash-shipper start
     fi
 
-    external_ip=$(curl -s ifconfig.me)
+    external_ip="$(curl -s ifconfig.me)"
     printf "%b\\n" "\033[1m----------------------\033[7m DONE \033[0m\033[1m-------------------\033[0m"
     printf "\\n"
     printf "%s\\n" "You can now add new clients, add the following to their /etc/rsyslog.d/remote.conf file:"
-    printf "%s\\n" "    $ModLoad omrelp"
-    printf "%s\\n" "    *.* :omrelp:$external_ip:2514"
+    printf "%s\\n" "    ${ModLoad} omrelp"
+    printf "%s\\n" "    *.* :omrelp:${external_ip}:2514"
     printf "\\n"
-    printf "%s\\n" "Once you've clients, browse to http://$external_ip"
+    printf "%s\\n" "Once you've clients, browse to http://${external_ip}"
     printf "\\n"
     printf "%s\\n" "See more details at: http://cleversoft.wordpress.com/2013/04/05/887/"
 }
@@ -1846,4 +1865,3 @@ _logstash
 _kibana
 
 _party
-

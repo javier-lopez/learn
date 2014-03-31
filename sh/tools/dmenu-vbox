@@ -5,13 +5,14 @@
 #example: dmenu-vbox
 #appears a gui menu appears asking for which virtual machine to boot
 
-#requires a dmenu version with xft: https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
+#requires a dmenu version with xft:
+#https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
 #-sf blue
 DMENU='dmenu -p > -i -fn Bahamas-10 -nb #000000 -nf #ffffff -sb #000000 -sf #3B5998'
 
 _die()
 {
-    choice=$(printf "%b\\n" "$1" | $DMENU)
+    printf "%b\\n" "$1" | ${DMENU}
     exit 1
 }
 
@@ -24,10 +25,6 @@ if ! command -v "vboxmanage" >/dev/null; then
     _die "virtualbox was not found, press <Enter> to exit"
 fi
 
-vboxmachine=$(vboxmanage list vms | cut -d\" -f2 | $DMENU)
+vboxmachine="$(vboxmanage list vms | cut -d\" -f2 | ${DMENU})"
 
-if [ -z "${vboxmachine}" ]; then
-    exit 0;
-else
-    vboxmanage -q startvm "$vboxmachine" --type gui
-fi
+[ -z "${vboxmachine}" ] && exit 0 || vboxmanage -q startvm "${vboxmachine}" --type gui

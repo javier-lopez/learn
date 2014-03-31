@@ -12,9 +12,9 @@ _header()
 
 _whereis()
 {
-    [ -z "$1" ] && return 1
-    [ -n "$2" ] && return 1
-    if ! command -v "$1" 2>/dev/null; then
+    [ -z "${1}" ] && return 1
+    [ -n "${2}" ] && return 1
+    if ! command -v "${1}" 2>/dev/null; then
         return 1
     fi
 }
@@ -25,38 +25,35 @@ _existaptproxy()
     return 1
 }
 
-_handscui()
-{   #waiting animation
-    [ -z "$1" ] && { printf "%5s\n" ""; return 1; }
-    pid="$1"
-    animation_state=1
+_animcui()
+{   #wait animation
+    [ -z "${1}" ] && { printf "%5s\n" ""; return 1; }
 
-    if [ ! "$(ps -p $pid -o comm=)" ]; then
+    if ! printf "%s" "$(pidof "${1}")" | grep "[0-9].*" >/dev/null; then
         printf "%5s\n" ""
-        return
+        return 1;
     fi
 
-    printf "%s" "      "
+    _animcui_var_animation_state="1"
 
-    while [ "`ps -p $pid -o comm=`" ]; do
+    if [ ! "$(ps -p "$(pidof "${1}")" -o comm= 2>/dev/null)" ]; then
+        printf "%5s\n" ""
+        return 1
+    fi
+
+    printf "%5s" ""
+
+    while [ "$(ps -p "$(pidof "${1}")" -o comm= 2>/dev/null)" ]; do
         printf "%b" "\b\b\b\b\b"
-        case $animation_state in
-            1)
-                printf "%s" '\o@o\'
-                animation_state=2
-                ;;
-            2)
-                printf "%s" '|o@o|'
-                animation_state=3
-                ;;
-            3)
-                printf "%s" '/o@o/'
-                animation_state=4
-                ;;
-            4)
-                printf "%s" '|o@o|'
-                animation_state=1
-                ;;
+        case "${_animcui_var_animation_state}" in
+            1) printf "%s" '\o@o\'
+               _animcui_var_animation_state="2" ;;
+            2) printf "%s" '|o@o|'
+               _animcui_var_animation_state="3" ;;
+            3) printf "%s" '/o@o/'
+               _animcui_var_animation_state="4" ;;
+            4) printf "%s" '|o@o|'
+               _animcui_var_animation_state="1" ;;
         esac
         sleep 1
     done
@@ -64,77 +61,107 @@ _handscui()
 }
 
 _getroot()
-{   #get sudo's password, define $sudopasswd and $sudocmd
-
-    local tmp_path="/tmp"; local sudotest; local insudoers;
-
-    if [ ! X"$LOGNAME" = X"root" ]; then
-        printf "%s\\n" "Detecting user $LOGNAME (non-root) ..."
+{   #get sudo's password, define $sudopwd and $sudocmd
+    if [ ! X"${LOGNAME}" = X"root" ]; then
+        printf "%s\\n" "Detecting user ${LOGNAME} (non-root) ..."
         printf "%s\\n" "Checking if sudo is available ..."
-        sudotest=`type sudo >/dev/null 2>/dev/null; printf "%s\\n" "$?"`
 
-        if [ X"$sudotest" = X"0" ]; then
+        if command -v "sudo" >/dev/null 2>&1; then
             sudo -K
-            if [ -e "$tmp_path/sudo.test" ]; then
-                rm -f "$tmp_path/sudo.test"
+
+            if [ -n "${sudopwd}" ]; then
+                # password check
+                _getroot_var_test="$(printf "%s\\n" "${sudopwd}" | sudo -S ls 2>&1)"
+                _getroot_var_status="${?}"
+                _getroot_var_not_allowed="$(printf "%s" "${_getroot_var_test}" | \
+                                         grep -i "sudoers")"
+
+                if [ -n "${_getroot_var_not_allowed}" ]; then
+                    printf "%s %s\\n" "You're not allowed to use sudo," \
+                    "get in contact with your local administrator"
+                    exit
+                fi
+
+                if [ X"${_getroot_var_status}" != X"0" ]; then
+                    sudopwd=""
+                    printf "%s\\n" "Incorrect preseed password"
+                    exit
+                else
+                    sudocmd="sudo -S"
+                fi
+                printf "%s\\n" "    - all set ..."
+                return
             fi
-            while [ -z "$sudopwd" ]; do
-                printf "%s" "   - enter sudo-password: "
+
+            i=0 ; while [ "${i}" -lt "3" ]; do
+                i="$(expr ${i} + 1)"
+                printf "%s" "   - enter sudo password: "
                 stty -echo
                 read sudopwd
                 stty echo
 
                 # password check
-                printf "%s\\n" "$sudopwd" | sudo -S touch "$tmp_path/sudo.test" > "$tmp_path/sudo.output" 2>&1
-                insudoers=$(grep -i "sudoers" "$tmp_path/sudo.output")
-                if [ -n "$insudoers" ]; then
-                    printf "%s\\n" "$sudopwd" | sudo -S rm "$tmp_path/sudo.output" > /dev/null 2>&1
+                _getroot_var_test="$(printf "%s\\n" "${sudopwd}" | sudo -S ls 2>&1)"
+                _getroot_var_status="${?}"
+                _getroot_var_not_allowed="$(printf "%s" "${_getroot_var_test}" | \
+                                         grep -i "sudoers")"
+
+                if [ -n "${_getroot_var_not_allowed}" ]; then
+                    printf "\\n%s %s\\n" "You're not allowed to use sudo," \
+                    "get in contact with your local administrator"
                     exit
                 fi
 
-                if [ ! -e "$tmp_path/sudo.test" ]; then
+                printf "\\n"
+                if [ X"${_getroot_var_status}" != X"0" ]; then
                     sudopwd=""
+                else
+                    sudocmd="sudo -S"
+                    break
                 fi
             done
 
-            sudocmd="/usr/bin/sudo -S"
-
-            printf "%s\\n" "$sudopwd" | $sudocmd rm -f "$tmp_path/sudo.test" > /dev/null 2>&1
-            printf "\\n"
+            if [ -z "${sudopwd}" ]; then
+                printf "%s\\n" "Failed authentication"
+                exit
+            fi
         else
-            printf "%s\\n" "You're not root and sudo isn't available. Please run this script as root!"
+            printf "%s %s\\n" "You're not root and sudo isn't available." \
+            "Please run this script as root!"
             exit
         fi
     fi
 }
 
 _cmdsudo()
-{   #print && execute a command, exits if command fails
-    [ -z "$1" ] && return 1
-    _cmdsudo_var_serr=$$
+{   #print && execute a command, exit on fail
+    [ -z "${1}" ] && return 1
 
-    printf "%s " "    $ $@"
-    printf "\\n"
-    printf "%s\\n" "$sudopwd" | $sudocmd eval "$@" > /tmp/"$_cmdsudo_var_serr".out 2>&1
+    printf "%s \\n" "    $ sudo ${*}"
+    _cmdsudo_var_output="$(printf "%s\\n" "${sudopwd}" | ${sudocmd} sh -c "eval ${*}" 2>&1)"
+    _cmdsudo_var_status="${?}"
 
-    _cmdsudo_var_status=$?
-    [ X"$_cmdsudo_var_status" != X"0" ] && { cat /tmp/"$_cmdsudo_var_serr".out; \
-        rm -rf /tmp/"$_cmdsudo_var_serr".out; exit $_cmdsudo_var_status; } \
-        || { rm -rf /tmp/"$_cmdsudo_var_serr".out; return $_cmdsudo_var_status; }
+    if [ X"${_cmdsudo_var_status}" != X"0" ]; then
+        printf "> %s:%s\\n" "${*}" "${_cmdsudo_var_output}"
+        printf "\\n"
+        exit "${_cmdsudo_var_status}"
+    else
+        return "${_cmdsudo_var_status}";
+    fi
 }
 
 _waitforsudo()
-{
-    [ -z "$1" ] && return 1
+{   #print, execute and wait for a command to finish
+    [ -z "${1}" ] && return 1
 
-    printf "%s " "    $ sudo $@..."
-    printf "%s\\n" "$sudopwd" | $sudocmd $@ > /dev/null 2>&1 &
+    printf "%s " "    $ sudo ${@} ..."
+    printf "%s\\n" "${sudopwd}" | ${sudocmd} sh -c "eval ${*}" >/dev/null 2>&1 &
     sleep 1s
 
-    if [ "$1" = DEBIAN_FRONTEND=noninteractive ]; then
-        _handscui $(pidof $2)
+    if [ X"${1}" = X"DEBIAN_FRONTEND=noninteractive" ]; then
+        _animcui "${2}"
     else
-        _handscui $(pidof $1)
+        _animcui "${1}"
     fi
 }
 
@@ -149,17 +176,17 @@ if ! _whereis avahi-browse >/dev/null; then
 fi
 
 if _existaptproxy; then
-    apt_proxy_server=$(avahi-browse -a -t -r -p | grep apt-cacher-ng | grep = | cut -d";" -f8)
-    printf "%s\\n" "[+] exists an apt-get proxy in the network at $apt_proxy_server, using it ..."
+    apt_proxy_server="$(avahi-browse -a -t -r -p | grep apt-cacher-ng | grep = | cut -d";" -f8)"
+    printf "%s\\n" "[+] exists an apt-get proxy in the network at ${apt_proxy_server}, using it ..."
     [ ! -f /usr/share/squid-deb-proxy-client/apt-avahi-discover ] && _waitforsudo apt-get install --no-install-recommends -y squid-deb-proxy-client
 else
     printf "%s\\n" "[+] no apt-get proxy found, installing one locally ..."
     _waitforsudo apt-get install --no-install-recommends -y squid-deb-proxy-client apt-cacher-ng
     [ ! -f /etc/avahi/services/apt-cacher-ng.service ] && _waitforsudo wget http://javier.io/mirror/apt-cacher-ng.service -O /etc/avahi/services/apt-cacher-ng.service
-    if [ -d "$HOME"/misc/ubuntu/proxy/apt-cacher-ng/ ]; then
+    if [ -d "${HOME}"/misc/ubuntu/proxy/apt-cacher-ng/ ]; then
         printf "%s\\n" "[+] exporting files ..."
         _cmdsudo rm -rf /var/cache/apt-cacher-ng
-        _cmdsudo ln -s "$HOME"/misc/ubuntu/proxy/apt-cacher-ng/ /var/cache/apt-cacher-ng
+        _cmdsudo ln -s "${HOME}"/misc/ubuntu/proxy/apt-cacher-ng/ /var/cache/apt-cacher-ng
     fi
 fi
 

@@ -1,73 +1,79 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 #set -e
+
 BACKUPDIR="/path"
 DBUSER="user"
 DBPASSWD="passwd"
 
 _basename()
 {
-    [ -z "$1" ] && return 0
-    expr "$1" : '.*/\([^/]*\)'
+    [ -z "${1}" ] && return 1
+    case "${1}" in
+        /*|*/*) expr "${1}" : '.*/\([^/]*\)' ;;
+        *) printf "%s\\n" "${1}";;
+    esac
 }
 
-exec 9>/var/run/$(_basename $0).lock    #verify only one instance is running
+exec 9>/var/run/$(_basename ${0}).lock    #verify only one instance is running
 if ! flock -n 9  ; then                #http://mywiki.wooledge.org/BashFAQ/045
-    printf "%s\\n" "$(_basename $0): another instance is running";
+    printf "%s\\n" "$(_basename ${0}): another instance is running";
     exit 1
 fi
 
 _time()
-{
-    NUM=$1
-    MIN=0
-    HOUR=0
-    DAY=0
-    if [ $NUM -gt 59 ]; then
-        SEC=$(expr $NUM % 60)
-        NUM=$(expr $NUM / 60)
-        if [ $NUM -gt 59 ]; then
-            MIN=$(expr $NUM % 60)
-            NUM=$(expr $NUM / 60)
-            if [ $NUM -gt 23 ]; then
-                HOUR=$(expr $NUM % 24)
-                DAY=$(expr $NUM / 24)
+{  #format seconds to a pretty string
+    [ -z "${1}" ] && return 1
+    printf "%s\\n" "${1}" | grep -v "[^0-9]" >/dev/null || return 1;
+
+    _printtime_var_num="${1}"
+    _printtime_var_min="0"
+    _printtime_var_hour="0"
+    _printtime_var_day="0"
+    if [ "${_printtime_var_num}" -gt "59" ]; then
+        _printtime_var_sec="$(expr "${_printtime_var_num}" % 60)"
+        _printtime_var_num="$(expr "${_printtime_var_num}" / 60)"
+        if [ "${_printtime_var_num}" -gt "59" ]; then
+            _printtime_var_min="$(expr "${_printtime_var_num}" % 60)"
+            _printtime_var_num="$(expr "${_printtime_var_num}" / 60)"
+            if [ "${_printtime_var_num}" -gt "23" ]; then
+                _printtime_var_hour="$(expr "${_printtime_var_num}" % 24)"
+                _printtime_var_day="$(expr "${_printtime_var_num}" / 24)"
             else
-                HOUR=$NUM
+                _printtime_var_hour="${_printtime_var_num}"
             fi
         else
-            MIN=$NUM
+            _printtime_var_min="${_printtime_var_num}"
         fi
     else
-        SEC=$NUM
+        _printtime_var_sec="${_printtime_var_num}"
     fi
-    printf "%s\\n" "$DAY"d "$HOUR"h "$MIN"m "$SEC"s
+    printf "%s\\n" \
+    ""${_printtime_var_day}"d "${_printtime_var_hour}"h "${_printtime_var_min}"m "${_printtime_var_sec}"s"
 }
 
-sleep $(expr $RANDOM % 1000)m #wait random minutes to run the backup [0-1000]
-START=$(date +%s)
+sleep "$(tr -cd 0-9 </dev/urandom | head -c 3)"m #wait random minutes to run the backup [0-1000]
+START="$(date +%s)"
 
-[ ! -d $BACKUPDIR ] && mkdir -p $BACKUPDIR
+[ ! -d "${BACKUPDIR}" ] && mkdir -p "${BACKUPDIR}"
 
 #http://dba.stackexchange.com/questions/19532/safest-way-to-perform-mysqldump-on-a-live-system-with-active-reads-and-writes
-mysql -u$DBUSER -p$DBPASSWD -Ae"FLUSH TABLES WITH READ LOCK; SELECT SLEEP(86400)" &
+mysql -u"${DBUSER}" -p"${DBPASSWD}" -Ae"FLUSH TABLES WITH READ LOCK; SELECT SLEEP(86400)" &
 sleep 5
-mysql -u$DBUSER -p$DBPASSWD -ANe"SHOW PROCESSLIST" | grep "SELECT SLEEP(86400)" > $BACKUPDIR/proclist.txt
-SLEEP_ID=$(cat $BACKUPDIR/proclist.txt | awk '{print $1}')
-printf "%s\\n" "KILL ${SLEEP_ID};" > $BACKUPDIR/kill_sleep.sql
+mysql -u"${DBUSER}" -p"${DBPASSWD}" -ANe"SHOW PROCESSLIST" | grep "SELECT SLEEP(86400)" > "${BACKUPDIR}"/proclist.txt
+SLEEP_ID="$(cat "${BACKUPDIR}"/proclist.txt | awk '{print $1}')"
+printf "%s\\n" "KILL ${SLEEP_ID};" > "${BACKUPDIR}"/kill_sleep.sql
 
-DBS="$(mysql -u$DBUSER -p$DBPASSWD -Bse 'show databases')"
-for DB in $DBS
-do
-    mysqldump -u $DBUSER -p$DBPASSWD --single-transaction --routines --triggers $DB > $BACKUPDIR/$DB.sql
+DBS="$(mysql -u"${DBUSER}" -p"${DBPASSWD}" -Bse 'show databases')"
+for DB in ${DBS}; do
+    mysqldump -u "${DBUSER}" -p"${DBPASSWD}" --single-transaction --routines --triggers "${DB}" > "${BACKUPDIR}"/"${DB}".sql
 done
 
-mysql -u$DBUSER -p$DBPASSWD -A < $BACKUPDIR/kill_sleep.sql
-mysql -u$DBUSER -p$DBPASSWD -Ae"UNLOCK TABLES;"
+mysql -u"${DBUSER}" -p"${DBPASSWD}" -A < "${BACKUPDIR}"/kill_sleep.sql
+mysql -u"${DBUSER}" -p"${DBPASSWD}" -Ae"UNLOCK TABLES;"
 
-FILES=($BACKUPDIR/*sql)
-tar cvf -  "${FILES[@]}" | gzip > $BACKUPDIR/dbs.tar.gz
+tar cvf - "$(find "${BACKUPDIR}" -type f -iname "*sql")" | gzip > "${BACKUPDIR}"/dbs.tar.gz
 
-END=$(date +%s)
-DIFF=$(expr $END - $START )
+END="$(date +%s)"
+DIFF="$(expr "${END}" - "${START}" )"
 
-printf "%s\\n" "$(date +"%d-%m-%Y"):$(_time $DIFF)" | tee -a $BACKUPDIR/time.txt
+printf "%s\\n" "$(date +"%d-%m-%Y"):$(_time ${DIFF})" | tee -a "${BACKUPDIR}"/time.txt

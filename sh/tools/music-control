@@ -7,29 +7,32 @@
 
 _usage()
 {
-    printf "%s\\n" "usage: $(expr "$0" : '.*/\([^/]*\)') pause|next|previous"
+    printf "%s\\n" "usage: $(expr "${0}" : '.*/\([^/]*\)') pause|next|previous"
     exit 1
 }
 
-if [ "$#" -lt "1" ] || [ "$#" -gt "1" ]; then
+if [ "${#}" -lt "1" ] || [ "${#}" -gt "1" ]; then
     _usage
 fi
 
-case "$1" in
+case "${1}" in
     pause|next|previous) ;;
     *) _usage ;;
 esac
 
-players=$(command ps axo command= |  sed -e "s/ .*//; s:.*/::; s/:$//;"  -e "s/^[[(-]//; s/[])]$//"  -e "s/^<defunct>$//" | grep "mplayer\|mpd")
+players="$(command ps axo command= | sed \
+    -e "s/ .*//; s:.*/::; s/:$//;"       \
+    -e "s/^[[(-]//; s/[])]$//"           \
+    -e "s/^<defunct>$//" | grep "mplayer\|mpd")"
 
 for player in $players; do
-    case $player in
-        mplayer) mplayer_flag=1;;
-        mpd) mpd_flag=1;;
+    case "${player}" in
+        mplayer) mplayer_flag="1";;
+        mpd)     mpd_flag="1";;
     esac
 done
 
-if [ -n "$mplayer_flag" ] && [ -n "$mpd_flag" ]; then
+if [ -n "${mplayer_flag}" ] && [ -n "${mpd_flag}" ]; then
     if command -v "mpc" > /dev/null 2>&1; then
         if [ "$(mpc status | grep playing)" ]; then
             mpc pause 1>/dev/null
@@ -37,20 +40,17 @@ if [ -n "$mplayer_flag" ] && [ -n "$mpd_flag" ]; then
     fi
 fi
 
-if [ -n "$mplayer_flag" ]; then
+if [ -n "${mplayer_flag}" ]; then
     if [ -p /tmp/mplayer.fifo ]; then
-        case "$1" in
-            pause) printf "%s\\n" "pause" > /tmp/mplayer.fifo
-                ;;
-            next) printf "%s\\n" "pt_step 1" > /tmp/mplayer.fifo
-                ;;
-            previous) printf "%s\\n" "pt_step -1" > /tmp/mplayer.fifo
-                ;;
+        case "${1}" in
+            pause)    printf "%s\\n" "pause"      > /tmp/mplayer.fifo ;;
+            next)     printf "%s\\n" "pt_step 1"  > /tmp/mplayer.fifo ;;
+            previous) printf "%s\\n" "pt_step -1" > /tmp/mplayer.fifo ;;
         esac
     fi
-elif [ -n "$mpd_flag" ]; then
+elif [ -n "${mpd_flag}" ]; then
     if command -v "mpc" > /dev/null 2>&1; then
-        case "$1" in
+        case "${1}" in
             pause)
                 if [ "$(mpc status | grep playing)" ]; then
                     mpc pause 1>/dev/null
@@ -58,10 +58,8 @@ elif [ -n "$mpd_flag" ]; then
                     mpc play 1>/dev/null
                 fi
                 ;;
-            next) mpc next
-                ;;
-            previous) mpc prev
-                ;;
+            next)     mpc next ;;
+            previous) mpc prev ;;
         esac
     fi
 fi

@@ -5,9 +5,9 @@
 #===================================================
 
 #Don't forget update this when adding new functions
-usage()
+_usage()
 {
-    printf "%s\\n" "Usage: `expr "$0" : '.*/\([^/]*\)'` module"
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') module"
     printf "%s\\n"
     printf "%s\\n" "  apache            Moves /etc/init.d/apache2.1 to apache2"
     printf "%s\\n" "  ipw2200           Restart the ipw2200 module"
@@ -21,14 +21,13 @@ usage()
 
 _exec()
 {
-    status=$?
-    if [ "$status" != 0 ]; then
-        exit $status
+    status="${?}"
+    if [ X"${status}" != X"0" ]; then
+        exit "${status}"
     fi
-    printf "%s\\n" "[+] $@"
-    $@
+    printf "%s\\n" "[+] ${@}"
+    ${@}
 }
-
 
 _apache ()
 {
@@ -72,34 +71,17 @@ _webcam()
     _exec sudo chmod o+rw /dev/video0
 }
 
-if [ "$#" != 0 ]; then
-    case $1 in
-        apache)
-        _apache
-        ;;
-        ipw2200)
-        _ipw2200
-        ;;
-        wl)
-        _wl
-        ;;
-        iwlagn)
-        _iwlagn
-        ;;
-        mpd)
-        _mpd
-        ;;
-        webcam)
-        _webcam
-        ;;
-        -h | --help)
-        usage
-        ;;
-        *)
-        printf "%s\\n" "Error, unknown option: $1"
-        usage
-        ;;
+if [ X"${#}" != X"0" ]; then
+    case "${1}" in
+        apache)    _apache  ;;
+        ipw2200)   _ipw2200 ;;
+        wl)        _wl      ;;
+        iwlagn)    _iwlagn  ;;
+        mpd)       _mpd     ;;
+        webcam)    _webcam  ;;
+        -h|--help) _usage   ;;
+        *)         printf "%s\\n" "Error, unknown option: ${1}"; usage ;;
     esac
 else
-    usage
+    _usage
 fi

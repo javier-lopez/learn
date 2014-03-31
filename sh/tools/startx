@@ -4,21 +4,17 @@
 
 #http://bbs.archlinux.org/viewtopic.php?pid=484915
 
-if [ $# -eq 0 ]      # check to see if arguements are given (color depth)
-       then a=24    # default color depth
-        else a=$1    # use given arguement
-fi
+[ "${#}" -eq "0" ] && a="24" || a="${1}"
 
-if [ $a -ne 8 ] && [ $a -ne 16 ] && [ $a -ne 24 ]; then
+if [ "${a}" -ne "8" ] && [ "${a}" -ne "16" ] && [ "${a}" -ne "24" ]; then
     printf "%s\\n" "Invalid color depth. Use 8, 16, or 24."
     exit 1
 fi
 
-for display in 0 1 2 3 4 5
-do   # checks for open display, starts X on next available
-    if [ ! -f "/tmp/.X$display-lock" ]
-    then
-        exec startx -- :$display #-depth $a
+for display in 0 1 2 3 4 5; do
+    # checks for open display, starts X on next available
+    if [ ! -f "/tmp/.X${display}-lock" ]; then
+        exec startx -- :${display} #-depth $a
         exit 0
     fi
 done

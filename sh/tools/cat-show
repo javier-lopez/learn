@@ -7,16 +7,16 @@
 #code
 #...
 
-program="$1"
+program="${1}"
 
 _usage()
 {
-    printf "%s\\n" "Usage: $(expr "$0" : '.*/\([^/]*\)') foo_program"
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') program"
     exit 0
 }
 
-[ -n "$program" ] || _usage
+[ -n "${program}" ] || _usage
 
-if command -v "$program" 2>/dev/null; then
-    less $(command -v "$program" 2>/dev/null)
+if command -v "${program}" 2>/dev/null; then
+    less "$(command -v "${program}" 2>/dev/null)"
 fi

@@ -5,11 +5,11 @@
 #example: run ping -c 3 google.com
 #ping output
 
-"$@"
-error=$?
+"${@}"
+error="${?}"
 
-if [ $error -eq 0 ]; then
-    notify-send "`hostname -s` | terminated:" "$1" -i finish -t 0
+if [ "${error}" -eq "0" ]; then
+    notify-send "$(hostname -s) | terminated:" "${1}" -i finish -t 0
 else
-    notify-send "`hostname -s` | error:" "$1" -u critical -i undo -t 0
+    notify-send "$(hostname -s) | error:" "${1}" -u critical -i undo -t 0
 fi

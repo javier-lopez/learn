@@ -8,21 +8,21 @@
 #to-a-remote-shell
 #...
 
-[ "$#" -lt "1" ] && exit
+[ "${#}" -lt "1" ] && exit
 
-for file in $@; do
-    [ ! -r "$file" ] && { printf "%s\\n" "$(expr "$0" : '.*/\([^/]*\)'): "$file" does not exist or is not readable"; exit 1; }
+for file in "${@}"; do
+    [ ! -r "${file}" ] && { printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): ${file} does not exist or is not readable"; exit 1; }
 done
 
-str=$(tar cf - "$@" | gzip | openssl enc -base64)
+str="$(tar cf - "${@}" | gzip | openssl enc -base64)"
 line1="cat<<E=O=F | openssl enc -base64 -d | zcat | tar xvf -"
-line2="$str"
+line2="${str}"
 line3="E=O=F"
 
-cmd=${line1}'\n'${line2}'\n'${line3}'\n'
+cmd="${line1}"'\n'"${line2}"'\n'"${line3}"'\n'
 
 if command -v "xclip" >/dev/null 2>/dev/null; then
-    printf "$cmd" | tee /dev/fd/2 | xclip
+    printf "%b" "${cmd}" | tee /dev/fd/2 | xclip
 else
-    printf "$cmd"
+    printf "%b" "${cmd}"
 fi

@@ -11,7 +11,7 @@ DMENU='dmenu -p > -i -fn Bahamas-10 -nb #000000 -nf #ffffff -sb #000000 -sf #cfd
 
 _die()
 {
-    choice=$(printf "%b\\n" "$1" | $DMENU)
+    printf "%b\\n" "${1}" | ${DMENU}
     exit 1
 }
 
@@ -24,12 +24,12 @@ if ! command -v "mpc" >/dev/null; then
     _die "mpd was not found, press <Enter> to exit"
 fi
 
-song=$(mkfifo fifo; mpc playlist|nl -s ';' > fifo & sed -n "s@^ *\([0-9]\+\);$(mpc playlist| $DMENU ||printf "%s\\n" ";;;")@\1@p" fifo)
-song=$(printf "%s\\n" "$song" | head -1)
+song="$(mkfifo fifo; mpc playlist|nl -s ';' > fifo & sed -n "s@^ *\([0-9]\+\);$(mpc playlist| ${DMENU} ||printf "%s\\n" ";;;")@\1@p" fifo)"
+song="$(printf "%s\\n" "${song}" | head -1)"
 rm -rf fifo
 
 if [ -z "${song}" ]; then
     exit 0;
 else
-    mpc play "$song"
+    mpc play "${song}"
 fi

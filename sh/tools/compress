@@ -9,225 +9,218 @@
 
 _basename()
 {
-    [ -z "$1" ] && return 1
-    case $1 in
-        /*|*/*) expr "$1" : '.*/\([^/]*\)' ;;
-        *) printf "%s\\n" "$1";;
+    [ -z "${1}" ] && return 1
+    case "${1}" in
+        /*|*/*) expr "${1}" : '.*/\([^/]*\)' ;;
+        *) printf "%s\\n" "${1}";;
     esac
 }
 
 _usage()
 {
-    printf "%s\\n" "Usage: `_basename $0` [-s] FILES ... FILE.[tar.gz,tar.bz2,zip...]"
+    printf "%s\\n" "Usage: $(_basename ${0}) [-s] FILES ... FILE.[tar.gz,tar.bz2,zip...]"
     printf "%s\\n" "           -s       quiet mode"
     exit 0
 }
 
-[ "$#" -lt 2 ] && _usage
+[ "${#}" -lt "2" ] && _usage
 
 _compress()
 {
     i=0
     for COMPRESS_FILE; do :; done
     for FILE; do
-        i=$(expr $i + 1);
-        [ "$#" -eq $i ] && continue
-        [ ! -r "$FILE" ] && { printf "%s\\n" "$(_basename $0): "$FILE" does not exist or is not readable"; exit 1; }
-        FILES="$FILE""|""$FILES"
+        i="$(expr "${i}" + 1)"
+        [ "${#}" -eq "${i}" ] && continue
+        [ ! -r "${FILE}" ] && { printf "%s\\n" "$(_basename ${0}): ${FILE} does not exist or is not readable"; exit 1; }
+        FILES="${FILE}""|""${FILES}"
     done
 
-    FILES_FORMAT="$(printf "%s" "$FILES" | sed 's:|: :g')"
-    OLDIFS="$IFS"
+    FILES_FORMAT="$(printf "%s" "${FILES}" | sed 's:|: :g')"
+    OLDIFS="${IFS}"
     IFS="|"
 
-    if [ -z "$SFLAG" ]; then
-        case "$COMPRESS_FILE" in
+    if [ -z "${SFLAG}" ]; then
+        case "${COMPRESS_FILE}" in
             #TODO 15-02-2014 01:02 >> add _exec function which prints and executes current command
             *.deb|*.udeb)
-                printf "%s " "[+] ar rv $COMPRESS_FILE $FILES_FORMAT"
+                printf "%s " "[+] ar rv ${COMPRESS_FILE} ${FILES_FORMAT}"
                 printf "\\n"
-                ar rv "$COMPRESS_FILE" $FILES
+                ar rv "${COMPRESS_FILE}" ${FILES}
                 ;;
             *.tar.bz2|*.tbz|*.tbz2)
-                printf "%s " "[+] tar cvf - $FILES_FORMAT | bzip2 > $COMPRESS_FILE"
+                printf "%s " "[+] tar cvf - ${FILES_FORMAT} | bzip2 > ${COMPRESS_FILE}"
                 printf "\\n"
-                tar cvf - $FILES | bzip2 > "$COMPRESS_FILE"
+                tar cvf - ${FILES} | bzip2 > "${COMPRESS_FILE}"
                 ;;
             *.tar.gz|*.tgz)
-                printf "%s " "[+] tar cvf - $FILES_FORMAT | gzip > $COMPRESS_FILE"
+                printf "%s " "[+] tar cvf - ${FILES_FORMAT} | gzip > ${COMPRESS_FILE}"
                 printf "\\n"
-                tar cvf - $FILES | gzip > "$COMPRESS_FILE"
+                tar cvf - ${FILES} | gzip > "${COMPRESS_FILE}"
                 ;;
             *.bz2)
-                local x=0
-                for FILE in $FILES; do
-                    x=$(expr $x + 1)
+                x="0"
+                for FILE in ${FILES}; do
+                    x="$(expr "${x}" + 1)"
                 done
-                [ $x -gt 1 ] && { printf "%s\\n" "$(_basename $0): bz2 files can only be compressed one by one, use tar.bz2 if you require to compress several files at the same time"; exit 1; }
+                [ "${x}" -gt "1" ] && { printf "%s\\n" "$(_basename ${0}): bz2 files can only be compressed one by one, use tar.bz2 if you require to compress several files at the same time"; exit 1; }
                 true
-                printf "%s " "[+] bzip2 -cv $FILES_FORMAT | dd of=$COMPRESS_FILE"
+                printf "%s " "[+] bzip2 -cv ${FILES_FORMAT} | dd of=${COMPRESS_FILE}"
                 printf "\\n"
-                bzip2 -cv $FILES | dd of="$COMPRESS_FILE"
+                bzip2 -cv ${FILES} | dd of="${COMPRESS_FILE}"
                 ;;
             *.rar)
-                printf "%s " "[+] rar a $COMPRESS_FILE $FILES_FORMAT"
+                printf "%s " "[+] rar a ${COMPRESS_FILE} ${FILES_FORMAT}"
                 printf "\\n"
-                rar a "$COMPRESS_FILE" $FILES
+                rar a "${COMPRESS_FILE}" ${FILES}
                 ;;
             *.gz)
-                local x=0
-                for FILE in $FILES; do
-                    x=$(expr $x + 1)
+                x="0"
+                for FILE in ${FILES}; do
+                    x="$(expr "${x}" + 1)"
                 done
-                [ $x -gt 1 ] && { printf "%s\\n" "$(_basename $0): gz files can only be compressed one by one, use tar.gz if you require to compress several files at the same time"; exit 1; }
+                [ "${x}" -gt "1" ] && { printf "%s\\n" "$(_basename ${0}): gz files can only be compressed one by one, use tar.gz if you require to compress several files at the same time"; exit 1; }
                 true
-                printf "%s " "[+] gzip -cv $FILES_FORMAT | dd of=$COMPRESS_FILE"
+                printf "%s " "[+] gzip -cv ${FILES_FORMAT} | dd of=${COMPRESS_FILE}"
                 printf "\\n"
-                gzip -cv $FILES | dd of="$COMPRESS_FILE"
+                gzip -cv ${FILES} | dd of="${COMPRESS_FILE}"
                 ;;
             *.tar)
-                printf "%s " "[+] tar cvf $COMPRESS_FILE $FILES_FORMAT"
+                printf "%s " "[+] tar cvf ${COMPRESS_FILE} ${FILES_FORMAT}"
                 printf "\\n"
-                tar cvf "$COMPRESS_FILE" $FILES
+                tar cvf "${COMPRESS_FILE}" ${FILES}
                 ;;
             *.zip|*.xpi)
-                printf "%s " "[+] zip -r $COMPRESS_FILE $FILES_FORMAT"
+                printf "%s " "[+] zip -r ${COMPRESS_FILE} ${FILES_FORMAT}"
                 printf "\\n"
-                zip -r "$COMPRESS_FILE" $FILES
+                zip -r "${COMPRESS_FILE}" ${FILES}
                 ;;
             *.7z)
-                printf "%s " "[+] 7z a $COMPRESS_FILE $FILES_FORMAT"
+                printf "%s " "[+] 7z a ${COMPRESS_FILE} ${FILES_FORMAT}"
                 printf "\\n"
-                7z a "$COMPRESS_FILE" $FILES
+                7z a "${COMPRESS_FILE}" ${FILES}
                 ;;
             *.tar.lzma)
-                printf "%s " "[+] tar cvf - $FILES_FORMAT | lzma > $COMPRESS_FILE"
+                printf "%s " "[+] tar cvf - ${FILES_FORMAT} | lzma > ${COMPRESS_FILE}"
                 printf "\\n"
-                tar cvf - $FILES | lzma > "$COMPRESS_FILE"
+                tar cvf - ${FILES} | lzma > "${COMPRESS_FILE}"
                 ;;
             *.tar.xz)
-                printf "%s " "[+] tar cvf - $FILES_FORMAT | xz > $COMPRESS_FILE"
+                printf "%s " "[+] tar cvf - ${FILES_FORMAT} | xz > ${COMPRESS_FILE}"
                 printf "\\n"
-                tar cvf - $FILES | xz > "$COMPRESS_FILE"
+                tar cvf - ${FILES} | xz > "${COMPRESS_FILE}"
                 ;;
             *.jar)
-                printf "%s " "[+] jar cvf $COMPRESS_FILE $FILES_FORMAT"
+                printf "%s " "[+] jar cvf ${COMPRESS_FILE} ${FILES_FORMAT}"
                 printf "\\n"
-                jar cvf "$COMPRESS_FILE" $FILES
+                jar cvf "${COMPRESS_FILE}" ${FILES}
                 ;;
             *.iso)
-                printf "%s " "[+] 7z a $COMPRESS_FILE $FILES_FORMAT"
+                printf "%s " "[+] 7z a ${COMPRESS_FILE} ${FILES_FORMAT}"
                 printf "\\n"
-                7z a "$COMPRESS_FILE" $FILES
+                7z a "${COMPRESS_FILE}" ${FILES}
                 ;;
             *)
-                printf "%s\\n" "'$COMPRESS_FILE' is not a valid compressed file"
+                printf "%s\\n" "'${COMPRESS_FILE}' is not a valid compressed file"
                 ;;
         esac
     else
-        case "$COMPRESS_FILE" in
+        case "${COMPRESS_FILE}" in
             *.deb|*.udeb)
-                printf "%s " "[+] ar r $COMPRESS_FILE $FILES_FORMAT"
+                printf "%s " "[+] ar r ${COMPRESS_FILE} ${FILES_FORMAT}"
                 printf "\\n"
-                ar r "$COMPRESS_FILE" $FILES
+                ar r "${COMPRESS_FILE}" ${FILES}
                 ;;
             *.tar.bz2|*.tbz|*.tbz2)
-                printf "%s " "[+] tar cf - $FILES_FORMAT | bzip2 > $COMPRESS_FILE"
+                printf "%s " "[+] tar cf - ${FILES_FORMAT} | bzip2 > ${COMPRESS_FILE}"
                 printf "\\n"
-                tar cf - $FILES | bzip2 > "$COMPRESS_FILE"
+                tar cf - ${FILES} | bzip2 > "${COMPRESS_FILE}"
                 ;;
             *.tar.gz|*.tgz)
-                printf "%s " "[+] tar cf - $FILES_FORMAT | gzip > $COMPRESS_FILE"
+                printf "%s " "[+] tar cf - ${FILES_FORMAT} | gzip > ${COMPRESS_FILE}"
                 printf "\\n"
-                tar cf - $FILES | gzip > "$COMPRESS_FILE"
-                _exec "tar cf - "$FILES" | gzip > "$COMPRESS_FILE""
+                tar cf - ${FILES} | gzip > "${COMPRESS_FILE}"
                 ;;
             *.bz2)
-                local x=0
-                for FILE in $FILES; do
-                    x=$(expr $x + 1)
+                x="0"
+                for FILE in ${FILES}; do
+                    x="$(expr "${x}" + 1)"
                 done
-                [ $x -gt 1 ] && { printf "%s\\n" "$(_basename $0): bz2 files can only be compressed one by one, use tar.bz2 if you require to compress several files at the same time"; exit 1; }
+                [ "${x}" -gt "1" ] && { printf "%s\\n" "$(_basename ${0}): bz2 files can only be compressed one by one, use tar.bz2 if you require to compress several files at the same time"; exit 1; }
                 true
-                printf "%s " "[+] bzip2 -c $FILES_FORMAT | dd of=$COMPRESS_FILE"
+                printf "%s " "[+] bzip2 -c ${FILES_FORMAT} | dd of=${COMPRESS_FILE}"
                 printf "\\n"
-                bzip2 -c $FILES | dd of="$COMPRESS_FILE"
+                bzip2 -c ${FILES} | dd of="${COMPRESS_FILE}"
                 ;;
             *.rar)
-                printf "%s " "[+] rar a $COMPRESS_FILE $FILES_FORMAT"
+                printf "%s " "[+] rar a ${COMPRESS_FILE} ${FILES_FORMAT}"
                 printf "\\n"
-                rar a "$COMPRESS_FILE" $FILES
+                rar a "${COMPRESS_FILE}" ${FILES}
                 ;;
             *.gz)
-                local x=0
-                for FILE in $FILES; do
-                    x=$(expr $x + 1)
+                x="0"
+                for FILE in ${FILES}; do
+                    x="$(expr "${x}" + 1)"
                 done
-                [ $x -gt 1 ] && { printf "%s\\n" "$(_basename $0): gz files can only be compressed one by one, use tar.gz if you require to compress several files at the same time"; exit 1; }
+                [ "${x}" -gt "1" ] && { printf "%s\\n" "$(_basename ${0}): gz files can only be compressed one by one, use tar.gz if you require to compress several files at the same time"; exit 1; }
                 true
-                printf "%s " "[+] gzip -c $FILES_FORMAT | dd of=$COMPRESS_FILE"
+                printf "%s " "[+] gzip -c ${FILES_FORMAT} | dd of=${COMPRESS_FILE}"
                 printf "\\n"
-                gzip -c $FILES | dd of="$COMPRESS_FILE"
+                gzip -c ${FILES} | dd of="${COMPRESS_FILE}"
                 ;;
             *.tar)
-                printf "%s " "[+] tar cf $COMPRESS_FILE $FILES_FORMAT"
+                printf "%s " "[+] tar cf ${COMPRESS_FILE} ${FILES_FORMAT}"
                 printf "\\n"
-                tar cf "$COMPRESS_FILE" $FILES
+                tar cf "${COMPRESS_FILE}" ${FILES}
                 ;;
             *.zip|*.xpi)
-                printf "%s " "[+] zip -r $COMPRESS_FILE $FILES_FORMAT"
+                printf "%s " "[+] zip -r ${COMPRESS_FILE} ${FILES_FORMAT}"
                 printf "\\n"
-                zip -r "$COMPRESS_FILE" $FILES
+                zip -r "${COMPRESS_FILE}" ${FILES}
                 ;;
             *.7z)
-                printf "%s " "[+] 7z a $COMPRESS_FILE $FILES_FORMAT"
+                printf "%s " "[+] 7z a ${COMPRESS_FILE} ${FILES_FORMAT}"
                 printf "\\n"
-                7z a "$COMPRESS_FILE" $FILES
+                7z a "${COMPRESS_FILE}" ${FILES}
                 ;;
             *.tar.lzma)
-                printf "%s " "[+] tar cf - $FILES_FORMAT | lzma > $COMPRESS_FILE"
+                printf "%s " "[+] tar cf - ${FILES_FORMAT} | lzma > ${COMPRESS_FILE}"
                 printf "\\n"
-                tar cf - $FILES | lzma > "$COMPRESS_FILE"
+                tar cf - ${FILES} | lzma > "${COMPRESS_FILE}"
                 ;;
             *.tar.xz)
-                printf "%s " "[+] tar cf - $FILES_FORMAT | xz > $COMPRESS_FILE"
+                printf "%s " "[+] tar cf - ${FILES_FORMAT} | xz > ${COMPRESS_FILE}"
                 printf "\\n"
-                tar cf - $FILES | xz > "$COMPRESS_FILE"
+                tar cf - ${FILES} | xz > "${COMPRESS_FILE}"
                 ;;
             *.jar)
-                printf "%s " "[+] jar cf $COMPRESS_FILE $FILES_FORMAT"
+                printf "%s " "[+] jar cf ${COMPRESS_FILE} ${FILES_FORMAT}"
                 printf "\\n"
-                jar cf "$COMPRESS_FILE" $FILES
+                jar cf "${COMPRESS_FILE}" ${FILES}
                 ;;
             *.iso)
-                printf "%s " "[+] 7z a $COMPRESS_FILE $FILES_FORMAT"
+                printf "%s " "[+] 7z a ${COMPRESS_FILE} ${FILES_FORMAT}"
                 printf "\\n"
-                7z a "$COMPRESS_FILE" $FILES
+                7z a "${COMPRESS_FILE}" ${FILES}
                 ;;
             *)
-                printf "%s\\n" "'$COMPRESS_FILE' is not a valid compressed file"
+                printf "%s\\n" "'${COMPRESS_FILE}' is not a valid compressed file"
                 ;;
         esac
     fi
-    IFS="$OLDIFS"
+    IFS="${OLDIFS}"
 }
 
 while getopts ":s:" option; do
-    case $option in
-        s)
-          SFLAG=yes
-          shift 1; _compress "$@"
-          exit 0
-          ;;
-        :)
-          printf "%s\\n" "Option -$OPTARG requires an argument"
-          _usage
-          ;;
-        \?)
-          printf "%s\\n" "Invalid option: -$OPTARG"
-          _usage
-          ;;
+    case "${option}" in
+        s) SFLAG="yes"
+           shift 1; _compress "${@}"
+           exit 0 ;;
+        :) printf "%s\\n" "Option -${OPTARG} requires an argument"
+           _usage ;;
+        \?) printf "%s\\n" "Invalid option: -${OPTARG}"
+           _usage ;;
     esac
 done
 
-_compress "$@"
+_compress "${@}"

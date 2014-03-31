@@ -7,28 +7,24 @@
 #commmand2
 #...
 
-CACHE=$HOME/.dmenu_cache
+CACHE="${HOME}/.dmenu_cache"
 IFS=:
 
 uptodate()
 {
-    [ -f "$CACHE" ] &&
-        for dir in $PATH
-        do
-            [ ! $dir -nt "$CACHE" ] || return 1
+    [ -f "${CACHE}" ] &&
+        for dir in ${PATH}; do
+            [ -n "$(find "${CACHE}" -newer "${dir}")" ] || return 1
         done
 }
 
 if ! uptodate ; then
-    for dir in $PATH
-    do
-        cd "$dir" &&
-            for file in *
-            do
-                [ -e "$file" ] && printf "%s\\n" "$file"
+    for dir in ${PATH}; do
+        cd "${dir}" &&
+            for file in *; do
+                [ -e "${file}" ] && printf "%s\\n" "${file}"
             done
-        done | sort | uniq > "$CACHE".$$ &&
-            mv "$CACHE".$$ "$CACHE"
+        done | sort | uniq > "${CACHE}".${$} && mv "${CACHE}".${$} "${CACHE}"
 fi
 
-cat "$CACHE"
+cat "${CACHE}"

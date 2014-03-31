@@ -9,22 +9,22 @@ default_mysql_passwd="c2VjcmV0Cg=="
 
 _basename()
 {
-    [ -z "$1" ] && return 1
-    case $1 in
-        /*|*/*) expr "$1" : '.*/\([^/]*\)' ;;
-        *) printf "%s\\n" "$1";;
+    [ -z "${1}" ] && return 1
+    case "${1}" in
+        /*|*/*) expr "${1}" : '.*/\([^/]*\)' ;;
+        *) printf "%s\\n" "${1}";;
     esac
 }
 
-exec 9>/tmp/$(_basename $0).lock  #http://mywiki.wooledge.org/BashFAQ/045
+exec 9>/tmp/"$(_basename ${0})".lock  #http://mywiki.wooledge.org/BashFAQ/045
 if ! flock -n 9 ; then
-    printf "%s\\n" "$(_basename $0): another instance is running";
+    printf "%s\\n" "$(_basename ${0}): another instance is running";
     exit 1
 fi
 
 _usage()
 {
-    printf "%s\\n" "Usage: $(_basename $0) [OPTION] TYPE ARGS..."
+    printf "%s\\n" "Usage: $(_basename ${0}) [OPTION] TYPE ARGS..."
     printf "%s\\n" "Control Elastix through a cli interface"
     printf "\\n"
     printf "%s\\n" " -c                   credentials, requires a FILE string as a parameter"
@@ -41,13 +41,13 @@ _usage()
     printf "%s\\n" "=examples="
     printf "\\n"
     printf "%s\\n" "#adds a new trunk in domain.com based on definition FILE[0]"
-    printf "%s\\n" "  $(_basename $0) -h admin@domain.com trunk add definition"
+    printf "%s\\n" "  $(_basename ${0}) -h admin@domain.com trunk add definition"
     printf "\\n"
     printf "%s\\n" "#removes a trunk based on [IP|domain], uses credential FILE [1] to apply changes in several machines"
-    printf "%s\\n" "  $(_basename $0) -r credentials trunk remove domain.com"
+    printf "%s\\n" "  $(_basename ${0}) -r credentials trunk remove domain.com"
     printf "\\n"
     printf "%s\\n" "#edit the IP field of an existing trunk in localhost, uses <secret> as the mysql password for the root account"
-    printf "%s\\n" "  $(_basename $0) -m secret trunk edit x.x.x.x y.y.y.y"
+    printf "%s\\n" "  $(_basename ${0}) -m secret trunk edit x.x.x.x y.y.y.y"
     printf "\\n"
     printf "%s\\n" "[0] http://www.voip-info.org/wiki/view/Asterisk+config+sip.conf"
     printf "%s\\n" "[1] remote access is defined as: user@remotehost:port,ssh_passwd,mysql_passwd, and can be defined as many lines as desired"
@@ -56,8 +56,8 @@ _usage()
 
 _die()
 {
-    printf "%s\\n" "$*"
-    printf "%s\\n" "See $(_basename $0) --help"
+    printf "%s\\n" "${*}"
+    printf "%s\\n" "See $(_basename ${0}) --help"
     exit 1
 }
 
@@ -76,152 +76,158 @@ _networkup()
 
 _isnum()
 {   #look for a number, returns 0 on success, 1 otherwise
-    printf "%s\\n" "$@" | grep -q -v "[^0-9]"
+    [ -z "${1}" ] && return 1
+    printf "%s\\n" "${@}" | grep -v "[^0-9]" >/dev/null
 }
 
 _haswhitespaces()
 {
-    grep " " "$@" >/dev/null
+    grep " " "${@}" >/dev/null
 }
 
 _decode64()
 {
-    [ -z "$1" ] && printf "\\n"
-    printf "%s\\n" "$1" | base64 --decode
+    [ -z "${1}" ] && return 1
+    printf "%s\\n" "${1}" | openssl enc -base64 -d
 }
 
 _isip4valid()
 {   #return 0 if parameter is a valid ip4 address, non-zero otherwise
-    case "$*" in
+    #https://groups.google.com/forum/#!original/comp.unix.shell/NDu-kAL5cHs/7Zpc6Q2Hu5YJ
+    [ -z "${1}" ] && return 1
+
+    case "${*}" in
         ""|*[!0-9.]*|*[!0-9]) return 1 ;;
     esac
 
-    local IFS=.  ## local is bash-specific
-    set -- $*
+    OLDIFS="${IFS}"
+    IFS="."
+    set -- ${*}
+    IFS="${OLDIFS}"
 
-    [ $# -eq 4 ] &&
-        [ ${1:-666} -le 255 ] && [ ${2:-666} -le 255 ] &&
-        [ ${3:-666} -le 255 ] && [ ${4:-666} -le 254 ]
+    [ "${#}" -eq "4" ] &&
+        [ "${1:-666}" -le "255" ] && [ "${2:-666}" -le "255" ] &&
+        [ "${3:-666}" -le "255" ] && [ "${4:-666}" -le "254" ]
 }
 
 _isdomainvalid()
 {   #return 0 if parameter is a valid domain address, non-zero otherwise
-    printf "%s\\n" "$@" | grep -P '(?=^.{5,254}$)(^(?:(?!\d+\.)[a-zA-Z0-9_\-]{1,63}\.?)+(?:[a-zA-Z]{2,})$)' >/dev/null
+    printf "%s\\n" "${@}" | grep -P '(?=^.{5,254}$)(^(?:(?!\d+\.)[a-zA-Z0-9_\-]{1,63}\.?)+(?:[a-zA-Z]{2,})$)' >/dev/null
 }
 
 _elastixfileformatisvalid()
 {   #return 0 if parameter in file contain a valid format, non-zero otherwise
-    elastix_format_trunk="$(cat "$1" | grep "^trunk" | cut -f2 -d"=")"
-    elastix_format_host="$(cat "$1" | grep "^host" | cut -f2 -d"=")"
-    elastix_format_proxy="$(cat "$1" | grep "^proxy" | cut -f2 -d"=")"
-    elastix_format_srvlookup="$(cat "$1" | grep "^srvlookup" | cut -f2 -d"=")"
-    elastix_format_secret="$(cat "$1" | grep "^secret" | cut -f2 -d"=")"
-    elastix_format_username="$(cat "$1" | grep "^username" | cut -f2 -d"=")"
-    elastix_format_type="$(cat "$1" | grep "^type" | cut -f2 -d"=")"
-    elastix_format_fromuser="$(cat "$1" | grep "^fromuser" | cut -f2 -d"=")"
-    elastix_format_fromdomain="$(cat "$1" | grep "^fromdomain" | cut -f2 -d"=")"
-    elastix_format_canreinvite="$(cat "$1" | grep "^canreinvite" | cut -f2 -d"=")"
-    elastix_format_qualify="$(cat "$1" | grep "^qualify" | cut -f2 -d"=")"
-    elastix_format_nat="$(cat "$1" | grep "^nat" | cut -f2 -d"=")"
-    elastix_format_insecure="$(cat "$1" | grep "^insecure" | cut -f2 -d"=")"
-    elastix_format_dtmfmode="$(cat "$1" | grep "^dtmfmode" | cut -f2 -d"=")"
-    elastix_format_disallow="$(cat "$1" | grep "^disallow" | cut -f2 -d"=")"
-    elastix_format_allow="$(cat "$1" | grep "^allow" | cut -f2 -d"=")"
-    elastix_format_context="$(cat "$1" | grep "^context" | cut -f2 -d"=")"
-    elastix_format_register="$(cat "$1" | grep "^register" | cut -f2 -d"=")"
+    elastix_format_trunk="$(cat "${1}" | grep "^trunk" | cut -f2 -d"=")"
+    elastix_format_host="$(cat "${1}" | grep "^host" | cut -f2 -d"=")"
+    elastix_format_proxy="$(cat "${1}" | grep "^proxy" | cut -f2 -d"=")"
+    elastix_format_srvlookup="$(cat "${1}" | grep "^srvlookup" | cut -f2 -d"=")"
+    elastix_format_secret="$(cat "${1}" | grep "^secret" | cut -f2 -d"=")"
+    elastix_format_username="$(cat "${1}" | grep "^username" | cut -f2 -d"=")"
+    elastix_format_type="$(cat "${1}" | grep "^type" | cut -f2 -d"=")"
+    elastix_format_fromuser="$(cat "${1}" | grep "^fromuser" | cut -f2 -d"=")"
+    elastix_format_fromdomain="$(cat "${1}" | grep "^fromdomain" | cut -f2 -d"=")"
+    elastix_format_canreinvite="$(cat "${1}" | grep "^canreinvite" | cut -f2 -d"=")"
+    elastix_format_qualify="$(cat "${1}" | grep "^qualify" | cut -f2 -d"=")"
+    elastix_format_nat="$(cat "${1}" | grep "^nat" | cut -f2 -d"=")"
+    elastix_format_insecure="$(cat "${1}" | grep "^insecure" | cut -f2 -d"=")"
+    elastix_format_dtmfmode="$(cat "${1}" | grep "^dtmfmode" | cut -f2 -d"=")"
+    elastix_format_disallow="$(cat "${1}" | grep "^disallow" | cut -f2 -d"=")"
+    elastix_format_allow="$(cat "${1}" | grep "^allow" | cut -f2 -d"=")"
+    elastix_format_context="$(cat "${1}" | grep "^context" | cut -f2 -d"=")"
+    elastix_format_register="$(cat "${1}" | grep "^register" | cut -f2 -d"=")"
 
     #commented settings can have null strings as parameters
-    [ -z "$elastix_format_trunk" ]       && _die "No valid [trunk] defined in $1"
-    [ -z "$elastix_format_host" ]        && _die "No valid [host] defined in $1"
-    #[ -z "$elastix_format_proxy" ]       && _die "No valid [proxy] defined in $1"
-    [ -z "$elastix_format_srvlookup" ]   && _die "No valid [srvlookup] defined in $1"
-    [ -z "$elastix_format_secret" ]      && _die "No valid [secret] defined in $1"
-    [ -z "$elastix_format_username" ]    && _die "No valid [username] defined in $1"
-    [ -z "$elastix_format_type" ]        && _die "No valid [type] defined in $1"
-    [ -z "$elastix_format_fromuser" ]    && _die "No valid [fromuser] defined in $1"
-    [ -z "$elastix_format_fromdomain" ]  && _die "No valid [fromdomain] defined in $1"
-    [ -z "$elastix_format_canreinvite" ] && _die "No valid [canreinvite] defined in $1"
-    [ -z "$elastix_format_qualify" ]     && _die "No valid [qualify] defined in $1"
-    [ -z "$elastix_format_nat" ]         && _die "No valid [nat] defined in $1"
-    [ -z "$elastix_format_insecure" ]    && _die "No valid [insecure] defined in $1"
-    [ -z "$elastix_format_dtmfmode" ]    && _die "No valid [dtmfmode] defined in $1"
-    [ -z "$elastix_format_disallow" ]    && _die "No valid [disallow] defined in $1"
-    [ -z "$elastix_format_allow" ]       && _die "No valid [allow] defined in $1"
-    [ -z "$elastix_format_context" ]     && _die "No valid [context] defined in $1"
-    #[ -z "$elastix_format_register" ]    && _die "No valid [register] defined in $1"
+    [ -z "${elastix_format_trunk}" ]       && _die "No valid [trunk] defined in ${1}"
+    [ -z "${elastix_format_host}" ]        && _die "No valid [host] defined in ${1}"
+    #[ -z "${elastix_format_proxy}" ]      && _die "No valid [proxy] defined in ${1}"
+    [ -z "${elastix_format_srvlookup}" ]   && _die "No valid [srvlookup] defined in ${1}"
+    [ -z "${elastix_format_secret}" ]      && _die "No valid [secret] defined in ${1}"
+    [ -z "${elastix_format_username}" ]    && _die "No valid [username] defined in ${1}"
+    [ -z "${elastix_format_type}" ]        && _die "No valid [type] defined in ${1}"
+    [ -z "${elastix_format_fromuser}" ]    && _die "No valid [fromuser] defined in ${1}"
+    [ -z "${elastix_format_fromdomain}" ]  && _die "No valid [fromdomain] defined in ${1}"
+    [ -z "${elastix_format_canreinvite}" ] && _die "No valid [canreinvite] defined in ${1}"
+    [ -z "${elastix_format_qualify}" ]     && _die "No valid [qualify] defined in ${1}"
+    [ -z "${elastix_format_nat}" ]         && _die "No valid [nat] defined in ${1}"
+    [ -z "${elastix_format_insecure}" ]    && _die "No valid [insecure] defined in ${1}"
+    [ -z "${elastix_format_dtmfmode}" ]    && _die "No valid [dtmfmode] defined in ${1}"
+    [ -z "${elastix_format_disallow}" ]    && _die "No valid [disallow] defined in ${1}"
+    [ -z "${elastix_format_allow}" ]       && _die "No valid [allow] defined in ${1}"
+    [ -z "${elastix_format_context}" ]     && _die "No valid [context] defined in ${1}"
+    #[ -z "${elastix_format_register}" ]   && _die "No valid [register] defined in ${1}"
     return 0
 }
 
 _trunk()
 {
-    [ -z "$2" ] && _die "Missing param for: trunk $1"
+    [ -z "${2}" ] && _die "Missing param for: trunk ${1}"
 
     #do we have valid parameters?, preliminar tests
-    if [ X"$1" = X"add" ]; then
-        [ -n "$3" ] && _die "too many parameters for: trunk $@"
-        [ ! -f "$2" ] && _die "Not a file: $2"
-        if ! _elastixfileformatisvalid "$2"; then
-            _die "Not a valid format: $2"
+    if [ X"${1}" = X"add" ]; then
+        [ -n "${3}" ] && _die "too many parameters for: trunk ${@}"
+        [ ! -f "${2}" ] && _die "Not a file: ${2}"
+        if ! _elastixfileformatisvalid "${2}"; then
+            _die "Not a valid format: ${2}"
         fi
 
-        if ! _isip4valid "$elastix_format_host"; then
-            if ! _isdomainvalid "$elastix_format_host"; then
-                _die "Not a valid host: $elastix_format_host"
+        if ! _isip4valid "${elastix_format_host}"; then
+            if ! _isdomainvalid "${elastix_format_host}"; then
+                _die "Not a valid host: ${elastix_format_host}"
             fi
         fi
 
-    elif [ X"$1" = X"remove" ]; then
-        [ -n "$3" ] && _die "too many parameters for: trunk $@"
-        if ! _isip4valid "$2"; then
-            if ! _isdomainvalid "$2"; then
-                _die "Not a valid host: $2"
+    elif [ X"${1}" = X"remove" ]; then
+        [ -n "${3}" ] && _die "too many parameters for: trunk ${@}"
+        if ! _isip4valid "${2}"; then
+            if ! _isdomainvalid "${2}"; then
+                _die "Not a valid host: ${2}"
             fi
         fi
-    elif [ X"$1" = X"edit" ]; then
-        [ -n "$4" ] && _die "too many parameters for: trunk $@"
-        [ -z "$3" ] && _die "too few parameters for: trunk $@"
-        [ X"$2" = X"$3" ] && _die "parameters must be different: trunk $@"
+    elif [ X"${1}" = X"edit" ]; then
+        [ -n "${4}" ] && _die "too many parameters for: trunk ${@}"
+        [ -z "${3}" ] && _die "too few parameters for: trunk ${@}"
+        [ X"${2}" = X"${3}" ] && _die "parameters must be different: trunk ${@}"
 
-        if ! _isip4valid "$2"; then
-            if ! _isdomainvalid "$2"; then
-                _die "Not a valid host: $2"
+        if ! _isip4valid "${2}"; then
+            if ! _isdomainvalid "${2}"; then
+                _die "Not a valid host: ${2}"
             fi
         fi
 
-        if ! _isip4valid "$3"; then
-            if ! _isdomainvalid "$3"; then
-                _die "Not a valid host: $3"
+        if ! _isip4valid "${3}"; then
+            if ! _isdomainvalid "${3}"; then
+                _die "Not a valid host: ${3}"
             fi
         fi
     fi
 
-    if [ -n "$elastix_credentials" ]; then
-        [ ! -f "$elastix_credentials" ] && _die "Not a file: $elastix_credentials"
+    if [ -n "${elastix_credentials}" ]; then
+        [ ! -f "${elastix_credentials}" ] && _die "Not a file: ${elastix_credentials}"
 
         #we're sending sensitive data to elastix instances, let's try to verify if our credentials are correct
-        printf "%s\\n" "Verifying credentials defined in $elastix_credentials ..."
-        if _haswhitespaces "$elastix_credentials" ; then
-            _die "$elastix_credentials doesn't contain a valid format"
+        printf "%s\\n" "Verifying credentials defined in ${elastix_credentials} ..."
+        if _haswhitespaces "${elastix_credentials}" ; then
+            _die "${elastix_credentials} doesn't contain a valid format"
         fi
 
         #ssh modifies stdin behavior, therefore is better to pipe through other channel
         while IFS=',' read -r <&3 elastix_ssh_host elastix_ssh_passwd elastix_mysql_passwd JUNK; do
-            [ -n "$JUNK" ] && _die "$elastix_credentials doesn't contain a valid format"
+            [ -n "${JUNK}" ] && _die "${elastix_credentials} doesn't contain a valid format"
 
-            if _isnum $(printf "%s\\n" "$elastix_ssh_host" | cut -f2 -d:) ; then
-                elastix_ssh_port=$(printf "%s\\n" "$elastix_ssh_host" | cut -f2 -d:)
+            if _isnum $(printf "%s\\n" "${elastix_ssh_host}" | cut -f2 -d:) ; then
+                elastix_ssh_port="$(printf "%s\\n" "${elastix_ssh_host}" | cut -f2 -d:)"
             else
-                elastix_ssh_port=22
+                elastix_ssh_port="22"
             fi
-            elastix_ssh_host=$(printf "%s\\n" "$elastix_ssh_host" | cut -f1 -d:)
+            elastix_ssh_host="$(printf "%s\\n" "${elastix_ssh_host}" | cut -f1 -d:)"
 
-            [ -z "$elastix_ssh_passwd" ] && elastix_ssh_passwd=$(_decode64 "$default_ssh_passwd")
-            [ -z "$elastix_mysql_passwd" ] && elastix_mysql_passwd=$(_decode64 "$default_mysql_passwd")
+            [ -z "${elastix_ssh_passwd}" ] && elastix_ssh_passwd="$(_decode64 "${default_ssh_passwd}")"
+            [ -z "${elastix_mysql_passwd}" ] && elastix_mysql_passwd="$(_decode64 "${default_mysql_passwd}")"
 
-            if ! sshpass -p $elastix_ssh_passwd ssh -o StrictHostKeyChecking=no -o Port=$elastix_ssh_port $elastix_ssh_host "mysql -uroot -p$elastix_mysql_passwd -e 'use asterisk'" ; then
-                _die "$elastix_credentials: invalid credentials for $elastix_ssh_host"
+            if ! sshpass -p ${elastix_ssh_passwd} ssh -o StrictHostKeyChecking=no -o Port="${elastix_ssh_port}" "${elastix_ssh_host}" "mysql -uroot -p${elastix_mysql_passwd} -e 'use asterisk'" ; then
+                _die "${elastix_credentials}: invalid credentials for ${elastix_ssh_host}"
             fi
-        done 3< "$elastix_credentials"
+        done 3< "${elastix_credentials}"
 
         elastix_ssh_host_array=()
         elastix_ssh_port_array=()
@@ -229,96 +235,96 @@ _trunk()
         elastix_mysql_passwd_array=()
 
         while IFS=',' read -r <&4 elastix_ssh_host elastix_ssh_passwd elastix_mysql_passwd; do
-            if _isnum $(printf "%s\\n" "$elastix_ssh_host" | cut -f2 -d:) ; then
-                elastix_ssh_port=$(printf "%s\\n" "$elastix_ssh_host" | cut -f2 -d:)
+            if _isnum $(printf "%s\\n" "${elastix_ssh_host}" | cut -f2 -d:) ; then
+                elastix_ssh_port="$(printf "%s\\n" "${elastix_ssh_host}" | cut -f2 -d:)"
             else
-                elastix_ssh_port=22
+                elastix_ssh_port="22"
             fi
-            elastix_ssh_host=$(printf "%s\\n" "$elastix_ssh_host" | cut -f1 -d:)
+            elastix_ssh_host="$(printf "%s\\n" "${elastix_ssh_host}" | cut -f1 -d:)"
 
-            [ -z "$elastix_ssh_passwd" ] && elastix_ssh_passwd=$(_decode64 "$default_ssh_passwd")
-            [ -z "$elastix_mysql_passwd" ] && elastix_mysql_passwd=$(_decode64 "$default_mysql_passwd")
+            [ -z "${elastix_ssh_passwd}" ]   && elastix_ssh_passwd="$(_decode64 "${default_ssh_passwd}")"
+            [ -z "${elastix_mysql_passwd}" ] && elastix_mysql_passwd="$(_decode64 "${default_mysql_passwd}")"
 
-            elastix_ssh_host_array+=("$elastix_ssh_host")
-            elastix_ssh_port_array+=("$elastix_ssh_port")
-            elastix_ssh_passwd_array+=("$elastix_ssh_passwd")
-            elastix_mysql_passwd_array+=("$elastix_mysql_passwd")
-        done 4< "$elastix_credentials"
+            elastix_ssh_host_array+=("${elastix_ssh_host}")
+            elastix_ssh_port_array+=("${elastix_ssh_port}")
+            elastix_ssh_passwd_array+=("${elastix_ssh_passwd}")
+            elastix_mysql_passwd_array+=("${elastix_mysql_passwd}")
+        done 4< "${elastix_credentials}"
     else
         printf "%s\\n" "Verifying credentials ..."
 
-        [ -z "$elastix_ssh_host" ] && elastix_ssh_host=localhost
-        [ -z "$elastix_ssh_passwd" ] && elastix_ssh_passwd=$(_decode64 "$default_ssh_passwd")
-        [ -z "$elastix_mysql_passwd" ] && elastix_mysql_passwd=$(_decode64 "$default_mysql_passwd")
+        [ -z "${elastix_ssh_host}" ] && elastix_ssh_host="localhost"
+        [ -z "${elastix_ssh_passwd}" ] && elastix_ssh_passwd="$(_decode64 "${default_ssh_passwd}")"
+        [ -z "${elastix_mysql_passwd}" ] && elastix_mysql_passwd="$(_decode64 "${default_mysql_passwd}")"
 
-        if _isnum $(printf "%s\\n" "$elastix_ssh_host" | cut -f2 -d:) ; then
-            elastix_ssh_port=$(printf "%s\\n" "$elastix_ssh_host" | cut -f2 -d:)
+        if _isnum $(printf "%s\\n" "${elastix_ssh_host}" | cut -f2 -d:) ; then
+            elastix_ssh_port="$(printf "%s\\n" "${elastix_ssh_host}" | cut -f2 -d:)"
         else
-            elastix_ssh_port=22
+            elastix_ssh_port="22"
         fi
-        elastix_ssh_host=$(printf "%s\\n" "$elastix_ssh_host" | cut -f1 -d:)
+        elastix_ssh_host="$(printf "%s\\n" "${elastix_ssh_host}" | cut -f1 -d:)"
 
-        if ! sshpass -p $elastix_ssh_passwd ssh -o StrictHostKeyChecking=no -o Port=$elastix_ssh_port $elastix_ssh_host "mysql -uroot -p$elastix_mysql_passwd -e 'use asterisk'" ; then
-            _die "$elastix_credentials: invalid credentials for $elastix_ssh_host"
+        if ! sshpass -p ${elastix_ssh_passwd} ssh -o StrictHostKeyChecking=no -o Port="${elastix_ssh_port}" "${elastix_ssh_host}" "mysql -uroot -p${elastix_mysql_passwd} -e 'use asterisk'" ; then
+            _die "${elastix_credentials}: invalid credentials for ${elastix_ssh_host}"
         fi
 
-        elastix_ssh_host_array=("$elastix_ssh_host")
-        elastix_ssh_port_array=("$elastix_ssh_port")
-        elastix_ssh_passwd_array=("$elastix_ssh_passwd")
-        elastix_mysql_passwd_array=("$elastix_mysql_passwd")
+        elastix_ssh_host_array=("${elastix_ssh_host}")
+        elastix_ssh_port_array=("${elastix_ssh_port}")
+        elastix_ssh_passwd_array=("${elastix_ssh_passwd}")
+        elastix_mysql_passwd_array=("${elastix_mysql_passwd}")
     fi
 
-    if [ X"$1" = X"add" ]; then
+    if [ X"${1}" = X"add" ]; then
         for (( i = 0 ; i < ${#elastix_ssh_host_array[@]} ; i=$i+1 ));
         do
             remote_db=""
-            remote_db=$(sshpass -p ${elastix_ssh_passwd_array[${i}]} ssh -o StrictHostKeyChecking=no -o Port=${elastix_ssh_port_array[${1}]} ${elastix_ssh_host_array[${i}]} "mysqldump -p${elastix_mysql_passwd_array[${i}]} asterisk --extended=FALSE")
+            remote_db="$(sshpass -p ${elastix_ssh_passwd_array[${i}]} ssh -o StrictHostKeyChecking=no -o Port="${elastix_ssh_port_array[${1}]}" "${elastix_ssh_host_array[${i}]}" "mysqldump -p${elastix_mysql_passwd_array[${i}]} asterisk --extended=FALSE")"
 
-            if $(printf "%s\\n" "$remote_db" | grep "$elastix_format_host" | grep "host" >/dev/null); then
-                id=$(printf "%s\\n" "$remote_db" | grep "$elastix_format_host" | grep "host" | cut -f1 -d"," | cut -f2 -d"(" | tr -d "'")
-                [ -z "$id" ] && _die "internal error: id column wasn't found on -asterisk- db, probably elastix system is broken"
+            if $(printf "%s\\n" "${remote_db}" | grep "${elastix_format_host}" | grep "host" >/dev/null); then
+                id="$(printf "%s\\n" "${remote_db}" | grep "${elastix_format_host}" | grep "host" | cut -f1 -d"," | cut -f2 -d"(" | tr -d "'")"
+                [ -z "${id}" ] && _die "internal error: id column wasn't found on -asterisk- db, probably elastix system is broken"
 
-                trunk_name=$(sshpass -p ${elastix_ssh_passwd_array[${i}]} ssh -o StrictHostKeyChecking=no -o Port=${elastix_ssh_port_array[${1}]} ${elastix_ssh_host_array[${i}]} "mysql asterisk -p${elastix_mysql_passwd_array[${i}]} -se \"SELECT data FROM sip WHERE id=\\\"$id\\\" AND flags=\"2\";\"")
-                [ -z "$trunk_name" ] && _die "internal error: data column wasn't found on -asterisk- db, probably elastix system is broken"
+                trunk_name="$(sshpass -p ${elastix_ssh_passwd_array[${i}]} ssh -o StrictHostKeyChecking=no -o Port=${elastix_ssh_port_array[${1}]} ${elastix_ssh_host_array[${i}]} "mysql asterisk -p${elastix_mysql_passwd_array[${i}]} -se \"SELECT data FROM sip WHERE id=\\\"${id}\\\" AND flags=\"2\";\"")"
+                [ -z "${trunk_name}" ] && _die "internal error: data column wasn't found on -asterisk- db, probably elastix system is broken"
 
-                trunk_id=$(sshpass -p ${elastix_ssh_passwd_array[${i}]} ssh -o StrictHostKeyChecking=no -o Port=${elastix_ssh_port_array[${1}]} ${elastix_ssh_host_array[${i}]} "mysql asterisk -p${elastix_mysql_passwd_array[${i}]} -se \"SELECT trunkid FROM trunks WHERE name=\\\"$trunk_name\\\";\"")
-                [ -z "$trunk_name" ] && _die "internal error: data column wasn't found on -asterisk- db, probably elastix system is broken"
+                trunk_id="$(sshpass -p ${elastix_ssh_passwd_array[${i}]} ssh -o StrictHostKeyChecking=no -o Port=${elastix_ssh_port_array[${1}]} ${elastix_ssh_host_array[${i}]} "mysql asterisk -p${elastix_mysql_passwd_array[${i}]} -se \"SELECT trunkid FROM trunks WHERE name=\\\"${trunk_name}\\\";\"")"
+                [ -z "${trunk_name}" ] && _die "internal error: data column wasn't found on -asterisk- db, probably elastix system is broken"
 
-                printf "%s\\n" "$elastix_format_host is already declared in trunk $trunk_name, skipping ..."
+                printf "%s\\n" "${elastix_format_host} is already declared in trunk ${trunk_name}, skipping ..."
             else
-                if $(printf "%s\\n" "$remote_db" | grep "$elastix_format_trunk" | grep "account" >/dev/null); then
-                    printf "%s\\n" "$elastix_format_trunk is already declared as trunk, use another trunk name, skipping ..."
+                if $(printf "%s\\n" "${remote_db}" | grep "${elastix_format_trunk}" | grep "account" >/dev/null); then
+                    printf "%s\\n" "${elastix_format_trunk} is already declared as trunk, use another trunk name, skipping ..."
                 else
-                    printf "%s\\n" "adding new $elastix_format_trunk trunk ..."
+                    printf "%s\\n" "adding new ${elastix_format_trunk} trunk ..."
 
-                    higher_trunk_id=$(sshpass -p ${elastix_ssh_passwd_array[${i}]} ssh -o StrictHostKeyChecking=no -o Port=${elastix_ssh_port_array[${1}]} ${elastix_ssh_host_array[${i}]} "mysql asterisk -p${elastix_mysql_passwd_array[${i}]} -se \"SELECT trunkid FROM trunks;\"")
-                    [ -z "$higher_trunk_id" ] && _die "internal error: trunkid column wasn't found on -asterisk- db, probably elastix system is broken"
-                    higher_trunk_id=$(printf "%s\\n" "$higher_trunk_id" | tail -1)
-                    higher_trunk_id=$(expr higher_trunk_id + 1) #define next trunk
+                    higher_trunk_id="$(sshpass -p ${elastix_ssh_passwd_array[${i}]} ssh -o StrictHostKeyChecking=no -o Port=${elastix_ssh_port_array[${1}]} ${elastix_ssh_host_array[${i}]} "mysql asterisk -p${elastix_mysql_passwd_array[${i}]} -se \"SELECT trunkid FROM trunks;\"")"
+                    [ -z "${higher_trunk_id}" ] && _die "internal error: trunkid column wasn't found on -asterisk- db, probably elastix system is broken"
+                    higher_trunk_id="$(printf "%s\\n" "${higher_trunk_id}" | tail -1)"
+                    higher_trunk_id="$(expr "${higher_trunk_id}" + 1)" #define next trunk
 
                     if ! sshpass -p ${elastix_ssh_passwd_array[${i}]} ssh -o StrictHostKeyChecking=no -o Port=${elastix_ssh_port_array[${1}]} ${elastix_ssh_host_array[${i}]} "mysql asterisk -p${elastix_mysql_passwd_array[${i}]} -se \"
-                        INSERT INTO trunks VALUES ($higher_trunk_id,'$elastix_format_trunk','sip','','off','','','','$elastix_format_trunk','','','off');
-                        INSERT INTO sip VALUES ('tr-peer-$higher_trunk_id','account','$elastix_format_trunk','2');
-                        INSERT INTO sip VALUES ('tr-peer-$higher_trunk_id','host','$elastix_format_host','3');
-                        INSERT INTO sip VALUES ('tr-peer-$higher_trunk_id','proxy','$elastix_format_proxy','4');
-                        INSERT INTO sip VALUES ('tr-peer-$higher_trunk_id','srvlookup','$elastix_format_srvlookup','5');
-                        INSERT INTO sip VALUES ('tr-peer-$higher_trunk_id','secret','$elastix_format_secret','6');
-                        INSERT INTO sip VALUES ('tr-peer-$higher_trunk_id','username','$elastix_format_username','7');
-                        INSERT INTO sip VALUES ('tr-peer-$higher_trunk_id','type','$elastix_format_type','8');
-                        INSERT INTO sip VALUES ('tr-peer-$higher_trunk_id','fromuser','$elastix_format_fromuser','9');
-                        INSERT INTO sip VALUES ('tr-peer-$higher_trunk_id','fromdomain','$elastix_format_fromdomain','10');
-                        INSERT INTO sip VALUES ('tr-peer-$higher_trunk_id','canreinvite','$elastix_format_canreinvite','11');
-                        INSERT INTO sip VALUES ('tr-peer-$higher_trunk_id','qualify','$elastix_format_qualify','12');
-                        INSERT INTO sip VALUES ('tr-peer-$higher_trunk_id','nat','$elastix_format_nat','13');
-                        INSERT INTO sip VALUES ('tr-peer-$higher_trunk_id','insecure','$elastix_format_insecure','14');
-                        INSERT INTO sip VALUES ('tr-peer-$higher_trunk_id','dtmfmode','$elastix_format_dtmfmode','15');
-                        INSERT INTO sip VALUES ('tr-peer-$higher_trunk_id','disallow','$elastix_format_disallow','16');
-                        INSERT INTO sip VALUES ('tr-peer-$higher_trunk_id','allow','$elastix_format_allow','17');
-                        INSERT INTO sip VALUES ('tr-peer-$higher_trunk_id','context','$elastix_format_context','18');\""; then
-                        _die "Error adding trunk $elastix_format_trunk, review manually the -asterisk- database"
+                        INSERT INTO trunks VALUES (${higher_trunk_id},'${elastix_format_trunk}','sip','','off','','','','${elastix_format_trunk}','','','off');
+                        INSERT INTO sip VALUES ('tr-peer-${higher_trunk_id}','account','${elastix_format_trunk}','2');
+                        INSERT INTO sip VALUES ('tr-peer-${higher_trunk_id}','host','${elastix_format_host}','3');
+                        INSERT INTO sip VALUES ('tr-peer-${higher_trunk_id}','proxy','${elastix_format_proxy}','4');
+                        INSERT INTO sip VALUES ('tr-peer-${higher_trunk_id}','srvlookup','${elastix_format_srvlookup}','5');
+                        INSERT INTO sip VALUES ('tr-peer-${higher_trunk_id}','secret','${elastix_format_secret}','6');
+                        INSERT INTO sip VALUES ('tr-peer-${higher_trunk_id}','username','${elastix_format_username}','7');
+                        INSERT INTO sip VALUES ('tr-peer-${higher_trunk_id}','type','${elastix_format_type}','8');
+                        INSERT INTO sip VALUES ('tr-peer-${higher_trunk_id}','fromuser','${elastix_format_fromuser}','9');
+                        INSERT INTO sip VALUES ('tr-peer-${higher_trunk_id}','fromdomain','${elastix_format_fromdomain}','10');
+                        INSERT INTO sip VALUES ('tr-peer-${higher_trunk_id}','canreinvite','${elastix_format_canreinvite}','11');
+                        INSERT INTO sip VALUES ('tr-peer-${higher_trunk_id}','qualify','${elastix_format_qualify}','12');
+                        INSERT INTO sip VALUES ('tr-peer-${higher_trunk_id}','nat','${elastix_format_nat}','13');
+                        INSERT INTO sip VALUES ('tr-peer-${higher_trunk_id}','insecure','${elastix_format_insecure}','14');
+                        INSERT INTO sip VALUES ('tr-peer-${higher_trunk_id}','dtmfmode','${elastix_format_dtmfmode}','15');
+                        INSERT INTO sip VALUES ('tr-peer-${higher_trunk_id}','disallow','${elastix_format_disallow}','16');
+                        INSERT INTO sip VALUES ('tr-peer-${higher_trunk_id}','allow','${elastix_format_allow}','17');
+                        INSERT INTO sip VALUES ('tr-peer-${higher_trunk_id}','context','${elastix_format_context}','18');\""; then
+                        _die "Error adding trunk ${elastix_format_trunk}, review manually the -asterisk- database"
                     fi
-                    if [ -n "$elastix_format_register" ]; then
-                        if ! sshpass -p ${elastix_ssh_passwd_array[${i}]} ssh -o StrictHostKeyChecking=no -o Port=${elastix_ssh_port_array[${1}]} ${elastix_ssh_host_array[${i}]} "mysql asterisk -p${elastix_mysql_passwd_array[${i}]} -se \"INSERT INTO sip VALUES ('tr-reg-$higher_trunk_id','register','$elastix_format_register','0');\""; then
+                    if [ -n "${elastix_format_register}" ]; then
+                        if ! sshpass -p ${elastix_ssh_passwd_array[${i}]} ssh -o StrictHostKeyChecking=no -o Port=${elastix_ssh_port_array[${1}]} ${elastix_ssh_host_array[${i}]} "mysql asterisk -p${elastix_mysql_passwd_array[${i}]} -se \"INSERT INTO sip VALUES ('tr-reg-${higher_trunk_id}','register','${elastix_format_register}','0');\""; then
                         _die "Error adding the id field to the sip table, review manually the -asterisk- database"
                         fi
                         fi
@@ -333,43 +339,43 @@ _trunk()
                 _die "Error reloading elastix services, this should *never* happen, if you're looking this message review the script code + remote elastix server, something is seriously broken"
             fi
         done
-    elif [ X"$1" = X"remove" ]; then
+    elif [ X"${1}" = X"remove" ]; then
         for (( i = 0 ; i < ${#elastix_ssh_host_array[@]} ; i=$i+1 ));
         do
             remote_db=""
-            remote_db=$(sshpass -p ${elastix_ssh_passwd_array[${i}]} ssh -o StrictHostKeyChecking=no -o Port=${elastix_ssh_port_array[${1}]} ${elastix_ssh_host_array[${i}]} "mysqldump -p${elastix_mysql_passwd_array[${i}]} asterisk --extended=FALSE")
+            remote_db="$(sshpass -p ${elastix_ssh_passwd_array[${i}]} ssh -o StrictHostKeyChecking=no -o Port=${elastix_ssh_port_array[${1}]} ${elastix_ssh_host_array[${i}]} "mysqldump -p${elastix_mysql_passwd_array[${i}]} asterisk --extended=FALSE")"
 
-            if ! $(printf "%s\\n" "$remote_db" | grep "$2" | grep "host" >/dev/null); then
-                printf "%s\\n" "$2 not found, skipping ..."
+            if ! $(printf "%s\\n" "${remote_db}" | grep "${2}" | grep "host" >/dev/null); then
+                printf "%s\\n" "${2} not found, skipping ..."
             else
-                id=$(printf "%s\\n" "$remote_db" | grep "$2" | grep "host" | cut -f1 -d"," | cut -f2 -d"(" | tr -d "'")
-                [ -z "$id" ] && _die "internal error: id column wasn't found on -asterisk- db, probably elastix system is broken"
+                id="$(printf "%s\\n" "${remote_db}" | grep "${2}" | grep "host" | cut -f1 -d"," | cut -f2 -d"(" | tr -d "'")"
+                [ -z "${id}" ] && _die "internal error: id column wasn't found on -asterisk- db, probably elastix system is broken"
 
-                trunk_name=$(sshpass -p ${elastix_ssh_passwd_array[${i}]} ssh -o StrictHostKeyChecking=no -o Port=${elastix_ssh_port_array[${1}]} ${elastix_ssh_host_array[${i}]} "mysql asterisk -p${elastix_mysql_passwd_array[${i}]} -se \"SELECT data FROM sip WHERE id=\\\"$id\\\" AND flags=\"2\";\"")
-                [ -z "$trunk_name" ] && _die "internal error: data column wasn't found on -asterisk- db, probably elastix system is broken"
+                trunk_name="$(sshpass -p ${elastix_ssh_passwd_array[${i}]} ssh -o StrictHostKeyChecking=no -o Port=${elastix_ssh_port_array[${1}]} ${elastix_ssh_host_array[${i}]} "mysql asterisk -p${elastix_mysql_passwd_array[${i}]} -se \"SELECT data FROM sip WHERE id=\\\"${id}\\\" AND flags=\"2\";\"")"
+                [ -z "${trunk_name}" ] && _die "internal error: data column wasn't found on -asterisk- db, probably elastix system is broken"
 
-                trunk_id=$(sshpass -p ${elastix_ssh_passwd_array[${i}]} ssh -o StrictHostKeyChecking=no -o Port=${elastix_ssh_port_array[${1}]} ${elastix_ssh_host_array[${i}]} "mysql asterisk -p${elastix_mysql_passwd_array[${i}]} -se \"SELECT trunkid FROM trunks WHERE name=\\\"$trunk_name\\\";\"")
-                [ -z "$trunk_name" ] && _die "internal error: data column wasn't found on -asterisk- db, probably elastix system is broken"
+                trunk_id="$(sshpass -p ${elastix_ssh_passwd_array[${i}]} ssh -o StrictHostKeyChecking=no -o Port=${elastix_ssh_port_array[${1}]} ${elastix_ssh_host_array[${i}]} "mysql asterisk -p${elastix_mysql_passwd_array[${i}]} -se \"SELECT trunkid FROM trunks WHERE name=\\\"${trunk_name}\\\";\"")"
+                [ -z "${trunk_name}" ] && _die "internal error: data column wasn't found on -asterisk- db, probably elastix system is broken"
 
-                id_reg=$(printf "%s\\n" "$remote_db" | grep "register" | grep "tr-reg-$trunk_id" | cut -f1 -d"," | cut -f2 -d"(" | tr -d "'")
+                id_reg="$(printf "%s\\n" "${remote_db}" | grep "register" | grep "tr-reg-${trunk_id}" | cut -f1 -d"," | cut -f2 -d"(" | tr -d "'")"
 
-                printf "%s\\n" "$2 is trunk $trunk_name deleting ..."
+                printf "%s\\n" "${2} is trunk ${trunk_name} deleting ..."
 
-                if ! sshpass -p ${elastix_ssh_passwd_array[${i}]} ssh -o StrictHostKeyChecking=no -o Port=${elastix_ssh_port_array[${1}]} ${elastix_ssh_host_array[${i}]} "mysql asterisk -p${elastix_mysql_passwd_array[${i}]} -se \"DELETE FROM sip WHERE id=\\\"$id\\\";\"" ; then
-                    _die "Error deleting trunk $trunk_name, review manually the -asterisk- database"
+                if ! sshpass -p ${elastix_ssh_passwd_array[${i}]} ssh -o StrictHostKeyChecking=no -o Port=${elastix_ssh_port_array[${1}]} ${elastix_ssh_host_array[${i}]} "mysql asterisk -p${elastix_mysql_passwd_array[${i}]} -se \"DELETE FROM sip WHERE id=\\\"${id}\\\";\"" ; then
+                    _die "Error deleting trunk ${trunk_name}, review manually the -asterisk- database"
                 fi
 
-                if ! sshpass -p ${elastix_ssh_passwd_array[${i}]} ssh -o StrictHostKeyChecking=no -o Port=${elastix_ssh_port_array[${1}]} ${elastix_ssh_host_array[${i}]} "mysql asterisk -p${elastix_mysql_passwd_array[${i}]} -se \"DELETE FROM sip WHERE id=\\\"$id\\\";\"" ; then
-                    _die "Error deleting trunk $trunk_name, review manually the -asterisk- database"
+                if ! sshpass -p ${elastix_ssh_passwd_array[${i}]} ssh -o StrictHostKeyChecking=no -o Port=${elastix_ssh_port_array[${1}]} ${elastix_ssh_host_array[${i}]} "mysql asterisk -p${elastix_mysql_passwd_array[${i}]} -se \"DELETE FROM sip WHERE id=\\\"${id}\\\";\"" ; then
+                    _die "Error deleting trunk ${trunk_name}, review manually the -asterisk- database"
                 fi
 
-                if ! sshpass -p ${elastix_ssh_passwd_array[${i}]} ssh -o StrictHostKeyChecking=no -o Port=${elastix_ssh_port_array[${1}]} ${elastix_ssh_host_array[${i}]} "mysql asterisk -p${elastix_mysql_passwd_array[${i}]} -se \"DELETE FROM trunks WHERE trunkid=\\\"$trunk_id\\\";\"" ; then
-                    _die "Error deleting trunk $trunk_name, review manually the -asterisk- database"
+                if ! sshpass -p ${elastix_ssh_passwd_array[${i}]} ssh -o StrictHostKeyChecking=no -o Port=${elastix_ssh_port_array[${1}]} ${elastix_ssh_host_array[${i}]} "mysql asterisk -p${elastix_mysql_passwd_array[${i}]} -se \"DELETE FROM trunks WHERE trunkid=\\\"${trunk_id}\\\";\"" ; then
+                    _die "Error deleting trunk ${trunk_name}, review manually the -asterisk- database"
                 fi
 
-                if [ -n "$id_reg" ]; then
-                    if ! sshpass -p ${elastix_ssh_passwd_array[${i}]} ssh -o StrictHostKeyChecking=no -o Port=${elastix_ssh_port_array[${1}]} ${elastix_ssh_host_array[${i}]} "mysql asterisk -p${elastix_mysql_passwd_array[${i}]} -se \"DELETE FROM sip WHERE id=\\\"$id_reg\\\";\"" ; then
-                        _die "Error deleting trunk $trunk_name, review manually the -asterisk- database"
+                if [ -n "${id_reg}" ]; then
+                    if ! sshpass -p ${elastix_ssh_passwd_array[${i}]} ssh -o StrictHostKeyChecking=no -o Port=${elastix_ssh_port_array[${1}]} ${elastix_ssh_host_array[${i}]} "mysql asterisk -p${elastix_mysql_passwd_array[${i}]} -se \"DELETE FROM sip WHERE id=\\\"${id_reg}\\\";\"" ; then
+                        _die "Error deleting trunk ${trunk_name}, review manually the -asterisk- database"
                     fi
                 fi
 
@@ -382,28 +388,28 @@ _trunk()
                 fi
             fi
         done
-    elif [ X"$1" = X"edit" ]; then
+    elif [ X"${1}" = X"edit" ]; then
         for (( i = 0 ; i < ${#elastix_ssh_host_array[@]} ; i=$i+1 ));
         do
             remote_db=""
-            remote_db=$(sshpass -p ${elastix_ssh_passwd_array[${i}]} ssh -o StrictHostKeyChecking=no -o Port=${elastix_ssh_port_array[${1}]} ${elastix_ssh_host_array[${i}]} "mysqldump -p${elastix_mysql_passwd_array[${i}]} asterisk --extended=FALSE")
+            remote_db="$(sshpass -p ${elastix_ssh_passwd_array[${i}]} ssh -o StrictHostKeyChecking=no -o Port=${elastix_ssh_port_array[${1}]} ${elastix_ssh_host_array[${i}]} "mysqldump -p${elastix_mysql_passwd_array[${i}]} asterisk --extended=FALSE")"
 
-            if ! $(printf "%s\\n" "$remote_db" | grep "$2" | grep "host" >/dev/null); then
-                printf "%s\\n" "$2 not found, skipping ..."
+            if ! $(printf "%s\\n" "${remote_db}" | grep "${2}" | grep "host" >/dev/null); then
+                printf "%s\\n" "${2} not found, skipping ..."
             else
-                id=$(printf "%s\\n" "$remote_db" | grep "$2" | grep "host" | cut -f1 -d"," | cut -f2 -d"(" | tr -d "'")
-                [ -z "$id" ] && _die "internal error: id column wasn't found on -asterisk- db, probably elastix system is broken"
+                id="$(printf "%s\\n" "${remote_db}" | grep "${2}" | grep "host" | cut -f1 -d"," | cut -f2 -d"(" | tr -d "'")"
+                [ -z "${id}" ] && _die "internal error: id column wasn't found on -asterisk- db, probably elastix system is broken"
 
-                trunk_name=$(sshpass -p ${elastix_ssh_passwd_array[${i}]} ssh -o StrictHostKeyChecking=no -o Port=${elastix_ssh_port_array[${1}]} ${elastix_ssh_host_array[${i}]} "mysql asterisk -p${elastix_mysql_passwd_array[${i}]} -se \"SELECT data FROM sip WHERE id=\\\"$id\\\" AND flags=\"2\";\"")
-                [ -z "$trunk_name" ] && _die "internal error: data column wasn't found on -asterisk- db, probably elastix system is broken"
+                trunk_name="$(sshpass -p ${elastix_ssh_passwd_array[${i}]} ssh -o StrictHostKeyChecking=no -o Port=${elastix_ssh_port_array[${1}]} ${elastix_ssh_host_array[${i}]} "mysql asterisk -p${elastix_mysql_passwd_array[${i}]} -se \"SELECT data FROM sip WHERE id=\\\"${id}\\\" AND flags=\"2\";\"")"
+                [ -z "${trunk_name}" ] && _die "internal error: data column wasn't found on -asterisk- db, probably elastix system is broken"
 
-                trunk_id=$(sshpass -p ${elastix_ssh_passwd_array[${i}]} ssh -o StrictHostKeyChecking=no -o Port=${elastix_ssh_port_array[${1}]} ${elastix_ssh_host_array[${i}]} "mysql asterisk -p${elastix_mysql_passwd_array[${i}]} -se \"SELECT trunkid FROM trunks WHERE name=\\\"$trunk_name\\\";\"")
-                [ -z "$trunk_name" ] && _die "internal error: data column wasn't found on -asterisk- db, probably elastix system is broken"
+                trunk_id="$(sshpass -p ${elastix_ssh_passwd_array[${i}]} ssh -o StrictHostKeyChecking=no -o Port=${elastix_ssh_port_array[${1}]} ${elastix_ssh_host_array[${i}]} "mysql asterisk -p${elastix_mysql_passwd_array[${i}]} -se \"SELECT trunkid FROM trunks WHERE name=\\\"${trunk_name}\\\";\"")"
+                [ -z "${trunk_name}" ] && _die "internal error: data column wasn't found on -asterisk- db, probably elastix system is broken"
 
-                printf "%s\\n" "$2 is trunk $trunk_name, changing host to $3 ..."
+                printf "%s\\n" "${2} is trunk ${trunk_name}, changing host to ${3} ..."
 
-                if ! sshpass -p ${elastix_ssh_passwd_array[${i}]} ssh -o StrictHostKeyChecking=no -o Port=${elastix_ssh_port_array[${1}]} ${elastix_ssh_host_array[${i}]} "mysql asterisk -p${elastix_mysql_passwd_array[${i}]} -se \"UPDATE sip SET data=\\\"$3\\\" WHERE data=\\\"$2\\\";\"" ; then
-                    _die "Error editing trunk $trunk_name, review manually the -asterisk- database"
+                if ! sshpass -p ${elastix_ssh_passwd_array[${i}]} ssh -o StrictHostKeyChecking=no -o Port=${elastix_ssh_port_array[${1}]} ${elastix_ssh_host_array[${i}]} "mysql asterisk -p${elastix_mysql_passwd_array[${i}]} -se \"UPDATE sip SET data=\\\"${3}\\\" WHERE data=\\\"${2}\\\";\"" ; then
+                    _die "Error editing trunk ${trunk_name}, review manually the -asterisk- database"
                 fi
 
                 if ! sshpass -p ${elastix_ssh_passwd_array[${i}]} ssh -o StrictHostKeyChecking=no -o Port=${elastix_ssh_port_array[${1}]} ${elastix_ssh_host_array[${i}]} "cd /var/lib/asterisk/bin; php /var/www/html/admin/modules/framework/bin/retrieve_conf" > /dev/null 2>&1 ; then
@@ -418,67 +424,67 @@ _trunk()
     fi
 }
 
-[ $# -eq 0 ] && _usage # no options
+[ "${#}" -eq "0" ] && _usage # no options
 if ! command -v "sshpass" >/dev/null; then
     #it may be slow but it doesn't requires anything on the server side besides plain password protected ssh access
     #addional remote control mediums are welcome
     _die "sshpass not found!, $ sudo apt-get install sshpass"
 fi
 
-for var in "$@"; do #parse options
+for var in "${@}"; do #parse options
     case "${var}" in
         -c)
-            if [ $# -gt 1 ]; then
-                elastix_credentials=${@:2:1}
-                [ ! -f "$elastix_credentials" ] && _die "Not a file $elastix_credentials"
+            if [ "${#}" -gt "1" ]; then
+                elastix_credentials="${@:2:1}"
+                [ ! -f "${elastix_credentials}" ] && _die "Not a file ${elastix_credentials}"
                 shift 2
             else
-                _die "Option $var requires a FILE parameter"
+                _die "Option ${var} requires a FILE parameter"
             fi
             ;;
         -h)
-            if [ $# -gt 1 ]; then
-                elastix_ssh_host=${@:2:1}
+            if [ "${#}" -gt "1" ]; then
+                elastix_ssh_host="${@:2:1}"
                 shift 2
             else
-                _die "Option $var requires a Host string"
+                _die "Option ${var} requires a Host string"
             fi
             ;;
         -p)
-            if [ $# -gt 1 ]; then
-                elastix_ssh_passwd=${@:2:1}
+            if [ "${#}" -gt "1" ]; then
+                elastix_ssh_passwd="${@:2:1}"
                 shift 2
             else
-                _die "Option $var requires a Password string"
+                _die "Option ${var} requires a Password string"
             fi
             ;;
         -m)
-            if [ $# -gt 1 ]; then
-                elastix_mysql_passwd=${@:2:1}
+            if [ "${#}" -gt "1" ]; then
+                elastix_mysql_passwd="${@:2:1}"
                 shift 2
             else
-                _die "Option $var requires a Password string"
+                _die "Option ${var} requires a Password string"
             fi
             ;;
         --help)
             _usage
             ;;
-        -*) _die "Unrecognized option: $var" ;;
+        -*) _die "Unrecognized option: ${var}" ;;
     esac
 done
 
 if ! _networkup; then
-    printf "%s\\n" "$(_basename $0): network not detected, exiting..."
+    printf "%s\\n" "$(_basename ${0}): network not detected, exiting..."
     exit 1
 fi
 
-case "$1" in #parse services
+case "${1}" in #parse services
     trunk)
-        case "$2" in
-    	    add|remove|edit) shift; _trunk $@ ;;
-    	    *)  [ -z "$2" ] && _die "Missing param for: $1" || _die "Unrecognized arg: $2" ;;
+        case "${2}" in
+    	    add|remove|edit) shift; _trunk ${@} ;;
+    	    *)  [ -z "${2}" ] && _die "Missing param for: ${1}" || _die "Unrecognized arg: ${2}" ;;
         esac
         ;;
     *)
-        [ -z "$1" ] && _die "Parameters missing" || _die  "Unrecognized arg: $1"
+        [ -z "${1}" ] && _die "Parameters missing" || _die  "Unrecognized arg: ${1}"
 esac

@@ -4,36 +4,36 @@
 
 #set -x
 
-INDENTATION=4
+INDENTATION="4"
 
 _basename()
 {
-    [ -z "$1" ] && return 1
-    case $1 in
-        /*|*/*) expr "$1" : '.*/\([^/]*\)' ;;
-        *) printf "%s\\n" "$1";;
+    [ -z "${1}" ] && return 1
+    case "${1}" in
+        /*|*/*) expr "${1}" : '.*/\([^/]*\)' ;;
+        *) printf "%s\\n" "${1}";;
     esac
 }
 
-[ -f /usr/bin/vim ]  || { printf "%b\\n" "$(_basename $0): You need vim & tidy to run this script\n$ sudo apt-get install vim tidy"; exit 1; }
-[ -f /usr/bin/tidy ] || { printf "%b\\n" "$(_basename $0): You need tidy to run this script\n$ sudo apt-get install tidy"; exit 1; }
+[ -f "$(command -v "vim")" ]  || { printf "%b\\n" "$(_basename "${0}"): You need vim & tidy to run this script\n$ sudo apt-get install vim tidy"; exit 1; }
+[ -f "$(command -v "tidy")" ] || { printf "%b\\n" "$(_basename "${0}"): You need tidy to run this script\n$ sudo apt-get install tidy"; exit 1; }
 
 _usage()
 {
-    printf "%s\\n" "Usage: $(_basename $0) testcase"
+    printf "%s\\n" "Usage: $(_basename "${0}") testcase"
     printf "\\n"
     printf "%s\\n" "       https://wiki.ubuntu.com/Testing/TestCaseFormat"
     exit 1
 }
 
-[ $# -eq 0 ] && _usage
+[ "${#}" -eq "0" ] && _usage
 
 _tmp_files()
 {
-    mkdir -p /tmp/$(_basename $0)/indent
+    mkdir -p /tmp/"$(_basename "${0}")"/indent
     #this file can also be copied to ~/.vim/indent/html.vim so
     #vim indent html files the testcase way <dl>/<dt>/<dd>
-    cat > /tmp/$(_basename $0)/indent/html.vim << EOF
+    cat > /tmp/"$(_basename "${0}")"/indent/html.vim << EOF
 " Description:	html indenter
 " Author:	Johannes Zellner <johannes@zellner.org>
 " Last Change:	Mo, 05 Jun 2006 22:32:41 CEST
@@ -298,8 +298,8 @@ unlet s:cpo_save
 " [-- EOF <runtime>/indent/html.vim --]
 EOF
 
-cat > /tmp/$(_basename $0)/vimrc << EOF
-set runtimepath=/tmp/$(_basename $0),\$VIMRUNTIME
+cat > /tmp/"$(_basename "${0}")"/vimrc << EOF
+set runtimepath=/tmp/$(_basename "${0}"),\$VIMRUNTIME
 syntax on
 set ffs=unix,dos
 set encoding=utf-8          "utf is able to represent any character
@@ -312,14 +312,13 @@ EOF
 
 _format()
 {
-    for testcase
-    do
-        printf "%s\\n" "$testcase"
-        tidy -f /tmp/$(_basename $0)/testcase -xml -i "$testcase" > /dev/null
-        [ "$?" -eq 2 ] && { cat /tmp/$(_basename $0)/testcase; exit 1; }
-        vim -es -u /tmp/$(_basename $0)/vimrc -c "set ft=html" -c "normal gg=G" -c wq "$testcase"
+    for testcase; do
+        printf "%s\\n" "${testcase}"
+        tidy -f /tmp/"$(_basename "${0}")"/testcase -xml -i "${testcase}" > /dev/null
+        [ "${?}" -eq "2" ] && { cat /tmp/"$(_basename "${0}")"/testcase; exit 1; }
+        vim -es -u /tmp/"$(_basename "${0}")"/vimrc -c "set ft=html" -c "normal gg=G" -c wq "${testcase}"
     done
 }
 
 _tmp_files
-_format "$@"
+_format "${@}"

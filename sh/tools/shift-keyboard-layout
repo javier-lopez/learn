@@ -12,33 +12,33 @@ if ! command -v "setxkbmap" >/dev/null; then
     printf "%s\\n" "You need to install setxkbmap: $ sudo apt-get install x11-xkb-utils"
 fi
 
-current_layout=$(setxkbmap -query | awk '/layout/ {print $2}')
-d_layouts="$layouts"
-c_layouts="$layouts"
-c=0;d=0
+current_layout="$(setxkbmap -query | awk '/layout/ {print $2}')"
+d_layouts="${layouts}"
+c_layouts="${layouts}"
+c="0";d="0"
 
-while [ "$d_layouts" ]; do #items in array
-    option=${d_layouts%%,*}
-    d=$(expr $d + 1)
-    [ X"$d_layouts" = X"$option" ] && d_layouts='' || d_layouts="${d_layouts#*,}"
+while [ "${d_layouts}" ]; do #items in array
+    option="${d_layouts%%,*}"
+    d="$(expr "${d}" + 1)"
+    [ X"${d_layouts}" = X"${option}" ] && d_layouts="" || d_layouts="${d_layouts#*,}"
 done
 
-while [ "$c_layouts" ]; do #what position is current_layout respect to array
-    option=${c_layouts%%,*}
-    c=$(expr $c + 1)
-    [ X"$current_layout" = X"$option" ] && break
-    [ X"$c_layouts" = X"$option" ] && c_layouts='' || c_layouts="${c_layouts#*,}"
+while [ "${c_layouts}" ]; do #what position is current_layout respect to array
+    option="${c_layouts%%,*}"
+    c="$(expr "${c}" + 1)"
+    [ X"${current_layout}" = X"${option}" ] && break
+    [ X"${c_layouts}" = X"${option}" ] && c_layouts="" || c_layouts="${c_layouts#*,}"
 done
 
-[ -z $c_layouts ] && exit #invalid layout format
+[ -z "${c_layouts}" ] && exit #invalid layout format
 
-e=$(expr $c + 1)
-[ $d -eq $c ] && e=1 #return to first element if we're in the last one
+e="$(expr "${c}" + 1)"
+[ "${d}" -eq "${c}" ] && e="1" #return to first element if we're in the last one
 
-c=0
-while [ "$layouts" ]; do #set next keyboard layout
-    option=${layouts%%,*}
-    c=$(expr $c + 1)
-    [ $c -eq $e ] && setxkbmap "$option"
-    [ X"$layouts" = X"$option" ] && layouts='' || layouts="${layouts#*,}"
+c="0"
+while [ "${layouts}" ]; do #set next keyboard layout
+    option="${layouts%%,*}"
+    c="$(expr "${c}" + 1)"
+    [ "${c}" -eq "${e}" ] && setxkbmap "${option}"
+    [ X"${layouts}" = X"${option}" ] && layouts="" || layouts="${layouts#*,}"
 done

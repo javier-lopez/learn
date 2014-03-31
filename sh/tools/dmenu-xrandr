@@ -5,18 +5,20 @@
 #example: dmenu-xrandr
 #appears a gui menu appears asking for which settings to change
 
-#requires a dmenu version with xft: https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
+#requires a dmenu version with xft:
+#https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
+
 DMENU='dmenu -p > -i -fn Bahamas-10 -nb #000000 -nf #FFFFFF -sb #000000 -sf #999999'
 
 _die()
 {
-    choice=$(printf "%b%b\\n" "$1" ", press <Enter> to exit" | $DMENU)
+    printf "%b%b\\n" "$1" ", press <Enter> to exit" | ${DMENU}
     exit 1
 }
 
 _reload_barstatus()
 {
-    [ -z "$cmd" ] && return 1
+    [ -z "${cmd}" ] && return 1
     if ! command -v "conky" >/dev/null; then
         return 0
     fi
@@ -24,189 +26,185 @@ _reload_barstatus()
         return 0
     fi
 
-    case $cmd in
+    case "${cmd}" in
         *same*) return 0; ;;
-        *)
-            kill $(ps -aef | awk '/conky/ {if ($0 !~ "awk") print $2}') >/dev/null 2>&1
-            kill $(ps -aef | awk '/dzen2/ {if ($0 !~ "awk") print $2}') >/dev/null 2>&1
-            case $cmd in
-                *off*)       _x=350; _y=749;  ;;
-                *1920x1080*) _x=700; _y=1062; ;;
-                *1600x1200*) _x=400; _y=1000; ;;
-            esac
+        *) kill "$(pgrep "conky")" >/dev/null 2>&1
+           kill "$(pgrep "dzen")" >/dev/null 2>&1
+           case "${cmd}" in
+               *off*)       _x="350"; _y="749";  ;;
+               *1920x1080*) _x="700"; _y="1062"; ;;
+               *1600x1200*) _x="400"; _y="1000"; ;;
+           esac
 
-            conky | dzen2 -x $_x -y $_y -fn 'Inconsolata:size=9' -ta r -fg "#999999" -bg "#000000" & 2> /dev/null
-        ;;
+           conky | dzen2 -x "${_x}" -y "${_y}" -fn 'Inconsolata:size=9' -ta r -fg "#999999" -bg "#000000" & 2> /dev/null ;;
     esac
 }
 
 _reload_wallpaper()
 {
     if command -v "feh" >/dev/null; then
-        if [ -f "$HOME"/data/images/wallpapers/sun.jpg ]; then
-            feh --bg-scale "$HOME"/data/images/wallpapers/sun.jpg
+        if [ -f "${HOME}"/data/images/wallpapers/sun.jpg ]; then
+            feh --bg-scale "${HOME}"/data/images/wallpapers/sun.jpg
         fi
     fi
 }
 
 _arraylen()
 {
-    [ -z "$1" ] && return 1
-    _arraylen_var_counter=0
-    _arraylen_var_copy="$1"
+    [ -z "${1}" ] && return 1
+    _arraylen_var_counter="0"
+    _arraylen_var_copy="${1}"
 
-    while [ "$_arraylen_var_copy" ]; do
-        _arraylen_var_option=${_arraylen_var_copy%%,*}
-        _arraylen_var_counter=$(expr $_arraylen_var_counter + 1)
+    while [ "${_arraylen_var_copy}" ]; do
+        _arraylen_var_option="${_arraylen_var_copy%%,*}"
+        _arraylen_var_counter="$(expr "${_arraylen_var_counter}" + 1)"
 
-        if [ X"$_arraylen_var_option" = X"$_arraylen_var_copy" ]; then
-            _arraylen_var_copy=''
+        if [ X"${_arraylen_var_option}" = X"${_arraylen_var_copy}" ]; then
+            _arraylen_var_copy=""
         else
             _arraylen_var_copy="${_arraylen_var_copy#*,}"
         fi
     done
 
-    printf "%s" "$_arraylen_var_counter"
+    printf "%s" "${_arraylen_var_counter}"
 }
 
 _gen_rotate_opts()
 {
-    [ -z "$1" ] && return 1
-    _gen_rotate_opts_var_copy="$rotate"
+    [ -z "${1}" ] && return 1
+    _gen_rotate_opts_var_copy="${rotate}"
     _gen_rotate_opts_var_string=""
 
-    while [ "$_gen_rotate_opts_var_copy" ]; do
-        _gen_rotate_opts_var_option=${_gen_rotate_opts_var_copy%%,*}
+    while [ "${_gen_rotate_opts_var_copy}" ]; do
+        _gen_rotate_opts_var_option="${_gen_rotate_opts_var_copy%%,*}"
 
-        case $activeoutputs in
-            *$1*)
-             _gen_rotate_opts_var_string="$_gen_rotate_opts_var_string""$1".rotate."$_gen_rotate_opts_var_option", ;;
+        case "${activeoutputs}" in
+            *"${1}"*) _gen_rotate_opts_var_string="${_gen_rotate_opts_var_string}""${1}".rotate."${_gen_rotate_opts_var_option}", ;;
         esac
 
-        if [ X"$_gen_rotate_opts_var_option" = X"$_gen_rotate_opts_var_copy" ]; then
-            _gen_rotate_opts_var_copy=''
+        if [ X"${_gen_rotate_opts_var_option}" = X"${_gen_rotate_opts_var_copy}" ]; then
+            _gen_rotate_opts_var_copy=""
         else
             _gen_rotate_opts_var_copy="${_gen_rotate_opts_var_copy#*,}"
         fi
     done
 
-    printf "%s" "$_gen_rotate_opts_var_string"
+    printf "%s" "${_gen_rotate_opts_var_string}"
 }
 
 _gen_offauto_opts()
 {
-    [ -z "$1" ] && return 1
+    [ -z "${1}" ] && return 1
     #never turn off laptop screens
-    [ X"$1" = X"LVDS1" ] && return
+    [ X"${1}" = X"LVDS1" ] && return
 
-    _gen_offauto_opts_var_copy="$offauto"
+    _gen_offauto_opts_var_copy="${offauto}"
     _gen_offauto_opts_var_string=""
-    if [ $activeoutputs_len = 1 ]; then
-        _gen_offauto_opts_var_copy=$(printf "%s" "$_gen_offauto_opts_var_copy" | cut -d, -f2-)
+    if [ X"${activeoutputs_len}" = X"1" ]; then
+        _gen_offauto_opts_var_copy="$(printf "%s" "${_gen_offauto_opts_var_copy}" | cut -d, -f2-)"
     fi
 
+    while [ "${_gen_offauto_opts_var_copy}" ]; do
+        _gen_rotate_opts_var_option="${_gen_offauto_opts_var_copy%%,*}"
 
-    while [ "$_gen_offauto_opts_var_copy" ]; do
-        _gen_rotate_opts_var_option=${_gen_offauto_opts_var_copy%%,*}
-
-        _gen_offauto_opts_var_string="$_gen_offauto_opts_var_string""$1"."$_gen_rotate_opts_var_option",
-        if [ X"$_gen_rotate_opts_var_option" = X"$_gen_offauto_opts_var_copy" ]; then
-            _gen_offauto_opts_var_copy=''
+        _gen_offauto_opts_var_string="${_gen_offauto_opts_var_string}""${1}"."${_gen_rotate_opts_var_option}",
+        if [ X"${_gen_rotate_opts_var_option}" = X"${_gen_offauto_opts_var_copy}" ]; then
+            _gen_offauto_opts_var_copy=""
         else
             _gen_offauto_opts_var_copy="${_gen_offauto_opts_var_copy#*,}"
         fi
     done
 
-    printf "%s" "$_gen_offauto_opts_var_string"
+    printf "%s" "${_gen_offauto_opts_var_string}"
 }
 
 _gen_resolution_opts()
 {
-    [ -z "$1" ] && return 1
+    [ -z "${1}" ] && return 1
 
     eval _gen_resolution_opts_var_copy=\$mode_$1
     _gen_resolution_opts_var_string=""
 
-    while [ "$_gen_resolution_opts_var_copy" ]; do
-        _gen_rotate_opts_var_option=${_gen_resolution_opts_var_copy%%,*}
+    while [ "${_gen_resolution_opts_var_copy}" ]; do
+        _gen_rotate_opts_var_option="${_gen_resolution_opts_var_copy%%,*}"
 
-        _gen_resolution_opts_var_string="$_gen_resolution_opts_var_string""$1".mode."$_gen_rotate_opts_var_option",
+        _gen_resolution_opts_var_string="${_gen_resolution_opts_var_string}""${1}".mode."${_gen_rotate_opts_var_option}",
         #case $activeoutputs in
             #*$1*)
             #_gen_resolution_opts_var_string="$_gen_resolution_opts_var_string""$1".mode."$_gen_rotate_opts_var_option", ;;
         #esac
 
-        if [ X"$_gen_rotate_opts_var_option" = X"$_gen_resolution_opts_var_copy" ]; then
-            _gen_resolution_opts_var_copy=''
+        if [ X"${_gen_rotate_opts_var_option}" = X"${_gen_resolution_opts_var_copy}" ]; then
+            _gen_resolution_opts_var_copy=""
         else
             _gen_resolution_opts_var_copy="${_gen_resolution_opts_var_copy#*,}"
         fi
     done
 
-    printf "%s" "$_gen_resolution_opts_var_string"
+    printf "%s" "${_gen_resolution_opts_var_string}"
 }
 
 _gen_position_opts()
 {
-    [ -z "$1" ] && return 1
-    [ $outputs_len -lt 2 ] && return 1
-    case $activeoutputs in
-        *$1*) return 1 ;;
+    [ -z "${1}" ] && return 1
+    [ "${outputs_len}" -lt "2" ] && return 1
+    case "${activeoutputs}" in
+        *"${1}"*) return 1 ;;
     esac
 
-    _gen_position_opts_var_copy="$position"
+    _gen_position_opts_var_copy="${position}"
     _gen_position_opts_var_string=""
 
-    while [ "$_gen_position_opts_var_copy" ]; do
-        _gen_rotate_opts_var_option=${_gen_position_opts_var_copy%%,*}
+    while [ "${_gen_position_opts_var_copy}" ]; do
+        _gen_rotate_opts_var_option="${_gen_position_opts_var_copy%%,*}"
 
-        _gen_position_opts_var_string="$_gen_position_opts_var_string""$1"."$_gen_rotate_opts_var_option"."$(printf "%s" "$activeoutputs" | cut -d, -f1)",
+        _gen_position_opts_var_string="${_gen_position_opts_var_string}""${1}"."${_gen_rotate_opts_var_option}"."$(printf "%s" "${activeoutputs}" | cut -d, -f1)",
 
-        if [ X"$_gen_rotate_opts_var_option" = X"$_gen_position_opts_var_copy" ]; then
-            _gen_position_opts_var_copy=''
+        if [ X"${_gen_rotate_opts_var_option}" = X"${_gen_position_opts_var_copy}" ]; then
+            _gen_position_opts_var_copy=""
         else
             _gen_position_opts_var_copy="${_gen_position_opts_var_copy#*,}"
         fi
     done
 
-    printf "%s" "$_gen_position_opts_var_string"
+    printf "%s" "${_gen_position_opts_var_string}"
 }
 
 _gen_mix_opts()
 {
-    [ -z "$1" ] && return 1
-    [ $outputs_len -lt 2 ] && return 1
-    case $activeoutputs in
-        *$1*) return 1 ;;
+    [ -z "${1}" ] && return 1
+    [ "${outputs_len}" -lt "2" ] && return 1
+    case "${activeoutputs}" in
+        *"${1}"*) return 1 ;;
     esac
 
     eval _gen_mix_opts_var_resolutions=\$mode_$1
-    _gen_mix_opts_var_positions="$position"
+    _gen_mix_opts_var_positions="${position}"
     _gen_position_opts_var_string=""
 
-    while [ "$_gen_mix_opts_var_resolutions" ]; do
-        _gen_mix_opts_var_resolution=${_gen_mix_opts_var_resolutions%%,*}
+    while [ "${_gen_mix_opts_var_resolutions}" ]; do
+        _gen_mix_opts_var_resolution="${_gen_mix_opts_var_resolutions%%,*}"
 
-        while [ "$_gen_mix_opts_var_positions" ]; do
-            _gen_mix_opts_var_position=${_gen_mix_opts_var_positions%%,*}
+        while [ "${_gen_mix_opts_var_positions}" ]; do
+            _gen_mix_opts_var_position="${_gen_mix_opts_var_positions%%,*}"
 
-            _gen_position_opts_var_string="$_gen_position_opts_var_string""$1".mode."$_gen_mix_opts_var_resolution"."$_gen_mix_opts_var_position"."$(printf "%s" "$activeoutputs" | cut -d, -f1)",
+            _gen_position_opts_var_string="${_gen_position_opts_var_string}""${1}".mode."${_gen_mix_opts_var_resolution}"."${_gen_mix_opts_var_position}"."$(printf "%s" "${activeoutputs}" | cut -d, -f1)",
 
-            if [ X"$_gen_mix_opts_var_position" = X"$_gen_mix_opts_var_positions" ]; then
-                _gen_mix_opts_var_positions=''
+            if [ X"${_gen_mix_opts_var_position}" = X"${_gen_mix_opts_var_positions}" ]; then
+                _gen_mix_opts_var_positions=""
             else
                 _gen_mix_opts_var_positions="${_gen_mix_opts_var_positions#*,}"
             fi
         done
 
-        if [ X"$_gen_mix_opts_var_resolution" = X"$_gen_mix_opts_var_resolutions" ]; then
-            _gen_mix_opts_var_resolutions=''
+        if [ X"${_gen_mix_opts_var_resolution}" = X"${_gen_mix_opts_var_resolutions}" ]; then
+            _gen_mix_opts_var_resolutions=""
         else
             _gen_mix_opts_var_resolutions="${_gen_mix_opts_var_resolutions#*,}"
         fi
     done
 
-    printf "%s" "$_gen_position_opts_var_string"
+    printf "%s" "${_gen_position_opts_var_string}"
 }
 
 if ! command -v "dmenu" >/dev/null; then
@@ -218,73 +216,73 @@ if ! command -v "xrandr" >/dev/null; then
     _die "xrandr was not found"
 fi
 
-xrandr_output=$(xrandr)
-outputs=$(printf "%s" "$xrandr_output" | awk '/ connected/ {print $1}' | sed -e 's:$:,:g' | tr -d '\n')
-activeoutputs=$(printf "%s" "$xrandr_output" | awk '/ connected [^(]/ {print $1}' | sed -e 's:$:,:g' | tr -d '\n')
+xrandr_output="$(xrandr)"
+outputs="$(printf "%s" "${xrandr_output}" | awk '/ connected/ {print $1}' | sed -e 's:$:,:g' | tr -d '\n')"
+activeoutputs="$(printf "%s" "${xrandr_output}" | awk '/ connected [^(]/ {print $1}' | sed -e 's:$:,:g' | tr -d '\n')"
 rotate="normal,inverted,left,right"
 offauto="off,auto"
 position="above,below,same-as,left-of,right-of"
-outputs_len=$(_arraylen $outputs)
-activeoutputs_len=$(_arraylen $activeoutputs)
+outputs_len="$(_arraylen "${outputs}")"
+activeoutputs_len="$(_arraylen "${activeoutputs}")"
 
-[ -z "$outputs" ] && _die "unable to detect screen interfaces"
+[ -z "${outputs}" ] && _die "unable to detect screen interfaces"
 
 #get supported modes of each output and save it to mode_$output
-outputs_copy="$outputs"
-while [ "$outputs_copy" ]; do
-    outputs_option=${outputs_copy%%,*}
+outputs_copy="${outputs}"
+while [ "${outputs_copy}" ]; do
+    outputs_option="${outputs_copy%%,*}"
 
-    mode_tmp=$(printf "%s" "$xrandr_output"                                            \
-       | awk '/'${outputs_option}'/ {flag=1;next} /^[A-Za-z]/{flag=0} flag {print $1}' \
-       | sed -e 's:$:,:g' | tr -d '\n')
+    mode_tmp="$(printf "%s" "${xrandr_output}"                                         \
+       | awk '/'"${outputs_option}"'/ {flag=1;next} /^[A-Za-z]/{flag=0} flag {print $1}' \
+       | sed -e 's:$:,:g' | tr -d '\n')"
     eval mode_$outputs_option=\$mode_tmp
     mode_tmp=""
 
-    if [ X"$outputs_option" = X"$outputs_copy" ]; then
-        outputs_copy=''
+    if [ X"${outputs_option}" = X"${outputs_copy}" ]; then
+        outputs_copy=""
     else
         outputs_copy="${outputs_copy#*,}"
     fi
 done
 
-OLDIFS="$IFS"
+OLDIFS="${IFS}"
 IFS=,
 for output in $outputs; do
     #mix resolution and position entries
-    options="$options""$(_gen_mix_opts $(printf "%s" "$output" | cut -d, -f1))"
+    options="${options}$(_gen_mix_opts "$(printf "%s" "${output}" | cut -d, -f1)")"
     #rotate entries
-    options="$options""$(_gen_rotate_opts $(printf "%s" "$output" | cut -d, -f1))"
+    options="${options}$(_gen_rotate_opts "$(printf "%s" "${output}" | cut -d, -f1)")"
     #resolution entries
-    options="$options""$(_gen_resolution_opts $(printf "%s" "$output" | cut -d, -f1))"
+    options="${options}$(_gen_resolution_opts "$(printf "%s" "${output}" | cut -d, -f1)")"
     #position entries
-    options="$options""$(_gen_position_opts $(printf "%s" "$output" | cut -d, -f1))"
+    options="${options}$(_gen_position_opts "$(printf "%s" "${output}" | cut -d, -f1)")"
     #off-auto entries
-    options="$options""$(_gen_offauto_opts $(printf "%s" "$output" | cut -d, -f1))"
+    options="${options}$(_gen_offauto_opts "$(printf "%s" "${output}" | cut -d, -f1)")"
 done
-IFS="$OLDIFS"
+IFS="${OLDIFS}"
 
-options=$(printf "%s" "$options" | sed 's:,:\n:g')
-choice=$(printf "%b\\n" "$options" | $DMENU)
-echo $choice
+options="$(printf "%s" "${options}"   | sed 's:,:\n:g')"
+choice="$(printf "%b\\n" "${options}" | ${DMENU})"
+printf "%s\\n" "${choice}"
 
-[ -z "$choice" ] && exit 1
+[ -z "${choice}" ] && exit 1
 
-cmd="xrandr --output $(printf "%s" "$choice" | cut -d. -f1)"
-case $(printf "%s" "$choice" | cut -d. -f2) in
+cmd="xrandr --output $(printf "%s" "${choice}" | cut -d. -f1)"
+case $(printf "%s" "${choice}" | cut -d. -f2) in
     mode)
-        if [ -n "$(printf "%s" "$choice" | cut -d. -f4)" ]; then
-            cmd="$cmd"" --$(printf "%s" "$choice" | cut -d. -f2) ""$(printf "%s" "$choice" | cut -d. -f3)"
-            cmd="$cmd"" --$(printf "%s" "$choice" | cut -d. -f4) ""$(printf "%s" "$choice" | cut -d. -f5)"
+        if [ -n "$(printf "%s" "${choice}" | cut -d. -f4)" ]; then
+            cmd="${cmd}"" --$(printf "%s" "${choice}" | cut -d. -f2) ""$(printf "%s" "${choice}" | cut -d. -f3)"
+            cmd="${cmd}"" --$(printf "%s" "${choice}" | cut -d. -f4) ""$(printf "%s" "${choice}" | cut -d. -f5)"
         else
-            cmd="$cmd"" --$(printf "%s" "$choice" | cut -d. -f2) ""$(printf "%s" "$choice" | cut -d. -f3)"
+            cmd="${cmd}"" --$(printf "%s" "${choice}" | cut -d. -f2) ""$(printf "%s" "${choice}" | cut -d. -f3)"
         fi
         ;;
-    auto|off) cmd="$cmd"" --$(printf "%s" "$choice" | cut -d. -f2)" ;;
-    same-as)  cmd="$cmd"" --auto --$(printf "%s" "$choice" | cut -d. -f2) ""$(printf "%s" "$choice" | cut -d. -f3)" ;;
-    *)        cmd="$cmd"" --$(printf "%s" "$choice" | cut -d. -f2) ""$(printf "%s" "$choice" | cut -d. -f3)" ;;
+    auto|off) cmd="${cmd}"" --$(printf "%s" "${choice}" | cut -d. -f2)" ;;
+    same-as)  cmd="${cmd}"" --auto --$(printf "%s" "${choice}" | cut -d. -f2) ""$(printf "%s" "${choice}" | cut -d. -f3)" ;;
+    *)        cmd="${cmd}"" --$(printf "%s" "${choice}" | cut -d. -f2) ""$(printf "%s" "${choice}" | cut -d. -f3)" ;;
 esac
 
-sh -c "$cmd"
+sh -c "${cmd}"
 
 _reload_wallpaper
 _reload_barstatus

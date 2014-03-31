@@ -10,9 +10,9 @@ _header()
 {
     clear
     _printfl "Gitpages Environment"
-    printf "%b\\n" "\033[1m Manual:\033[0m   $manual"
-    printf "%b\\n" "\033[1m Updates:\033[0m  $updates"
-    if [ "$(id -u)" != "0" ]; then
+    printf "%b\\n" "\033[1m Manual:\033[0m   ${manual}"
+    printf "%b\\n" "\033[1m Updates:\033[0m  ${updates}"
+    if [ X"$(id -u)" != X"0" ]; then
         _printfl
     fi
 }
@@ -20,22 +20,22 @@ _header()
 _printfl()
 {   #print lines
     _printfl_var_max_len="80"
-    if [ -n "$1" ]; then
-        _printfl_var_word_len=$(expr ${#1} + 2)
-        _printfl_var_sub=$(expr $_printfl_var_max_len - $_printfl_var_word_len)
-        _printfl_var_half=$(expr $_printfl_var_sub / 2)
-        _printfl_var_other_half=$(expr $_printfl_var_sub - $_printfl_var_half)
+    if [ -n "${1}" ]; then
+        _printfl_var_word_len="$(expr "${#1}" + 2)"
+        _printfl_var_sub="$(expr "${_printfl_var_max_len}" - "${_printfl_var_word_len}")"
+        _printfl_var_half="$(expr "${_printfl_var_sub}" / 2)"
+        _printfl_var_other_half="$(expr "${_printfl_var_sub}" - "${_printfl_var_half}")"
         printf "%b" "\033[1m" #white strong
-        printf '%*s' "$_printfl_var_half" '' | tr ' ' -
+        printf '%*s' "${_printfl_var_half}" '' | tr ' ' -
         printf "%b" "\033[7m" #white background
-        printf " %s " "$1"
+        printf " %s " "${1}"
         printf "%b" "\033[0m\033[1m" #white strong
-        printf '%*s' "$_printfl_var_other_half" '' | tr ' ' -
+        printf '%*s' "${_printfl_var_other_half}" '' | tr ' ' -
         printf "%b" "\033[0m" #back to normal
         printf "\\n"
     else
         printf "%b" "\033[1m" #white strong
-        printf '%*s' "$_printfl_var_max_len" '' | tr ' ' -
+        printf '%*s' "${_printfl_var_max_len}" '' | tr ' ' -
         printf "%b" "\033[0m" #back to normal
         printf "\\n"
     fi
@@ -43,72 +43,72 @@ _printfl()
 
 _printfs()
 {   #print step
-    [ -z "$1" ] && return 1
-    printf "%s\\n" "[+] $*"
+    [ -z "${1}" ] && return 1
+    printf "%s\\n" "[+] ${*}"
 }
 
 _getroot()
 {   #get sudo's password, define $sudopwd and $sudocmd
-    if [ ! X"$LOGNAME" = X"root" ]; then
-        printf "%s\\n" "Detecting user $LOGNAME (non-root) ..."
+    if [ ! X"${LOGNAME}" = X"root" ]; then
+        printf "%s\\n" "Detecting user ${LOGNAME} (non-root) ..."
         printf "%s\\n" "Checking if sudo is available ..."
 
         if command -v "sudo" >/dev/null 2>&1; then
             sudo -K
 
-            if [ -n "$sudopwd" ]; then
+            if [ -n "${sudopwd}" ]; then
                 # password check
-                _getroot_var_test=$(printf "%s\\n" "$sudopwd" | sudo -S ls 2>&1)
-                _getroot_var_status="$?"
-                _getroot_var_not_allowed=$(printf "%s" "$_getroot_var_test" | \
-                                         grep -i "sudoers")
+                _getroot_var_test="$(printf "%s\\n" "${sudopwd}" | sudo -S ls 2>&1)"
+                _getroot_var_status="${?}"
+                _getroot_var_not_allowed="$(printf "%s" "${_getroot_var_test}" | \
+                                         grep -i "sudoers")"
 
-                if [ -n "$_getroot_var_not_allowed" ]; then
+                if [ -n "${_getroot_var_not_allowed}" ]; then
                     printf "%s %s\\n" "You're not allowed to use sudo," \
                     "get in contact with your local administrator"
                     exit
-                fi 
+                fi
 
-                if [ X"$_getroot_var_status" != X"0" ]; then
+                if [ X"${_getroot_var_status}" != X"0" ]; then
                     sudopwd=""
                     printf "%s\\n" "Incorrect preseed password"
                     exit
                 else
                     sudocmd="sudo -S"
-                fi 
+                fi
                 printf "%s\\n" "    - all set ..."
                 return
             fi
 
-            i=0 ; while [ "$i" -lt 3 ]; do
-                i=$(expr $i + 1);
+            i=0 ; while [ "${i}" -lt "3" ]; do
+                i="$(expr ${i} + 1)"
                 printf "%s" "   - enter sudo password: "
                 stty -echo
                 read sudopwd
                 stty echo
 
                 # password check
-                _getroot_var_test=$(printf "%s\\n" "$sudopwd" | sudo -S ls 2>&1)
-                _getroot_var_status="$?"
-                _getroot_var_not_allowed=$(printf "%s" "$_getroot_var_test" | \
-                                         grep -i "sudoers")
+                _getroot_var_test="$(printf "%s\\n" "${sudopwd}" | sudo -S ls 2>&1)"
+                _getroot_var_status="${?}"
+                _getroot_var_not_allowed="$(printf "%s" "${_getroot_var_test}" | \
+                                         grep -i "sudoers")"
 
-                if [ -n "$_getroot_var_not_allowed" ]; then
+                if [ -n "${_getroot_var_not_allowed}" ]; then
                     printf "\\n%s %s\\n" "You're not allowed to use sudo," \
                     "get in contact with your local administrator"
                     exit
-                fi 
+                fi
 
                 printf "\\n"
-                if [ X"$_getroot_var_status" != X"0" ]; then
+                if [ X"${_getroot_var_status}" != X"0" ]; then
                     sudopwd=""
                 else
                     sudocmd="sudo -S"
                     break
-                fi 
+                fi
             done
 
-            if [ -z "$sudopwd" ]; then
+            if [ -z "${sudopwd}" ]; then
                 printf "%s\\n" "Failed authentication"
                 exit
             fi
@@ -122,42 +122,33 @@ _getroot()
 
 _animcui()
 {   #wait animation
-    [ -z "$1" ] && { printf "%5s\n" ""; return 1; }
+    [ -z "${1}" ] && { printf "%5s\n" ""; return 1; }
 
-    if ! printf "%s" "$1" | grep -v "[^0-9]" >/dev/null; then
+    if ! printf "%s" "$(pidof "${1}")" | grep "[0-9].*" >/dev/null; then
         printf "%5s\n" ""
-        return 1; 
+        return 1;
     fi
 
-    _animcui_var_pid="$1"
     _animcui_var_animation_state="1"
 
-    if [ ! "$(ps -p "$_animcui_var_pid" -o comm=)" ]; then
+    if [ ! "$(ps -p "$(pidof "${1}")" -o comm= 2>/dev/null)" ]; then
         printf "%5s\n" ""
         return 1
     fi
 
     printf "%5s" ""
 
-    while [ "$(ps -p "$_animcui_var_pid" -o comm=)" ]; do
+    while [ "$(ps -p "$(pidof "${1}")" -o comm= 2>/dev/null)" ]; do
         printf "%b" "\b\b\b\b\b"
-        case "$_animcui_var_animation_state" in
-            1)
-                printf "%s" '\o@o\'
-                _animcui_var_animation_state=2
-                ;;
-            2)
-                printf "%s" '|o@o|'
-                _animcui_var_animation_state=3
-                ;;
-            3)
-                printf "%s" '/o@o/'
-                _animcui_var_animation_state=4
-                ;;
-            4)
-                printf "%s" '|o@o|'
-                _animcui_var_animation_state=1
-                ;;
+        case "${_animcui_var_animation_state}" in
+            1) printf "%s" '\o@o\'
+               _animcui_var_animation_state="2" ;;
+            2) printf "%s" '|o@o|'
+               _animcui_var_animation_state="3" ;;
+            3) printf "%s" '/o@o/'
+               _animcui_var_animation_state="4" ;;
+            4) printf "%s" '|o@o|'
+               _animcui_var_animation_state="1" ;;
         esac
         sleep 1
     done
@@ -166,32 +157,32 @@ _animcui()
 
 _waitforsudo()
 {   #print, execute and wait for a command to finish
-    [ -z "$1" ] && return 1
+    [ -z "${1}" ] && return 1
 
-    printf "%s " "    $ sudo $@ ..."
-    printf "%s\\n" "$sudopwd" | $sudocmd sh -c "eval $*" >/dev/null 2>&1 &
+    printf "%s " "    $ sudo ${@} ..."
+    printf "%s\\n" "${sudopwd}" | ${sudocmd} sh -c "eval ${*}" >/dev/null 2>&1 &
     sleep 1s
 
-    if [ X"$1" = X"DEBIAN_FRONTEND=noninteractive" ]; then
-        _animcui $(pidof "$2")
+    if [ X"${1}" = X"DEBIAN_FRONTEND=noninteractive" ]; then
+        _animcui "$(pidof "${2}")"
     else
-        _animcui $(pidof "$1")
+        _animcui "$(pidof "${1}")"
     fi
 }
 
 _cmdsudo()
 {   #print && execute a command, exit on fail
-    [ -z "$1" ] && return 1
+    [ -z "${1}" ] && return 1
 
-    printf "%s \\n" "    $ sudo $*"
-    _cmdsudo_var_output=$(printf "%s\\n" "$sudopwd" | $sudocmd sh -c "eval $*" 2>&1)
-    _cmdsudo_var_status="$?"
+    printf "%s \\n" "    $ sudo ${*}"
+    _cmdsudo_var_output="$(printf "%s\\n" "${sudopwd}" | ${sudocmd} sh -c "eval ${*}" 2>&1)"
+    _cmdsudo_var_status="${?}"
 
-    if [ X"$_cmdsudo_var_status" != X"0" ]; then
-        printf "> %s:%s\\n" "$*" "$_cmdsudo_var_output"
-        exit "$_cmdsudo_var_status"
+    if [ X"${_cmdsudo_var_status}" != X"0" ]; then
+        printf "> %s:%s\\n" "${*}" "${_cmdsudo_var_output}"
+        exit "${_cmdsudo_var_status}"
     else
-        return "$_cmdsudo_var_status";
+        return "${_cmdsudo_var_status}";
     fi
 }
 
@@ -200,8 +191,8 @@ _getroot
 _printfl
 _printfs "installing deps ..."
 _waitforsudo apt-get update
-_waitforsudo apt-get install --no-install-recommends -y $apps_deps
-_cmdsudo gem install $gems_deps
+_waitforsudo apt-get install --no-install-recommends -y ${apps_deps}
+_cmdsudo gem install ${gems_deps}
 printf "%s\\n" "source 'https://rubygems.org'"  > Gemfile
 printf "%s\\n" "gem 'github-pages'"            >> Gemfile
 _cmdsudo bundle install

@@ -3,13 +3,13 @@
 #usage: setup [autocp|script]
 
 #example: setup script /path/file
-#[+] chmod +x dmenu-killall 
+#[+] chmod +x dmenu-killall
 #[+] sudo cp dmenu-killall /usr/local/bin
 
 #Don't forget update this when adding new functions
 _usage()
 {
-  printf "%s\\n" "$(expr "$0" : '.*/\([^/]*\)'): setup my common tasks"
+  printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): setup my common tasks"
   printf "\\n"
   printf "%s\\n" "  autocp            cp custom autocomplete file"
   printf "%s\\n" "  script            cp custom script to the path system"
@@ -19,24 +19,24 @@ _usage()
 
 _exec()
 {   #print current command, exits on fail
-    [ -z "$1" ] && return 0
+    [ -z "${1}" ] && return 0
 
-    printf "%s " "[+] $@"
+    printf "%s " "[+] ${@}"
     printf "\\n"
-    eval "$@"
+    eval "${@}"
 
-    local status=$?
-    [ X"$status" != X"0" ] && exit $status || return
+    _exec_var_status="${?}"
+    [ X"${_exec_var_status}" != X"0" ] && exit "${_exec_var_status}" || return
 }
 
 _script()
 {
 
-    [ -z "$1" ] && (printf "%s\\n" "$(expr "$0" : '.*/\([^/]*\)'): Missing argument, looking for a .sh|.py|.rb|etc script"; exit 1)
+    [ -z "${1}" ] && (printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): Missing argument, looking for a .sh|.py|.rb|etc script"; exit 1)
 
     for file; do
-        _exec chmod +x "$file"
-        _exec sudo cp "$file" /usr/local/bin
+        _exec chmod +x "${file}"
+        _exec sudo cp "${file}" /usr/local/bin
     done
 
     exit 0
@@ -44,32 +44,22 @@ _script()
 
 _autocp()
 {
-    [ -n "$1" ] || (printf "%s\\n" "$(expr "$0" : '.*/\([^/]*\)'): Missing parameter, looking for an .autocp file"; exit 1)
+    [ -n "${1}" ] || (printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): Missing parameter, looking for an .autocp file"; exit 1)
 
     for file; do
-        _exec sudo cp "$file" /usr/share/bash-completion/completions/
+        _exec sudo cp "${file}" /usr/share/bash-completion/completions/
     done
     exit 0
 }
 
-if [ X"$#" != X"0" ]; then
-    case $1 in
-        script)
-        shift; _script $@
-        ;;
-        autocp)
-        shift; _autocp $@
-        ;;
-        -h | --help)
-        _usage
-        ;;
-        -v | --version)
-        printf "%s\\n" "$VERSION"
-        ;;
-        *)
-        printf "%s\\n" "Error, unknown option: $1"
-        _usage
-        ;;
+if [ X"${#}" != X"0" ]; then
+    case "${1}" in
+        script) shift; _script "${@}" ;;
+        autocp) shift; _autocp "${@}" ;;
+        -h | --help)    _usage ;;
+        -v | --version) printf "%s\\n" "${VERSION}" ;;
+        *) printf "%s\\n" "Error, unknown option: ${1}"
+           _usage ;;
     esac
 else
     _usage

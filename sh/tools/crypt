@@ -12,27 +12,28 @@ fi
 
 _usage()
 {
-    printf "%s\\n" "Usage: $(expr "$0" : '.*/\([^/]*\)') file ..."
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') file ..."
     exit 0
 }
 
-[ "$#" -eq 0 ] && _usage
+[ "${#}" -eq "0" ] && _usage
 
 _crypt()
 {
     for _crypt_var_file; do
-        if [ -f "$_crypt_var_file" ] ; then
-            _crypt_var_file_output="$_crypt_var_file".crypt
-            _crypt_var_header='eval "$((dd if=$0 bs=1 skip=XX|gpg -d)2>/dev/null)"; exit;' 
-            _crypt_var_header_size=$(printf "%s\\n" "$_crypt_var_header"|wc -c)
+        if [ -f "${_crypt_var_file}" ] ; then
+            _crypt_var_file_output="${_crypt_var_file}".crypt
+            _crypt_var_header='eval "$((dd if=${0} bs=1 skip=XX|gpg -d)2>/dev/null)"; exit;'
+            _crypt_var_header_size="$(printf "%s\\n" "${_crypt_var_header}"|wc -c)"
 
-            printf "%s\\n" "$_crypt_var_header" | sed s:XX:$_crypt_var_header_size: > "$_crypt_var_file_output"
-            gpg -c < "$_crypt_var_file" >> "$_crypt_var_file_output"
-            chmod +x "$_crypt_var_file_output"
+            printf "%s\\n" "${_crypt_var_header}" | \
+                sed s:XX:"${_crypt_var_header_size}": > "${_crypt_var_file_output}"
+            gpg -c < "${_crypt_var_file}" >> "${_crypt_var_file_output}"
+            chmod +x "${_crypt_var_file_output}"
         else
-            printf "%s\\n" "'$_crypt_var_file' doesn't exist"
+            printf "%s\\n" "'${_crypt_var_file}' doesn't exist"
         fi
     done
 }
 
-_crypt "$@"
+_crypt "${@}"

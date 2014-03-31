@@ -1,18 +1,18 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 #description: dmenu based talking app
-#usage: dmenu-tell
 #usage: dmenu-tell is best suited to be launched from a shortcut
 
 #example: dmenu-tell
-#appears a gui menu appears asking for which phrase to tell, default to spanish voice
+#appears a gui menu appears asking for which phrase to tell, default to english voice
 
-#requires a dmenu version with xft: https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
+#requires a dmenu version with xft:
+#https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
 #-sf blue
 DMENU='dmenu -p > -i -fn Bahamas-10 -nb #000000 -nf #ffffff -sb #000000 -sf #aaffaf'
 
 _die()
 {
-    choice=$(printf "%b\\n" "$1" | $DMENU)
+    printf "%b\\n" "${1}" | ${DMENU}
     exit 1
 }
 
@@ -25,20 +25,20 @@ if ! command -v "say" >/dev/null; then
     _die "say script was not found, press <Enter> to exit"
 fi
 
-phrase=$($DMENU <&- && printf "\\n")
+phrase="$(${DMENU} <&- && printf "\\n")"
 
 [ -n "${phrase}" ] || exit 0;
 
-if [ -f /usr/bin/xclip ]; then
+if [ -f "$(command -v "xclip")" ]; then
     clipboard="/usr/bin/xclip -o"
-elif [ -f /usr/bin/sselp ]; then
+elif [ -f "$(command -v "sselp")" ]; then
     clipboard="/usr/bin/sselp"
 else
     clipboard="ops"
 fi
 
-if [ X"$(printf "%s" "$phrase" | cut -d' ' -f2)" = X"-" ]; then
-    phrase="$(printf "%s" "$phrase" | cut -d' ' -f1) $($clipboard)"
+if [ X"$(printf "%s" "${phrase}" | cut -d' ' -f2)" = X"-" ]; then
+    phrase="$(printf "%s" "${phrase}" | cut -d' ' -f1) $(${clipboard})"
 fi
 
-say $phrase
+say ${phrase}

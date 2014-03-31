@@ -22,13 +22,13 @@
 #         support for non-temporary archives. Ideas thanks to Francois Petitjean
 # - 1.3 : More patches from Bjarni R. Einarsson and Francois Petitjean:
 #         Support for no compression (--nocomp), script is no longer mandatory,
-#         automatic launch in an xterm, optional verbose output, and -target 
+#         automatic launch in an xterm, optional verbose output, and -target
 #         archive option to indicate where to extract the files.
 # - 1.4 : Improved UNIX compatibility (Francois Petitjean)
 #         Automatic integrity checking, support of LSM files (Francois Petitjean)
 # - 1.5 : Many bugfixes. Optionally disable xterm spawning.
 # - 1.5.1 : More bugfixes, added archive options -list and -check.
-# - 1.5.2 : Cosmetic changes to inform the user of what's going on with big 
+# - 1.5.2 : Cosmetic changes to inform the user of what's going on with big
 #           archives (Quake III demo)
 # - 1.5.3 : Check for validity of the DISPLAY variable before launching an xterm.
 #           More verbosity in xterms and check for embedded command's return value.
@@ -150,166 +150,166 @@ while true
 do
     case "$1" in
     --version | -v)
-	echo Makeself version $MS_VERSION
-	exit 0
-	;;
+    echo Makeself version $MS_VERSION
+    exit 0
+    ;;
     --pbzip2)
-	COMPRESS=pbzip2
-	shift
-	;;
+    COMPRESS=pbzip2
+    shift
+    ;;
     --bzip2)
-	COMPRESS=bzip2
-	shift
-	;;
+    COMPRESS=bzip2
+    shift
+    ;;
     --gzip)
-	COMPRESS=gzip
-	shift
-	;;
+    COMPRESS=gzip
+    shift
+    ;;
     --xz)
-	COMPRESS=xz
-	shift
-	;;
+    COMPRESS=xz
+    shift
+    ;;
     --compress)
-	COMPRESS=Unix
-	shift
-	;;
+    COMPRESS=Unix
+    shift
+    ;;
     --base64)
-	COMPRESS=base64
-	shift
-	;;
+    COMPRESS=base64
+    shift
+    ;;
     --encrypt)
-	COMPRESS=gpg
-	shift
-	;;
+    COMPRESS=gpg
+    shift
+    ;;
     --nocomp)
-	COMPRESS=none
-	shift
-	;;
+    COMPRESS=none
+    shift
+    ;;
     --notemp)
-	KEEP=y
-	shift
-	;;
+    KEEP=y
+    shift
+    ;;
     --copy)
-	COPY=copy
-	shift
-	;;
+    COPY=copy
+    shift
+    ;;
     --current)
-	CURRENT=y
-	KEEP=y
-	shift
-	;;
+    CURRENT=y
+    KEEP=y
+    shift
+    ;;
     --target)
-	TARGETDIR="$2"
-	KEEP=y
+    TARGETDIR="$2"
+    KEEP=y
     if ! shift 2; then MS_Help; exit 1; fi
-	;;
+    ;;
     --header)
-	HEADER="$2"
+    HEADER="$2"
     if ! shift 2; then MS_Help; exit 1; fi
-	;;
+    ;;
     --license)
     LICENSE=`cat $2`
     if ! shift 2; then MS_Help; exit 1; fi
     ;;
     --follow)
-	TAR_ARGS=cvfh
-	DU_ARGS=-ksL
-	shift
-	;;
+    TAR_ARGS=cvfh
+    DU_ARGS=-ksL
+    shift
+    ;;
     --noprogress)
-	NOPROGRESS=y
-	shift
-	;;
+    NOPROGRESS=y
+    shift
+    ;;
     --nox11)
-	NOX11=y
-	shift
-	;;
+    NOX11=y
+    shift
+    ;;
     --nowait)
-	shift
-	;;
+    shift
+    ;;
     --nomd5)
-	NOMD5=y
-	shift
-	;;
+    NOMD5=y
+    shift
+    ;;
     --nocrc)
-	NOCRC=y
-	shift
-	;;
+    NOCRC=y
+    shift
+    ;;
     --append)
-	APPEND=y
-	shift
-	;;
+    APPEND=y
+    shift
+    ;;
     --lsm)
-	LSM_CMD="cat \"$2\" >> \"\$archname\""
+    LSM_CMD="cat \"$2\" >> \"\$archname\""
     if ! shift 2; then MS_Help; exit 1; fi
-	;;
+    ;;
     -q | --quiet)
-	QUIET=y
-	shift
-	;;
+    QUIET=y
+    shift
+    ;;
     -h | --help)
-	MS_Usage
-	;;
+    MS_Usage
+    ;;
     -*)
-	echo Unrecognized flag : "$1"
-	MS_Usage
-	;;
+    echo Unrecognized flag : "$1"
+    MS_Usage
+    ;;
     *)
-	break
-	;;
+    break
+    ;;
     esac
 done
 
 if test $# -lt 1; then
-	MS_Usage
+    MS_Usage
 else
-	if test -d "$1"; then
-		archdir="$1"
-	else
-		echo "Directory $1 does not exist." >&2
-		exit 1
-	fi
+    if test -d "$1"; then
+        archdir="$1"
+    else
+        echo "Directory $1 does not exist." >&2
+        exit 1
+    fi
 fi
 archname="$2"
 
 if test "$QUIET" = "y"; then
     if test "$TAR_ARGS" = "cvf"; then
-	TAR_ARGS="cf"
+    TAR_ARGS="cf"
     elif test "$TAR_ARGS" = "cvfh";then
-	TAR_ARGS="cfh"
+    TAR_ARGS="cfh"
     fi
 fi
 
 if test "$APPEND" = y; then
     if test $# -lt 2; then
-	MS_Usage
+    MS_Usage
     fi
 
     # Gather the info from the original archive
     OLDENV=`sh "$archname" --dumpconf`
     if test $? -ne 0; then
-	echo "Unable to update archive: $archname" >&2
-	exit 1
+    echo "Unable to update archive: $archname" >&2
+    exit 1
     else
-	eval "$OLDENV"
+    eval "$OLDENV"
     fi
 else
     if test "$KEEP" = n -a $# = 3; then
-	echo "ERROR: Making a temporary archive with no embedded command does not make sense!" >&2
-	echo >&2
-	MS_Usage
+    echo "ERROR: Making a temporary archive with no embedded command does not make sense!" >&2
+    echo >&2
+    MS_Usage
     fi
     # We don't want to create an absolute directory unless a target directory is defined
     if test "$CURRENT" = y; then
-	archdirname="."
+    archdirname="."
     elif test x$TARGETDIR != x; then
-	archdirname="$TARGETDIR"
+    archdirname="$TARGETDIR"
     else
-	archdirname=`basename "$1"`
+    archdirname=`basename "$1"`
     fi
 
     if test $# -lt 3; then
-	MS_Usage
+    MS_Usage
     fi
 
     LABEL="$3"
@@ -362,32 +362,32 @@ esac
 tmpfile="${TMPDIR:=/tmp}/mkself$$"
 
 if test -f "$HEADER"; then
-	oldarchname="$archname"
-	archname="$tmpfile"
-	# Generate a fake header to count its lines
-	SKIP=0
+    oldarchname="$archname"
+    archname="$tmpfile"
+    # Generate a fake header to count its lines
+    SKIP=0
     . "$HEADER"
     SKIP=`cat "$tmpfile" |wc -l`
-	# Get rid of any spaces
-	SKIP=`expr $SKIP`
-	rm -f "$tmpfile"
+    # Get rid of any spaces
+    SKIP=`expr $SKIP`
+    rm -f "$tmpfile"
     if test "$QUIET" = "n";then
-    	echo Header is $SKIP lines long >&2
+        echo Header is $SKIP lines long >&2
     fi
 
-	archname="$oldarchname"
+    archname="$oldarchname"
 else
     echo "Unable to open header file: $HEADER" >&2
     exit 1
 fi
 
-if test "$QUIET" = "n";then 
+if test "$QUIET" = "n";then
     echo
 fi
 
 if test "$APPEND" = n; then
     if test -f "$archname"; then
-		echo "WARNING: Overwriting existing file: $archname" >&2
+        echo "WARNING: Overwriting existing file: $archname" >&2
     fi
 fi
 
@@ -395,9 +395,9 @@ USIZE=`du $DU_ARGS "$archdir" | awk '{print $1}'`
 DATE=`LC_ALL=C date`
 
 if test "." = "$archdirname"; then
-	if test "$KEEP" = n; then
-		archdirname="makeself-$$-`date +%Y%m%d%H%M%S`"
-	fi
+    if test "$KEEP" = n; then
+        archdirname="makeself-$$-`date +%Y%m%d%H%M%S`"
+    fi
 fi
 
 test -d "$archdir" || { echo "Error: $archdir does not exist."; rm -f "$tmpfile"; exit 1; }
@@ -417,42 +417,42 @@ md5sum=00000000000000000000000000000000
 crcsum=0000000000
 
 if test "$NOCRC" = y; then
-	if test "$QUIET" = "n";then
-		echo "skipping crc at user request"
-	fi
+    if test "$QUIET" = "n";then
+        echo "skipping crc at user request"
+    fi
 else
-	crcsum=`cat "$tmpfile" | CMD_ENV=xpg4 cksum | sed -e 's/ /Z/' -e 's/	/Z/' | cut -dZ -f1`
-	if test "$QUIET" = "n";then
-		echo "CRC: $crcsum"
-	fi
+    crcsum=`cat "$tmpfile" | CMD_ENV=xpg4 cksum | sed -e 's/ /Z/' -e 's/    /Z/' | cut -dZ -f1`
+    if test "$QUIET" = "n";then
+        echo "CRC: $crcsum"
+    fi
 fi
 
 if test "$NOMD5" = y; then
-	if test "$QUIET" = "n";then
-		echo "skipping md5sum at user request"
-	fi
+    if test "$QUIET" = "n";then
+        echo "skipping md5sum at user request"
+    fi
 else
-	# Try to locate a MD5 binary
-	OLD_PATH=$PATH
-	PATH=${GUESS_MD5_PATH:-"$OLD_PATH:/bin:/usr/bin:/sbin:/usr/local/ssl/bin:/usr/local/bin:/opt/openssl/bin"}
-	MD5_ARG=""
-	MD5_PATH=`exec <&- 2>&-; which md5sum || type md5sum`
-	test -x "$MD5_PATH" || MD5_PATH=`exec <&- 2>&-; which md5 || type md5`
-	test -x "$MD5_PATH" || MD5_PATH=`exec <&- 2>&-; which digest || type digest`
-	PATH=$OLD_PATH
-	if test -x "$MD5_PATH"; then
-		if test `basename ${MD5_PATH}`x = digestx; then
-			MD5_ARG="-a md5"
-		fi
-		md5sum=`cat "$tmpfile" | eval "$MD5_PATH $MD5_ARG" | cut -b-32`;
-		if test "$QUIET" = "n";then
-			echo "MD5: $md5sum"
-		fi
-	else
-		if test "$QUIET" = "n";then
-			echo "MD5: none, MD5 command not found"
-		fi
-	fi
+    # Try to locate a MD5 binary
+    OLD_PATH=$PATH
+    PATH=${GUESS_MD5_PATH:-"$OLD_PATH:/bin:/usr/bin:/sbin:/usr/local/ssl/bin:/usr/local/bin:/opt/openssl/bin"}
+    MD5_ARG=""
+    MD5_PATH=`exec <&- 2>&-; which md5sum || type md5sum`
+    test -x "$MD5_PATH" || MD5_PATH=`exec <&- 2>&-; which md5 || type md5`
+    test -x "$MD5_PATH" || MD5_PATH=`exec <&- 2>&-; which digest || type digest`
+    PATH=$OLD_PATH
+    if test -x "$MD5_PATH"; then
+        if test `basename ${MD5_PATH}`x = digestx; then
+            MD5_ARG="-a md5"
+        fi
+        md5sum=`cat "$tmpfile" | eval "$MD5_PATH $MD5_ARG" | cut -b-32`;
+        if test "$QUIET" = "n";then
+            echo "MD5: $md5sum"
+        fi
+    else
+        if test "$QUIET" = "n";then
+            echo "MD5: none, MD5 command not found"
+        fi
+    fi
 fi
 
 if test "$APPEND" = y; then
@@ -473,7 +473,7 @@ if test "$APPEND" = y; then
     chmod +x "$archname"
     rm -f "$archname".bak
     if test "$QUIET" = "n";then
-    	echo Self-extractable archive \"$archname\" successfully updated.
+        echo Self-extractable archive \"$archname\" successfully updated.
     fi
 else
     filesizes="$fsize"
@@ -485,12 +485,12 @@ else
 
     # Append the compressed tar data after the stub
     if test "$QUIET" = "n";then
-    	echo
+        echo
     fi
     cat "$tmpfile" >> "$archname"
     chmod +x "$archname"
     if test "$QUIET" = "n";then
-    	echo Self-extractable archive \"$archname\" successfully created.
+        echo Self-extractable archive \"$archname\" successfully created.
     fi
 fi
 rm -f "$tmpfile"

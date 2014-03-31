@@ -1,4 +1,4 @@
-  #!/usr/bin/env sh
+#!/usr/bin/env sh
 #description: display a warning when the system is running out of energy
 #             suspend the system if not action is taken
 #usage: watch-battery
@@ -7,77 +7,102 @@
 #cronjob (every 3 min)
 #*/3 * * * * /path/to/this/script
 
-if ps aux | grep [u]powerd >/dev/null; then
-    exit 1
-fi
+#if ! pgrep upowerd >/dev/null; then
+    #exit 1
+#fi
 
 PATH=/bin:/usr/bin:/usr/local/bin:/sbin:/usr/local/sbin/:/usr/local/bin:/usr/sbin
 
+_basename()
+{
+    [ -z "${1}" ] && return 1
+    case "${1}" in
+        /*|*/*) expr "${1}" : '.*/\([^/]*\)' ;;
+        *) printf "%s\\n" "${1}";;
+    esac
+}
+
+exec 9>/tmp/"$(_basename ${0})".lock
+if ! flock -n 9 ; then
+    printf "%s\\n" "$(_basename ${0}): another instance is running";
+    exit 1
+fi
+
 _notify()
 {
-    if [ X"$TERM" = X"rxvt-unicode" ] || [ X"$TERM" = X"xterm-256color" ]; then
-        printf "%s: %s\\n" "${1}" "${2}"
+    [ -z "${1}" ] && return 1
+    [ -z "${2}" ] && return 1
+    if [ X"${TERM}" = X"linux" ] || [ -z "${TERM}" ]; then
+        if ! DISPLAY=:0 notify-send -t 1000 "${1}"  "${2}"; then
+            if command -v "gxmessage" 2>/dev/null; then
+                font="Monaco 9"
+                gxmessage "${font:+-fn "$font"}" "${1} ${2}" "got it"
+            else
+                font="fixed"
+                xmessage "${font:+-fn "$font"}" "${1} ${2}" "got it"
+            fi
+        fi
     else
-        DISPLAY=:0.0 notify-send -t 3000 "${1}" "${2}"
+        printf "%s: %s\\n" "${1}" "${2}"
     fi
 }
 
 if [ ! -f "$(command -v notify-send)" ] || [ ! -f "$(command -v hibernate)" ] || [ ! -f "$(command -v acpi)" ]; then
-    _notify  "[+] You need install acpi, notify-send and hibernate" "\$ sudo apt-get install acpi libnotify-bin hibernate"
+    _notify  "[+] You need install acpi, notify-send and hibernate" "$ sudo apt-get install acpi libnotify-bin hibernate"
     exit 1
 fi
 
 #=====VARS=====
 # Current battery status (Charging/Discharging/AC/Unknown)
-STAT=$(acpi -b | awk '{sub(",", ""); print $3}')
+STAT="$(acpi -b | awk '{sub(",", ""); print $3}')"
 # Battery percentage
-BATT=$(acpi -b |awk '{if ($0 ~ "%,") sub("%,", ""); else sub("%", ""); print $4}')
+BATT="$(acpi -b |awk '{if ($0 ~ "%,") sub("%,", ""); else sub("%", ""); print $4}')"
 # Actions
 ACTION="$(command -v hibernate)"
-WATCH_BATTERY_CURRENT=$(cat /tmp/$(expr "$0" : '.*/\([^/]*\)') 2>/dev/null)
+WATCH_BATTERY_CURRENT="$(cat /tmp/"$(_basename ${0})" 2>/dev/null)"
 
 # If Discharging...
-if [ X"$STAT" = X"Discharging" ]; then
+if [ X"${STAT}" = X"Discharging" ]; then
     # Battery under 5% -> force to hibernate
-    if [ "$BATT" -lt 5 ]; then
+    if [ "${BATT}" -lt "5" ]; then
         WATCH_BATTERY_CURRENT="5"
         _notify "[-] Critical" "battery under 5%, the system will hibernate in 30 seconds, unless you plugin the computer"
-        i=0 ; while [ "$i" -lt 30 ]; do
+        i=0 ; while [ "${i}" -lt "30" ]; do
             sleep 1
-            STAT=$(acpi -b | awk '{sub(",", ""); print $3}')
-            if [ X"$STAT" != X"Discharging" ]; then
+            STAT="$(acpi -b | awk '{sub(",", ""); print $3}')"
+            if [ X"${STAT}" != X"Discharging" ]; then
                 _notify  "[+] Charging" "charging now..."
                 break
             fi
-            i=$(expr $i + 1)
+            i="$(expr "${i}" + 1)"
         done
 
         #check a last time if nobody has pluged in the machine, if not hibernate it
-        STAT=$(acpi -b | awk '{sub(",", ""); print $3}')
+        STAT="$(acpi -b | awk '{sub(",", ""); print $3}')"
 
-        if [ X"$STAT" = X"Discharging" ]; then
+        if [ X"${STAT}" = X"Discharging" ]; then
             if [ -e "$(command -v mpc)" ]; then
                 mpc stop
             fi
-            sudo $ACTION
+            sudo ${ACTION}
         fi
 
     # Battery under 7% -> print an alert msg and don't repeat it again
-    elif [ "$BATT" -lt 7 ] && [ "$BATT" -gt 4 ] && [ "$WATCH_BATTERY_CURRENT" != 7 ]; then
+    elif [ "${BATT}" -lt "7" ] && [ "${BATT}" -gt "4" ] && [ "${WATCH_BATTERY_CURRENT}" != "7" ]; then
         WATCH_BATTERY_CURRENT="7"
         _notify  "[-] Warning" "battery under 7%"
     # Battery under 10% -> print an alert msg and don't repeat it again
-    elif [ "$BATT" -lt 10 ] && [ "$BATT" -gt 6 ] && [ "$WATCH_BATTERY_CURRENT" != 10 ]; then
+    elif [ "${BATT}" -lt "10" ] && [ "${BATT}" -gt "6" ] && [ "$WATCH_BATTERY_CURRENT" != "10" ]; then
         WATCH_BATTERY_CURRENT="10"
         _notify  "[-] Warning" "battery under 10%"
     # Battery under 15% -> print an alert msg and don't repeat it again
-    elif [ "$BATT" -lt 15 ] && [ "$BATT" -gt 9 ] && [ "$WATCH_BATTERY_CURRENT" != 15 ]; then
+    elif [ "${BATT}" -lt "15" ] && [ "${BATT}" -gt "9" ] && [ "${WATCH_BATTERY_CURRENT}" != "15" ]; then
         WATCH_BATTERY_CURRENT="15"
         _notify  "[-] Warning" "battery under 15%"
     fi
 fi
 
-printf "%s\\n" "$WATCH_BATTERY_CURRENT" > /tmp/$(expr "$0" : '.*/\([^/]*\)')
+printf "%s\\n" "${WATCH_BATTERY_CURRENT}" > /tmp/"$(_basename ${0})"
 exit 0
 
 # vim: set ts=8 sw=4 tw=0 ft=sh :

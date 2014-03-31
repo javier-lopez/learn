@@ -4,47 +4,61 @@
 #             otherwise use the full name provided and add a .png sufix
 #usage: screenshot [-s] [output]
 
-_notify ()
+_notify()
 {
-    [ X"$TERM" = X"linux" ] && notify-send -t 1000 "${@}" || printf "%s\\n" "${@}"
+    [ -z "${1}" ] && return 1
+    [ -z "${2}" ] && return 1
+    if [ X"${TERM}" = X"linux" ] || [ -z "${TERM}" ]; then
+        if ! DISPLAY=:0 notify-send -t 1000 "${1}"  "${2}"; then
+            if command -v "gxmessage" 2>/dev/null; then
+                font="Monaco 9"
+                gxmessage "${font:+-fn "$font"}" "${1} ${2}" "got it"
+            else
+                font="fixed"
+                xmessage "${font:+-fn "$font"}" "${1} ${2}" "got it"
+            fi
+        fi
+    else
+        printf "%s: %s\\n" "${1}" "${2}"
+    fi
 }
 
 _screenshot()
 {
-    [ -z "$1" ] && return 0
+    [ -z "${1}" ] && return 0
 
     if command -v "scrot" >/dev/null; then
         _screenshot_var_bin="scrot"
-        [ -n "$flag_select" ] && _screenshot_var_opt="-s" || _screenshot_var_opt=""
+        [ -n "${flag_select}" ] && _screenshot_var_opt="-s" || _screenshot_var_opt=""
     elif command -v "gnome-screenshot" >/dev/null; then
         _screenshot_var_bin="gnome-screenshot"
-        [ -n "$flag_select" ] && _screenshot_var_opt="-a" || _screenshot_var_opt=""
+        [ -n "${flag_select}" ] && _screenshot_var_opt="-a" || _screenshot_var_opt=""
     elif command -v "import" >/dev/null; then
         _screenshot_var_bin="import"
-        [ -n "$flag_select" ] && _screenshot_var_opt=""   || _screenshot_var_opt="-window root"
+        [ -n "${flag_select}" ] && _screenshot_var_opt=""   || _screenshot_var_opt="-window root"
     else
         _notify "[-] Error" "install either scrot, gnome-screenshot or imagemagick"
         exit 1
     fi
 
-    eval "$_screenshot_var_bin $_screenshot_var_opt $1"
+    eval "${_screenshot_var_bin} ${_screenshot_var_opt} ${1}"
 }
 
-if [ $# -eq 0 ]; then
-    file=$HOME/`</dev/urandom tr -dc A-Za-z0-9 | head -c 8`.png
+if [ "${#}" -eq "0" ]; then
+    file="${HOME}"/$(</dev/urandom tr -dc A-Za-z0-9 | head -c 8).png
 else
-    for var in "$@"; do #parse options
+    for var in "${@}"; do #parse options
         case "${var}" in
             -s) flag_select="y"; shift; ;;
         esac
     done
-    [ -z "$1" ] && file=$HOME/`</dev/urandom tr -dc A-Za-z0-9 | head -c 8`.png || file="$1".png
+    [ -z "${1}" ] && file="${HOME}"/$(</dev/urandom tr -dc A-Za-z0-9 | head -c 8).png || file="${1}".png
 fi
 
 _notify "[+] Screenshot" "in 3.., 2.., 1.., smile =)!"
 sleep 3
-kill $(ps -aef | awk '/notify-osd/ {if ($0 !~ "awk") print $2}') >/dev/null 2>/dev/null
+kill "$(pgrep notify-osd)" >/dev/null 2>/dev/null
 sleep .5
-[ -n "$flag_select" ] && _notify "[+] Select" "a rectangle to save"
-_screenshot "$file"
-[ -f "$file" ] && _notify "[+] Done" "$file" || _notify "[+] Error" "couldn't take screenshot"
+[ -n "${flag_select}" ] && _notify "[+] Select" "a rectangle to save"
+_screenshot "${file}"
+[ -f "${file}" ] && _notify "[+] Done" "${file}" || _notify "[+] Error" "couldn't take screenshot"

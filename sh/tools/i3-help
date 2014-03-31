@@ -4,19 +4,18 @@
 
 _whereis()
 {
-    [ -z "$1" ] && return 1
-    [ -n "$2" ] && return 1
-    if ! command -v "$1" 2>/dev/null; then
+    [ -z "${1}" ] && return 1
+    if ! command -v "${1}" 2>/dev/null; then
         return 1
     fi
 }
 
 running="$(ps aux | awk '/got it/ {if ($0 !~ "awk") print $2}')"
-[ -n "$running" ] && exit
+[ -n "${running}" ] && exit
 
-XMESSAGE=$(_whereis gxmessage) && geometry="-geometry 480x600" || XMESSAGE=xmessage
+XMESSAGE="$(_whereis gxmessage)" && geometry="-geometry 480x600" || XMESSAGE="xmessage"
 font="Monaco 9"
 
-[ X"$XMESSAGE" = X"xmessage" ] && font="fixed"
+[ X"${XMESSAGE}" = X"xmessage" ] && font="fixed"
 
-$XMESSAGE $geometry ${font:+-fn "$font"} -file $HOME/.i3/shortcuts -buttons "got it"
+${XMESSAGE} ${geometry} ${font:+-fn "$font"} -file "${HOME}"/.i3/shortcuts -buttons "got it"

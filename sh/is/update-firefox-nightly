@@ -6,24 +6,24 @@ trap _cleanup 0 15 #trap ctrl-c
 
 _cmd()
 {   #print current command, exits on fail
-    [ -z "$1" ] && return 0
+    [ -z "${1}" ] && return 0
 
-    printf "%s " "    $ $@"
+    printf "%s " "    $ ${@}"
     printf "\\n"
-    eval "$@"
+    eval "${@}"
 
-    status=$?
-    [ X"$status" != X"0" ] && exit $status || return
+    status="${?}"
+    [ X"${status}" != X"0" ] && exit "${status}" || return
 }
 
 _die()
 {   #print a stacktrace with a msg, exits with 1
-    local frame=0
-    while caller $frame; do
-        frame=$(expr $frame+1);
+    local frame="0"
+    while caller "${frame}"; do
+        frame="$(expr "${frame}" + 1)"
     done
 
-    printf "%s\\n" "$*"
+    printf "%s\\n" "${*}"
     exit 1
 }
 
@@ -34,63 +34,69 @@ _cleanup()
     printf "%s\\n" "[+] cleanup ..."
     _cmd rm firefox*bz2
 
-    [ -z $1 ] && exit
+    [ -z ${1} ] && exit
 }
 
 _notify()
 {
-    if [ X"$TERM" = X"linux" ]; then
-        notify-send -t 3000 "${@}"
+    [ -z "${1}" ] && return 1
+    [ -z "${2}" ] && return 1
+    if [ X"${TERM}" = X"linux" ] || [ -z "${TERM}" ]; then
+        if ! DISPLAY=:0 notify-send -t 1000 "${1}"  "${2}"; then
+            if command -v "gxmessage" 2>/dev/null; then
+                font="Monaco 9"
+                gxmessage "${font:+-fn "$font"}" "${1} ${2}" "got it"
+            else
+                font="fixed"
+                xmessage "${font:+-fn "$font"}" "${1} ${2}" "got it"
+            fi
+        fi
     else
-        printf "%s " "$@"
-        printf "\\n"
+        printf "%s: %s\\n" "${1}" "${2}"
     fi
 }
 
 _arch()
 {   #check for system arch, returns [64|32]
-    local arch
-    [ -z $MACHTYPE ] && arch=$(uname -m) || arch=$(printf "%s\\n" $MACHTYPE | cut -d- -f1)
+    if [ -z "${MACHTYPE}" ]; then
+        _arch_var_arch="$(uname -m)"
+    else
+        _arch_var_arch="$(printf "%s" "${MACHTYPE}" | cut -d- -f1)"
+    fi
 
-    case $arch in
-        x86_64)
-            arch=64;
-            ;;
-        i686)
-            arch=32;
-            ;;
-        *)
-            exit 1
-            ;;
+    case "${_arch_var_arch}" in
+        x86_64) _arch_var_arch="64" ;;
+        i686)   _arch_var_arch="32" ;;
+        *)      return 1 ;;
     esac
 
-    printf %s\\n "$arch"
+    printf "%s" "${_arch_var_arch}"
 }
 
 _update_firefox32()
 {
-    nightly=$(curl http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-trunk/ 2>&1 | grep -o -E 'href="([^"#]+)"' | cut -d'"' -f2 |  grep "linux-i686.tar.bz2")
-    _cmd wget -c http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-trunk/"$nightly"
+    nightly="$(curl http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-trunk/ 2>&1 | grep -o -E 'href="([^"#]+)"' | cut -d'"' -f2 |  grep "linux-i686.tar.bz2")"
+    _cmd wget -c http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-trunk/"${nightly}"
     _cmd "bzcat < firefox*bz2 | tar xf -"
-    _cmd rm -rf firefox-* $HOME/.bin/firefox$arch
-    _cmd mv firefox $HOME/.bin/firefox$arch
+    _cmd rm -rf firefox-* "${HOME}/.bin/firefox${arch}"
+    _cmd mv firefox "${HOME}/.bin/firefox${arch}"
 }
 
 
 _update_firefox64()
 {
-    nightly=$(curl http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-trunk/ 2>&1 | grep -o -E 'href="([^"#]+)"' | cut -d'"' -f2 | grep "linux-x86_64.tar.bz2")
-    _cmd wget -c http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-trunk/"$nightly"
+    nightly="$(curl http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-trunk/ 2>&1 | grep -o -E 'href="([^"#]+)"' | cut -d'"' -f2 | grep "linux-x86_64.tar.bz2")"
+    _cmd wget -c http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-trunk/"${nightly}"
     _cmd "bzcat < firefox*bz2 | tar xf -"
-    _cmd rm -rf firefox-* $HOME/.bin/firefox$arch
-    _cmd mv firefox $HOME/.bin/firefox$arch
+    _cmd rm -rf firefox-* "${HOME}/.bin/firefox${arch}"
+    _cmd mv firefox "${HOME}/.bin/firefox${arch}"
 }
 
-arch=$(_arch)
+arch="$(_arch)"
 [ ! -f "$(whereis curl |awk '{print $2}')" ] && _die "curl was not found!"
-[ -d "$HOME/.bin/firefox$arch" ] && _cmd mkdir -p $HOME/.bin/firefox$arch
+[ -d "${HOME}/.bin/firefox${arch}" ]         && _cmd mkdir -p "${HOME}/.bin/firefox${arch}"
 
-if [ X"$arch" = X"32" ]; then
+if [ X"${arch}" = X"32" ]; then
     _update_firefox32
 else
     _update_firefox64

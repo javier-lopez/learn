@@ -7,7 +7,7 @@
 #another one liner
 #...
 
-PATTERN="$@"
+PATTERN="${@}"
 
 # I love colors!
 BLUE="$(printf "\\033[0;34m")"
@@ -29,36 +29,31 @@ YELLOW="$(printf "\\033[0;33m")"
 
 _usage()
 {
-    printf "%s\\n" "Usage: $(expr "$0" : '.*/\([^/]*\)') [-c] pattern"
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [-c] pattern"
     printf "\\n"
     printf "%s\\n" "          -c     Colorize the output"
     exit 0
 }
 
-[ -n "$PATTERN" ] || _usage
+[ -n "${PATTERN}" ] || _usage
 
 while getopts ":c:" option; do
-    case $option in
-        c)
-          CFLAG=yes PATTERN=$OPTARG ;;
-        :)
-          printf "%s\\n" "Option -$OPTARG requires an argument"
-          _usage
-          ;;
-        \?)
-          printf "%s\\n" "Invalid option: -$OPTARG"
-          _usage
-          ;;
+    case "${option}" in
+        c)  CFLAG=yes PATTERN=$OPTARG ;;
+        :)  printf "%s\\n" "Option -$OPTARG requires an argument"
+            _usage ;;
+        \?) printf "%s\\n" "Invalid option: -$OPTARG"
+            _usage ;;
     esac
 done
 
-if [ -z "$CFLAG" ]; then
-    curl -s "http://www.commandlinefu.com/commands/matching/$PATTERN/`printf "%s" "$PATTERN" |  base64`/plaintext/sort-by-votes" |\
+if [ -z "${CFLAG}" ]; then
+    curl -s "http://www.commandlinefu.com/commands/matching/${PATTERN}/$(printf "%s" "${PATTERN}" | base64)/plaintext/sort-by-votes" |\
     grep --invert-match "commandlinefu.com by David Winterbottom" #I wanna keep the output as clean as possible
 else
-    curl -s "http://www.commandlinefu.com/commands/matching/$PATTERN/`printf "%s" "$PATTERN" |  base64`/plaintext/sort-by-votes" |\
+    curl -s "http://www.commandlinefu.com/commands/matching/${PATTERN}/$(printf "%s" "${PATTERN}" | base64)/plaintext/sort-by-votes" |\
     grep --invert-match "commandlinefu.com by David Winterbottom" | sed -e "
-            s:^#.*:$PURPLE&$DEFAULT:g" -e "
-            s:[^#].*:$LIGHT_GREEN&$DEFAULT:g" -e "
-            /#/!s/\<$PATTERN\>/$YELLOW&$LIGHT_GREEN/g" #for some reason if I change / for : it doesn't work
+            s:^#.*:${PURPLE}&${DEFAULT}:g" -e "
+            s:[^#].*:${LIGHT_GREEN}&${DEFAULT}:g" -e "
+            /#/!s/\<${PATTERN}\>/${YELLOW}&${LIGHT_GREEN}/g" #for some reason if I change / for : it doesn't work
 fi

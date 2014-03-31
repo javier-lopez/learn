@@ -2,9 +2,23 @@
 #description: record a gif movie from a selected region
 #usage: gifcast [filename.gif]
 
-_notify ()
+_notify()
 {
-    [ X"$TERM" = X"linux" ] && notify-send -t 1000 "${@}" || printf "%s\\n" "$*"
+    [ -z "${1}" ] && return 1
+    [ -z "${2}" ] && return 1
+    if [ X"${TERM}" = X"linux" ] || [ -z "${TERM}" ]; then
+        if ! DISPLAY=:0 notify-send -t 1000 "${1}"  "${2}"; then
+            if command -v "gxmessage" 2>/dev/null; then
+                font="Monaco 9"
+                gxmessage "${font:+-fn "$font"}" "${1} ${2}" "got it"
+            else
+                font="fixed"
+                xmessage "${font:+-fn "$font"}" "${1} ${2}" "got it"
+            fi
+        fi
+    else
+        printf "%s: %s\\n" "${1}" "${2}"
+    fi
 }
 
 if ! command -v "ffcast" >/dev/null; then
@@ -15,12 +29,11 @@ elif ! command -v "convert" >/dev/null; then
     exit 1
 fi
 
-
-[ -z "$1" ] && file=$HOME/$(</dev/urandom tr -dc A-Za-z0-9 | head -c 8).gif || file="$1"
+[ -z "${1}" ] && file="${HOME}/$(</dev/urandom tr -dc A-Za-z0-9 | head -c 8).gif" || file="${1}"
 
 _notify "[+] Gifcast" "in 3.., 2.., 1.., smile =)!"
 
-ffcast -s ffmpeg -r 15 -- -pix_fmt rgb24 $file \
-    && _notify "[+] Optimising" "$file" \
-    && convert -layers Optimize $file $file.optimized \
-    && mv $file.optimized $file && _notify "[+] Done" "$file"
+ffcast -s ffmpeg -r 15 -- -pix_fmt rgb24 "${file}" \
+    && _notify "[+] Optimising" "${file}" \
+    && convert -layers Optimize "${file}" "${file}".optimized \
+    && mv "${file}".optimized "${file}" && _notify "[+] Done" "${file}"

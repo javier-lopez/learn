@@ -6,53 +6,51 @@
 
 #####################################
 #kernel version base
-kernel=3.13
+kernel="3.13"
 #kernel specific version
-patchkernel=3.13.7
+patchkernel="3.13.7"
 #BFQ patch
-bfq=3.13.0-v7r2
+bfq="3.13.0-v7r2"
 #CK patch
-patchck=3.13-ck1
-#sufix
-ckk=ck1
-#arch
-arqt=$(dpkg --print-architecture)
+patchck="3.13-ck1"
 #####################################
 
 ################################################################################
 ############DO NOT EDIT BELOW UNLESS YOU KNOW WHAT YOU'RE DOING#################
 ################################################################################
 
+trap _cleanup SIGINT SIGTERM #trap ctrl-c
+
 #/tmp partition could have noexec
-tmp_path="$HOME/.tmp/kernel-ck-ubuntu-$patchkernel"
-curr_path=$PWD
+tmp_path="${HOME}/.tmp/kernel-ck-ubuntu-${patchkernel}"
+curr_path="${PWD}"
 apps_default="kernel-package gcc-4.6 libncurses5 libncurses5-dev build-essential
 patch fakeroot bc"
 
-CL=$(printf "%s\\n" "$(expr $(grep -c processor /proc/cpuinfo) + 1 )")
-vbfq=$(printf "%s" "$bfq" | cut -d'-' -f2)
-
-trap _cleanup SIGINT SIGTERM #trap ctrl-c
+cl="$(printf "%s\\n" "$(expr "$(grep -c processor /proc/cpuinfo)" + 1 )")"
+vbfq="$(printf "%s" "${bfq}" | cut -d'-' -f2)"
+ckk="$(printf "%s" "${patchck}" | cut -d'-' -f2)"
+arqt="$(dpkg --print-architecture)"
 
 _printfl()
 {   #print lines
     _printfl_var_max_len="80"
-    if [ -n "$1" ]; then
-        _printfl_var_word_len=$(expr ${#1} + 2)
-        _printfl_var_sub=$(expr $_printfl_var_max_len - $_printfl_var_word_len)
-        _printfl_var_half=$(expr $_printfl_var_sub / 2)
-        _printfl_var_other_half=$(expr $_printfl_var_sub - $_printfl_var_half)
+    if [ -n "${1}" ]; then
+        _printfl_var_word_len="$(expr "${#1}" + 2)"
+        _printfl_var_sub="$(expr "${_printfl_var_max_len}" - "${_printfl_var_word_len}")"
+        _printfl_var_half="$(expr "${_printfl_var_sub}" / 2)"
+        _printfl_var_other_half="$(expr "${_printfl_var_sub}" - "${_printfl_var_half}")"
         printf "%b" "\033[1m" #white strong
-        printf '%*s' "$_printfl_var_half" '' | tr ' ' -
+        printf '%*s' "${_printfl_var_half}" '' | tr ' ' -
         printf "%b" "\033[7m" #white background
-        printf " %s " "$1"
+        printf " %s " "${1}"
         printf "%b" "\033[0m\033[1m" #white strong
-        printf '%*s' "$_printfl_var_other_half" '' | tr ' ' -
+        printf '%*s' "${_printfl_var_other_half}" '' | tr ' ' -
         printf "%b" "\033[0m" #back to normal
         printf "\\n"
     else
         printf "%b" "\033[1m" #white strong
-        printf '%*s' "$_printfl_var_max_len" '' | tr ' ' -
+        printf '%*s' "${_printfl_var_max_len}" '' | tr ' ' -
         printf "%b" "\033[0m" #back to normal
         printf "\\n"
     fi
@@ -60,20 +58,20 @@ _printfl()
 
 _printfs()
 {   #print step
-    [ -z "$1" ] && return 1
-    printf "%s\\n" "[+] $*"
+    [ -z "${1}" ] && return 1
+    printf "%s\\n" "[+] ${*}"
 }
 
 _die()
 {
-    printf "%b\\n" "[-] Error: $*"
+    printf "%b\\n" "[-] Error: ${*}"
     exit 1
 }
 
 _header()
 {
     clear
-    _printfl "$patchkernel"
+    _printfl "${patchkernel}"
     printf "%b\\n" "\033[1m Original:\033[0m    http://sourceforge.net/projects/scriptkernel/"
     printf "%b\\n" "\033[1m Inspired by:\033[0m http://omicron.homeip.net/projects/#easy_e17.sh"
     printf "%b\\n" "\033[1m Updates:\033[0m     https://github.com/chilicuil/learn/blob/master/sh/is/kernel-ck-ubuntu"
@@ -83,68 +81,72 @@ _header()
     printf "%b\\n" "\033[1m Config:\033[0m      http://repo-ck.com/"
     printf "\\n"
     _printfl "Current configuration: edit the script to change it"
-    printf "%s\\n" "  build path:        $tmp_path"
-    printf "%s\\n" "  kernel:            $patchkernel"
-    printf "%s\\n" "  -bfq patchset:     $bfq"
-    printf "%s\\n" "  -ck patchset:      $patchck"
-    printf "%s\\n" "  sufix:             $ckk"
-    printf "%s\\n" "  arch:              $arqt"
-    printf "%s\\n" "  concurrency level: $CL"
+    printf "%s\\n" "  build path:        ${tmp_path}"
+    printf "%s\\n" "  kernel:            ${patchkernel}"
+    printf "%s\\n" "  -bfq patchset:     ${bfq}"
+    printf "%s\\n" "  -ck patchset:      ${patchck}"
+    printf "%s\\n" "  sufix:             ${ckk}"
+    printf "%s\\n" "  arch:              ${arqt}"
+    printf "%s\\n" "  concurrency level: ${cl}"
     _printfl
 }
 
 _cmd()
 {   #print current command, exits on fail
-    [ -z "$1" ] && return 0
+    [ -z "${1}" ] && return 0
 
-    printf "%s " "    $ $@"
+    printf "%s " "    $ ${@}"
     printf "%s\\n"
-    eval "$@" 2>&1 >/tmp/kernel-ck-ubuntu.error
+    eval "${@}" 2>&1 >/tmp/kernel-ck-ubuntu.error
 
-    status=$?
-    [ "$status" != 0 ] && { cat /tmp/kernel-ck-ubuntu.error; exit $status; } || return
+    status="${?}"
+    [ X"${status}" != X"0" ] && {        \
+        cat /tmp/kernel-ck-ubuntu.error; \
+        exit "${status}"; } || return
 }
 
 _cmdsudo()
 {   #print current command, exits on fail
-    [ -z "$1" ] && return 0
+    [ -z "${1}" ] && return 0
 
-    printf "%s " "    $ sudo $@"
-    printf "%s\\n" "$sudopwd" | $sudocmd $@ 2>&1 >/tmp/kernel-ck-ubuntu.error
+    printf "%s " "    $ sudo ${@}"
+    printf "%s\\n" "${sudopwd}" | ${sudocmd} ${@} 2>&1 >/tmp/kernel-ck-ubuntu.error
 
-    status=$?
-    [ "$status" != 0 ] && { cat /tmp/kernel-ck-ubuntu.error; exit $status; } || return
+    status="${?}"
+    [ X"${status}" != X"0" ] && {        \
+        cat /tmp/kernel-ck-ubuntu.error; \
+        exit "${status}"; } || return
 }
 
 _animcui()
 {   #wait animation
-    [ -z "$1" ] && { printf "%5s\n" ""; return 1; }
+    [ -z "${1}" ] && { printf "%5s\n" ""; return 1; }
 
-    if ! printf "%s" "$(pidof "$1")" | grep "[0-9].*" >/dev/null; then
+    if ! printf "%s" "$(pidof "${1}")" | grep "[0-9].*" >/dev/null; then
         printf "%5s\n" ""
-        return 1; 
+        return 1;
     fi
 
     _animcui_var_animation_state="1"
 
-    if [ ! "$(ps -p "$(pidof "$1")" -o comm= 2>/dev/null)" ]; then
+    if [ ! "$(ps -p "$(pidof "${1}")" -o comm= 2>/dev/null)" ]; then
         printf "%5s\n" ""
         return 1
     fi
 
     printf "%5s" ""
 
-    while [ "$(ps -p "$(pidof "$1")" -o comm= 2>/dev/null)" ]; do
+    while [ "$(ps -p "$(pidof "${1}")" -o comm= 2>/dev/null)" ]; do
         printf "%b" "\b\b\b\b\b"
-        case "$_animcui_var_animation_state" in
+        case "${_animcui_var_animation_state}" in
             1) printf "%s" '\o@o\'
-               _animcui_var_animation_state=2 ;;
+               _animcui_var_animation_state="2" ;;
             2) printf "%s" '|o@o|'
-               _animcui_var_animation_state=3 ;;
+               _animcui_var_animation_state="3" ;;
             3) printf "%s" '/o@o/'
-               _animcui_var_animation_state=4 ;;
+               _animcui_var_animation_state="4" ;;
             4) printf "%s" '|o@o|'
-               _animcui_var_animation_state=1 ;;
+               _animcui_var_animation_state="1" ;;
         esac
         sleep 1
     done
@@ -153,66 +155,66 @@ _animcui()
 
 _getroot()
 {   #get sudo's password, define $sudopwd and $sudocmd
-    if [ ! X"$LOGNAME" = X"root" ]; then
-        printf "%s\\n" "Detecting user $LOGNAME (non-root) ..."
+    if [ ! X"${LOGNAME}" = X"root" ]; then
+        printf "%s\\n" "Detecting user ${LOGNAME} (non-root) ..."
         printf "%s\\n" "Checking if sudo is available ..."
 
         if command -v "sudo" >/dev/null 2>&1; then
             sudo -K
 
-            if [ -n "$sudopwd" ]; then
+            if [ -n "${sudopwd}" ]; then
                 # password check
-                _getroot_var_test=$(printf "%s\\n" "$sudopwd" | sudo -S ls 2>&1)
-                _getroot_var_status="$?"
-                _getroot_var_not_allowed=$(printf "%s" "$_getroot_var_test" | \
-                                         grep -i "sudoers")
+                _getroot_var_test="$(printf "%s\\n" "${sudopwd}" | sudo -S ls 2>&1)"
+                _getroot_var_status="${?}"
+                _getroot_var_not_allowed="$(printf "%s" "${_getroot_var_test}" | \
+                                         grep -i "sudoers")"
 
-                if [ -n "$_getroot_var_not_allowed" ]; then
+                if [ -n "${_getroot_var_not_allowed}" ]; then
                     printf "%s %s\\n" "You're not allowed to use sudo," \
                     "get in contact with your local administrator"
                     exit
-                fi 
+                fi
 
-                if [ X"$_getroot_var_status" != X"0" ]; then
+                if [ X"${_getroot_var_status}" != X"0" ]; then
                     sudopwd=""
                     printf "%s\\n" "Incorrect preseed password"
                     exit
                 else
                     sudocmd="sudo -S"
-                fi 
+                fi
                 printf "%s\\n" "    - all set ..."
-                return 0
+                return
             fi
 
-            i=0 ; while [ "$i" -lt 3 ]; do
-                i=$(expr $i + 1);
+            i=0 ; while [ "${i}" -lt "3" ]; do
+                i="$(expr ${i} + 1)"
                 printf "%s" "   - enter sudo password: "
                 stty -echo
                 read sudopwd
                 stty echo
 
                 # password check
-                _getroot_var_test=$(printf "%s\\n" "$sudopwd" | sudo -S ls 2>&1)
-                _getroot_var_status="$?"
-                _getroot_var_not_allowed=$(printf "%s" "$_getroot_var_test" | \
-                                         grep -i "sudoers")
+                _getroot_var_test="$(printf "%s\\n" "${sudopwd}" | sudo -S ls 2>&1)"
+                _getroot_var_status="${?}"
+                _getroot_var_not_allowed="$(printf "%s" "${_getroot_var_test}" | \
+                                         grep -i "sudoers")"
 
-                if [ -n "$_getroot_var_not_allowed" ]; then
+                if [ -n "${_getroot_var_not_allowed}" ]; then
                     printf "\\n%s %s\\n" "You're not allowed to use sudo," \
                     "get in contact with your local administrator"
                     exit
-                fi 
+                fi
 
                 printf "\\n"
-                if [ X"$_getroot_var_status" != X"0" ]; then
+                if [ X"${_getroot_var_status}" != X"0" ]; then
                     sudopwd=""
                 else
                     sudocmd="sudo -S"
                     break
-                fi 
+                fi
             done
 
-            if [ -z "$sudopwd" ]; then
+            if [ -z "${sudopwd}" ]; then
                 printf "%s\\n" "Failed authentication"
                 exit
             fi
@@ -229,39 +231,39 @@ _cleanup()
     stty echo
     printf "\\n"
     _printfl "Cleanup"
-    _printfs "deleting files at $tmp_path ..."
-    #printf "%s\\n" "$sudopwd" | $sudocmd rm -v $tmp_path/patch*
-    #printf "%s\\n" "$sudopwd" | $sudocmd rm -v $tmp_path/*.patch
-    printf "%s\\n" "$sudopwd" | _cmd $sudocmd rm -rf $tmp_path/linux-$patchkernel-$ckk
+    _printfs "deleting files at ${tmp_path} ..."
+    #printf "%s\\n" "${sudopwd}" | ${sudocmd} rm -v "${tmp_path}"/patch*
+    #printf "%s\\n" "${sudopwd}" | ${sudocmd} rm -v "${tmp_path}"/*.patch
+    printf "%s\\n" "${sudopwd}" | _cmd ${sudocmd} rm -rf "${tmp_path}/linux-${patchkernel}-${ckk}"
 
-    #printf "%s\\n" "$sudopwd" | $sudocmd mount -o remount /tmp
-    #rm -rf $tmp_path 2>/dev/null
-    [ -z "$1" ] && exit
+    #printf "%s\\n" "${sudopwd}" | ${sudocmd} mount -o remount /tmp
+    #rm -rf "${tmp_path}" 2>/dev/null
+    [ -z "${1}" ] && exit
 }
 
 _waitfor()
 {   #print, execute and wait for a command to finish
-    [ -z "$1" ] && return 1
+    [ -z "${1}" ] && return 1
 
-    printf "%s " "    $ $@ ..."
-    $@ > /dev/null 2>&1 &
+    printf "%s " "    $ ${@} ..."
+    ${@} > /dev/null 2>&1 &
     sleep 1s
 
-    _animcui $1
+    _animcui "${1}"
 }
 
 _waitforsudo()
 {   #print, execute and wait for a command to finish
-    [ -z "$1" ] && return 1
+    [ -z "${1}" ] && return 1
 
-    printf "%s " "    $ sudo $@ ..."
-    printf "%s\\n" "$sudopwd" | $sudocmd $* >/dev/null 2>&1 &
+    printf "%s " "    $ sudo ${@} ..."
+    printf "%s\\n" "${sudopwd}" | ${sudocmd} ${*} >/dev/null 2>&1 &
     sleep 1s
 
-    if [ X"$1" = X"DEBIAN_FRONTEND=noninteractive" ]; then
-        _animcui $2
+    if [ X"${1}" = X"DEBIAN_FRONTEND=noninteractive" ]; then
+        _animcui "${2}"
     else
-        _animcui $1
+        _animcui "${1}"
     fi
 }
 
@@ -270,81 +272,81 @@ _getroot
 
 _printfl "Fixing dependencies"
 _waitforsudo apt-get update
-_waitforsudo apt-get install --no-install-recommends -y $apps_default
+_waitforsudo apt-get install --no-install-recommends -y ${apps_default}
 
 
 _printfl "Downloading archives"
 _printfs "downloading main vanilla kernel tree ..."
-_cmd mkdir -p $tmp_path
-_cmd cd $tmp_path
-_waitfor wget --no-check-certificate -N http://www.kernel.org/pub/linux/kernel/v3.x/linux-$kernel.tar.gz
-[ ! -f linux-$kernel.tar.gz ] && _die "couldn't get http://www.kernel.org/pub/linux/kernel/v3.x/linux-$kernel.tar.gz"
+_cmd     mkdir -p ${tmp_path}
+_cmd     cd ${tmp_path}
+_waitfor wget --no-check-certificate -N http://www.kernel.org/pub/linux/kernel/v3.x/linux-${kernel}.tar.gz
+[ ! -f linux-"${kernel}".tar.gz ] && _die "couldn't get http://www.kernel.org/pub/linux/kernel/v3.x/linux-${kernel}.tar.gz"
 
 _printfs "downloading mainstream patches ..."
-_waitfor wget --no-check-certificate -N http://www.kernel.org/pub/linux/kernel/v3.x/patch-$patchkernel.gz
-[ ! -f patch-$patchkernel.gz ] && _die "couldn't get http://www.kernel.org/pub/linux/kernel/v3.x/patch-$patchkernel.gz"
+_waitfor wget --no-check-certificate -N http://www.kernel.org/pub/linux/kernel/v3.x/patch-${patchkernel}.gz
+[ ! -f patch-"${patchkernel}".gz ] && _die "couldn't get http://www.kernel.org/pub/linux/kernel/v3.x/patch-${patchkernel}.gz"
 
 _printfs "downloading -ck patches ..."
-_waitfor wget -N http://ck.kolivas.org/patches/3.0/$kernel/$patchck/patch-$patchck.bz2
-[ ! -f patch-$patchck.bz2 ] && _die "couldn't get http://ck.kolivas.org/patches/3.0/$kernel/$patchck/patch-$patchck.bz2"
+_waitfor wget -N http://ck.kolivas.org/patches/3.0/${kernel}/${patchck}/patch-${patchck}.bz2
+[ ! -f patch-"${patchck}".bz2 ] && _die "couldn't get http://ck.kolivas.org/patches/3.0/${kernel}/${patchck}/patch-${patchck}.bz2"
 
 _printfs "downloading bfq patches ..."
-_waitfor wget -N http://algo.ing.unimo.it/people/paolo/disk_sched/patches/$bfq/0001-block-cgroups-kconfig-build-bits-for-BFQ-$vbfq-$kernel.patch
-[ ! -f 0001-block-cgroups-kconfig-build-bits-for-BFQ-$vbfq-$kernel.patch ] && \
-    _die "couldn't get http://algo.ing.unimo.it/people/paolo/disk_sched/patches/$bfq/0001-block-cgroups-kconfig-build-bits-for-BFQ-$vbfq-$kernel.patch"
-_waitfor wget -N http://algo.ing.unimo.it/people/paolo/disk_sched/patches/$bfq/0002-block-introduce-the-BFQ-$vbfq-I-O-sched-for-$kernel.patch
-[ ! -f 0002-block-introduce-the-BFQ-$vbfq-I-O-sched-for-$kernel.patch ] && \
-    _die "couldn't get http://algo.ing.unimo.it/people/paolo/disk_sched/patches/$bfq/0002-block-introduce-the-BFQ-$vbfq-I-O-sched-for-$kernel.patch"
-_waitfor wget -N http://algo.ing.unimo.it/people/paolo/disk_sched/patches/$bfq/0003-block-bfq-add-Early-Queue-Merge-EQM-to-BFQ-$vbfq-for-$kernel.0.patch
-[ ! -f 0003-block-bfq-add-Early-Queue-Merge-EQM-to-BFQ-$vbfq-for-$kernel.0.patch ] && \
-    _die "couldn't get http://algo.ing.unimo.it/people/paolo/disk_sched/patches/$bfq/0003-block-bfq-add-Early-Queue-Merge-EQM-to-BFQ-$vbfq-for-$kernel.0.patch"
+_waitfor wget -N http://algo.ing.unimo.it/people/paolo/disk_sched/patches/${bfq}/0001-block-cgroups-kconfig-build-bits-for-BFQ-${vbfq}-${kernel}.patch
+[ ! -f 0001-block-cgroups-kconfig-build-bits-for-BFQ-"${vbfq}"-"${kernel}".patch ] && \
+    _die "couldn't get http://algo.ing.unimo.it/people/paolo/disk_sched/patches/${bfq}/0001-block-cgroups-kconfig-build-bits-for-BFQ-${vbfq}-${kernel}.patch"
+_waitfor wget -N http://algo.ing.unimo.it/people/paolo/disk_sched/patches/${bfq}/0002-block-introduce-the-BFQ-${vbfq}-I-O-sched-for-${kernel}.patch
+[ ! -f 0002-block-introduce-the-BFQ-"${vbfq}"-I-O-sched-for-"${kernel}".patch ] && \
+    _die "couldn't get http://algo.ing.unimo.it/people/paolo/disk_sched/patches/${bfq}/0002-block-introduce-the-BFQ-${vbfq}-I-O-sched-for-${kernel}.patch"
+_waitfor wget -N http://algo.ing.unimo.it/people/paolo/disk_sched/patches/${bfq}/0003-block-bfq-add-Early-Queue-Merge-EQM-to-BFQ-${vbfq}-for-${kernel}.0.patch
+[ ! -f 0003-block-bfq-add-Early-Queue-Merge-EQM-to-BFQ-"${vbfq}"-for-"${kernel}".0.patch ] && \
+    _die "couldn't get http://algo.ing.unimo.it/people/paolo/disk_sched/patches/${bfq}/0003-block-bfq-add-Early-Queue-Merge-EQM-to-BFQ-${vbfq}-for-${kernel}.0.patch"
 
 #not necesary since packaging is done with make-kpkg
 #_printfs "downloading ubuntu patches ..."
-#_waitfor wget -N http://kernel.ubuntu.com/~kernel-ppa/mainline/v$patchkernel-trusty/0001-base-packaging.patch
-#_waitfor wget -N http://kernel.ubuntu.com/~kernel-ppa/mainline/v$patchkernel-trusty/0002-debian-changelog.patch
+#_waitfor wget -N http://kernel.ubuntu.com/~kernel-ppa/mainline/v${patchkernel}-trusty/0001-base-packaging.patch
+#_waitfor wget -N http://kernel.ubuntu.com/~kernel-ppa/mainline/v${patchkernel}-trusty/0002-debian-changelog.patch
 
 _printfl "Applying patches"
-_printfs "uncompresing kernel to $tmp_path/linux-$kernel/ ..."
-if [ ! -d "/$tmp_path/linux-$kernel/" ]; then
-    _waitfor tar zxf $tmp_path/linux-$kernel.tar.gz
-    [ ! -d $tmp_path/linux-$kernel ] && _die "couldn't unpack $tmp_path/linux-$kernel.tar.gz"
+_printfs "uncompresing kernel to ${tmp_path}/linux-${kernel}/ ..."
+if [ ! -d "/${tmp_path}/linux-${kernel}/" ]; then
+    _waitfor tar zxf ${tmp_path}/linux-${kernel}.tar.gz
+    [ ! -d "${tmp_path}/linux-${kernel}" ] && _die "couldn't unpack ${tmp_path}/linux-${kernel}.tar.gz"
 fi
 
 _printfs "uncompresing patches ..."
-_waitfor gunzip patch-$patchkernel.gz; [ ! -f patch-$patchkernel ] && _die "couldn't unpack patch-$patchkernel.gz"
-_waitfor bunzip2 patch-$patchck.bz2;   [ ! -f patch-$patchck ]     && _die "couldn't unpack patch-$patchck.bz2"
+_waitfor gunzip  patch-${patchkernel}.gz; [ ! -f patch-"${patchkernel}" ] && _die "couldn't unpack patch-${patchkernel}.gz"
+_waitfor bunzip2 patch-${patchck}.bz2;    [ ! -f patch-"${patchck}" ]     && _die "couldn't unpack patch-${patchck}.bz2"
 
-_printfs "moving to $tmp_path/linux-$patchkernel-$ckk"
-_waitfor rm -rf linux-$patchkernel-$ckk
-_waitfor cp -R "linux-$kernel" "linux-$patchkernel-$ckk"
-_cmd cd linux-$patchkernel-$ckk
+_printfs "moving to ${tmp_path}/linux-${patchkernel}-${ckk}"
+_waitfor rm -rf linux-${patchkernel}-${ckk}
+_waitfor cp -R  linux-${kernel} linux-${patchkernel}-${ckk}
+_cmd     cd linux-${patchkernel}-${ckk}
 
 _printfs "applying patches ..."
-_cmd "patch -p1 < ../patch-$patchkernel"
-_cmd "patch -p1 < ../patch-$patchck"
-_cmd "patch -p1 < ../0001-block-cgroups-kconfig-build-bits-for-BFQ-$vbfq-$kernel.patch"
-_cmd "patch -p1 < ../0002-block-introduce-the-BFQ-$vbfq-I-O-sched-for-$kernel.patch"
-_cmd "patch -p1 < ../0003-block-bfq-add-Early-Queue-Merge-EQM-to-BFQ-$vbfq-for-$kernel.0.patch"
-#_cmd "patch -p1 < ../0001-base-packaging.patch"
-#_cmd "patch -p1 < ../0002-debian-changelog.patch"
+_cmd     "patch -p1 < ../patch-${patchkernel}"
+_cmd     "patch -p1 < ../patch-${patchck}"
+_cmd     "patch -p1 < ../0001-block-cgroups-kconfig-build-bits-for-BFQ-${vbfq}-${kernel}.patch"
+_cmd     "patch -p1 < ../0002-block-introduce-the-BFQ-${vbfq}-I-O-sched-for-${kernel}.patch"
+_cmd     "patch -p1 < ../0003-block-bfq-add-Early-Queue-Merge-EQM-to-BFQ-${vbfq}-for-${kernel}.0.patch"
+#_cmd    "patch -p1 < ../0001-base-packaging.patch"
+#_cmd    "patch -p1 < ../0002-debian-changelog.patch"
 
 _printfl "Configuring kernel"
 _printfs "downloading optimized config from http://repo-ck.com ...    "
-#_waitfor wget "http://liquorix.net/sources/$kernel/config.$arqt"
-##TODO 05-11-2013 20:30 >> liquorix.net current configuration breaks -ck kernel 
+#_waitfor wget "http://liquorix.net/sources/${kernel}/config.${arqt}"
+##TODO 05-11-2013 20:30 >> liquorix.net current configuration breaks -ck kernel
 #                          starting in >= 3.10, check from time to time if it can be reused
 
 #for now use config mirrored from http://repo-ck.com/
-_waitfor wget "http://javier.io/mirror/$kernel/config.$arqt"
-_cmd cp "config.$arqt" .config
+_waitfor wget "http://javier.io/mirror/${kernel}/config.${arqt}"
+_cmd     cp "config.${arqt}" .config
 
 ##tmp fix for bug #663474, disable lguest hypervisor, http://lguest.ozlabs.org/lguest.txt
 ##http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=663474
-if [ X"$arqt" = X"i386" ]; then
+if [ X"${arqt}" = X"i386" ]; then
     sed -i "/CONFIG_LGUEST_GUEST/d" .config
     sed -i "/CONFIG_LGUEST/d" .config
-elif [ X"$arqt" = X"amd64" ]; then
+elif [ X"${arqt}" = X"amd64" ]; then
     if [ ! -d ./arch/amd64  ]; then
         cd arch
         ln -s x86 amd64
@@ -354,29 +356,29 @@ fi
 
 ##thanks to StefanescuCristian: https://github.com/chilicuil/learn/commit/c2d4455
 _printfs "making sure BFS and BFQ are enabled in config ..."
-sed -i "/CONFIG_SCHED_CFS=y/d" .config
-sed -i "s/# CONFIG_SCHED_BFS is not set/CONFIG_SCHED_BFS=y/g" .config
-sed -i "s/# CONFIG_IOSCHED_BFQ is not set/CONFIG_IOSCHED_BFQ=y/g" .config
-sed -i "s/CONFIG_DEFAULT_CFQ=y/# CONFIG_DEFAULT_CFQ is not set/g" .config
+sed -i "/CONFIG_SCHED_CFS=y/d"                                              .config
+sed -i "s/# CONFIG_SCHED_BFS is not set/CONFIG_SCHED_BFS=y/g"               .config
+sed -i "s/# CONFIG_IOSCHED_BFQ is not set/CONFIG_IOSCHED_BFQ=y/g"           .config
+sed -i "s/CONFIG_DEFAULT_CFQ=y/# CONFIG_DEFAULT_CFQ is not set/g"           .config
 sed -i "s/CONFIG_DEFAULT_DEADLINE=y/# CONFIG_DEFAULT_DEADLINE is not set/g" .config
-sed -i "s/CONFIG_DEFAULT_NOOP=y/# CONFIG_DEFAULT_NOOP is not set/g" .config
-sed -i "s/CONFIG_DEFAULT_IOSCHED="cfq"/CONFIG_DEFAULT_IOSCHED="bfq"/g" .config
+sed -i "s/CONFIG_DEFAULT_NOOP=y/# CONFIG_DEFAULT_NOOP is not set/g"         .config
+sed -i "s/CONFIG_DEFAULT_IOSCHED="cfq"/CONFIG_DEFAULT_IOSCHED="bfq"/g"      .config
 sed -i "s/CONFIG_DEFAULT_IOSCHED="deadline"/CONFIG_DEFAULT_IOSCHED="bfq"/g" .config
-sed -i "s/CONFIG_DEFAULT_IOSCHED="noop"/CONFIG_DEFAULT_IOSCHED="bfq"/g" .config
-sed -i "s/# CONFIG_DEFAULT_BFQ is not set/CONFIG_DEFAULT_BFQ=y/g" .config
+sed -i "s/CONFIG_DEFAULT_IOSCHED="noop"/CONFIG_DEFAULT_IOSCHED="bfq"/g"     .config
+sed -i "s/# CONFIG_DEFAULT_BFQ is not set/CONFIG_DEFAULT_BFQ=y/g"           .config
 
 _printfs "making sure CONFIG_HZ is set to 1000, better performance + fixes in resume|suspending issues ..."
-sed -i -e 's/^CONFIG_HZ_300=y/# CONFIG_HZ_300 is not set/' \
+sed -i -e 's/^CONFIG_HZ_300=y/# CONFIG_HZ_300 is not set/'   \
     -i -e 's/^# CONFIG_HZ_1000 is not set/CONFIG_HZ_1000=y/' \
     -i -e 's/^CONFIG_HZ=300/CONFIG_HZ=1000/' .config
 
 _printfl "Compiling kernel"
 _printfs "running make-kpkg ..."
-CONCURRENCY_LEVEL=$CL
+CONCURRENCY_LEVEL="${cl}"
 printf "\\n" | _cmd fakeroot make-kpkg --initrd kernel_image kernel_headers modules_image
 
 _printfl "DONE"
 _printfs "copying debs files ..."
-_cmd cp ../linux-*.deb "$curr_path"
+_cmd cp ../linux-*.deb "${curr_path}"
 _printfs "you may want to install the generated packages and reboot your system, run: $ sudo dpkg -i linux-*.deb"
 _printfs "have fun ^_^!"
