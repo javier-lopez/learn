@@ -2,7 +2,7 @@
 #description: backup directories to a remote system
 #usage: backup-remote-rsync [-h|-v|-n|-o|-s|-u USER|-r DOMAIN|-i SSH KEY|-l LOGFILE] [LOCAL_DIR ...]
 
-#if no directory is provided, $HOME will be used
+#if no directory is provided, $HOME is used
 
 _basename()
 {
@@ -141,7 +141,7 @@ _printtime()
 _hasdotfiles()
 {
     [ -z "${1}" ] && return 1
-    [ -z "$(find "${1}" -maxdepth 1 -iname ".*" | awk 'NR >= 2')" ] && return 1
+    [ -z "$(find "${1}" -maxdepth 1 -iname ".*" | awk '! /^.$/ {print $1}')" ] && return 1
     return 0
 }
 
@@ -168,6 +168,12 @@ _backup()
     [ -n "${dry_run}" ] && _backup_var_dry_run="--dry-run "
 
     _backup_var_start="$(date +%s)"
+
+    _backup_var_ssh_mkdir="$(printf "%s %s" "ssh -i ${_backup_var_sshkey}" \
+        "${_backup_var_remote_user}@$(printf "%s" "${_backup_var_remote_server}" | \
+        cut -d':' -f1) mkdir -p $(hostname)")"
+    _verbose "exec         : ${_backup_var_ssh_mkdir}"
+    [ -z "${ommit}" ] && eval "${_backup_var_ssh_mkdir}" | tee -a "${logfile}"
 
     OLDIFS="${IFS}"
     IFS="|"
@@ -219,20 +225,15 @@ _backup()
 
     IFS="${OLDIFS}"
 
-    exit
-
-    ls "${HOME}" | rsync -avz -e "ssh -i ${HOME}/.ssh/id_rsa" --one-file-system --relative --delete --exclude-from=- --delete "${LOCAL}"/ "${REMOTE}"/dotfiles/ | tee -a "${LOGFILE}"
-        REMOTE=""
-
     _backup_var_end="$(date +%s)"
     _backup_var_diff="$(expr "${_backup_var_end}" - "${_backup_var_start}" )"
 
-    _logger "$(printf "%*s\\n" "28" ''  | tr ' ' =)"
+    _logger "$(printf "%*s\\n" "34" ''  | tr ' ' =)"
     _logger "Total time: $(date +"%d-%m-%Y"):$(_printtime "${_backup_var_diff}")"
-    _logger "$(printf "%*s\\n" "28" ''  | tr ' ' =)"
+    _logger "$(printf "%*s\\n" "34" ''  | tr ' ' =)"
 
-    rsync -i "${_backup_var_sshkey}" "${_backup_var_logfile}" \
-        "${_backup_var_remote_user}@$(printf "%s" "${_backup_var_remote_server}"|cut -d':' -f1):~/backup/$(hostname)"
+    rsync -e "ssh -i ${_backup_var_sshkey}" "${logfile}" \
+        "${_backup_var_remote_user}@${_backup_var_remote_server}"
 }
 
 for var in "${@}"; do #parse options
@@ -288,9 +289,9 @@ if [ -z "${ommit}" ]; then
     fi
 fi
 
-_logger "$(printf "%*s\\n" "28" ''  | tr ' ' =)"
+_logger "$(printf "%*s\\n" "34" ''  | tr ' ' =)"
 _logger "$(date)"
-_logger "$(printf "%*s\\n" "28" ''  | tr ' ' =)"
+_logger "$(printf "%*s\\n" "34" ''  | tr ' ' =)"
 
 if [ -z "${remote_server}" ]; then
     if [ X"${remote_user}" = X"${USER}" ]; then
@@ -338,7 +339,7 @@ if [ -z "${skip_ssh_tests}" ]; then
 
     _verbose "exec         : ${ssh_auth_test}"
     if [ -z "${ommit}" ]; then
-        if ! eval "${ssh_auth_test}" >/dev/null 2>&1; then 
+        if ! eval "${ssh_auth_test}" >/dev/null 2>&1; then
             _logger "[E]: couldn't connect to remote server, wrong username|ssh key, try -u | -s"
             printf "\\n"
             _usage
