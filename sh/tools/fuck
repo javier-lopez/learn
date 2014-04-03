@@ -1,0 +1,28 @@
+#!/usr/bin/env sh
+#description: kill a process by name and print a funny utf-8 emoticon
+#usage: fuck [you|off] program
+
+#https://gist.github.com/namuol/9122237
+#example: fuck you firefox
+
+_flip()
+{
+    [ -z "${1}" ] && return 1
+    printf "%s\\n" "${1}" | sed -e 's:a:ɐ:g'     \
+        -e 's:b:ԛ:g' -e 's:c:ɔ:g' -e 's:d:𝗉:g'   \
+        -e 's:e:ǝ:g' -e 's:f:ɟ:g' -e 's:g:ƃ:g'   \
+        -e 's:h:ɥ:g' -e 's:i:ᴉ:g' -e 's:j:ɾ:g'   \
+        -e 's:k:ʞ:g' -e 's:l:|:g' -e 's:m:ɯ:g'   \
+        -e 's:n:𝗎:g' -e 's:p:d:g' -e 's:q:b:g'   \
+        -e 's:r:ɹ:g' -e 's:t:ʇ:g' -e 's:u:n:g'   \
+        -e 's:v:ʌ:g' -e 's:w:ʍ:g' -e 's:y:ʎ:g' | \
+        sed 's/./&\n/g' | tac | sed -e :a -e 'N;s/\n//g;ta'
+}
+
+[ -z "${1}" ] && { printf "%s\\n" "Usage: fuck [you|off] PROCESS_NAME"; exit; }
+
+if kill -9 $(pgrep "${2}") >/dev/null 2>&1; then
+    printf "%s %s\\n" 'ヽ(`Д´)ﾉ⌒' "$(_flip "${2}")"
+else
+    printf "%s\\n" "(；￣Д￣) .oO(not very effective... )"
+fi
