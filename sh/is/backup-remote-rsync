@@ -171,7 +171,7 @@ _backup()
 
     _backup_var_ssh_mkdir="$(printf "%s %s" "ssh -i ${_backup_var_sshkey}" \
         "${_backup_var_remote_user}@$(printf "%s" "${_backup_var_remote_server}" | \
-        cut -d':' -f1) mkdir -p $(hostname)")"
+        cut -d':' -f1) mkdir -p backup/$(hostname)")"
     _verbose "exec         : ${_backup_var_ssh_mkdir}"
     [ -z "${ommit}" ] && eval "${_backup_var_ssh_mkdir}" | tee -a "${logfile}"
 
