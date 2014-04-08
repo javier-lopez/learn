@@ -2,12 +2,12 @@
 
 PASSWD="$(date +%s | sha256sum | base64 | head -c 8)"
 USER="guest"
-PORT="26769"
-BACKUP_DIR="/path/backup"
+PORT="$(expr "$(tr -cd 0-9 </dev/urandom | head -c 4)" + 1025)"
+BACKUP_DIR="$HOME/recovery"
 CERT="/path/server.pem"
 
-if [ X"$1" = X"stop" ]; then
-    ID="$(ps aux | grep [s]imple | awk '{ print $2 }')"
+if [ X"${1}" = X"stop" ]; then
+    ID="$(pgrep -f simple-httpd)"
     [ -n "$ID" ] && { kill -9 "${ID}"; printf "%s\\n" "Stopped"; } || printf "%s\\n" "No instance found"
     exit
 fi
@@ -30,21 +30,22 @@ fi
 [ -f "${CERT}" ] && SSL_OPTS="--ssl --certificate=${CERT}"
 
 #TODO 29-03-2014 18:09 >> remote fixed path
-if [ -f /usr/local/bin/simple-httpd ]; then
-    printf "%s\\n" "Starting simple.server..."
-    printf "%s\\n" "  address   : all interfaces"
-    printf "%s\\n" "  port      : ${PORT}"
+if command -v "simple-httpd" >/dev/null 2>&1; then
+    printf "%s\\n" "Starting server ..."
+    printf "%s\\n" "  address   : http://b.javier.io:${PORT}"
     printf "%s\\n"
     printf "%s\\n" "  username: ${USER}"
     printf "%s\\n" "  password: ${PASSWD}"
     printf "%s\\n" "  ssl     : ${SSL_OPTS}"
-    printf "%s\\n" "  serving:"
-    printf "%s\\n" "    ${BACKUP_DIR}"
-
+    printf "%s\\n"
+    printf "%s\\n" "  serving:  ${BACKUP_DIR}"
+    printf "%s\\n"
     printf "%s\\n" "Run: $(_basename ${0}) stop, to stop sharing"
-    nohup simple-httpd -p "${PORT}" --username="${USER}" --password="${PASSWD}" "${SSL_OPTS}" "${BACKUP_DIR}" &
+    eval simple-httpd -p "${PORT}" --username="${USER}" --password="${PASSWD}" "${SSL_OPTS}" "${BACKUP_DIR}"/* >/dev/null 2>&1 &
 else
     printf "%s\\n" "Error: simple-httpd was not found!"
     printf "%s\\n" "Info : download it at: https://raw.github.com/chilicuil/learn/master/python/simple-httpd"
     exit 1
 fi
+
+
