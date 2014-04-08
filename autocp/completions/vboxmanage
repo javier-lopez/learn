@@ -3,7 +3,7 @@ _vboxmanage()
     local cur prev words cword
     _init_completion || return
 
-    number_of_words=${#COMP_WORDS[@]}
+    number_of_words="${#COMP_WORDS[@]}"
 
     #=======================================================
     #                  General options
@@ -120,7 +120,7 @@ _vboxmanage()
     #=======================================================
     #=======================================================
 
-    case $prev in
+    case "${prev}" in
         list)
             COMPREPLY=( $( compgen -W "$list_opts" -- $cur ))
             return 0

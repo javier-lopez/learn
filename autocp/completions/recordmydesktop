@@ -36,38 +36,17 @@ _recordmydesktop()
 
     case "${prev}" in
          ##1st layer
-         --dumy-cursor)
-            COMPREPLY=( $( compgen -W "$dummy_cursor_opts" -- $cur ))
-            return 0
-            ;;
-         -v_quality)
-            COMPREPLY=( $( compgen -W "$v_quality_opts" -- $cur ))
-            return 0
-            ;;
-         -s_quality)
-            COMPREPLY=( $( compgen -W "$s_quality_opts" -- $cur ))
-            return 0
-            ;;
-         --workdir)
-            _filedir -d
-            return 0
-            ;;
-         -o)
-            _filedir
-            return 0
-            ;;
+         --dumy-cursor) COMPREPLY=($(compgen -W "${dummy_cursor_opts}" -- ${cur})); return 0; ;;
+         -v_quality)    COMPREPLY=($(compgen -W "${v_quality_opts}" -- ${cur})); return 0; ;;
+         -s_quality)    COMPREPLY=($(compgen -W "${s_quality_opts}" -- ${cur})); return 0; ;;
+         --workdir)     _filedir -d; return 0; ;;
+         -o)            _filedir; return 0; ;;
     esac
 
     #general options
     case "${cur}" in
-        -*)
-            COMPREPLY=( $( compgen -W "$OPTS" -- $cur ))
-            ;;
-        *)
-            if [[ $number_of_words -lt 3 ]]; then
-                COMPREPLY=( $( compgen -W "-o" -- $cur ))
-            fi
-            ;;
+        -*) COMPREPLY=($(compgen -W "${OPTS}" -- ${cur})) ;;
+        *)  [ "${number_of_words}" -lt "3" ] && COMPREPLY=($(compgen -W "-o" -- ${cur})) ;;
     esac
 } &&
 complete -F _recordmydesktop recordmydesktop

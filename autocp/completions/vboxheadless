@@ -18,24 +18,23 @@ _vboxheadless()
     #=======================================================
     vrde_opts="on off config"
 
-    case "$prev" in
+    case "${prev}" in
         -s|-startvm|--startvm)
-            OLDIFS="$IFS"
+            OLDIFS="${IFS}"
             IFS=$'\n'
             COMPREPLY=($(compgen -W "$(vboxmanage list vms | cut -d\" -f2)" -- $cur))
-            IFS="$OLDIFS"
+            IFS="${OLDIFS}"
             return 0
             ;;
         -v|-vrde|--vrde)
-            COMPREPLY=( $( compgen -W "$vrde_opts" -- $cur ))
+            COMPREPLY=($(compgen -W "${vrde_opts}" -- ${cur}))
             return 0
             ;;
     esac
 
-    if [[ "$cur" == -* ]]; then
-        # relevant options completion
-        COMPREPLY=( $( compgen -W "$OPTS" -- $cur ) )
-    fi
+    case "${cur}" in
+        -*) COMPREPLY=($(compgen -W "${OPTS}" -- ${cur})) ;;
+    esac
 } &&
 complete -F _vboxheadless VBoxHeadless vboxheadless
 

@@ -8,24 +8,14 @@ _setup()
     OPTS="-h --help -v --version"
 
     case "${prev}" in
-        script)
-           _filedir
-          return 0 
-          ;;
-        autocp)
-            _filedir
-            return 0
-            ;;
+        script) _filedir; return 0; ;;
+        autocp) _filedir; return 0; ;;
     esac
 
     #general options
     case "${cur}" in
-        -*)
-            COMPREPLY=( $( compgen -W "$OPTS" -- $cur ))
-            ;;
-        *)
-            COMPREPLY=( $( compgen -W "$COMMANDS" -- $cur ))
-            ;;
+        -*) COMPREPLY=($(compgen -W "${OPTS}" -- ${cur}))     ;;
+        *)  COMPREPLY=($(compgen -W "${COMMANDS}" -- ${cur})) ;;
     esac
 } &&
 complete -F _setup setup st ztup

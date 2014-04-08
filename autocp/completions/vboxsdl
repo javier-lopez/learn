@@ -3,7 +3,7 @@ _vboxsdl()
     local cur prev words cword
     _init_completion || return
 
-    number_of_words=${#COMP_WORDS[@]}
+    number_of_words="${#COMP_WORDS[@]}"
 
     #=======================================================
     #                  General options
@@ -21,7 +21,7 @@ _vboxsdl()
     #=======================================================
     #                   Nested options
     #=======================================================
-    case $prev in
+    case "${prev}" in
         --startvm)
             OLDIFS="$IFS"
             IFS=$'\n'
