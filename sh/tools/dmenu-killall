@@ -12,4 +12,4 @@ npid="$(printf "%s\\n" "$(command ps axo command= | sed -e "s: .*::; s:.*/::; s/
 
 [ -n "${npid}" ] || exit 0
 
-kill $(pgrep "${npid}")
+kill -9 $(pgrep "${npid}")
