@@ -1,12 +1,39 @@
 ## Personal guidelines for sh scripting
 
-- Don't use syntax or semantics unique to Bash, for example, array contructs
-- Use `/usr/bin/env sh` over `/bin/sh`
+- Don't use syntax or semantics unique to bash, zsh, or any other specific shell, for example:
+    - array contructs
+    - `<( )` and `>( )`
+    - `{a,b,c}` or `{1..10}`
+    - `function` at the definition of a function
+    - C-like for loop, `for ((i=0; i<3; i++))`
+- Avoid `[[`, use `[` or `test` instead 
+- Avoid `which`, use `command -v` or `type` instead 
+- Avoid `basename`, use `expr` instead
+- Prefer `awk` over `sed`, `grep`, `cut`, `sort`, `tr` and `unique`
+- Use `case` over `test` when posible
+- Use `/bin/sh` over `/bin/bash` or `/usr/bin/env sh`
 - Use `$(foo)` over `foo`
-- In math operations use `$((i+1))` over `$(expr $i + 1)`
 - Use spaces over tabs
-- Prefer lowercase over uppercase, except in vars which users will have to deal with, eg: `PROGNAME_ENV`
+- Use `:` as a separator for `sed`, eg: `sed -e 's:foo:bar:'`
+- In math operations use `$((${i}+1))` over `$(expr "${i}" + 1)`
+- In string comparation use `=` instead of `==`
 - Try to write 80 chars at maximum in lines
+- Prefer lowercase over uppercase, except in vars which users will have to deal with, eg: `PROGNAME_ENV`
+- Use braces around variables
+
+  **Bad**
+   ```sh
+   var="$foo"
+   var="$foo$bar"
+   var="/path/$foo.suffix"
+   ```
+
+  **Good**
+   ```sh
+   var="${foo}"
+   var="${foo}${bar}"
+   var="/path/${foo}.suffix"
+   ```
 - Prefer minimalism style, except in functions:
 
   **Bad**
@@ -16,11 +43,11 @@
        bar
    fi
 
-   if [ -z "$foo" ]; then
+   if [ -z "${foo}" ]; then
        single_cmd
    fi
 
-   if [ -z "$foo" ]; then
+   if [ -z "${foo}" ]; then
        single_cmd
    else
        other_cmd
@@ -37,9 +64,9 @@
        bar
    fi
 
-   [ -z "$foo" ] && single_cmd
+   [ -z "${foo}" ] && single_cmd
 
-   [ -z "$foo" ] && single_cmd || other_cmd
+   [ -z "${foo}" ] && single_cmd || other_cmd
 
    _function()
    {
@@ -63,46 +90,31 @@
        _foo_var_first_argument="${1}"
    }
    ```
-- Use braces around variables when they're not alone 
-  **Bad**
-   ```sh
-   var="$foo$bar"
-   var="/path/$foo.suffix"
-   ```
-
-  **Good**
-   ```sh
-   var="${foo}${bar}"
-   var="/path/${foo}.suffix"
-   ```
 
 - Use quotes when assigning values to variables, use single quotes when absolutely necesary
 
   **Bad**
    ```sh
    foo=bar
-   bar=$foo
+   bar=${foo}
    ```
 
   **Good**
    ```sh
    foo="bar"
-   bar="$foo"
+   bar="${foo}"
    ```
-- Avoid `echo`, use `printf` instead (specially when echoing $vars)
+- Avoid `echo`, use `printf` instead (specially when echoing ${vars})
 
   **Bad**
    ```sh
-   echo "$foo"
+   echo "${foo}"
    ```
 
   **Good**
    ```sh
-   printf "%s\\n" "$foo"
+   printf "%s\\n" "${foo}"
    ```
-- Avoid `[[`, use `[` or `test` instead 
-- Avoid `which`, use `command -v` or `type` instead 
-- Avoid `basename`, use `expr` instead
 - Avoid fixed paths:
 
   **Bad**
@@ -142,40 +154,37 @@
 
   **Good**
    ```sh
-   ls_output=$(ls)
-   printf "%s\\n" "$ls_output"
+   ls_output="$(ls)"
+   printf "%s\\n" "${ls_output}"
    ```
 
   **Best**
    ```sh
    printf "%s\\n" "$(ls)"
    ```
-- Prefer `awk` over `sed`, `grep`, `cut`, `sort`, `tr` and `unique`
-- Use `case` over `test` when posible
-- On string comparations use X as a prefix for comparitions, avoid errors when $vars contain '-'
+- On string comparations use X as a prefix for comparitions, avoid errors when ${vars} contain '-'
 
   **Bad**
    ```sh
-   [ "$cmd" = "foo" ] && single_cmd
+   [ "${cmd}" = "foo" ] && single_cmd
    ```
 
   **Good**
    ```sh
-   [ X"$cmd" = X"foo" ] && single_cmd
+   [ X"${cmd}" = X"foo" ] && single_cmd
    ```
-- Use `:` as a separator for `sed`, eg: `sed -e 's:foo:bar:'`
 - Prefer `||` and `&&` over `-a` and `-o`
 
   **Bad**
    ```sh
-   if [ "-d" = "$1" -o "--delete" = "$1" ]; then
+   if [ "-d" = "${1}" -o "--delete" = "${1}" ]; then
        foo
    fi
    ```
 
   **Good**
    ```sh
-   if [ X"-d" = X"$1" ] || [ X"--delete" = "$1" ]; then
+   if [ X"-d" = X"${1}" ] || [ X"--delete" = "${1}" ]; then
        foo
    fi
    ```
