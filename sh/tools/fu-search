@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/sh
 #description: search in the awesome commandlinefu.com site
 #usage: fu-search command
 

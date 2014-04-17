@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/sh
 #description: encrypt and password-protect execution of any script
 #usage: crypt script
 

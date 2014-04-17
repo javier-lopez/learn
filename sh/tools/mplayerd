@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/sh
 #description: create a playlist of tracks and play it
 #usage: mplayerd files
 

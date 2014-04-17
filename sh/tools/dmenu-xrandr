@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/sh
 #description: dmenu based multimonitor menu
 #usage: dmenu-xrandr is best suited to be launched from a shortcut
 
@@ -57,7 +57,7 @@ _arraylen()
 
     while [ "${_arraylen_var_copy}" ]; do
         _arraylen_var_option="${_arraylen_var_copy%%,*}"
-        _arraylen_var_counter="$(expr "${_arraylen_var_counter}" + 1)"
+        _arraylen_var_counter="$((${_arraylen_var_counter} + 1))"
 
         if [ X"${_arraylen_var_option}" = X"${_arraylen_var_copy}" ]; then
             _arraylen_var_copy=""

@@ -1,8 +1,8 @@
-#!/usr/bin/env sh
+#!/bin/sh
 
 PASSWD="$(date +%s | sha256sum | base64 | head -c 8)"
 USER="guest"
-PORT="$(expr "$(tr -cd 0-9 </dev/urandom | head -c 4)" + 1025)"
+PORT="$(($(tr -cd 0-9 </dev/urandom | head -c 4) + 1025))"
 BACKUP_DIR="$HOME/recovery"
 CERT="/path/server.pem"
 
@@ -47,5 +47,3 @@ else
     printf "%s\\n" "Info : download it at: https://raw.github.com/chilicuil/learn/master/python/simple-httpd"
     exit 1
 fi
-
-

@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/sh
 #movietime - disables power savings to watch movies.
 #usage: movietime
 
@@ -9,7 +9,7 @@
 #http://tinyurl.com/246hm8f
 _die()
 {
-    printf "%s\\n" "$*"
+    printf "%s\\n" "${*}"
     exit 1
 }
 
@@ -124,7 +124,7 @@ _usage()
 
     # Suspend inhibit script (must be run as seperate process)
     suspinhibit () {
-        printf "%s\\n" '#!/usr/bin/env sh
+        printf "%s\\n" '#!/bin/sh
         for time in $(seq 1 '${resumetime}'); do
         # Simulate user activity every minute
         xdotool keydown Shift_L keyup Shift_L

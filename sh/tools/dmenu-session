@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/sh
 #description: dmenu based session menu
 #usage: dmenu-session is best suited to be launched from a shortcut
 

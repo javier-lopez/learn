@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/sh
 #setup a pxe environment
 trap _cleanup 0 15
 
@@ -21,10 +21,10 @@ _header()
 
 _die()
 {   #print a stacktrace with a msg, exits with 1
-    if [ -n "${bash}" ]; then
+    if [ -n "${BASH}" ]; then
         _die_var_frame="0"
         while caller "${_die_var_frame}"; do
-            _die_var_frame="$(expr "${_die_var_frame}" + 1);"
+            _die_var_frame="$((${_die_var_frame} + 1))"
         done
     fi
 

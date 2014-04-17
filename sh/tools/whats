@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/sh
 #description: define words using wikipedia over dns, https://dgl.cx/wikipedia-dns
 #usage: whats word
 

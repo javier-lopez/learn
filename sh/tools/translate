@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/sh
 #description: translate string
 #usage: translate [OPTION] string
 

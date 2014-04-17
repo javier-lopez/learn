@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/sh
 #description: show code of scripting utilities located in the system PATH
 #usage: cat-show script
 

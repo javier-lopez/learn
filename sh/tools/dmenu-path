@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/sh
 #description: dmenu helper, list commands available on the system
 #usage: dmenu-path
 

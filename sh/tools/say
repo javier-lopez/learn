@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/sh
 #description: say phrase
 #usage: say [OPTION] phrase
 
@@ -23,7 +23,7 @@ _say()
     while [ "${#phrase}" -gt "99" ]; do
         tmp="$(printf "%b" "${phrase}" | cut -c1-99 | xxd -plain | tr -d '\n' | sed 's/\(..\)/%\1/g')"
         mplayer -really-quiet "http://translate.google.com/translate_tts?ie=UTF-8&tl=${sl}&q=${tmp}" > /dev/null 2>&1
-        phrase="$(printf "%b" "${phrase}" | cut -c100-"$(expr "${#phrase}" + 1)")"
+        phrase="$(printf "%b" "${phrase}" | cut -c100-"$((${#phrase} + 1))")"
         #http://stackoverflow.com/questions/4988155/is-there-a-bash-command-that-can-tell-the-size-of-a-shell-variable
     done
 

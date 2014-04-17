@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/sh
 #description: record a gif movie from a selected region
 #usage: gifcast [filename.gif]
 

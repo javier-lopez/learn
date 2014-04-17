@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/sh
 # A simple Linux-only pure-shell showterm client for those without Ruby.
 #
 # Mac users (and Linux users with Ruby installed) should use the ruby client:

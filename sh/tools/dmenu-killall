@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/sh
 #description: dmenu for killall
 #usage: dmenu-killall is best suited to belaunched from a shortcut
 

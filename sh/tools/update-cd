@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/sh
 #description: update wcd db if available
 #usage: update-cd
 

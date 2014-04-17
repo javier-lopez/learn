@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/sh
 #description: wrapper for rm compatible with nautilus|pcman trash management
 #usage: rm_ [OPTIONS] FILES
 
@@ -168,7 +168,7 @@ _archive()
             while [ -e "${archive}" ]; do
                 archive="${trash_dir}/files/${file##*/}.${num}"
                 trashinfo="${trash_dir}/info/${file##*/}.${num}.trashinfo"
-                num="$(expr "${num}" + 1)"
+                num="$((${num} + 1))"
             done
 
             #put $file & $trashinfo vars between "" to capture spaces
@@ -271,17 +271,17 @@ while getopts ":fluhcry" options
 do
     case "${options}" in
         f) exec rm -r "${@}"                              ;;
-        l) verboselist="$(expr "${verboselist}" + 1)"     ;;  # list verbose level 1-3
-        u) shift "$(expr "${OPTIND}" - 1)"; _recover "${@}" ;;  # remove the -u
+        l) verboselist="$((${verboselist} + 1))"     ;;  # list verbose level 1-3
+        u) shift "$((${OPTIND} - 1))"; _recover "${@}" ;;  # remove the -u
         h) _usage                                         ;;
-        c) shift "$(expr "${OPTIND}" - 1)"; _clean "${@}"   ;;  # remove the -c
+        c) shift "$((${OPTIND} - 1))"; _clean "${@}"   ;;  # remove the -c
         r)                                                ;;
         y) yflag="yes"                                    ;;
         *) exec rm "${@}"                                 ;;  # send the rest to rm
     esac
 done
 
-shift "$(expr "${OPTIND}" - 1)"
+shift "$((${OPTIND} - 1))"
 
 if [ "${verboselist}" -gt "0" ]; then
     _list "${@}"

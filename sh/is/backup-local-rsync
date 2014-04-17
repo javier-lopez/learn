@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/sh
 #custom simple backup script, you DONT wanna USE THIS
 
 #======== VARS =========
@@ -31,7 +31,7 @@ else
     if [ -z "${YFLAG}" ]; then #if not exist
         printf "%s" "Is ${BACKUP_TO} correct? (y/n): "
         read -e ANSWER
-        if [ "${ANSWER}" != "y" ]; then
+        if [ X"${ANSWER}" != X"y" ]; then
             printf "%s" "Insert the path you want to use to backup to: "
             read -e BACKUP_TO
             if [ ! -e "${BACKUP_TO}" ]; then
@@ -72,7 +72,7 @@ dotfiles()
         ls "${HOME}" | sudo rsync  -a --progress -n --exclude-from=- --delete "${HOME}"/ "${BACKUP_TO}"/dotfiles/"${HOSTNAME}"/ | less
         printf "%s" "Continue? (y/n): "
         read -e ANSWER
-        if [ "${ANSWER}" != "y" ]; then
+        if [ X"${ANSWER}" != X"y" ]; then
             printf "%s\\n" "Aborting..."
             exit 1
         fi

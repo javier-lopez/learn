@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/sh
 #description: take screenshot in 3.., 2.., 1
 #             if no name is provided save image in $HOME with a random name
 #             otherwise use the full name provided and add a .png sufix

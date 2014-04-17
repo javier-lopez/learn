@@ -1,4 +1,4 @@
-#! /usr/bin/env sh
+#! /bin/sh
 #description: format file according to https://wiki.ubuntu.com/Testing/TestCaseFormat
 #usage: test-case-format files
 

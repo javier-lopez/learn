@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/sh
 #description: send and watch messages in your "ke estas haciendo?" in mononeurona.org
 #usage: im "string"
 

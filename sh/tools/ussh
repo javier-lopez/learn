@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/sh
 #description: connect to a remote host through ssh without verification
 #usage: ussh domain.tld
 

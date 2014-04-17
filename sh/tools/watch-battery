@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/sh
 #description: display a warning when the system is running out of energy
 #             suspend the system if not action is taken
 #usage: watch-battery
@@ -74,7 +74,7 @@ if [ X"${STAT}" = X"Discharging" ]; then
                 _notify  "[+] Charging" "charging now..."
                 break
             fi
-            i="$(expr "${i}" + 1)"
+            i="$((${i} + 1))"
         done
 
         #check a last time if nobody has pluged in the machine, if not hibernate it

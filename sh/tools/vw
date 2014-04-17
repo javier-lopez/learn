@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/sh
 #description: display selected images in $viewer
 #             browse all other images in the directory as well
 #usage: vw file

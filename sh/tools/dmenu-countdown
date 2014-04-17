@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/sh
 #description: dmenu based countdown
 #usage: dmenu-countdown is best suited to be launched from a shortcut
 
@@ -130,14 +130,14 @@ _printtime()
     _printtime_var_hour="0"
     _printtime_var_day="0"
     if [ "${_printtime_var_num}" -gt "59" ]; then
-        _printtime_var_sec="$(expr "${_printtime_var_num}" % 60)"
-        _printtime_var_num="$(expr "${_printtime_var_num}" / 60)"
+        _printtime_var_sec="$((${_printtime_var_num} % 60))"
+        _printtime_var_num="$((${_printtime_var_num} / 60))"
         if [ "${_printtime_var_num}" -gt "59" ]; then
-            _printtime_var_min="$(expr "${_printtime_var_num}" % 60)"
-            _printtime_var_num="$(expr "${_printtime_var_num}" / 60)"
+            _printtime_var_min="$((${_printtime_var_num} % 60))"
+            _printtime_var_num="$((${_printtime_var_num} / 60))"
             if [ "${_printtime_var_num}" -gt "23" ]; then
-                _printtime_var_hour="$(expr "${_printtime_var_num}" % 24)"
-                _printtime_var_day="$(expr "${_printtime_var_num}" / 24)"
+                _printtime_var_hour="$((${_printtime_var_num} % 24))"
+                _printtime_var_day="$((${_printtime_var_num} / 24))"
             else
                 _printtime_var_hour="${_printtime_var_num}"
             fi
@@ -169,7 +169,7 @@ _var_i="0"
 
 while [ "${time_copy}" ]; do
     time_option="${time_copy%%:*}"
-    _var_i="$(expr "${_var_i}" + 1)"
+    _var_i="$((${_var_i} + 1))"
     [ X"${time_option}" = X"${time_copy}" ] && time_copy='' || time_copy="${time_copy#*:}"
 done
 
@@ -203,14 +203,14 @@ chmod +x "${tune}"
 touch /tmp/dmenu-countdown.lock
 
 if [ -z "${s}" ]; then
-    secs="$(expr "${h}" \* 3600 + "${m}" \* 60)"
+    secs="$((${h} * 3600 + ${m} * 60))"
 else
-    secs="$(expr "${h}" \* 3600 + "${m}" \* 60 + "${s}" )"
+    secs="$((${h} * 3600 + ${m} * 60 + ${s}))"
 fi
 
-half="$(expr "${secs}" / 2)"
-quarter="$(expr "${secs}" / 4)"
-almost="$(expr "${secs}" / 10)"
+half="$(${secs} / 2))"
+quarter="$((${secs} / 4))"
+almost="$((${secs} / 10))"
 
 _notify "[+] Countdown" "time left: ${time}"
 while [ "${secs}" -gt "0" ]; do
@@ -224,7 +224,7 @@ while [ "${secs}" -gt "0" ]; do
         "${almost}")  _notify "[+] Almost!"   "time left: $(_printtime "${secs}")" ;;
     esac
     sleep 1 &
-    secs="$(expr "${secs}" - 1 )"
+    secs="$((${secs} - 1))"
     wait
 done
 

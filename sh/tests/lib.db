@@ -128,7 +128,7 @@ test X"$(readlink -f /dev/disk/by-uuid/$(_getuuid "${drive}"))" = X"${drive}"
 @begin{_internetavailable}
 ping -c 1 google.com; pv="${?}"; true
 _internetavailable; iv="${?}"; true
-(test X"${pv}" = X"${iv}" || test X"$(expr "${pv}" - 1)" = X"${iv}")
+(test X"${pv}" = X"${iv}" || test X"$((${pv} - 1))" = X"${iv}")
 @end{_internetavailable}
 
 @begin{_isalphanum}

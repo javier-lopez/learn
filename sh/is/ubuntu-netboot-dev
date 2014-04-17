@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/sh
 
 [ ! -d /home/chilicuil/misc/ubuntu/release/ubuntu-14.04/netboot/ ] && exit
 

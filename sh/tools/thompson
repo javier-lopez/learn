@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/sh
 #description: resets ip on thompson routers
 #usage: thompson
 

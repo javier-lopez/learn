@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/sh
 #description: notifies when a command has finish
 #usage: run command
 

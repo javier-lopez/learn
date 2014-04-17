@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/sh
 #description: dmenu based vbox menu
 #usage: dmenu-vbox is best suited to be launched from a shortcut
 

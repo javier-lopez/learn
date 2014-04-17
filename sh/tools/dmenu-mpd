@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/sh
 #description: dmenu for mpd
 #usage: dmenu-mpd is best suited to be launched from a shortcut
 

@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/sh
 #description: show help for my personal setup
 #usage: i3-help
 

@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/sh
 #set -e
 
 BACKUPDIR="/path"
@@ -20,7 +20,7 @@ if ! flock -n 9  ; then                #http://mywiki.wooledge.org/BashFAQ/045
     exit 1
 fi
 
-_time()
+_printtime()
 {  #format seconds to a pretty string
     [ -z "${1}" ] && return 1
     printf "%s\\n" "${1}" | grep -v "[^0-9]" >/dev/null || return 1;
@@ -30,14 +30,14 @@ _time()
     _printtime_var_hour="0"
     _printtime_var_day="0"
     if [ "${_printtime_var_num}" -gt "59" ]; then
-        _printtime_var_sec="$(expr "${_printtime_var_num}" % 60)"
-        _printtime_var_num="$(expr "${_printtime_var_num}" / 60)"
+        _printtime_var_sec="$((${_printtime_var_num} % 60))"
+        _printtime_var_num="$((${_printtime_var_num} / 60))"
         if [ "${_printtime_var_num}" -gt "59" ]; then
-            _printtime_var_min="$(expr "${_printtime_var_num}" % 60)"
-            _printtime_var_num="$(expr "${_printtime_var_num}" / 60)"
+            _printtime_var_min="$((${_printtime_var_num} % 60))"
+            _printtime_var_num="$((${_printtime_var_num} / 60))"
             if [ "${_printtime_var_num}" -gt "23" ]; then
-                _printtime_var_hour="$(expr "${_printtime_var_num}" % 24)"
-                _printtime_var_day="$(expr "${_printtime_var_num}" / 24)"
+                _printtime_var_hour="$((${_printtime_var_num} % 24))"
+                _printtime_var_day="$((${_printtime_var_num} / 24))"
             else
                 _printtime_var_hour="${_printtime_var_num}"
             fi
@@ -74,6 +74,6 @@ mysql -u"${DBUSER}" -p"${DBPASSWD}" -Ae"UNLOCK TABLES;"
 tar cvf - "$(find "${BACKUPDIR}" -type f -iname "*sql")" | gzip > "${BACKUPDIR}"/dbs.tar.gz
 
 END="$(date +%s)"
-DIFF="$(expr "${END}" - "${START}" )"
+DIFF="$((${END} - ${START}))"
 
-printf "%s\\n" "$(date +"%d-%m-%Y"):$(_time ${DIFF})" | tee -a "${BACKUPDIR}"/time.txt
+printf "%s\\n" "$(date +"%d-%m-%Y"):$(_printtime ${DIFF})" | tee -a "${BACKUPDIR}"/time.txt

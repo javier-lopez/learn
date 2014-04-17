@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/sh
 #description: kill a process by name and print a funny utf-8 emoticon
 #usage: fuck [you|off] program
 

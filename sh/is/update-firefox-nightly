@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/sh
 #a simple script to update firefox nightly when the integrated updater doesn't work
 
 trap _cleanup 0 15 #trap ctrl-c
@@ -18,13 +18,15 @@ _cmd()
 
 _die()
 {   #print a stacktrace with a msg, exits with 1
-    local frame="0"
-    while caller "${frame}"; do
-        frame="$(expr "${frame}" + 1)"
-    done
+    if [ -n "${BASH}" ]; then
+        _die_var_frame="0"
+        while caller "${_die_var_frame}"; do
+            _die_var_frame="$((${_die_var_frame} + 1))"
+        done
+    fi
 
     printf "%s\\n" "${*}"
-    exit 1
+    exit
 }
 
 _cleanup()

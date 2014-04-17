@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/sh
 #description: control keyboard layouts, best suited for tiling window managers
 #usage: shift-keyboard-layout
 # change keyboard layout to the next configured one
@@ -19,26 +19,26 @@ c="0";d="0"
 
 while [ "${d_layouts}" ]; do #items in array
     option="${d_layouts%%,*}"
-    d="$(expr "${d}" + 1)"
+    d="$((${d} + 1))"
     [ X"${d_layouts}" = X"${option}" ] && d_layouts="" || d_layouts="${d_layouts#*,}"
 done
 
 while [ "${c_layouts}" ]; do #what position is current_layout respect to array
     option="${c_layouts%%,*}"
-    c="$(expr "${c}" + 1)"
+    c="$((${c} + 1))"
     [ X"${current_layout}" = X"${option}" ] && break
     [ X"${c_layouts}" = X"${option}" ] && c_layouts="" || c_layouts="${c_layouts#*,}"
 done
 
 [ -z "${c_layouts}" ] && exit #invalid layout format
 
-e="$(expr "${c}" + 1)"
+e="$((${c} + 1))"
 [ "${d}" -eq "${c}" ] && e="1" #return to first element if we're in the last one
 
 c="0"
 while [ "${layouts}" ]; do #set next keyboard layout
     option="${layouts%%,*}"
-    c="$(expr "${c}" + 1)"
+    c="$((${c} + 1))"
     [ "${c}" -eq "${e}" ] && setxkbmap "${option}"
     [ X"${layouts}" = X"${option}" ] && layouts="" || layouts="${layouts#*,}"
 done

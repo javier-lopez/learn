@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/sh
 #description: dmenu based launcher
 #usage: dmenu-run is best suited to be launched from a shortcut
 

@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/sh
 #description: control several music apps, currently mpd && mplayer
 #usage: music-control [pause|next|previous]
 
@@ -25,7 +25,7 @@ players="$(command ps axo command= | sed \
     -e "s/^[[(-]//; s/[])]$//"           \
     -e "s/^<defunct>$//" | grep "mplayer\|mpd")"
 
-for player in $players; do
+for player in ${players}; do
     case "${player}" in
         mplayer) mplayer_flag="1";;
         mpd)     mpd_flag="1";;

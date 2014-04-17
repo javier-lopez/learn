@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/sh
 #description: uploads imgs to http://imgur.com
 #usage: uimg img.png
 

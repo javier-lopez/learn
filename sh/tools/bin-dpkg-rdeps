@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/sh
 #description: show debian|ubuntu package deps of binaries
 #usage: bin-dpkg-rdeps /full/path/binary
 

@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/sh
 #description: backup directories to a remote system
 #usage: backup-remote-rsync [-h|-v|-n|-o|-s|-u USER|-r DOMAIN|-i SSH KEY|-l LOGFILE] [LOCAL_DIR ...]
 
@@ -117,14 +117,14 @@ _printtime()
     _printtime_var_hour="0"
     _printtime_var_day="0"
     if [ "${_printtime_var_num}" -gt "59" ]; then
-        _printtime_var_sec="$(expr "${_printtime_var_num}" % 60)"
-        _printtime_var_num="$(expr "${_printtime_var_num}" / 60)"
+        _printtime_var_sec="$((${_printtime_var_num} % 60))"
+        _printtime_var_num="$((${_printtime_var_num} / 60))"
         if [ "${_printtime_var_num}" -gt "59" ]; then
-            _printtime_var_min="$(expr "${_printtime_var_num}" % 60)"
-            _printtime_var_num="$(expr "${_printtime_var_num}" / 60)"
+            _printtime_var_min="$((${_printtime_var_num} % 60))"
+            _printtime_var_num="$((${_printtime_var_num} / 60))"
             if [ "${_printtime_var_num}" -gt "23" ]; then
-                _printtime_var_hour="$(expr "${_printtime_var_num}" % 24)"
-                _printtime_var_day="$(expr "${_printtime_var_num}" / 24)"
+                _printtime_var_hour="$((${_printtime_var_num} % 24))"
+                _printtime_var_day="$((${_printtime_var_num} / 24))"
             else
                 _printtime_var_hour="${_printtime_var_num}"
             fi
@@ -135,7 +135,7 @@ _printtime()
         _printtime_var_sec="${_printtime_var_num}"
     fi
     printf "%s\\n" \
-    "${_printtime_var_day}d ${_printtime_var_hour}h ${_printtime_var_min}m ${_printtime_var_sec}s"
+    ""${_printtime_var_day}"d "${_printtime_var_hour}"h "${_printtime_var_min}"m "${_printtime_var_sec}"s"
 }
 
 _hasdotfiles()
@@ -185,7 +185,7 @@ _backup()
             awk '{sub(/\//,"root-"); print $0}' | awk '{gsub(/\//,"-"); print $0}')"
         case "${_backup_var_remotepath}" in
             *-) _backup_var_remotepath="$(printf "%s" "${_backup_var_remotepath}" | \
-                cut -c1-"$(expr "${#_backup_var_remotepath}" - 1)")" ;;
+                cut -c1-"$((${#_backup_var_remotepath} - 1))")" ;;
         esac
 
         _verbose "realpath     : ${_backup_var_realpath}"
@@ -226,7 +226,7 @@ _backup()
     IFS="${OLDIFS}"
 
     _backup_var_end="$(date +%s)"
-    _backup_var_diff="$(expr "${_backup_var_end}" - "${_backup_var_start}" )"
+    _backup_var_diff="$((${_backup_var_end} - ${_backup_var_start}))"
 
     _logger "$(printf "%*s\\n" "34" ''  | tr ' ' =)"
     _logger "Total time: $(date +"%d-%m-%Y"):$(_printtime "${_backup_var_diff}")"

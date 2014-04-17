@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/sh
 #description: compress files
 #usage: compress file[s] file.format
 
@@ -30,7 +30,7 @@ _compress()
     i=0
     for COMPRESS_FILE; do :; done
     for FILE; do
-        i="$(expr "${i}" + 1)"
+        i="$((${i} + 1))"
         [ "${#}" -eq "${i}" ] && continue
         [ ! -r "${FILE}" ] && { printf "%s\\n" "$(_basename ${0}): ${FILE} does not exist or is not readable"; exit 1; }
         FILES="${FILE}""|""${FILES}"
@@ -61,7 +61,7 @@ _compress()
             *.bz2)
                 x="0"
                 for FILE in ${FILES}; do
-                    x="$(expr "${x}" + 1)"
+                    x="$((${x} + 1))"
                 done
                 [ "${x}" -gt "1" ] && { printf "%s\\n" "$(_basename ${0}): bz2 files can only be compressed one by one, use tar.bz2 if you require to compress several files at the same time"; exit 1; }
                 true
@@ -77,7 +77,7 @@ _compress()
             *.gz)
                 x="0"
                 for FILE in ${FILES}; do
-                    x="$(expr "${x}" + 1)"
+                    x="$((${x} + 1))"
                 done
                 [ "${x}" -gt "1" ] && { printf "%s\\n" "$(_basename ${0}): gz files can only be compressed one by one, use tar.gz if you require to compress several files at the same time"; exit 1; }
                 true
@@ -144,7 +144,7 @@ _compress()
             *.bz2)
                 x="0"
                 for FILE in ${FILES}; do
-                    x="$(expr "${x}" + 1)"
+                    x="$((${x} + 1))"
                 done
                 [ "${x}" -gt "1" ] && { printf "%s\\n" "$(_basename ${0}): bz2 files can only be compressed one by one, use tar.bz2 if you require to compress several files at the same time"; exit 1; }
                 true
@@ -160,7 +160,7 @@ _compress()
             *.gz)
                 x="0"
                 for FILE in ${FILES}; do
-                    x="$(expr "${x}" + 1)"
+                    x="$((${x} + 1))"
                 done
                 [ "${x}" -gt "1" ] && { printf "%s\\n" "$(_basename ${0}): gz files can only be compressed one by one, use tar.gz if you require to compress several files at the same time"; exit 1; }
                 true

@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/sh
 #description: decompress files
 #usage: extract file.format
 
@@ -20,9 +20,7 @@ _usage()
 _exec()
 {
     status="${?}"
-    if [ X"${status}" != X"0" ]; then
-        exit "${status}"
-    fi
+    [ X"${status}" != X"0" ] && exit "${status}"
     printf "%s " "[+] ${@}"
     printf "\\n"
     eval "${@}"

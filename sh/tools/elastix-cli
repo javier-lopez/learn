@@ -300,7 +300,7 @@ _trunk()
                     higher_trunk_id="$(sshpass -p ${elastix_ssh_passwd_array[${i}]} ssh -o StrictHostKeyChecking=no -o Port=${elastix_ssh_port_array[${1}]} ${elastix_ssh_host_array[${i}]} "mysql asterisk -p${elastix_mysql_passwd_array[${i}]} -se \"SELECT trunkid FROM trunks;\"")"
                     [ -z "${higher_trunk_id}" ] && _die "internal error: trunkid column wasn't found on -asterisk- db, probably elastix system is broken"
                     higher_trunk_id="$(printf "%s\\n" "${higher_trunk_id}" | tail -1)"
-                    higher_trunk_id="$(expr "${higher_trunk_id}" + 1)" #define next trunk
+                    higher_trunk_id="$((${higher_trunk_id} + 1))" #define next trunk
 
                     if ! sshpass -p ${elastix_ssh_passwd_array[${i}]} ssh -o StrictHostKeyChecking=no -o Port=${elastix_ssh_port_array[${1}]} ${elastix_ssh_host_array[${i}]} "mysql asterisk -p${elastix_mysql_passwd_array[${i}]} -se \"
                         INSERT INTO trunks VALUES (${higher_trunk_id},'${elastix_format_trunk}','sip','','off','','','','${elastix_format_trunk}','','','off');

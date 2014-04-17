@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/sh
 #cd wrapper function
 
 #due to cd & subshells nature this script only works if it's sourced
