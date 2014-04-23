@@ -1,6 +1,6 @@
 #!/bin/sh
-#description: show help for my personal setup
-#usage: i3-help
+#description: show shortcut information in minos
+#usage: minos-help
 
 _whereis()
 {
@@ -13,9 +13,9 @@ _whereis()
 running="$(ps aux | awk '/got it/ {if ($0 !~ "awk") print $2}')"
 [ -n "${running}" ] && exit
 
-XMESSAGE="$(_whereis gxmessage)" && geometry="-geometry 480x600" || XMESSAGE="xmessage"
+XMESSAGE="$(_whereis gxmessage)" && geometry="-geometry 400x520" || XMESSAGE="xmessage"
 font="Monaco 9"
 
 [ X"${XMESSAGE}" = X"xmessage" ] && font="fixed"
 
-${XMESSAGE} ${geometry} ${font:+-fn "$font"} -file "${HOME}"/.i3/shortcuts -buttons "got it"
+${XMESSAGE} ${geometry} ${font:+-fn "$font"} -file "${HOME}"/.i3/minos-shortcuts -buttons "got it"
