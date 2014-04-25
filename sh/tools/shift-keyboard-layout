@@ -3,13 +3,33 @@
 #usage: shift-keyboard-layout
 # change keyboard layout to the next configured one
 
-#make more sense executing it from a shortcut
+layouts="latam,us,ru" #modify this string to reflect keyboard layouts you want
+                      #it rotates, #see /usr/share/X11/xkb/rules/base.lst
 
-layouts="latam,ru" #modify this string to reflect keyboard layouts it will rotate on
-                   #see /usr/share/X11/xkb/rules/base.lst
+_notify()
+{
+    [ -z "${1}" ] && return 1
+    if [ X"${TERM}" = X"linux" ] || [ -z "${TERM}" ]; then
+        if ! DISPLAY=:0 notify-send -t 100 "${1}"  "${2}"; then
+            if command -v "gxmessage" 2>/dev/null; then
+                font="Monaco 9"
+                gxmessage "${font:+-fn "$font"}" "${1} ${2}" "got it"
+            else
+                font="fixed"
+                xmessage "${font:+-fn "$font"}" "${1} ${2}" "got it"
+            fi
+        fi
+    else
+        if [ -n "${2}" ]; then
+            printf "%s: %s\\n" "${1}" "${2}"
+        else
+            printf "%s\\n" "${1}"
+        fi
+    fi
+}
 
 if ! command -v "setxkbmap" >/dev/null; then
-    printf "%s\\n" "You need to install setxkbmap: $ sudo apt-get install x11-xkb-utils"
+    _notify "[-] Error" "install setxkmap, $ sudo apt-get install x11-xkb-utils"
 fi
 
 current_layout="$(setxkbmap -query | awk '/layout/ {print $2}')"
@@ -39,6 +59,11 @@ c="0"
 while [ "${layouts}" ]; do #set next keyboard layout
     option="${layouts%%,*}"
     c="$((${c} + 1))"
-    [ "${c}" -eq "${e}" ] && setxkbmap "${option}"
+    if [ "${c}" -eq "${e}" ]; then
+        killall notify-osd >/dev/null 2>&1
+        setxkbmap "${option}"
+        _notify "[+] Keyboard layout: $(printf "%s\\n" "${option}" | \
+            tr 'abcdefghijklmnopqrstuvwxyz' 'ABCDEFGHIJKLMNOPQRSTUVWXYZ')"
+    fi
     [ X"${layouts}" = X"${option}" ] && layouts="" || layouts="${layouts#*,}"
 done
