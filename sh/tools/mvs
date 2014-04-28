@@ -13,8 +13,13 @@
 
 _die() {
     printf "%s\\n" "${@}" >&2
-    exit -1
+    exit 1
 }
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
+fi
 
 # Verify that there's an $EDITOR defined.
 [ -z "${EDITOR}" ] && _die "${EDITOR} not defined."
@@ -28,24 +33,25 @@ for FILE in "${@}"; do printf "%s\\n" "${FILE}" >> ${TARGETS}; done
 
 # Start the $EDITOR so we can edit our file names.
 if ${EDITOR} ${TARGETS}; then
+        [ ! -t 0 ] && reset
         COUNT="$(wc -l "${TARGETS}" | grep -o -E '^[0-9]+')"
 
 	# Exit with error message if number of arguments and line count of
 	# targets file differ.
-	if [ "${COUNT}" -ne "${#}" ]; then
-		rm "${TARGETS}"
-        _die 'Numbers of files mismatch.'
-	fi
+        if [ "${COUNT}" -ne "${#}" ]; then
+            rm -- "${TARGETS}"
+            _die 'Numbers of files mismatch.'
+        fi
 
 	# Read targets file line by line and rename the source
 	# files from ARGV appropriately.
-	while read TARGET; do
-		SOURCE="${1}"
-                shift
-		if [ X"${SOURCE}" != X"${TARGET}" ]; then
-			mv -v -f -- "${SOURCE}" "${TARGET}"
-		fi
-	done < "${TARGETS}"
+        while read TARGET; do
+            SOURCE="${1}"
+            shift
+            if [ X"${SOURCE}" != X"${TARGET}" ]; then
+                mv -v -f -- "${SOURCE}" "${TARGET}"
+            fi
+        done < "${TARGETS}"
 fi
 
 rm "${TARGETS}"

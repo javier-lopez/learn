@@ -8,8 +8,8 @@
 #requires a dmenu version with xft: https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
 DMENU='dmenu -p > -i -fn Bahamas-10 -nb #000000 -nf #FFFFFF -sb #000000 -sf #999999'
 
-if ! command -v "dmenu" >/dev/null; then
-    printf "%s\\n" "dmenu was not found"
+if ! command -v "dmenu" >/dev/null 2>&1; then
+    printf "%s\\n" "dmenu was not found" >&2
     exit 1
 fi
 

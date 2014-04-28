@@ -15,18 +15,18 @@ _die()
     exit 1
 }
 
-if ! command -v "dmenu" >/dev/null; then
-    printf "%s\\n" "dmenu was not found"
+if ! command -v "dmenu" >/dev/null 2>&1; then
+    printf "%s\\n" "dmenu was not found" >&2
     exit 1
 fi
 
-if ! command -v "mpc" >/dev/null; then
+if ! command -v "mpc" >/dev/null 2>&1; then
     _die "mpd was not found, press <Enter> to exit"
 fi
 
-song="$(mkfifo fifo; mpc playlist|nl -s ';' > fifo & sed -n "s@^ *\([0-9]\+\);$(mpc playlist| ${DMENU} ||printf "%s\\n" ";;;")@\1@p" fifo)"
+song="$(mkfifo /tmp/fifo; mpc playlist|nl -s ';' > /tmp/fifo & sed -n "s@^ *\([0-9]\+\);$(mpc playlist| ${DMENU} ||printf "%s\\n" ";;;")@\1@p" /tmp/fifo)"
 song="$(printf "%s\\n" "${song}" | head -1)"
-rm -rf fifo
+rm -rf /tmp/fifo
 
 if [ -z "${song}" ]; then
     exit 0;

@@ -7,16 +7,16 @@
 #code
 #...
 
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
+fi
+
 program="${1}"
 
-_usage()
-{
-    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') foo_program"
-    exit 0
-}
+[ "${#}" -eq "0" ] && { printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)'): program" >&2; exit 1; }
 
-[ -n "${program}" ] || _usage
-
-if command -v "${program}" 2>/dev/null; then
+if command -v "${program}" >/dev/null 2>&1; then
+    [ -z "${EDITOR}" ] && { printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): variable EDITOR was not found" >&2; exit 1; } 
     ${EDITOR} "$(command -v "${program}" 2>/dev/null)"
 fi

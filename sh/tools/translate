@@ -13,18 +13,16 @@
 
 _usage()
 {
-    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [-sl-tl] phrase"
-    printf "\\n"
-    printf "%s\\n" "       sl     source language (auto by default)"
-    printf "%s\\n" "       tl     target language (english by default)"
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [-sl-tl] phrase" >&2
+    printf "%s\\n" "       sl     source language (auto by default)" >&2
+    printf "%s\\n" "       tl     target language (english by default)" >&2
     exit 1
 }
 
 _translate()
 {
     [ -z "${1}" ] && return 1
-    #update 14-12-2012 05:06: thanks to johnraff
-    #http://crunchbang.org/forums/viewtopic.php?id=17034
+    #update 14-12-2012 05:06: thanks to johnraff #http://crunchbang.org/forums/viewtopic.php?id=17034
     phrase="${*}"
     page="$(curl -s -i --user-agent ""               \
         -d "sl=${sl}" -d "tl=${tl}" --data-urlencode \
@@ -35,13 +33,18 @@ _translate()
     printf "%s\\n" "${result}"
 }
 
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
+fi
+
 [ "${#}" -eq "0" ] && _usage
 
 case "${1}" in
     -*) sl="$(printf "%s" "${1}" | cut -d'-' -f2)"
         tl="$(printf "%s" "${1}" | cut -d'-' -f3)"
         if [ -z "${sl}" ] && [ -z "${tl}" ]; then
-            #maybe returning an error message is better
+            #maybe return an error message is better
             sl="auto"; tl="en";
         elif [ -n "${sl}" ] && [ -z "${tl}" ]; then
             tl="en";

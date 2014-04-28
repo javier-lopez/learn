@@ -319,7 +319,7 @@ _waitfor bunzip2 patch-${patchck}.bz2;    [ ! -f patch-"${patchck}" ]     && _di
 
 _printfs "moving to ${tmp_path}/linux-${patchkernel}-${ckk}"
 _waitfor rm -rf linux-${patchkernel}-${ckk}
-_waitfor cp -R  linux-${kernel} linux-${patchkernel}-${ckk}
+_waitfor cp -R --  linux-${kernel} linux-${patchkernel}-${ckk}
 _cmd     cd linux-${patchkernel}-${ckk}
 
 _printfs "applying patches ..."
@@ -339,7 +339,7 @@ _printfs "downloading optimized config from http://repo-ck.com ...    "
 
 #for now use config mirrored from http://repo-ck.com/
 _waitfor wget "http://javier.io/mirror/${kernel}/config.${arqt}"
-_cmd     cp "config.${arqt}" .config
+_cmd     cp -- "config.${arqt}" .config
 
 ##tmp fix for bug #663474, disable lguest hypervisor, http://lguest.ozlabs.org/lguest.txt
 ##http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=663474
@@ -379,6 +379,6 @@ printf "\\n" | _cmd fakeroot make-kpkg --initrd kernel_image kernel_headers modu
 
 _printfl "DONE"
 _printfs "copying debs files ..."
-_cmd cp ../linux-*.deb "${curr_path}"
+_cmd cp -- ../linux-*.deb "${curr_path}"
 _printfs "you may want to install the generated packages and reboot your system, run: $ sudo dpkg -i linux-*.deb"
 _printfs "have fun ^_^!"

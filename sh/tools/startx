@@ -4,10 +4,26 @@
 
 #http://bbs.archlinux.org/viewtopic.php?pid=484915
 
+_isnum()
+{   #look for a number, returns 0 on success, 1 otherwise
+    [ -z "${1}" ] && return 1
+    printf "%s\\n" "${@}" | grep -v "[^0-9]" >/dev/null
+}
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
+fi
+
 [ "${#}" -eq "0" ] && a="24" || a="${1}"
 
+if ! _isnum "${a}" ; then
+    printf "%s\\n" "Invalid number '${a}'" >&2
+    exit 1
+fi
+
 if [ "${a}" -ne "8" ] && [ "${a}" -ne "16" ] && [ "${a}" -ne "24" ]; then
-    printf "%s\\n" "Invalid color depth. Use 8, 16, or 24."
+    printf "%s\\n" "Invalid color depth. Use 8, 16, or 24." >&2
     exit 1
 fi
 
@@ -19,5 +35,5 @@ for display in 0 1 2 3 4 5; do
     fi
 done
 
-printf "%s\\n" "No displays available."
+printf "%s\\n" "No displays available." >&2
 exit 1

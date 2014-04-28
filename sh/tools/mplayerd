@@ -8,5 +8,27 @@
 #see http://www.mplayerhq.hu/DOCS/tech/slave.txt
 #and https://github.com/chilicuil/learn/tree/master/sh/tools/music-control
 
-mkfifo /tmp/mplayer.fifo > /dev/null 2>&1
-mplayer -slave -really-quiet -input file=/tmp/mplayer.fifo "${@}" &
+_mplayerd()
+{
+    for _mplayerd_var_track; do
+        [ ! -f "${_mplayerd_var_track}" ] && continue
+        _mplayerd_var_tracks="${_mplayerd_var_tracks}|${_mplayerd_var_track}"
+    done
+
+    [ -z "${_mplayerd_var_tracks}" ] && return 1
+
+    OLDIFS="${IFS}"
+    IFS="|"
+    mkfifo /tmp/mplayer.fifo > /dev/null 2>&1
+    mplayer -slave -really-quiet -input file=/tmp/mplayer.fifo ${_mplayerd_var_tracks} >/dev/null 2>&1 &
+    IFS="${OLDIFS}"
+}
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
+fi
+
+[ "${#}" -eq "0" ] && { printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') track ..." >&2; exit 1; }
+
+_mplayerd "${@}"

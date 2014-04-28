@@ -82,17 +82,37 @@ _arch()
 
 _basename()
 {
-    [ -z "${1}" ] && return 1
-    case "${1}" in
-        /*|*/*) expr "${1}" : '.*/\([^/]*\)' ;;
-        *) printf "%s\\n" "${1}";;
+    [ -z "${1}" ] && return 1 || _basename_var_1="${1}"
+    [ -z "${2}" ] || _basename_var_suffix="${2}"
+    case "${_basename_var_1}" in
+        /*|*/*) _basename_var_1="$(expr "${_basename_var_1}" : '.*/\([^/]*\)')" ;;
     esac
+
+    if [ -n "${_basename_var_suffix}" ] && [ "${#_basename_var_1}" -gt "${#2}" ]; then
+        if [ X"$(printf "%s" "${_basename_var_1}" | cut -c"$((${#_basename_var_1} - ${#_basename_var_suffix} + 1))")" \
+           = X"$(printf "%s" "${_basename_var_suffix}" | cut -c1)" ]; then
+            while [ "${#_basename_var_suffix}" -gt "0" ]; do
+                if [ X"$(printf "%s" "${_basename_var_1}" | cut -c"${#_basename_var_1}")" \
+                   = X"$(printf "%s" "${_basename_var_suffix}" | cut -c"${#_basename_var_suffix}")" ]; then
+                    _basename_var_1="$(printf "%s" "${_basename_var_1}" | cut -c1-"$((${#_basename_var_1} - 1))")"
+                    _basename_var_suffix_len="$((${#_basename_var_suffix} - 1))"
+                    if [ "${_basename_var_suffix_len}" -gt "0" ]; then
+                        _basename_var_suffix="$(printf "%s" "${_basename_var_suffix}" | cut -c1-"${_basename_var_suffix_len}")"
+                    else
+                        _basename_var_suffix=""
+                    fi
+                fi
+            done
+        fi
+    fi
+
+    printf "%s\\n" "${_basename_var_1}"
 }
 
 _isnum()
 {   #look for a number, returns 0 on success, 1 otherwise
     [ -z "${1}" ] && return 1
-    printf "%s\\n" "${@}" | grep -v "[^0-9]" >/dev/null
+    printf "%s\\n" "${@}" | grep -v "[^0-9]" >/dev/null 2>&1
 }
 
 _invalidformat()
@@ -106,13 +126,14 @@ _notify()
     [ -z "${1}" ] && return 1
     [ -z "${2}" ] && return 1
     if [ X"${TERM}" = X"linux" ] || [ -z "${TERM}" ]; then
+        kill -9 $(pgrep notify-osd) >/dev/null 2>&1
         if ! DISPLAY=:0 notify-send -t 1000 "${1}"  "${2}"; then
             if command -v "gxmessage" 2>/dev/null; then
                 font="Monaco 9"
-                gxmessage "${font:+-fn "$font"}" "${1} ${2}" "got it"
+                gxmessage "${font:+-fn "$font"}" "${1} ${2}" "ok"
             else
                 font="fixed"
-                xmessage "${font:+-fn "$font"}" "${1} ${2}" "got it"
+                xmessage "${font:+-fn "$font"}" "${1} ${2}" "ok"
             fi
         fi
     else
@@ -149,6 +170,11 @@ _printtime()
     fi
     printf "%s\\n" "${_printtime_var_hour}:${_printtime_var_min}:${_printtime_var_sec}"
 }
+
+if ! command -v "dmenu" >/dev/null 2>&1; then
+    printf "%s\\n" "dmenu was not found" >&2
+    exit 1
+fi
 
 eval "tune=\$tune_$(_arch)"
 time="$(${DMENU} <&- && printf "\\n")"
@@ -191,7 +217,7 @@ else
     fi
 fi
 
-if mount | grep /tmp | grep noexec >/dev/null; then
+if mount | grep /tmp | grep noexec >/dev/null 2>&1; then
     mkdir "${HOME}"/.dmenu_countdown
     printf "%s" "${tune}" | openssl enc -base64 -d | zcat | tar xf - -C "${HOME}"/.dmenu_countdown
     tune="${HOME}"/.dmenu_countdown/dmenu-countdown.tone
@@ -234,8 +260,8 @@ _notify "[+] ALARM" "countdown done!"
 while :; do
     if [ ! -f /tmp/dmenu-countdown.lock ]; then
         _notify "[+] Stop" "countdown stopped!"
-        killall aplay 2>/dev/null
-        killall dmenu-countdown.tone 2>/dev/null
+        killall aplay >/dev/null 2>&1
+        killall dmenu-countdown.tone >/dev/null 2>&1
         rm -rf "${HOME}"/.dmenu_countdown
         rm -rf "${tune}"
         exit

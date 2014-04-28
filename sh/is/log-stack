@@ -1751,7 +1751,7 @@ _redis()
     make -C ./redis-${redis_version} > /dev/null 2>&1
 
     printf "%s\\n" "[+] installing redis ... "
-    _cmd cp redis.conf ./redis-${redis_version}
+    _cmd cp -- redis.conf ./redis-${redis_version}
     _cmdsudo mkdir -p /etc/redis/
     _cmdsudo mv redis.conf /etc/redis/
     _cmdsudo mv redis /etc/init.d/redis

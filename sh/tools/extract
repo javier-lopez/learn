@@ -10,12 +10,10 @@
 #http://bashscripts.org/forum/viewtopic.php?f=7&t=367
 _usage()
 {
-    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [-s] FILES ..."
-    printf "%s\\n" "           -s       quiet mode"
-    exit 0
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [-s] FILES ..." >&2
+    printf "%s\\n" "           -s       quiet mode" >&2
+    exit 1
 }
-
-[ "${#}" -eq "0" ] && _usage
 
 _exec()
 {
@@ -32,20 +30,20 @@ _extract()
         if [ -z "${SFLAG}" ]; then
             if [ -f "${FILE}" ] ; then
                 case "${FILE}" in
-                    *.deb|*.udeb)           _exec "ar xv '${FILE}'"               ;;
-                    *.tar.bz2|*.tbz|*.tbz2) _exec "bzcat < '${FILE}' | tar xvf -" ;;
-                    *.tar.gz|*.tgz)         _exec "zcat < '${FILE}' | tar xvf -"  ;;
-                    *.bz2)                  _exec "bunzip2 -v '${FILE}'"          ;;
-                    *.rar)                  _exec "rar x '${FILE}'"               ;;
-                    *.gz)                   _exec "gunzip -v '${FILE}'"           ;;
-                    *.tar)                  _exec "tar xvf '${FILE}'"             ;;
-                    *.zip|*.xpi)            _exec "unzip '${FILE}'"               ;;
-                    *.7z)                   _exec "7z x '${FILE}'"                ;;
-                    *.tar.lzma)             _exec "lzcat < '${FILE}' | tar xvf -" ;;
-                    *.tar.xz)               _exec "xzcat < '${FILE}' | tar xvf -" ;;
-                    *.jar)                  _exec "jar xvf '${FILE}'"             ;;
-                    *.iso)                  _exec "7z x '${FILE}'"                ;;
-                    *)  printf "%s\\n" "'${FILE}' is not a valid compressed file" ;;
+                    *.deb|*.udeb)           _exec "ar xv '${FILE}'"                   ;;
+                    *.tar.bz2|*.tbz|*.tbz2) _exec "bzcat < '${FILE}' | tar xvf -"     ;;
+                    *.tar.gz|*.tgz)         _exec "zcat < '${FILE}' | tar xvf -"      ;;
+                    *.bz2)                  _exec "bunzip2 -v '${FILE}'"              ;;
+                    *.rar)                  _exec "rar x '${FILE}'"                   ;;
+                    *.gz)                   _exec "gunzip -v '${FILE}'"               ;;
+                    *.tar)                  _exec "tar xvf '${FILE}'"                 ;;
+                    *.zip|*.xpi)            _exec "unzip '${FILE}'"                   ;;
+                    *.7z)                   _exec "7z x '${FILE}'"                    ;;
+                    *.tar.lzma)             _exec "lzcat < '${FILE}' | tar xvf -"     ;;
+                    *.tar.xz)               _exec "xzcat < '${FILE}' | tar xvf -"     ;;
+                    *.jar)                  _exec "jar xvf '${FILE}'"                 ;;
+                    *.iso)                  _exec "7z x '${FILE}'"                    ;;
+                    *)  printf "%s\\n" "'${FILE}' is not a valid compressed file" >&2 ;;
                 esac
             else
                 _usage
@@ -53,20 +51,20 @@ _extract()
         else
             if [ -f "${FILE}" ] ; then
                 case "${FILE}" in
-                    *.deb|*.udeb)           _exec "ar x '${FILE}'"               ;;
-                    *.tar.bz2|*.tbz|*.tbz2) _exec "bzcat < '${FILE}' | tar xf -" ;;
-                    *.tar.gz|*.tgz)         _exec "zcat < '${FILE}' | tar xf -"  ;;
-                    *.bz2)                  _exec "bzip2 '${FILE}'"              ;;
-                    *.rar)                  _exec "rar x '${FILE}'"              ;;
-                    *.gz)                   _exec "gunzip '${FILE}'"             ;;
-                    *.tar)                  _exec "tar xf '${FILE}'"             ;;
-                    *.zip|*.xpi)            _exec "unzip '${FILE}'"              ;;
-                    *.7z)                   _exec "7z x '${FILE}'"               ;;
-                    *.tar.lzma)             _exec "lzcat < '${FILE}' | tar xf -" ;;
-                    *.tar.xz)               _exec "xzcat < '${FILE}' | tar xf -" ;;
-                    *.jar)                  _exec "jar xf '${FILE}'"             ;;
-                    *.iso)                  _exec "7z x '${FILE}'"               ;;
-                    *) printf "%s\\n" "'${FILE}' is not a valid compressed file" ;;
+                    *.deb|*.udeb)           _exec "ar x '${FILE}'"                   ;;
+                    *.tar.bz2|*.tbz|*.tbz2) _exec "bzcat < '${FILE}' | tar xf -"     ;;
+                    *.tar.gz|*.tgz)         _exec "zcat < '${FILE}' | tar xf -"      ;;
+                    *.bz2)                  _exec "bzip2 '${FILE}'"                  ;;
+                    *.rar)                  _exec "rar x '${FILE}'"                  ;;
+                    *.gz)                   _exec "gunzip '${FILE}'"                 ;;
+                    *.tar)                  _exec "tar xf '${FILE}'"                 ;;
+                    *.zip|*.xpi)            _exec "unzip '${FILE}'"                  ;;
+                    *.7z)                   _exec "7z x '${FILE}'"                   ;;
+                    *.tar.lzma)             _exec "lzcat < '${FILE}' | tar xf -"     ;;
+                    *.tar.xz)               _exec "xzcat < '${FILE}' | tar xf -"     ;;
+                    *.jar)                  _exec "jar xf '${FILE}'"                 ;;
+                    *.iso)                  _exec "7z x '${FILE}'"                   ;;
+                    *) printf "%s\\n" "'${FILE}' is not a valid compressed file" >&2 ;;
                 esac
             else
                 _usage
@@ -75,14 +73,21 @@ _extract()
     done
 }
 
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
+fi
+
+[ "${#}" -eq "0" ] && _usage
+
 while getopts ":s:" option; do
     case "${option}" in
         s)  SFLAG=yes
             shift 1; _extract "${@}"
             exit 0 ;;
-        :)  printf "%s\\n" "Option -${OPTARG} requires an argument"
+        :)  printf "%s\\n" "Option -${OPTARG} requires an argument" >&2
             _usage ;;
-        \?) printf "%s\\n" "Invalid option: -${OPTARG}"
+        \?) printf "%s\\n" "Invalid option: -${OPTARG}" >&2
             _usage ;;
     esac
 done

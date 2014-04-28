@@ -9,12 +9,12 @@
 #Don't forget update this when adding new functions
 _usage()
 {
-  printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): setup my common tasks"
+  printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): setup my common tasks" >&2
+  printf "\\n" >&2
+  printf "%s\\n" "  autocp            cp custom autocomplete file" >&2
+  printf "%s\\n" "  script            cp custom script to the path system" >&2
   printf "\\n"
-  printf "%s\\n" "  autocp            cp custom autocomplete file"
-  printf "%s\\n" "  script            cp custom script to the path system"
-  printf "\\n"
-  exit 0
+  exit 1
 }
 
 _exec()
@@ -36,7 +36,7 @@ _script()
 
     for file; do
         _exec chmod +x "${file}"
-        _exec sudo cp "${file}" /usr/local/bin
+        _exec sudo cp -- "${file}" /usr/local/bin
     done
 
     exit 0
@@ -47,18 +47,22 @@ _autocp()
     [ -n "${1}" ] || (printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): Missing parameter, looking for an .autocp file"; exit 1)
 
     for file; do
-        _exec sudo cp "${file}" /usr/share/bash-completion/completions/
+        _exec sudo cp -- "${file}" /usr/share/bash-completion/completions/
     done
     exit 0
 }
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
+fi
 
 if [ X"${#}" != X"0" ]; then
     case "${1}" in
         script) shift; _script "${@}" ;;
         autocp) shift; _autocp "${@}" ;;
-        -h | --help)    _usage ;;
-        -v | --version) printf "%s\\n" "${VERSION}" ;;
-        *) printf "%s\\n" "Error, unknown option: ${1}"
+        -h | --help)           _usage ;;
+        *) printf "%s\\n" "Error, unknown option: ${1}" >&2
            _usage ;;
     esac
 else

@@ -8,14 +8,35 @@
 #libc6-armhf-cross
 #libc6-i386
 
-if ! command -v "apt-file" >/dev/null; then
-    printf "%s\\n" "apt-file not found: $ sudo apt-get install apt-file"
+_rdeps()
+{
+    for _rdeps_var_binary; do
+        fpath="$(command -v "${_rdeps_var_binary}")"
+        if [ -z "${fpath}" ]; then
+            fpath="${_rdeps_var_binary}"
+            [ ! -f "${fpath}" ] && continue
+        fi
+
+        if [ -n "${fpath}" ]; then
+            if ldd "${fpath}" >/dev/null 2>/dev/null; then
+                ldd "${fpath}" | sort -n | uniq | awk '{print $1}' | xargs -i apt-file search {} | cut -d':' -f1 | sort | uniq
+            else
+                printf "$(expr "${0}" : '.*/\([^/]*\)'): %s\\n" "not a dynamic executable '${fpath}'" >&2
+            fi
+        fi
+    done
+}
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
+fi
+
+[ "${#}" -eq "0" ] && { printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') binary ..." >&2; exit 1; }
+
+if ! command -v "apt-file" >/dev/null 2>&1; then
+    printf "%s\\n" "apt-file not found: $ sudo apt-get install apt-file" >&2
     exit 1
 fi
 
-if [ "${#}" -lt "1" ]; then
-    printf "%s\\n" "usage: $(expr "${0}" : '.*/\([^/]*\)') binary"
-    exit 1
-fi
-
-ldd "$(command -v "${1}")" | sort -n | uniq | awk '{print $1}' | xargs -i apt-file search {} | cut -d':' -f1 | sort | uniq
+_rdeps "${@}"

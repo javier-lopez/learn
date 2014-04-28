@@ -2,169 +2,189 @@
 #movietime - disables power savings to watch movies.
 #usage: movietime
 
-#Movietime options
-#Resume time - resume normal display pm and suspend after set time.
-#0 = disabled, time in minutes
-
-#http://tinyurl.com/246hm8f
 _die()
 {
-    printf "%s\\n" "${*}"
+    printf "%s\\n" "${*}" >&2
     exit 1
+}
+
+_notify()
+{
+    [ -z "${1}" ] && return 1
+    [ -z "${2}" ] && return 1
+    if [ X"${TERM}" = X"linux" ] || [ -z "${TERM}" ]; then
+        kill -9 $(pgrep notify-osd) >/dev/null 2>&1
+        if ! DISPLAY=:0 notify-send -t 1000 "${1}"  "${2}"; then
+            if command -v "gxmessage" 2>/dev/null; then
+                font="Monaco 9"
+                gxmessage "${font:+-fn "$font"}" "${1} ${2}" "ok"
+            else
+                font="fixed"
+                xmessage "${font:+-fn "$font"}" "${1} ${2}" "ok"
+            fi
+        fi
+    else
+        printf "%s: %s\\n" "${1}" "${2}"
+    fi
 }
 
 _usage()
 {
     # Help message.
-    printf "\\n"
-    printf "%s\\n" "   ${prog} disables screen blanking and screensaver to allow viewing a video.  Running the program again will enable them.  If the 'resumetime' variable is set after that time ${prog} will resume normal powersaving values." | fmt -c -w 76
-    printf "\\n"
+    printf "\\n" >&2
+    printf "%s\\n" "   ${prog} disables screen blanking and screensaver to allow viewing a video.  Running the program again will enable them.  If the 'resumetime' variable is set after that time ${prog} will resume normal powersaving values." | fmt -c -w 76 >&2
+    printf "\\n" >&2
 
     # Display current values of power management and movietime.
-        suspinhtest="$(pgrep -f "${suspinhscript}")"
-        suspinhval="$([ -n "${suspinhtest}" ] && printf "%s\\n" "Disabled" || printf "%s\\n" "Desktop settings")"
+    suspinhtest="$(pgrep -f "${suspinhscript}")"
+    suspinhval="$([ -n "${suspinhtest}" ] && printf "%s\\n" "Disabled" || printf "%s\\n" "Desktop settings")"
 
-        # DPMS disabled information
-        printf "%s\\n" "   ${txtbld}Current settings ${txtrst}(in minutes, 0 = disabled):"
-        if [ X"${dispdpms}" = X"Disabled" ]; then
-          printf "%s\\n" "   DPMS:         ${dispdpms}"
-          printf "%s\\n" "   Suspend:      ${suspinhval}"
-        fi
-
-        # DPMS enabled information
-        if [ X"${dispdpms}" = X"Enabled" ]; then
-          printf "%s\\n" "   DPMS:         ${dispdpms}"
-          printf "%s\\n" "   DPMS times:   Blank: ${dispblank}; Standby: ${dispstand}; Suspend: ${dispsusp}; Offtime: ${dispoff}"
-          printf "%s\\n" "   Suspend:      ${suspinhval}"
-        fi
-        printf "\\n"
-        printf "%s\\n" "   ${txtbld}${prog} settings${txtrst}:"
-        printf "%s\\n" "   Resume after: ${resumetimehr} hours"
-        printf "\\n"
-        exit 0
-    }
-
-    _ismonitorattached()
-    {
-        xrandr | grep "^VGA" | grep " connected" >/dev/null && return 0
-        xrandr | grep "^HDMI" | grep " connected" >/dev/null && return 0
-        return 1
-    }
-
-    _arch()
-    {   #check for system arch, returns [64|32]
-        if [ -z "${MACHTYPE}" ]; then
-            _arch_var_arch="$(uname -m)"
-        else
-            _arch_var_arch="$(printf "%s" "${MACHTYPE}" | cut -d- -f1)"
-        fi
-
-        case "${_arch_var_arch}" in
-            x86_64) _arch_var_arch="64" ;;
-            i686)   _arch_var_arch="32" ;;
-            *)      return 1 ;;
-        esac
-
-        printf "%s" "${_arch_var_arch}"
-    }
-
-    if ! command -v "xdotool" >/dev/null; then
-        _die "You need to install xdotool: $ sudo apt-get install xdotool"
+    # DPMS disabled information
+    printf "%s\\n" "   ${txtbld}Current settings ${txtrst}(in minutes, 0 = disabled):" >&2
+    if [ X"${dispdpms}" = X"Disabled" ]; then
+        printf "%s\\n" "   DPMS:         ${dispdpms}" >&2
+        printf "%s\\n" "   Suspend:      ${suspinhval}" >&2
     fi
 
-    resumetime="0"
+    # DPMS enabled information
+    if [ X"${dispdpms}" = X"Enabled" ]; then
+        printf "%s\\n" "   DPMS:         ${dispdpms}" >&2
+        printf "%s\\n" "   DPMS times:   Blank: ${dispblank}; Standby: ${dispstand}; Suspend: ${dispsusp}; Offtime: ${dispoff}" >&2
+        printf "%s\\n" "   Suspend:      ${suspinhval}" >&2
+    fi
+    printf "\\n" >&2
+    printf "%s\\n" "   ${txtbld}${prog} settings${txtrst}:" >&2
+    printf "%s\\n" "   Resume after: ${resumetimehr} hours" >&2
+    printf "\\n" >&2
+    exit 0
+}
 
-    [ X"${resumetime}" = X"0" ] && resumetime="1440" # Re-enable resume after a full day
+_ismonitorattached()
+{
+    xrandr | grep "^VGA" | grep " connected" >/dev/null && return 0
+    xrandr | grep "^HDMI" | grep " connected" >/dev/null && return 0
+    return 1
+}
 
-    # Check that values for 'resumetime' are numbers
-    case "${resumetime}" in
-        ''|*[!0-9]*) printf "%s\\n" "Error, ${resumetime} is not a number";exit 1;;
+_arch()
+{   #check for system arch, returns [64|32]
+    if [ -z "${MACHTYPE}" ]; then
+        _arch_var_arch="$(uname -m)"
+    else
+        _arch_var_arch="$(printf "%s" "${MACHTYPE}" | cut -d- -f1)"
+    fi
+
+    case "${_arch_var_arch}" in
+        x86_64) _arch_var_arch="64" ;;
+        i686)   _arch_var_arch="32" ;;
+        *)      return 1 ;;
     esac
 
-    # Name of suspend script
-    tmploc="${HOME}"
-    suspinhscript="${tmploc}"/."movietime-suspend-inhibit"
+    printf "%s" "${_arch_var_arch}"
+}
 
-    # Program name from it's filename.
-    prog="${0##*/}"
-
-    # Text color variables
-    txtbld="$(tput bold)"             # Bold
-    bldred="${txtbld}$(tput setaf 1)" # red
-    txtrst="$(tput sgr0)"             # Reset
-    warn="${bldred}*${txtrst}"
-
-    # Check that Xorg server is running
-    if [ -z "$(pgrep "X")" ]; then
-      printf "%s\\n" "${warn} The Xorg server is not running."
-      exit
-    fi
-
-    # Check if user is regular user
-    if [ X"$(whoami)" = X"root" ]; then
-      printf "%s\\n" "${warn} You are the root user, must be a regular user."
-      exit
-    fi
-
-    # Current DPMS times (in minutes)
-    dispdpms="$(xset -q  | awk '/DPMS is/ { printf $3 }')" # Enab. or Disb.
-    dispstand="$(xset -q | awk '/^  Standby: / { printf $2/60 }')"
-    dispsusp="$(xset -q  | awk '/^  Standby: / { printf $4/60 }')"
-    dispoff="$(xset -q   | awk '/^  Standby: / { printf $6/60 }')"
-    dispblank="$(xset -q | awk '/^  timeout: / { printf $2/60 }')"
-
-    # Resume time in hours
-    resumetimehr="$(printf "%s\\n" "scale=1;${resumetime}/60" | bc)"
-
-    # Display help
-    case "${1}" in
-      -h|--help|h|help)         _usage;;
-      [a-g,i-z,A-G,I-Z,0-9,-]*) _usage;;
-    esac
-
-    # Suspend inhibit script (must be run as seperate process)
-    suspinhibit () {
-        printf "%s\\n" '#!/bin/sh
-        for time in $(seq 1 '${resumetime}'); do
+# Suspend inhibit script (must be run as separate process)
+_suspinhibit()
+{
+    printf "%s\\n" '#!/bin/sh
+    for time in $(seq 1 '${resumetime}'); do
         # Simulate user activity every minute
         xdotool keydown Shift_L keyup Shift_L
         #dbus-send --print-reply --type=method_call --dest=org.freedesktop.ScreenSaver /ScreenSaver org.freedesktop.ScreenSaver.SimulateUserActivity
         sleep 60
-        done'
-    }
+    done'
+}
 
-    # Toggle powersaving
-    if [ X"${dispdpms}" = X"Enabled" ] && [ -z "${suspinhtest}" ]; then
-      # Disable blanking, screen power saving
-      xset s off; xset -dpms
-      # Create script in tmp
-      suspinhibit > "${suspinhscript}"
-      # Make script executable
-      chmod +x "${suspinhscript}"
-      # Run script
-      "${suspinhscript}" > /dev/null 2>&1 &
+if ! command -v "xdotool" >/dev/null 2>&1; then
+    _notify "[-] You need to install xdotool" "$ sudo apt-get install xdotool"
+    exit 1
+fi
 
-  if _ismonitorattached; then
-      if [ -f /usr/local/bin/lights/"$(_arch)"/lights ]; then
-          #TODO 13-02-2014 01:30 >> only run when connected
-          /usr/local/bin/lights/"$(_arch)"/lights > /dev/null 2>&1 &
-      else
-          printf "%s\\n" "To enjoy fully the movietime experience install: /usr/local/bin/lights/${_arch}/lights"
-          printf "%s\\n" "  https://github.com/chilicuil/learn/tree/master/java"
-      fi
-  fi
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
+fi
 
-  printf "%s\\n" "[+] ${prog} started"
-else
-  # Enable blanking, screen power saving
-  xset s on; xset +dpms
-  # Kill script
-  if [ -z "${suspinhtest}" ]; then
-    kill -9 "$(pgrep -f "movietime-susp")" > /dev/null 2>&1
-    if pgrep -f "lights.jar" >/dev/null 2>&1; then
-        kill -9 "$(pgrep -f "lights.jar")" > /dev/null 2>&1
+resumetime="0"
+
+[ X"${resumetime}" = X"0" ] && resumetime="1440" # Re-enable resume after a full day
+
+# Check that values for 'resumetime' are numbers
+case "${resumetime}" in
+    ''|*[!0-9]*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): ${resumetime} is not a number" >&2;exit 1;;
+esac
+
+# Name of suspend script
+tmploc="${HOME}"
+suspinhscript="${tmploc}"/."movietime-suspend-inhibit"
+
+# Program name from it's filename.
+prog="$(expr "${0}" : '.*/\([^/]*\)')"
+
+# Text color variables
+txtbld="$(tput bold)"             # Bold
+bldred="${txtbld}$(tput setaf 1)" # red
+txtrst="$(tput sgr0)"             # Reset
+warn="${bldred}*${txtrst}"
+
+if [ -z "$(pgrep "X")" ]; then
+    _notify "[-] The Xorg server is not running." ""
+    exit 1
+fi
+
+if [ X"$(whoami)" = X"root" ]; then
+    _notify "[-] You're root, must be a regular user" ""
+    exit 1
+fi
+
+# Current DPMS times (in minutes)
+dispdpms="$(xset -q  | awk '/DPMS is/ { printf $3 }')" # Enab. or Disb.
+dispstand="$(xset -q | awk '/^  Standby: / { printf $2/60 }')"
+dispsusp="$(xset -q  | awk '/^  Standby: / { printf $4/60 }')"
+dispoff="$(xset -q   | awk '/^  Standby: / { printf $6/60 }')"
+dispblank="$(xset -q | awk '/^  timeout: / { printf $2/60 }')"
+
+# Resume time in hours
+resumetimehr="$(printf "%s\\n" "scale=1;${resumetime}/60" | bc)"
+
+# Display help
+case "${1}" in
+    -h|--help|h|help)         _usage;;
+    [a-g,i-z,A-G,I-Z,0-9,-]*) _usage;;
+esac
+
+# Toggle powersaving
+if [ X"${dispdpms}" = X"Enabled" ] && [ -z "${suspinhtest}" ]; then
+    # Disable blanking, screen power saving
+    xset s off; xset -dpms
+    # Create script in tmp
+    _suspinhibit > "${suspinhscript}"
+    # Make script executable
+    chmod +x "${suspinhscript}"
+    # Run script
+    "${suspinhscript}" > /dev/null 2>&1 &
+
+    if _ismonitorattached; then
+        if [ -f /usr/local/bin/lights/"$(_arch)"/lights ]; then
+            #TODO 13-02-2014 01:30 >> only when connected
+            /usr/local/bin/lights/"$(_arch)"/lights > /dev/null 2>&1 &
+        else
+            printf "%s\\n" "To enjoy fully the movietime experience install: /usr/local/bin/lights/${_arch}/lights"
+            printf "%s\\n" "  https://github.com/chilicuil/learn/tree/master/java"
+        fi
     fi
-    rm -rf "${suspinhscript}"
-    printf "%s\\n" "[-] $prog stopped"
-  fi
+
+    _notify "[+] ${prog}" "started"
+else
+    # Enable blanking, screen power saving
+    xset s on; xset +dpms
+    # Kill script
+    if [ -z "${suspinhtest}" ]; then
+        kill -9 "$(pgrep -f "movietime-susp")" > /dev/null 2>&1
+        if pgrep -f "lights.jar" >/dev/null 2>&1; then
+            kill -9 "$(pgrep -f "lights.jar")" > /dev/null 2>&1
+        fi
+        rm -rf "${suspinhscript}"
+        _notify "[+] ${prog}" "stopped"
+    fi
 fi

@@ -5,18 +5,17 @@
 #example: crypt script
 #creates script.crypt
 
-if ! command -v "gpg" >/dev/null; then
-    printf "%s\\n" "You need to install gnupg: $ sudo apt-get install gnupg"
-    exit 1
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
 fi
 
-_usage()
-{
-    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') file ..."
-    exit 0
-}
+[ "${#}" -eq "0" ] && { printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') file ..." >&2; exit 1; }
 
-[ "${#}" -eq "0" ] && _usage
+if ! command -v "gpg" >/dev/null 2>&1; then
+    printf "%s\\n" "You need to install gnupg: $ sudo apt-get install gnupg" >&2
+    exit 1
+fi
 
 _crypt()
 {

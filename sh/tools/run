@@ -5,11 +5,18 @@
 #example: run ping -c 3 google.com
 #ping output
 
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
+fi
+
 "${@}"
 error="${?}"
 
 if [ "${error}" -eq "0" ]; then
+    kill -9 $(pgrep notify-osd) >/dev/null 2>&1
     notify-send "$(hostname -s) | terminated:" "${1}" -i finish -t 0
 else
+    kill -9 $(pgrep notify-osd) >/dev/null 2>&1
     notify-send "$(hostname -s) | error:" "${1}" -u critical -i undo -t 0
 fi

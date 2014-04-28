@@ -9,55 +9,75 @@ default_mysql_passwd="c2VjcmV0Cg=="
 
 _basename()
 {
-    [ -z "${1}" ] && return 1
-    case "${1}" in
-        /*|*/*) expr "${1}" : '.*/\([^/]*\)' ;;
-        *) printf "%s\\n" "${1}";;
+    [ -z "${1}" ] && return 1 || _basename_var_1="${1}"
+    [ -z "${2}" ] || _basename_var_suffix="${2}"
+    case "${_basename_var_1}" in
+        /*|*/*) _basename_var_1="$(expr "${_basename_var_1}" : '.*/\([^/]*\)')" ;;
     esac
+
+    if [ -n "${_basename_var_suffix}" ] && [ "${#_basename_var_1}" -gt "${#2}" ]; then
+        if [ X"$(printf "%s" "${_basename_var_1}" | cut -c"$((${#_basename_var_1} - ${#_basename_var_suffix} + 1))")" \
+           = X"$(printf "%s" "${_basename_var_suffix}" | cut -c1)" ]; then
+            while [ "${#_basename_var_suffix}" -gt "0" ]; do
+                if [ X"$(printf "%s" "${_basename_var_1}" | cut -c"${#_basename_var_1}")" \
+                   = X"$(printf "%s" "${_basename_var_suffix}" | cut -c"${#_basename_var_suffix}")" ]; then
+                    _basename_var_1="$(printf "%s" "${_basename_var_1}" | cut -c1-"$((${#_basename_var_1} - 1))")"
+                    _basename_var_suffix_len="$((${#_basename_var_suffix} - 1))"
+                    if [ "${_basename_var_suffix_len}" -gt "0" ]; then
+                        _basename_var_suffix="$(printf "%s" "${_basename_var_suffix}" | cut -c1-"${_basename_var_suffix_len}")"
+                    else
+                        _basename_var_suffix=""
+                    fi
+                fi
+            done
+        fi
+    fi
+
+    printf "%s\\n" "${_basename_var_1}"
 }
 
 exec 9>/tmp/"$(_basename ${0})".lock  #http://mywiki.wooledge.org/BashFAQ/045
 if ! flock -n 9 ; then
-    printf "%s\\n" "$(_basename ${0}): another instance is running";
+    printf "%s\\n" "$(_basename ${0}): another instance is running"; >&2
     exit 1
 fi
 
 _usage()
 {
-    printf "%s\\n" "Usage: $(_basename ${0}) [OPTION] TYPE ARGS..."
-    printf "%s\\n" "Control Elastix through a cli interface"
-    printf "\\n"
-    printf "%s\\n" " -c                   credentials, requires a FILE string as a parameter"
-    printf "%s\\n" " -h                   host, user@hostname.domain:port (localhost and port 22 by default)"
-    printf "%s\\n" " -p                   ssh password (secret by default)"
-    printf "%s\\n" " -m                   mysql passwd, (secret by default)"
-    printf "%s\\n" " --help               prints this message"
-    printf "\\n"
-    printf "%s\\n" "trunk                 edit trunk options"
-    printf "%s\\n" "  add                 add a trunk, requires FILE string as parameter"
-    printf "%s\\n" "  remove              removes a trunk on ip basis, requires IP|domain string"
-    printf "%s\\n" "  edit                edit on ip basis, requires FILE string as parameter"
-    printf "\\n"
-    printf "%s\\n" "=examples="
-    printf "\\n"
-    printf "%s\\n" "#adds a new trunk in domain.com based on definition FILE[0]"
-    printf "%s\\n" "  $(_basename ${0}) -h admin@domain.com trunk add definition"
-    printf "\\n"
-    printf "%s\\n" "#removes a trunk based on [IP|domain], uses credential FILE [1] to apply changes in several machines"
-    printf "%s\\n" "  $(_basename ${0}) -r credentials trunk remove domain.com"
-    printf "\\n"
-    printf "%s\\n" "#edit the IP field of an existing trunk in localhost, uses <secret> as the mysql password for the root account"
-    printf "%s\\n" "  $(_basename ${0}) -m secret trunk edit x.x.x.x y.y.y.y"
-    printf "\\n"
-    printf "%s\\n" "[0] http://www.voip-info.org/wiki/view/Asterisk+config+sip.conf"
-    printf "%s\\n" "[1] remote access is defined as: user@remotehost:port,ssh_passwd,mysql_passwd, and can be defined as many lines as desired"
-    exit 0
+    printf "%s\\n" "Usage: $(_basename ${0}) [OPTION] TYPE ARGS..." >&2
+    printf "%s\\n" "Control Elastix through a cli interface" >&2
+    printf "\\n" >&2
+    printf "%s\\n" " -c                   credentials, requires a FILE string as a parameter" >&2
+    printf "%s\\n" " -h                   host, user@hostname.domain:port (localhost and port 22 by default)" >&2
+    printf "%s\\n" " -p                   ssh password (secret by default)" >&2
+    printf "%s\\n" " -m                   mysql passwd, (secret by default)" >&2
+    printf "%s\\n" " --help               prints this message" >&2
+    printf "\\n" >&2
+    printf "%s\\n" "trunk                 edit trunk options" >&2
+    printf "%s\\n" "  add                 add a trunk, requires FILE string as parameter" >&2
+    printf "%s\\n" "  remove              removes a trunk on ip basis, requires IP|domain string" >&2
+    printf "%s\\n" "  edit                edit on ip basis, requires FILE string as parameter" >&2
+    printf "\\n" >&2
+    printf "%s\\n" "=examples=" >&2
+    printf "\\n" >&2
+    printf "%s\\n" "#adds a new trunk in domain.com based on definition FILE[0]" >&2
+    printf "%s\\n" "  $(_basename ${0}) -h admin@domain.com trunk add definition" >&2
+    printf "\\n" >&2
+    printf "%s\\n" "#removes a trunk based on [IP|domain], uses credential FILE [1] to apply changes in several machines" >&2
+    printf "%s\\n" "  $(_basename ${0}) -r credentials trunk remove domain.com" >&2
+    printf "\\n" >&2
+    printf "%s\\n" "#edit the IP field of an existing trunk in localhost, uses <secret> as the mysql password for the root account" >&2
+    printf "%s\\n" "  $(_basename ${0}) -m secret trunk edit x.x.x.x y.y.y.y" >&2
+    printf "\\n" >&2
+    printf "%s\\n" "[0] http://www.voip-info.org/wiki/view/Asterisk+config+sip.conf" >&2
+    printf "%s\\n" "[1] remote access is defined as: user@remotehost:port,ssh_passwd,mysql_passwd, and can be defined as many lines as desired" >&2
+    exit 1
 }
 
 _die()
 {
-    printf "%s\\n" "${*}"
-    printf "%s\\n" "See $(_basename ${0}) --help"
+    printf "%s\\n" "${*}" >&2
+    printf "%s\\n" "See $(_basename ${0}) --help" >&2
     exit 1
 }
 
@@ -82,7 +102,7 @@ _isnum()
 
 _haswhitespaces()
 {
-    grep " " "${@}" >/dev/null
+    grep " " "${@}" >/dev/null 2>&1
 }
 
 _decode64()
@@ -424,14 +444,19 @@ _trunk()
     fi
 }
 
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
+fi
+
 [ "${#}" -eq "0" ] && _usage # no options
-if ! command -v "sshpass" >/dev/null; then
+if ! command -v "sshpass" >/dev/null 2>&1; then
     #it may be slow but it doesn't requires anything on the server side besides plain password protected ssh access
     #addional remote control mediums are welcome
     _die "sshpass not found!, $ sudo apt-get install sshpass"
 fi
 
-for var in "${@}"; do #parse options
+for var; do #parse options
     case "${var}" in
         -c)
             if [ "${#}" -gt "1" ]; then

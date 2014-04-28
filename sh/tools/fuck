@@ -19,10 +19,26 @@ _flip()
         sed 's/./&\n/g' | tac | sed -e :a -e 'N;s/\n//g;ta'
 }
 
-[ -z "${1}" ] && { printf "%s\\n" "Usage: fuck [you|off] PROCESS_NAME"; exit; }
+_fuck()
+{
+    for _fuck_var_process; do
+        if kill -9 $(pgrep "${_fuck_var_process}") >/dev/null 2>&1; then
+            printf "%s %s\\n" 'ヽ(`Д´)ﾉ⌒' "$(_flip "${_fuck_var_process}")"
+        else
+            printf "%s\\n" "(；￣Д￣) .oO(not very effective with ${_fuck_var_process} ...)"
+        fi
+    done
+}
 
-if kill -9 $(pgrep "${2}") >/dev/null 2>&1; then
-    printf "%s %s\\n" 'ヽ(`Д´)ﾉ⌒' "$(_flip "${2}")"
-else
-    printf "%s\\n" "(；￣Д￣) .oO(not very effective... )"
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
 fi
+
+[ "${#}" -eq "0" ] && { printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') [you|off] process_name ..." >&2; exit 1; }
+
+case "${1}" in
+    you|off) shift ;;
+esac
+
+_fuck "${@}"

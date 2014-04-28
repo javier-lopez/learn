@@ -5,36 +5,29 @@
 #example: howdoi format date bash
 #DATE=`date +%Y-%m-%d`
 
-if ! command -v "wget" >/dev/null; then
-    printf "%s\\n" "wget not found: $ sudo apt-get install wget"
-    exit 1
-fi
-
 _usage()
 {
-    printf "%b\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [-h|-p POS|-a|-l|-c|-n NUM_ANSWERS|-C] QUERY ..."
-    printf "\\n"
-    printf "%b\\n" "instant coding answers via the command line"
-    printf "\\n"
-    printf "%b\\n" "positional arguments:"
-    printf "%b\\n" "  QUERY                the question to answer"
-    printf "\\n"
-    printf "%b\\n" "optional arguments:"
-    printf "%b\\n" "  -h                   show this help message and exit"
-    printf "%b\\n" "  -p POS               select answer in specified position (default: 1)"
-    printf "%b\\n" "  -a                   display all the answers in full text"
-    printf "%b\\n" "  -l                   display only the answer link"
-    printf "%b\\n" "  -c                   enable colorized output"
-    printf "%b\\n" "  -C                   clear cache"
-    printf "%b\\n" "  -n NUM_ANSWERS       number of answers to return"
-    exit
+    printf "%b\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [-h|-p POS|-a|-l|-c|-n NUM_ANSWERS|-C] QUERY ..." >&2
+    printf "\\n" >&2
+    printf "%b\\n" "instant coding answers via the command line" >&2
+    printf "\\n" >&2
+    printf "%b\\n" "positional arguments:" >&2
+    printf "%b\\n" "  QUERY                the question to answer" >&2
+    printf "\\n" >&2
+    printf "%b\\n" "optional arguments:" >&2
+    printf "%b\\n" "  -h                   show this help message and exit" >&2
+    printf "%b\\n" "  -p POS               select answer in specified position (default: 1)" >&2
+    printf "%b\\n" "  -a                   display all the answers in full text" >&2
+    printf "%b\\n" "  -l                   display only the answer link" >&2
+    printf "%b\\n" "  -c                   enable colorized output" >&2
+    printf "%b\\n" "  -C                   clear cache" >&2
+    printf "%b\\n" "  -n NUM_ANSWERS       number of answers to return" >&2
+    exit 1
 }
-
-[ "${#}" -eq "0" ] && _usage
 
 _die()
 {
-    printf "%b\\n" "$(expr "${0}" : '.*/\([^/]*\)'): ${*}"
+    printf "%b\\n" "$(expr "${0}" : '.*/\([^/]*\)'): ${*}" >&2
     exit 1
 }
 
@@ -118,18 +111,29 @@ _howdoi()
     fi
 }
 
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
+fi
+
+[ "${#}" -eq "0" ] && _usage
+
+if ! command -v "wget" >/dev/null 2>&1; then
+    printf "%s\\n" "wget not found: $ sudo apt-get install wget" >&2
+    exit 1
+fi
+
 while getopts ":hp:alcCn:" options; do
     case "${options}" in
         h) _usage            ;;
-        p) pflag="${OPTARG}"   ;;
+        p) pflag="${OPTARG}" ;;
         a) aflag="yes"       ;;
         l) lflag="yes"       ;;
         c) cflag="yes"       ;;
-        C) rm -rf ~/.cache/howdoi && \
-           printf "%s\\n" "Cache cleared successfully"
+        C) rm -rf ~/.cache/howdoi && printf "%s\\n" "Cache cleared successfully"
            exit 0            ;;
-        n) nflag="${OPTARG}"   ;;
-        *) printf "%s\\n" "Invalid option: -${OPTARG}"
+        n) nflag="${OPTARG}" ;;
+        *) printf "%s\\n" "Invalid option: -${OPTARG}" >&2
            _usage
           ;;
     esac

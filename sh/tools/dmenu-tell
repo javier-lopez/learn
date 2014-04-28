@@ -16,25 +16,25 @@ _die()
     exit 1
 }
 
-if ! command -v "dmenu" >/dev/null; then
-    printf "%s\\n" "dmenu was not found"
+if ! command -v "dmenu" >/dev/null 2>&1; then
+    printf "%s\\n" "dmenu was not found" >&2
     exit 1
 fi
 
-if ! command -v "say" >/dev/null; then
+if ! command -v "say" >/dev/null 2>&1; then
     _die "say script was not found, press <Enter> to exit"
 fi
 
 phrase="$(${DMENU} <&- && printf "\\n")"
 
-[ -n "${phrase}" ] || exit 0;
+[ -z "${phrase}" ] && exit 0;
 
 if [ -f "$(command -v "xclip")" ]; then
-    clipboard="/usr/bin/xclip -o"
+    clipboard="xclip -o"
 elif [ -f "$(command -v "sselp")" ]; then
-    clipboard="/usr/bin/sselp"
+    clipboard="sselp"
 else
-    clipboard="ops"
+    clipboard="echo clipboard not available"
 fi
 
 if [ X"$(printf "%s" "${phrase}" | cut -d' ' -f2)" = X"-" ]; then

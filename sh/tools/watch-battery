@@ -15,11 +15,31 @@ PATH=/bin:/usr/bin:/usr/local/bin:/sbin:/usr/local/sbin/:/usr/local/bin:/usr/sbi
 
 _basename()
 {
-    [ -z "${1}" ] && return 1
-    case "${1}" in
-        /*|*/*) expr "${1}" : '.*/\([^/]*\)' ;;
-        *) printf "%s\\n" "${1}";;
+    [ -z "${1}" ] && return 1 || _basename_var_1="${1}"
+    [ -z "${2}" ] || _basename_var_suffix="${2}"
+    case "${_basename_var_1}" in
+        /*|*/*) _basename_var_1="$(expr "${_basename_var_1}" : '.*/\([^/]*\)')" ;;
     esac
+
+    if [ -n "${_basename_var_suffix}" ] && [ "${#_basename_var_1}" -gt "${#2}" ]; then
+        if [ X"$(printf "%s" "${_basename_var_1}" | cut -c"$((${#_basename_var_1} - ${#_basename_var_suffix} + 1))")" \
+           = X"$(printf "%s" "${_basename_var_suffix}" | cut -c1)" ]; then
+            while [ "${#_basename_var_suffix}" -gt "0" ]; do
+                if [ X"$(printf "%s" "${_basename_var_1}" | cut -c"${#_basename_var_1}")" \
+                   = X"$(printf "%s" "${_basename_var_suffix}" | cut -c"${#_basename_var_suffix}")" ]; then
+                    _basename_var_1="$(printf "%s" "${_basename_var_1}" | cut -c1-"$((${#_basename_var_1} - 1))")"
+                    _basename_var_suffix_len="$((${#_basename_var_suffix} - 1))"
+                    if [ "${_basename_var_suffix_len}" -gt "0" ]; then
+                        _basename_var_suffix="$(printf "%s" "${_basename_var_suffix}" | cut -c1-"${_basename_var_suffix_len}")"
+                    else
+                        _basename_var_suffix=""
+                    fi
+                fi
+            done
+        fi
+    fi
+
+    printf "%s\\n" "${_basename_var_1}"
 }
 
 exec 9>/tmp/"$(_basename ${0})".lock
@@ -33,13 +53,14 @@ _notify()
     [ -z "${1}" ] && return 1
     [ -z "${2}" ] && return 1
     if [ X"${TERM}" = X"linux" ] || [ -z "${TERM}" ]; then
+        kill -9 $(pgrep notify-osd) >/dev/null 2>&1
         if ! DISPLAY=:0 notify-send -t 1000 "${1}"  "${2}"; then
             if command -v "gxmessage" 2>/dev/null; then
                 font="Monaco 9"
-                gxmessage "${font:+-fn "$font"}" "${1} ${2}" "got it"
+                gxmessage "${font:+-fn "$font"}" "${1} ${2}" "ok"
             else
                 font="fixed"
-                xmessage "${font:+-fn "$font"}" "${1} ${2}" "got it"
+                xmessage "${font:+-fn "$font"}" "${1} ${2}" "ok"
             fi
         fi
     else
@@ -103,6 +124,3 @@ if [ X"${STAT}" = X"Discharging" ]; then
 fi
 
 printf "%s\\n" "${WATCH_BATTERY_CURRENT}" > /tmp/"$(_basename ${0})"
-exit 0
-
-# vim: set ts=8 sw=4 tw=0 ft=sh :

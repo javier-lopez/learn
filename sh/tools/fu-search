@@ -7,9 +7,6 @@
 #another one liner
 #...
 
-PATTERN="${@}"
-
-# I love colors!
 BLUE="$(printf "\\033[0;34m")"
 DEFAULT="$(printf "\\033[0;39m")"
 RED="$(printf "\\033[0;31m")"
@@ -29,31 +26,36 @@ YELLOW="$(printf "\\033[0;33m")"
 
 _usage()
 {
-    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [-c] pattern"
-    printf "\\n"
-    printf "%s\\n" "          -c     Colorize the output"
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [-c] pattern" >&2
+    printf "\\n" >&2
+    printf "%s\\n" "          -c     Colorize the output" >&2
     exit 0
 }
 
-[ -n "${PATTERN}" ] || _usage
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
+fi
+
+[ "${#}" -eq "0" ] && _usage
+
+PATTERN="${@}"
 
 while getopts ":c:" option; do
     case "${option}" in
-        c)  CFLAG=yes PATTERN=$OPTARG ;;
-        :)  printf "%s\\n" "Option -$OPTARG requires an argument"
+        c)  CFLAG="yes" PATTERN="${OPTARG}" ;;
+        :)  printf "%s\\n" "Option -${OPTARG} requires an argument" >&2
             _usage ;;
-        \?) printf "%s\\n" "Invalid option: -$OPTARG"
+        \?) printf "%s\\n" "Invalid option: -${OPTARG}" >&2
             _usage ;;
     esac
 done
 
 if [ -z "${CFLAG}" ]; then
     curl -s "http://www.commandlinefu.com/commands/matching/${PATTERN}/$(printf "%s" "${PATTERN}" | base64)/plaintext/sort-by-votes" |\
-    grep --invert-match "commandlinefu.com by David Winterbottom" #I wanna keep the output as clean as possible
+    grep --invert-match "commandlinefu.com by David Winterbottom"
 else
     curl -s "http://www.commandlinefu.com/commands/matching/${PATTERN}/$(printf "%s" "${PATTERN}" | base64)/plaintext/sort-by-votes" |\
-    grep --invert-match "commandlinefu.com by David Winterbottom" | sed -e "
-            s:^#.*:${PURPLE}&${DEFAULT}:g" -e "
-            s:[^#].*:${LIGHT_GREEN}&${DEFAULT}:g" -e "
-            /#/!s/\<${PATTERN}\>/${YELLOW}&${LIGHT_GREEN}/g" #for some reason if I change / for : it doesn't work
+    grep --invert-match "commandlinefu.com by David Winterbottom" | sed -e " s:^#.*:${PURPLE}&${DEFAULT}:g" \
+    -e " s:[^#].*:${LIGHT_GREEN}&${DEFAULT}:g" -e "/#/!s/\<${PATTERN}\>/${YELLOW}&${LIGHT_GREEN}/g"
 fi

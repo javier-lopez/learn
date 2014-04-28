@@ -10,13 +10,14 @@ _notify()
 {
     [ -z "${1}" ] && return 1
     if [ X"${TERM}" = X"linux" ] || [ -z "${TERM}" ]; then
+        kill -9 $(pgrep notify-osd) >/dev/null 2>&1
         if ! DISPLAY=:0 notify-send -t 100 "${1}"  "${2}"; then
             if command -v "gxmessage" 2>/dev/null; then
                 font="Monaco 9"
-                gxmessage "${font:+-fn "$font"}" "${1} ${2}" "got it"
+                gxmessage "${font:+-fn "$font"}" "${1} ${2}" "ok"
             else
                 font="fixed"
-                xmessage "${font:+-fn "$font"}" "${1} ${2}" "got it"
+                xmessage "${font:+-fn "$font"}" "${1} ${2}" "ok"
             fi
         fi
     else
@@ -29,7 +30,7 @@ _notify()
 }
 
 if ! command -v "setxkbmap" >/dev/null; then
-    _notify "[-] Error" "install setxkmap, $ sudo apt-get install x11-xkb-utils"
+    _notify "[-] setxkbmap was not found!" "$ sudo apt-get install x11-xkb-utils"
 fi
 
 current_layout="$(setxkbmap -query | awk '/layout/ {print $2}')"
@@ -60,7 +61,6 @@ while [ "${layouts}" ]; do #set next keyboard layout
     option="${layouts%%,*}"
     c="$((${c} + 1))"
     if [ "${c}" -eq "${e}" ]; then
-        killall notify-osd >/dev/null 2>&1
         setxkbmap "${option}"
         _notify "[+] Keyboard layout: $(printf "%s\\n" "${option}" | \
             tr 'abcdefghijklmnopqrstuvwxyz' 'ABCDEFGHIJKLMNOPQRSTUVWXYZ')"

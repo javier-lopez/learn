@@ -5,19 +5,54 @@
 
 #https://wiki.archlinux.org/index.php/Feh#File_Browser_Image_Launcher
 
-if [ -f "$(command -v sxiv)" ]; then
-    viewer=sxiv
-elif [ -f "$(command -v feh)" ]; then
-    viewer=feh
-else
-    printf "%s\\n" "[-] No viewer available, install sxiv or feh to run this script"
-    exit 1
-fi
+_notify()
+{
+    [ -z "${1}" ] && return 1
+    [ -z "${2}" ] && return 1
+    if [ X"${TERM}" = X"linux" ] || [ -z "${TERM}" ]; then
+        kill -9 $(pgrep notify-osd) >/dev/null 2>&1
+        if ! DISPLAY=:0 notify-send -t 1000 "${1}"  "${2}"; then
+            if command -v "gxmessage" 2>/dev/null; then
+                font="Monaco 9"
+                gxmessage "${font:+-fn "$font"}" "${1} ${2}" "ok"
+            else
+                font="fixed"
+                xmessage "${font:+-fn "$font"}" "${1} ${2}" "ok"
+            fi
+        fi
+    else
+        printf "%s: %s\\n" "${1}" "${2}"
+    fi
+}
 
-if [ ! -f "${1}" ]; then
-    printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): first argument is not a file" >&2
-    exit 1
-fi
+_basename()
+{
+    [ -z "${1}" ] && return 1 || _basename_var_1="${1}"
+    [ -z "${2}" ] || _basename_var_suffix="${2}"
+    case "${_basename_var_1}" in
+        /*|*/*) _basename_var_1="$(expr "${_basename_var_1}" : '.*/\([^/]*\)')" ;;
+    esac
+
+    if [ -n "${_basename_var_suffix}" ] && [ "${#_basename_var_1}" -gt "${#2}" ]; then
+        if [ X"$(printf "%s" "${_basename_var_1}" | cut -c"$((${#_basename_var_1} - ${#_basename_var_suffix} + 1))")" \
+           = X"$(printf "%s" "${_basename_var_suffix}" | cut -c1)" ]; then
+            while [ "${#_basename_var_suffix}" -gt "0" ]; do
+                if [ X"$(printf "%s" "${_basename_var_1}" | cut -c"${#_basename_var_1}")" \
+                   = X"$(printf "%s" "${_basename_var_suffix}" | cut -c"${#_basename_var_suffix}")" ]; then
+                    _basename_var_1="$(printf "%s" "${_basename_var_1}" | cut -c1-"$((${#_basename_var_1} - 1))")"
+                    _basename_var_suffix_len="$((${#_basename_var_suffix} - 1))"
+                    if [ "${_basename_var_suffix_len}" -gt "0" ]; then
+                        _basename_var_suffix="$(printf "%s" "${_basename_var_suffix}" | cut -c1-"${_basename_var_suffix_len}")"
+                    else
+                        _basename_var_suffix=""
+                    fi
+                fi
+            done
+        fi
+    fi
+
+    printf "%s\\n" "${_basename_var_1}"
+}
 
 _dirname()
 {   #returns string containing dirname on success, 1 on fail
@@ -32,22 +67,47 @@ _dirname()
     esac
 }
 
-dir="$(_dirname "${1}")"
-arg="${1}"
-arr="${arg}"
-arr_b="$(basename "${arg}")"
-shift
+_vw()
+{
+    [ -z "${1}" ] && return 1
 
-cd -- "${dir}"
+    _vw_var_dir="$(_dirname "${1}")"
+    _vw_var_arg="${1}"
+    _vw_var_arr="${_vw_var_arg}"
+    _vw_var_arr_b="$(_basename "${_vw_var_arg}")"
+    shift
 
-for i in *; do
-    [ ! -f "${i}" ]            && continue
-    [ X"${i}" = X"${arr_b}"  ] && continue
-    case "${i}" in
-        *png|*PNG|*jpg|*JPG|*jpeg|*JPEG) arr="${arr}""|""${i}" ;;
-    esac
-done
+    cd -- "${_vw_var_dir}"
+    for _vw_var_img in *; do
+        [ ! -f "${_vw_var_img}" ]                    && continue
+        [ X"${_vw_var_img}" = X"${_vw_var_arr_b}"  ] && continue
+        case "${_vw_var_img}" in
+            *png|*PNG|*jpg|*JPG|*jpeg|*JPEG) _vw_var_arr="${_vw_var_arr}|${_vw_var_img}" ;;
+        esac
+    done
 
-IFS="|"
-printf "%s\\n" "[+] ${viewer} ${arg}"
-exec ${viewer} -f ${arr}
+    IFS="|"
+    printf "%s\\n" "[+] ${viewer} ${_vw_var_arg}"
+    exec ${viewer} -f ${_vw_var_arr}
+}
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
+fi
+
+if [ -f "$(command -v sxiv)" ]; then
+    viewer=sxiv
+elif [ -f "$(command -v feh)" ]; then
+    viewer=feh
+else
+    _notify "[-] No viewer available" "install either sxiv or feh to run this program"
+    exit 1
+fi
+
+if [ ! -f "${1}" ]; then
+    printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): '${1}' is not a file" >&2
+    exit 1
+fi
+
+_vw "${@}"

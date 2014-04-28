@@ -1,5 +1,5 @@
 #!/bin/sh
-#description: control several music apps, currently mpd && mplayer
+#description: control several music apps, currently mpd && mplayerd
 #usage: music-control [pause|next|previous]
 
 #example: music-control next
@@ -7,11 +7,16 @@
 
 _usage()
 {
-    printf "%s\\n" "usage: $(expr "${0}" : '.*/\([^/]*\)') pause|next|previous"
+    printf "%s\\n" "usage: $(expr "${0}" : '.*/\([^/]*\)') pause|next|previous" >&2
     exit 1
 }
 
-if [ "${#}" -lt "1" ] || [ "${#}" -gt "1" ]; then
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
+fi
+
+if [ "${#}" -eq "0" ] || [ "${#}" -gt "1" ]; then
     _usage
 fi
 
@@ -33,7 +38,7 @@ for player in ${players}; do
 done
 
 if [ -n "${mplayer_flag}" ] && [ -n "${mpd_flag}" ]; then
-    if command -v "mpc" > /dev/null 2>&1; then
+    if command -v "mpc" >/dev/null 2>&1; then
         if [ "$(mpc status | grep playing)" ]; then
             mpc pause 1>/dev/null
         fi

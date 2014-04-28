@@ -2,31 +2,43 @@
 #description: format file according to https://wiki.ubuntu.com/Testing/TestCaseFormat
 #usage: test-case-format files
 
-#set -x
-
 INDENTATION="4"
 
 _basename()
 {
-    [ -z "${1}" ] && return 1
-    case "${1}" in
-        /*|*/*) expr "${1}" : '.*/\([^/]*\)' ;;
-        *) printf "%s\\n" "${1}";;
+    [ -z "${1}" ] && return 1 || _basename_var_1="${1}"
+    [ -z "${2}" ] || _basename_var_suffix="${2}"
+    case "${_basename_var_1}" in
+        /*|*/*) _basename_var_1="$(expr "${_basename_var_1}" : '.*/\([^/]*\)')" ;;
     esac
-}
 
-[ -f "$(command -v "vim")" ]  || { printf "%b\\n" "$(_basename "${0}"): You need vim & tidy to run this script\n$ sudo apt-get install vim tidy"; exit 1; }
-[ -f "$(command -v "tidy")" ] || { printf "%b\\n" "$(_basename "${0}"): You need tidy to run this script\n$ sudo apt-get install tidy"; exit 1; }
+    if [ -n "${_basename_var_suffix}" ] && [ "${#_basename_var_1}" -gt "${#2}" ]; then
+        if [ X"$(printf "%s" "${_basename_var_1}" | cut -c"$((${#_basename_var_1} - ${#_basename_var_suffix} + 1))")" \
+           = X"$(printf "%s" "${_basename_var_suffix}" | cut -c1)" ]; then
+            while [ "${#_basename_var_suffix}" -gt "0" ]; do
+                if [ X"$(printf "%s" "${_basename_var_1}" | cut -c"${#_basename_var_1}")" \
+                   = X"$(printf "%s" "${_basename_var_suffix}" | cut -c"${#_basename_var_suffix}")" ]; then
+                    _basename_var_1="$(printf "%s" "${_basename_var_1}" | cut -c1-"$((${#_basename_var_1} - 1))")"
+                    _basename_var_suffix_len="$((${#_basename_var_suffix} - 1))"
+                    if [ "${_basename_var_suffix_len}" -gt "0" ]; then
+                        _basename_var_suffix="$(printf "%s" "${_basename_var_suffix}" | cut -c1-"${_basename_var_suffix_len}")"
+                    else
+                        _basename_var_suffix=""
+                    fi
+                fi
+            done
+        fi
+    fi
+
+    printf "%s\\n" "${_basename_var_1}"
+}
 
 _usage()
 {
-    printf "%s\\n" "Usage: $(_basename "${0}") testcase"
-    printf "\\n"
-    printf "%s\\n" "       https://wiki.ubuntu.com/Testing/TestCaseFormat"
+    printf "%s\\n" "Usage: $(_basename "${0}") testcase ..." >&2
+    printf "%s\\n" "       https://wiki.ubuntu.com/Testing/TestCaseFormat" >&2
     exit 1
 }
-
-[ "${#}" -eq "0" ] && _usage
 
 _tmp_files()
 {
@@ -312,13 +324,23 @@ EOF
 
 _format()
 {
-    for testcase; do
-        printf "%s\\n" "${testcase}"
-        tidy -f /tmp/"$(_basename "${0}")"/testcase -xml -i "${testcase}" > /dev/null
+    for _format_var_testcase; do
+        printf "%s\\n" "${_format_var_testcase}"
+        tidy -f /tmp/"$(_basename "${0}")"/testcase -xml -i "${_format_var_testcase}" > /dev/null
         [ "${?}" -eq "2" ] && { cat /tmp/"$(_basename "${0}")"/testcase; exit 1; }
-        vim -es -u /tmp/"$(_basename "${0}")"/vimrc -c "set ft=html" -c "normal gg=G" -c wq "${testcase}"
+        vim -es -u /tmp/"$(_basename "${0}")"/vimrc -c "set ft=html" -c "normal gg=G" -c wq "${_format_var_testcase}"
     done
 }
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
+fi
+
+[ "${#}" -eq "0" ] && _usage
+
+[ -f "$(command -v "vim")" ]  || { printf "%b\\n" "$(_basename "${0}"): You need vim & tidy to run this script\n$ sudo apt-get install vim tidy" >&2; exit 1; }
+[ -f "$(command -v "tidy")" ] || { printf "%b\\n" "$(_basename "${0}"): You need tidy to run this script\n$ sudo apt-get install tidy" >&2; exit 1; }
 
 _tmp_files
 _format "${@}"

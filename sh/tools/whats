@@ -5,31 +5,25 @@
 #example: whats dns
 #Domain Name System, internet system used...
 
-word="${1}"
-
-_usage()
-{
-    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') word" >&2
-    exit 0
-}
-
-[ -z "${word}" ] && _usage
-
 _whats()
 {
-    [ -z "${1}" ] && (printf "%s\\n" "${0}: Missing argument"; exit 1)
-
-    [ -n "${2}" ] || more_than_one="1"
+    [ -z "${1}" ] && return 1
+    [ -z "${2}" ] && more_than_one="1"
 
     for word; do
         response="$(dig +short txt ${word}.wp.dg.cx)"
         printf "%s\\n" "${response}"
         if [ -z "${more_than_one}" ]; then
-            printf "\\n"
-            printf "%s\\n" ":::::::::::::::::::::::::::::::::::::::::::::::::"
-            printf "\\n"
+            printf "\\n%s\\n\\n" ":::::::::::::::::::::::::::::::::::::::::::::::::"
         fi
     done
 }
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
+fi
+
+[ "${#}" -eq "0" ] && (printf "%s\\n" "${0}: word ..." >&2; exit 1)
 
 _whats "${@}"

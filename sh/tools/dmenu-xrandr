@@ -12,28 +12,29 @@ DMENU='dmenu -p > -i -fn Bahamas-10 -nb #000000 -nf #FFFFFF -sb #000000 -sf #999
 
 _die()
 {
-    printf "%b%b\\n" "$1" ", press <Enter> to exit" | ${DMENU}
+    printf "%b%b\\n" "${1}" ", press <Enter> to exit" | ${DMENU}
     exit 1
 }
 
 _reload_barstatus()
 {
-    [ -z "${cmd}" ] && return 1
-    if ! command -v "conky" >/dev/null; then
+    [ -z "${1}" ] && return 1
+    if ! command -v "conky" >/dev/null 2>&1; then
         return 0
     fi
-    if ! command -v "dzen2" >/dev/null; then
+    if ! command -v "dzen2" >/dev/null 2>&1; then
         return 0
     fi
 
-    case "${cmd}" in
+    case "${1}" in
         *same*) return 0; ;;
         *) kill "$(pgrep "conky")" >/dev/null 2>&1
            kill "$(pgrep "dzen")" >/dev/null 2>&1
-           case "${cmd}" in
+           case "${1}" in
                *off*)       _x="350"; _y="749";  ;;
                *1920x1080*) _x="700"; _y="1062"; ;;
                *1600x1200*) _x="400"; _y="1000"; ;;
+               *1366x768*)  _x="350"; _y="749"; ;;
            esac
 
            conky | dzen2 -x "${_x}" -y "${_y}" -fn 'Inconsolata:size=9' -ta r -fg "#999999" -bg "#000000" & 2> /dev/null ;;
@@ -42,9 +43,9 @@ _reload_barstatus()
 
 _reload_wallpaper()
 {
-    if command -v "feh" >/dev/null; then
-        if [ -f "${HOME}"/data/images/wallpapers/sun.jpg ]; then
-            feh --bg-scale "${HOME}"/data/images/wallpapers/sun.jpg
+    if command -v "feh" >/dev/null 2>&1; then
+        if [ -f "${HOME}"/.data/images/wallpapers/sun.jpg ]; then
+            feh --bg-scale "${HOME}"/.data/images/wallpapers/sun.jpg
         fi
     fi
 }
@@ -207,13 +208,13 @@ _gen_mix_opts()
     printf "%s" "${_gen_position_opts_var_string}"
 }
 
-if ! command -v "dmenu" >/dev/null; then
-    printf "%s\\n" "dmenu was not found"
+if ! command -v "dmenu" >/dev/null 2>&1; then
+    printf "%s\\n" "dmenu was not found" >&2
     exit 1
 fi
 
-if ! command -v "xrandr" >/dev/null; then
-    _die "xrandr was not found"
+if ! command -v "xrandr" >/dev/null 2>&1; then
+    _die "xrandr was not found, press <ENTER> to exit"
 fi
 
 xrandr_output="$(xrandr)"
@@ -225,7 +226,7 @@ position="above,below,same-as,left-of,right-of"
 outputs_len="$(_arraylen "${outputs}")"
 activeoutputs_len="$(_arraylen "${activeoutputs}")"
 
-[ -z "${outputs}" ] && _die "unable to detect screen interfaces"
+[ -z "${outputs}" ] && _die "unable to detect screen interfaces, press <ENTER> to exit"
 
 #get supported modes of each output and save it to mode_$output
 outputs_copy="${outputs}"
@@ -285,4 +286,4 @@ esac
 sh -c "${cmd}"
 
 _reload_wallpaper
-_reload_barstatus
+_reload_barstatus "${cmd}"

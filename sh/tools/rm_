@@ -15,24 +15,22 @@
 
 trash_dir="${HOME}"/.local/share/Trash
 
-if [ "${#}" -eq "0" ] ; then # let 'rm' ouptut the usage error
-    exec rm  #our shell is replaced by /bin/rm, keeping original status unmodified
-fi
-
 _usage()
 {
-    printf "%b\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [OPTION]... FILE..."
-    printf "%b\\n" "Wrapper for the \`rm' command, compatible with nautilus|pcmanfm file managers\n"
-    printf "%b\\n" "  -l [PATTERN]   list archived files, use -ll and -lll to increase verbosity"
-    printf "%b\\n" "  -c [PATTERN]   remove permanently archived files"
-    printf "%b\\n" "  -u [PATTERN]   recover archived files"
-    printf "%b\\n" "  -y             say yes to all questions"
-    printf "%b\\n" "  -f             remove instead of archive files \`rm' is executed directly"
-    printf "%b\\n" "  -h             shows this message, use --help to obtain \`rm' help"
-    printf "%b\\n" "\n$(expr "${0}" : '.*/\([^/]*\)') deletes directories and files with no distintion therefore no -r option is needed\n"
+    printf "%b\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [OPTION]... FILE..." >&2
+    printf "%b\\n" "Wrapper for the \`rm' command, compatible with nautilus|pcmanfm file managers\n" >&2
+    printf "%b\\n" "  -l [PATTERN]   list archived files, use -ll and -lll to increase verbosity" >&2
+    printf "%b\\n" "  -c [PATTERN]   remove permanently archived files" >&2
+    printf "%b\\n" "  -u [PATTERN]   recover archived files" >&2
+    printf "%b\\n" "  -y             say yes to all questions" >&2
+    printf "%b\\n" "  -f             remove instead of archive files \`rm' is executed directly" >&2
+    printf "%b\\n" "  -h             shows this message, use --help to obtain \`rm' help" >&2
+    printf "%b\\n" "\n$(expr "${0}" : '.*/\([^/]*\)') deletes directories and files with no distintion therefore no -r option is needed\n" >&2
 
-    printf "%b\\n" "Last version is available in: <https://github.com/chilicuil/learn/tree/master/sh/tools/rm_>"
-    printf "%b\\n" "Report bugs to m@javier.io"
+    printf "%b\\n" "Last version is available in: <https://github.com/chilicuil/learn/tree/master/sh/tools/rm_>" >&2
+    printf "%b\\n" "Report bugs to m@javier.io" >&2
+
+    exit 1
 }
 
 #http://www.makkintosshu.com/journal/a-realpath-implementation-in-bash
@@ -154,31 +152,27 @@ _archive()
 {
     #TODO 08-08-2011 01:19 => report nautilus bug: recovering foo/1, foo/bar/1, foo/bar/rar/1
     #                         gives foo/1 foo/bar/1.2 foo/bar/rar/1.3
-
-    mkdir -p "${trash_dir}"/files #ensure directories exist
-    mkdir -p "${trash_dir}"/info #ensure directories exist
-
-    for file; do
-        if [ -e "${file}" ] ; then
-            archive="${trash_dir}/files/${file##*/}"
-            trashinfo="${trash_dir}/info/${file##*/}.trashinfo"
+    for _archive_var_file; do
+        if [ -e "${_archive_var_file}" ] ; then
+            archive="${trash_dir}/files/${_archive_var_file##*/}"
+            trashinfo="${trash_dir}/info/${_archive_var_file##*/}.trashinfo"
 
             num="2"
 
             while [ -e "${archive}" ]; do
-                archive="${trash_dir}/files/${file##*/}.${num}"
-                trashinfo="${trash_dir}/info/${file##*/}.${num}.trashinfo"
+                archive="${trash_dir}/files/${_archive_var_file##*/}.${num}"
+                trashinfo="${trash_dir}/info/${_archive_var_file##*/}.${num}.trashinfo"
                 num="$((${num} + 1))"
             done
 
             #put $file & $trashinfo vars between "" to capture spaces
-            printf "%s\\n" "[Trash Info]"                      >  "${trashinfo}"
-            printf "%s\\n" "Path=$(_realpath "${file}")"       >> "${trashinfo}"
-            printf "%s\\n" "DeletionDate=$(date +%Y-%m-%dT%T)" >> "${trashinfo}"
+            printf "%s\\n" "[Trash Info]"                             >  "${trashinfo}"
+            printf "%s\\n" "Path=$(_realpath "${_archive_var_file}")" >> "${trashinfo}"
+            printf "%s\\n" "DeletionDate=$(date +%Y-%m-%dT%T)"        >> "${trashinfo}"
 
-            mv "${file}" "${archive}" || rm -rf "${archive}" "${trashinfo}"
+            mv "${_archive_var_file}" "${archive}" || rm -rf "${archive}" "${trashinfo}"
         else
-            rm "${file}"
+            rm "${_archive_var_file}"
         fi
     done
 }
@@ -266,15 +260,23 @@ _clean()
     fi
 }
 
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
+fi
+
+if [ "${#}" -eq "0" ] ; then # let 'rm' ouptut the usage error
+    exec rm  #our shell is replaced by /bin/rm, keeping original status unmodified
+fi
+
 verboselist="0"
-while getopts ":fluhcry" options
-do
+while getopts ":fluhcry" options; do
     case "${options}" in
         f) exec rm -r "${@}"                              ;;
-        l) verboselist="$((${verboselist} + 1))"     ;;  # list verbose level 1-3
-        u) shift "$((${OPTIND} - 1))"; _recover "${@}" ;;  # remove the -u
+        l) verboselist="$((${verboselist} + 1))"          ;;  # list verbose level 1-3
+        u) shift "$((${OPTIND} - 1))"; _recover "${@}"    ;;  # remove the -u
         h) _usage                                         ;;
-        c) shift "$((${OPTIND} - 1))"; _clean "${@}"   ;;  # remove the -c
+        c) shift "$((${OPTIND} - 1))"; _clean "${@}"      ;;  # remove the -c
         r)                                                ;;
         y) yflag="yes"                                    ;;
         *) exec rm "${@}"                                 ;;  # send the rest to rm
@@ -285,21 +287,18 @@ shift "$((${OPTIND} - 1))"
 
 if [ "${verboselist}" -gt "0" ]; then
     _list "${@}"
-    exit 0
+    exit
 fi
 
 # Make sure that the $trash_dir exists
-if [ ! -d "${trash_dir}" ] ; then
-    if [ ! -w "${HOME}" ] ; then
-        printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)') failed: can't create ${trash_dir} in ${HOME}" >&2
-        exit 1
-    fi
-    mkdir -p "${trash_dir}"/expunged
-    mkdir -p "${trash_dir}"/files
-    mkdir -p "${trash_dir}"/info
-    chmod -R 700 "${trash_dir}"
+if [ ! -w "${HOME}" ]; then
+    printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)') failed: can't create ${trash_dir} in ${HOME}" >&2
+    exit 1
 fi
 
-_archive "${@}"
+mkdir -p "${trash_dir}"/expunged
+mkdir -p "${trash_dir}"/files
+mkdir -p "${trash_dir}"/info
+chmod -R 700 "${trash_dir}"
 
-exit 0
+_archive "${@}"

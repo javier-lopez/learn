@@ -7,13 +7,14 @@ _notify()
     [ -z "${1}" ] && return 1
     [ -z "${2}" ] && return 1
     if [ X"${TERM}" = X"linux" ] || [ -z "${TERM}" ]; then
+        kill -9 $(pgrep notify-osd) >/dev/null 2>&1
         if ! DISPLAY=:0 notify-send -t 1000 "${1}"  "${2}"; then
             if command -v "gxmessage" 2>/dev/null; then
                 font="Monaco 9"
-                gxmessage "${font:+-fn "$font"}" "${1} ${2}" "got it"
+                gxmessage "${font:+-fn "$font"}" "${1} ${2}" "ok"
             else
                 font="fixed"
-                xmessage "${font:+-fn "$font"}" "${1} ${2}" "got it"
+                xmessage "${font:+-fn "$font"}" "${1} ${2}" "ok"
             fi
         fi
     else
@@ -21,19 +22,23 @@ _notify()
     fi
 }
 
-if ! command -v "ffcast" >/dev/null; then
+if ! command -v "ffcast" >/dev/null 2>&1; then
     _notify "[-] Error" "ffcast was not found!"
     exit 1
-elif ! command -v "convert" >/dev/null; then
+elif ! command -v "convert" >/dev/null 2>&1; then
     _notify "[-] Error" "convert was not found!"
     exit 1
+fi
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
 fi
 
 [ -z "${1}" ] && file="${HOME}/$(</dev/urandom tr -dc A-Za-z0-9 | head -c 8).gif" || file="${1}"
 
 _notify "[+] Gifcast" "in 3.., 2.., 1.., smile =)!"
 
-ffcast -s ffmpeg -r 15 -- -pix_fmt rgb24 "${file}" \
-    && _notify "[+] Optimising" "${file}" \
+ffcast -s ffmpeg -r 15 -- -pix_fmt rgb24 "${file}" && _notify "[+] Optimising" "${file}" \
     && convert -layers Optimize "${file}" "${file}".optimized \
     && mv "${file}".optimized "${file}" && _notify "[+] Done" "${file}"

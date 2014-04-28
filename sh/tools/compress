@@ -9,21 +9,39 @@
 
 _basename()
 {
-    [ -z "${1}" ] && return 1
-    case "${1}" in
-        /*|*/*) expr "${1}" : '.*/\([^/]*\)' ;;
-        *) printf "%s\\n" "${1}";;
+    [ -z "${1}" ] && return 1 || _basename_var_1="${1}"
+    [ -z "${2}" ] || _basename_var_suffix="${2}"
+    case "${_basename_var_1}" in
+        /*|*/*) _basename_var_1="$(expr "${_basename_var_1}" : '.*/\([^/]*\)')" ;;
     esac
+
+    if [ -n "${_basename_var_suffix}" ] && [ "${#_basename_var_1}" -gt "${#2}" ]; then
+        if [ X"$(printf "%s" "${_basename_var_1}" | cut -c"$((${#_basename_var_1} - ${#_basename_var_suffix} + 1))")" \
+           = X"$(printf "%s" "${_basename_var_suffix}" | cut -c1)" ]; then
+            while [ "${#_basename_var_suffix}" -gt "0" ]; do
+                if [ X"$(printf "%s" "${_basename_var_1}" | cut -c"${#_basename_var_1}")" \
+                   = X"$(printf "%s" "${_basename_var_suffix}" | cut -c"${#_basename_var_suffix}")" ]; then
+                    _basename_var_1="$(printf "%s" "${_basename_var_1}" | cut -c1-"$((${#_basename_var_1} - 1))")"
+                    _basename_var_suffix_len="$((${#_basename_var_suffix} - 1))"
+                    if [ "${_basename_var_suffix_len}" -gt "0" ]; then
+                        _basename_var_suffix="$(printf "%s" "${_basename_var_suffix}" | cut -c1-"${_basename_var_suffix_len}")"
+                    else
+                        _basename_var_suffix=""
+                    fi
+                fi
+            done
+        fi
+    fi
+
+    printf "%s\\n" "${_basename_var_1}"
 }
 
 _usage()
 {
-    printf "%s\\n" "Usage: $(_basename ${0}) [-s] FILES ... FILE.[tar.gz,tar.bz2,zip...]"
-    printf "%s\\n" "           -s       quiet mode"
-    exit 0
+    printf "%s\\n" "Usage: $(_basename ${0}) [-s] FILES ... FILE.[tar.gz,tar.bz2,zip...]" >&2
+    printf "%s\\n" "           -s       quiet mode" >&2
+    exit 1
 }
-
-[ "${#}" -lt "2" ] && _usage
 
 _compress()
 {
@@ -32,7 +50,7 @@ _compress()
     for FILE; do
         i="$((${i} + 1))"
         [ "${#}" -eq "${i}" ] && continue
-        [ ! -r "${FILE}" ] && { printf "%s\\n" "$(_basename ${0}): ${FILE} does not exist or is not readable"; exit 1; }
+        [ ! -r "${FILE}" ] && { printf "%s\\n" "$(_basename ${0}): ${FILE} does not exist or is not readable" >&2; exit 1; }
         FILES="${FILE}""|""${FILES}"
     done
 
@@ -63,7 +81,8 @@ _compress()
                 for FILE in ${FILES}; do
                     x="$((${x} + 1))"
                 done
-                [ "${x}" -gt "1" ] && { printf "%s\\n" "$(_basename ${0}): bz2 files can only be compressed one by one, use tar.bz2 if you require to compress several files at the same time"; exit 1; }
+                [ "${x}" -gt "1" ] && { printf "%s\\n" \
+                    "$(_basename ${0}): bz2 files can only be compressed one by one, use tar.bz2 if you require to compress several files at the same time" >&2; exit 1; }
                 true
                 printf "%s " "[+] bzip2 -cv ${FILES_FORMAT} | dd of=${COMPRESS_FILE}"
                 printf "\\n"
@@ -79,7 +98,8 @@ _compress()
                 for FILE in ${FILES}; do
                     x="$((${x} + 1))"
                 done
-                [ "${x}" -gt "1" ] && { printf "%s\\n" "$(_basename ${0}): gz files can only be compressed one by one, use tar.gz if you require to compress several files at the same time"; exit 1; }
+                [ "${x}" -gt "1" ] && { printf "%s\\n" \
+                    "$(_basename ${0}): gz files can only be compressed one by one, use tar.gz if you require to compress several files at the same time" >&2; exit 1; }
                 true
                 printf "%s " "[+] gzip -cv ${FILES_FORMAT} | dd of=${COMPRESS_FILE}"
                 printf "\\n"
@@ -146,7 +166,8 @@ _compress()
                 for FILE in ${FILES}; do
                     x="$((${x} + 1))"
                 done
-                [ "${x}" -gt "1" ] && { printf "%s\\n" "$(_basename ${0}): bz2 files can only be compressed one by one, use tar.bz2 if you require to compress several files at the same time"; exit 1; }
+                [ "${x}" -gt "1" ] && { printf "%s\\n" \
+                    "$(_basename ${0}): bz2 files can only be compressed one by one, use tar.bz2 if you require to compress several files at the same time" >&2; exit 1; }
                 true
                 printf "%s " "[+] bzip2 -c ${FILES_FORMAT} | dd of=${COMPRESS_FILE}"
                 printf "\\n"
@@ -162,7 +183,8 @@ _compress()
                 for FILE in ${FILES}; do
                     x="$((${x} + 1))"
                 done
-                [ "${x}" -gt "1" ] && { printf "%s\\n" "$(_basename ${0}): gz files can only be compressed one by one, use tar.gz if you require to compress several files at the same time"; exit 1; }
+                [ "${x}" -gt "1" ] && { printf "%s\\n" \
+                    "$(_basename ${0}): gz files can only be compressed one by one, use tar.gz if you require to compress several files at the same time" >&2; exit 1; }
                 true
                 printf "%s " "[+] gzip -c ${FILES_FORMAT} | dd of=${COMPRESS_FILE}"
                 printf "\\n"
@@ -204,21 +226,28 @@ _compress()
                 7z a "${COMPRESS_FILE}" ${FILES}
                 ;;
             *)
-                printf "%s\\n" "'${COMPRESS_FILE}' is not a valid compressed file"
+                printf "%s\\n" "'${COMPRESS_FILE}' is not a valid compressed file" >&2
                 ;;
         esac
     fi
     IFS="${OLDIFS}"
 }
 
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
+fi
+
+[ "${#}" -lt "2" ] && _usage
+
 while getopts ":s:" option; do
     case "${option}" in
         s) SFLAG="yes"
            shift 1; _compress "${@}"
            exit 0 ;;
-        :) printf "%s\\n" "Option -${OPTARG} requires an argument"
+        :) printf "%s\\n" "Option -${OPTARG} requires an argument" >&2
            _usage ;;
-        \?) printf "%s\\n" "Invalid option: -${OPTARG}"
+        \?) printf "%s\\n" "Invalid option: -${OPTARG}" >&2
            _usage ;;
     esac
 done
