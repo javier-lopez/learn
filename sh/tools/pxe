@@ -1,22 +1,16 @@
 #!/bin/sh
-#setup a pxe environment
-trap _cleanup 0 15
+#description: setup a pxe environment #http://javier.io/blog/es/2013/11/19/entorno-pxe.html (spanish)
+#usage: pxe [dir]
 
-updates="https://raw.github.com/chilicuil/learn/master/sh/is/pxe"
+#example: pxe pxe_env
+#pxe: created directory `pxe_env'
 
 _usage()
 {
-    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [PATH-TO-DEPLOY]"
-    printf "\\n"
-    printf "%s\\n" "  path-to-deploy   where to create the pxe environment (default ./)"
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] [dir]" >&2
+    printf "%s\\n" "  -v   verbose mode" >&2
+    printf "%s\\n" "  dir  where to create the pxe environment (./pxe_setup by default)" >&2
     exit 1
-}
-
-_header()
-{
-    printf "%b\\n" "\033[1m--------------------------\033[7m Setup PXE \033[0m\033[1m---------------------------\033[0m"
-    printf "%b\\n" "\033[1mUpdates:\033[0m ${updates}"
-    printf "%b\\n" "\033[1m----------------------------------------------------------------\033[0m"
 }
 
 _die()
@@ -28,13 +22,14 @@ _die()
         done
     fi
 
-    printf "%s\\n" "${*}"
-    exit
+    printf "%s\\n" "${*}" >&2
+    exit 1
 }
 
-_cleanup()
+_verbose()
 {
-    rm -rf "${DEFAULT_PATH}"
+    [ -z "${1}" ] && return 1
+    [ -n "${_verbose_flag}" ] && printf "%s\\n" "${*}" || :
 }
 
 _dirname()
@@ -59,76 +54,11 @@ _whereis()
     fi
 }
 
-_validinterface()
-{   #return 0 if parameter is a valid network interface, 1 otherwise
-    [ -z "${1}" ] && return 1
-    ip addr show | grep "${1}": >/dev/null && return 0
-    return 1
-}
-
-_cmd()
-{   #print current command, exits on fail
-    [ -z "${1}" ] && return 1
-
-    printf "%s " "    $ ${@}"
-    printf "\\n"
-    eval "${@}"
-
-    _cmd_var_status="${?}"
-    [ X"${_cmd_var_status}" != X"0" ] && exit "${_cmd_var_status}" || return 0
-}
-
-_animcui()
-{   #wait animation
-    [ -z "${1}" ] && { printf "%5s\n" ""; return 1; }
-
-    if ! printf "%s" "$(pidof "${1}")" | grep "[0-9].*" >/dev/null; then
-        printf "%5s\n" ""
-        return 1;
-    fi
-
-    _animcui_var_animation_state="1"
-
-    if [ ! "$(ps -p "$(pidof "${1}")" -o comm= 2>/dev/null)" ]; then
-        printf "%5s\n" ""
-        return 1
-    fi
-
-    printf "%5s" ""
-
-    while [ "$(ps -p "$(pidof "${1}")" -o comm= 2>/dev/null)" ]; do
-        printf "%b" "\b\b\b\b\b"
-        case "${_animcui_var_animation_state}" in
-            1) printf "%s" '\o@o\'
-               _animcui_var_animation_state="2" ;;
-            2) printf "%s" '|o@o|'
-               _animcui_var_animation_state="3" ;;
-            3) printf "%s" '/o@o/'
-               _animcui_var_animation_state="4" ;;
-            4) printf "%s" '|o@o|'
-               _animcui_var_animation_state="1" ;;
-        esac
-        sleep 1
-    done
-    printf "%b" "\b\b\b\b\b" && printf "%5s\n" ""
-}
-
-_waitfor()
-{   #print, execute and wait for a command to finish
-    [ -z "${1}" ] && return 1
-
-    printf "%s " "    $ ${@} ..."
-    ${@} > /dev/null 2>&1 &
-    sleep 1s
-
-    _animcui "${1}"
-}
-
 _writeconf()
 {
     [ ! -d "${1}" ] && _die "$(expr "${0}" : '.*/\([^/]*\)'): No valid directory ${1}"
 
-    printf "%s\\n" "  - creating "${1}"/pxelinux.cfg/default ..."
+    _verbose "  - creating "${1}"/pxelinux.cfg/default ..."
     mkdir "${1}"/pxelinux.cfg 2>/dev/null
     cat > "${1}"/pxelinux.cfg/default << EOF
 DEFAULT menu.c32
@@ -187,7 +117,7 @@ MENU TITLE Tools
 MENU END
 EOF
 
-    printf "%s\\n" "  - creating ${1}/ubuntu/ubuntu.menu ..."
+    _verbose "  - creating ${1}/ubuntu/ubuntu.menu ..."
     mkdir -p "${1}"/ubuntu/1204/amd64
     mkdir -p "${1}"/ubuntu/1204/i386
     cat    > "${1}"/ubuntu/ubuntu.menu << EOF
@@ -226,7 +156,7 @@ TEXT HELP
 Install Ubuntu 12.04 (64-bit)
 ENDTEXT
 EOF
-    printf "%s\\n" "  - creating ${1}/pxe/fedora/fedora.menu ..."
+    _verbose "  - creating ${1}/pxe/fedora/fedora.menu ..."
     mkdir -p "${1}"/fedora/19/amd64
     mkdir -p "${1}"/fedora/19/i386
     cat    > "${1}"/fedora/fedora.menu << EOF
@@ -246,7 +176,7 @@ Install Fedora 19 (64-bit)
 ENDTEXT
 EOF
 
-    printf "%s\\n" "  - creating ${1}/tools/tools.menu ..."
+    _verbose "  - creating ${1}/tools/tools.menu ..."
     mkdir -p "${1}"/tools
     touch "${1}"/tools/tools.menu
 }
@@ -261,7 +191,7 @@ _deps()
     #https://github.com/chilicuil/learn/tree/master/python
 
     #menu.c32
-    printf "%s\\n" "  - creating "${1}"/menu.c32 ..."
+    _verbose "  - creating "${1}"/menu.c32 ..."
     cat<<E=O=F | openssl enc -base64 -d | zcat | tar xvf - >/dev/null
 H4sIAA7KhVIAA+29C1xU1do4vIfZwCCje9TBMDHH3BYoFZNUkpjDTUipUNBIrbTU
 UElNZ4QKBdxMsdjOyU52jp1j52Ta+1r5nuxkhtcYMPCSCpiJWnmtM+No4SUFL8z3
@@ -873,7 +803,7 @@ E=O=F
     [ -f menu.c32 ] && mv menu.c32 "${1}" || _die "$(expr "${0}" : '.*/\([^/]*\)'): menu.c32 couldn't be created"
 
     #pxelinux.0
-    printf "%s\\n" "  - creating "${1}"/pxelinux.0 ..."
+    _verbose "  - creating "${1}"/pxelinux.0 ..."
     cat<<E=O=F | openssl enc -base64 -d | zcat | tar xvf - >/dev/null
 H4sIAKPKhVIAA+17e1RTV/bwuSHcBAQSFfEN11ZTmSolavEVqFqL2lEErTx8kETh
 CC2CE26g7a/TgUadXILUX2tbp/UBYq3Do2I+x0LpJMFrQadV0T7GjNMW0dqTxvoo
@@ -1126,7 +1056,7 @@ E=O=F
     [ -f pxelinux.0 ] && mv pxelinux.0 "${1}" || _die "$(expr "${0}" : '.*/\([^/]*\)'): pxelinux.0 couldn't be created"
 
     #simple-dhcpd
-    printf "%s\\n" "  - creating "${1}"/simple-dhcpd ..."
+    _verbose "  - creating "${1}"/simple-dhcpd ..."
     cat<<E=O=F | openssl enc -base64 -d | zcat | tar xvf - >/dev/null
 H4sIAPryhVIAA+0Za3PbOK5fz7+Ca8+OpLUiS3419aw6k03S20z3mk7S2y+uRyNL
 tK2NLGlFOrH//QEk9bCtuO3NPuZuIo9tEgQBEAQIgGLROovpWbgKsvDVn/TY8IzH
@@ -1186,9 +1116,10 @@ bzuP3sYVL+Map+CVA75kOmJ/oFLtx/IIf6uZ43NDvFmEQmRvYnnJRDqbLMQrDQVR
 E=O=F
 
     [ -f simple-dhcpd ] && mv simple-dhcpd "${1}" || _die "$(expr "${0}" : '.*/\([^/]*\)'): simple-dhcpd couldn't be created"
+    chmod +x "${1}"/simple-dhcpd
 
     #simple-tftpd
-    printf "%s\\n" "  - creating "${1}"/simple-tftpd ..."
+    _verbose "  - creating "${1}"/simple-tftpd ..."
     cat<<E=O=F | openssl enc -base64 -d | zcat | tar xvf - >/dev/null
 H4sIADj3hlIAA+2VYW/TMBCG+zm/4tiEkmghTbJ2g0hBGmwgNGBiA/GhVFOauI1p
 akf2ZWv59dht0rXrBuIDQkh+pMp18vrynu+cSDqrSvIMx1jlnb9EoDg+7usxPO4H
@@ -1211,34 +1142,33 @@ YDAYDAaDwWAwGAx/zk+rzcJ+ACgAAA==
 E=O=F
 
     [ -f simple-tftpd ] && mv simple-tftpd "${1}" || _die "$(expr "${0}" : '.*/\([^/]*\)'): simple-tftpd couldn't be created"
+    chmod +x "${1}"/simple-tftpd
 }
 
 _pxe()
 {
-    if [ -n "${1}" ]; then
-        [ -d "${1}" ] && DEFAULT_PATH="${1}" || DEFAULT_PATH="."
-        shift
-    else
-        DEFAULT_PATH="."
-    fi
-    DEFAULT_PATH="${DEFAULT_PATH}"/pxe_setup
-
-    mkdir "${DEFAULT_PATH}" 2>/dev/null
-    [ -d "${DEFAULT_PATH}" ] || _die "pxe:cannot write in $(_dirname "${DEFAULT_PATH}")"
-
-    printf "%s\\n" "[+] setting pxe environment in ${DEFAULT_PATH} ..."
-    _deps "${DEFAULT_PATH}" #memdisk,menu.c32,pxelinux.0,simple-dhcpd,simple-tftpd
-    _writeconf "${DEFAULT_PATH}" #pxelinux.cfg/default,ubuntu,fedora,tools
-
-    printf "%s\\n" "[+] done!, have fun!"
+    [ -z "${1}" ] && return 1
+    _verbose "[+] setting pxe environment in ${1} ..."
+    _deps      "${1}" #memdisk,menu.c32,pxelinux.0,simple-dhcpd,simple-tftpd
+    _writeconf "${1}" #pxelinux.cfg/default,ubuntu,fedora,tools
+    printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): created directory \`${1}'"
 }
 
-if [ -n "${1}" ]; then
-    case "${1}" in
-        -h|--help) _usage ;;
-        *)         _pxe_var_default_dir="${1}";;
-    esac
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
 fi
 
-_header
-[ -n "${_pxe_var_default_dir}" ] && _pxe "${_pxe_var_default_dir}" || _pxe
+for arg; do
+    case "${arg}" in
+        -h|--help)    _usage ;;
+        -v|--verbose) _verbose_flag="seen"; ;;
+        *)            _pxe_var_default_dir="${arg}"; break;;
+    esac
+done
+
+[ -z "${_pxe_var_default_dir}" ]   && _pxe_var_default_dir="$(pwd)/pxe_setup"
+mkdir -p "${_pxe_var_default_dir}" || _die "$(expr "${0}" : '.*/\([^/]*\)'): cannot write to "$(_dirname "${_pxe_var_default_dir}")""
+[ ! -d "${_pxe_var_default_dir}" ] && _die "$(expr "${0}" : '.*/\([^/]*\)'): "$(_dirname "${_pxe_var_default_dir}")" is not a valid directory"
+
+_pxe "${_pxe_var_default_dir}"
