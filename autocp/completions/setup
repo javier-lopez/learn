@@ -1,23 +1,26 @@
 _setup()
 {
+    if ! command -v "setup" >/dev/null 2>&1; then
+        return
+    fi
+
     #defining local vars
     local cur prev words cword
     _init_completion || return
 
-    COMMANDS="autocp script"
-    OPTS="-h --help -v --version"
+    #cur="${COMP_WORDS[COMP_CWORD]}"
+    #prev="${COMP_WORDS[COMP_CWORD-1]}"
 
-    case "${prev}" in
-        script) _filedir; return 0; ;;
-        autocp) _filedir; return 0; ;;
+    commands="$(setup -h 2>&1 | awk '/ . / {print $1}')"
+
+    case "${commands}" in
+        *"${prev}"*) _filedir; return 0; ;;
     esac
 
     #general options
     case "${cur}" in
-        -*) COMPREPLY=($(compgen -W "${OPTS}" -- ${cur}))     ;;
-        *)  COMPREPLY=($(compgen -W "${COMMANDS}" -- ${cur})) ;;
+        *) COMPREPLY=($(compgen -W "${commands}" -- ${cur})) ;;
     esac
 } &&
 complete -F _setup setup st ztup
-
 # vim: set ts=8 sw=4 tw=0 ft=sh : 

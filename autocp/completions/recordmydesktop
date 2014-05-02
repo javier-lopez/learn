@@ -1,5 +1,9 @@
 _recordmydesktop()
 {
+    if ! command -v "recordmydesktop" >/dev/null 2>&1; then
+        return
+    fi
+
     local cur prev words cword
     _init_completion || return
     number_of_words=${#COMP_WORDS[@]}
@@ -50,5 +54,4 @@ _recordmydesktop()
     esac
 } &&
 complete -F _recordmydesktop recordmydesktop
-
 # vim: set ts=8 sw=4 tw=0 ft=sh : 

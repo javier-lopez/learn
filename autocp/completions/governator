@@ -1,0 +1,29 @@
+_governator()
+{
+    if ! command -v "governator" >/dev/null 2>&1; then
+        return
+    fi
+
+    #defining local vars
+    local cur prev words cword
+    _init_completion || return
+
+    #set_opts="$(governator 2>&1 | awk '/set/ {print $NF}' | sed 's:|: :g')"
+    set_opts="$(governator 2>&1 | awk '/set/ {gsub(/\|/," "); $1=""; $2=""; sub(/^[ \t]+/, ""); print}')"
+
+    #cur="${COMP_WORDS[COMP_CWORD]}"
+    #prev="${COMP_WORDS[COMP_CWORD-1]}"
+
+    case "${prev}" in
+        set) COMPREPLY=($(compgen -W "${set_opts}" -- ${cur})); return 0; ;;
+        get) return 0; ;;
+    esac
+
+    #general options
+    case "${cur}" in
+        *) COMPREPLY=($(compgen -W "set get" -- ${cur}))
+            ;;
+    esac
+} &&
+complete -F _governator governator
+# vim: set ts=8 sw=4 tw=0 ft=sh : 

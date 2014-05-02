@@ -1,5 +1,9 @@
 _vagrant()
 {
+    if ! command -v "vagrant" >/dev/null 2>&1; then
+        return
+    fi
+
     local cur prev words cword
     _init_completion || return
 
@@ -43,5 +47,4 @@ _vagrant()
 
 } &&
 complete -F _vagrant vagrant
-
 # vim: set ts=8 sw=4 tw=0 ft=sh : 

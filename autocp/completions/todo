@@ -1,5 +1,9 @@
 _todo()
 {
+    if ! command -v "todo" >/dev/null 2>&1; then
+        return
+    fi
+
     local cur prev opts
     COMPREPLY=()
     cur="${COMP_WORDS[COMP_CWORD]}"
@@ -78,6 +82,7 @@ _todo()
     return 0
 } &&
 complete -F _todo todo.sh todo t
+# vim: set ts=8 sw=4 tw=0 ft=sh : 
 
 # If you define an alias (e.g. "t") to todo.sh, you need to explicitly enable
 # completion for it, too:

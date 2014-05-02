@@ -1,0 +1,31 @@
+_share_backup()
+{
+    if ! command -v "share-backup" >/dev/null 2>&1; then
+        return
+    fi
+
+    #defining local vars
+    local cur prev words cword
+    _init_completion || return
+
+    #cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+
+    cmd="stop"
+    opts="$(share-backup -h 2>&1 | awk '/ -. / {print $1}')"
+
+    case "${prev}" in
+        -c) case "${cur}" in
+                *)  COMPREPLY=($(compgen -W "${cmd}" -- ${cur})); _filedir; return ;;
+            esac ;;
+        stop) return ;;
+    esac
+
+    #general options
+    case "${cur}" in
+        -*) COMPREPLY=($(compgen -W "${opts}" -- ${cur})); return ;;
+        *)  COMPREPLY=($(compgen -W "${cmd}" -- ${cur})); _filedir; return ;;
+    esac
+} &&
+complete -F _share_backup share-backup
+# vim: set ts=8 sw=4 tw=0 ft=sh : 

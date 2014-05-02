@@ -1,0 +1,22 @@
+_fusearch()
+{
+    if ! command -v "fu-search" >/dev/null 2>&1; then
+        return
+    fi
+
+    #defining local vars
+    local cur prev words cword
+    _init_completion || return
+
+    opts="$(fu-search 2>&1 | awk '/ -. / {print $1}')"
+
+    #cur="${COMP_WORDS[COMP_CWORD]}"
+    #prev="${COMP_WORDS[COMP_CWORD-1]}"
+
+    #general options
+    case "${cur}" in
+        -*) COMPREPLY=($(compgen -W "${opts}" -- ${cur})); return ;;
+    esac
+} &&
+complete -F _fusearch fu-search
+# vim: set ts=8 sw=4 tw=0 ft=sh : 

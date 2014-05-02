@@ -1,0 +1,20 @@
+_howdoi()
+{
+    if ! command -v "howdoi" >/dev/null 2>&1; then
+        return
+    fi
+
+    #defining local vars
+    local cur prev words cword
+    _init_completion || return
+
+    OPTS="$(howdoi -h | awk '/ -. / {print $1}')"
+
+    #general options
+    case "${cur}" in
+        -*) COMPREPLY=($(compgen -W "$OPTS" -- ${cur})) ;;
+        *)  return ;;
+    esac
+} &&
+complete -F _howdoi howdoi
+# vim: set ts=8 sw=4 tw=0 ft=sh : 

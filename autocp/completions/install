@@ -1,29 +1,34 @@
 _installcustom()
 {
+    if ! command -v "install" >/dev/null 2>&1; then
+        return
+    fi
+
     #defining local vars
     local cur prev words cword
     _init_completion || return
 
     case "${cur}" in
-    *)
-        COMPREPLY=( $( apt-cache --no-generate pkgnames "$cur" \
-                    2> /dev/null ) )
-        return 0
-        ;;
+    *) COMPREPLY=($(apt-cache --no-generate pkgnames "${cur}" 2> /dev/null))
+       return 0
+       ;;
     esac
 } &&
 complete -F _installcustom install
 
 _removecustom()
 {
+    if ! command -v "remove" >/dev/null 2>&1; then
+        return
+    fi
+
     local cur prev words cword
     _init_completion || return
 
     case "${cur}" in
-    *)
-        COMPREPLY=( $( _xfunc dpkg _comp_dpkg_installed_packages $cur ) )
-        return 0
-        ;;
+    *) COMPREPLY=($( _xfunc dpkg _comp_dpkg_installed_packages ${cur}))
+       return 0
+       ;;
     esac
 } &&
 complete -F _removecustom remove purge

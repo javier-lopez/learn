@@ -1,5 +1,9 @@
 _vboxsdl()
 {
+    if ! command -v "vboxsdl" >/dev/null 2>&1; then
+        return
+    fi
+
     local cur prev words cword
     _init_completion || return
 
@@ -45,5 +49,4 @@ _vboxsdl()
     fi
 } &&
 complete -F _vboxsdl VBoxSDL vboxsdl
-
 # vim: set ts=8 sw=4 tw=80 ft=sh : 

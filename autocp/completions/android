@@ -1,7 +1,9 @@
-#android utilities completion
-
 _android()
 {
+    if ! command -v "android" >/dev/null 2>&1; then
+        return
+    fi
+
     #When the function or command is invoked, the first argument is the name of
     #the command whose arguments are being completed, the second argument is the
     #word being completed, and the third argument is the word preceding the word

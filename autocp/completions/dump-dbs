@@ -1,0 +1,31 @@
+_dump_dbs()
+{
+    if ! command -v "dump-dbs" >/dev/null 2>&1; then
+        return
+    fi
+
+    #defining local vars
+    local cur prev words cword
+    _init_completion || return
+
+    #cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+
+    module="mysql"
+    opts="$(dump-dbs -h 2>&1 | awk '/ -. / {print $1}')"
+
+    case "${prev}" in
+        -o|-c) case "${cur}" in
+                -*) COMPREPLY=($(compgen -W "${opts}" -- ${cur})); return ;;
+                *)  _filedir; return ;;
+               esac
+    esac
+
+    #general options
+    case "${cur}" in
+        -*) COMPREPLY=($(compgen -W "${opts}" -- ${cur})); return ;;
+        *)  COMPREPLY=($(compgen -W "${module}" -- ${cur})); return ;;
+    esac
+} &&
+complete -F _dump_dbs dump-dbs
+# vim: set ts=8 sw=4 tw=0 ft=sh : 

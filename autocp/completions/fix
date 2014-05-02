@@ -1,22 +1,22 @@
 _fix()
 {
+    if ! command -v "fix" >/dev/null 2>&1; then
+        return
+    fi
+
     #defining local vars
     local cur prev words cword
     _init_completion || return
 
-    COMMANDS="apache ipw2200 wl iwlagn mpd webcam"
-    OPTS="-h --help -v --version"
+    commands="$(fix -h 2>&1 | awk '/ . / {if ($0 !~ "-") print $1}')"
+    opts="$(fix -h 2>&1 | awk '/ -./ {print $1}')"
 
     case "${cur}" in
-        -*)
-            completions="$OPTS"
-            ;;
-        *)
-            completions="$COMMANDS"
-            ;;
+        -*) completions="$opts" ;;
+        *)  completions="$commands" ;;
     esac
 
-    COMPREPLY=( $( compgen -W "$completions" -- $cur ))
+    COMPREPLY=($(compgen -W "$completions" -- $cur))
     return 0
 } &&
 complete -F _fix fix
