@@ -1,11 +1,75 @@
 #!/bin/sh
+#description: backup mozilla configurations
+#usage: backup-mozilla [-n NUMBER] [dir]
 
-mkdir "${HOME}"/.mozilla-backups
-tar cvf - "${HOME}"/.mozilla | gzip > "${HOME}"/.mozilla-backups/mozilla-"$(date +%Y-%m-%d:%H:%M)".tar.gz
+#example: backup-mozilla
+#tar: Removing leading `/' from member names
+#/home/chilicuil/.mozilla/
+#/home/chilicuil/.mozilla/firefox/
+#...
 
-files="$(find "${HOME}"/.mozilla-backups -maxdepth 1 -type f|wc -l)"
+_usage()
+{
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [-n NUMBER] [DIR]" >&2
+    printf "%s\\n" "  -h   usage (this text)" >&2
+    printf "%s\\n" "  -n   number of copies to save" >&2
+    printf "\\n"
+    printf "%s\\n" "  dir  directory to save backups (~/.mozilla-backups by default)" >&2
+    exit 1
+}
 
-if [ "${files}" -gt "5" ]; then
-    rm -rf $(find "${HOME}"/.mozilla-backups -type f -printf '%T+ %p\n' | \
-        sort | head -1 | awk '{print $2}')
+_isnum()
+{   #look for a number, returns 0 on success, 1 otherwise
+    [ -z "${1}" ] && return 1
+    printf "%s\\n" "${@}" | grep -v "[^0-9]" >/dev/null
+}
+
+_bmozilla()
+{
+    [ -z "${1}" ] && return 1
+    mkdir -p "${1}" >/dev/null 2>&1
+    if [ -d "${HOME}"/.mozilla ]; then
+        tar cvf - "${HOME}"/.mozilla | gzip > "${1}"/mozilla-"$(date +%Y-%m-%d:%H:%M)".tar.gz
+    else
+        return 1
+    fi
+}
+
+_blimiter()
+{
+    [ -z "${1}" ] && return 1
+    [ -z "${2}" ] && return 1
+
+    _blimiter_var_backups="$(find "${1}" -maxdepth 1 -type f|wc -l)"
+
+    if [ "${_blimiter_var_backups}" -gt "${2}" ]; then
+        rm -rf $(find "${1}" -type f -printf '%T+ %p\n' | sort | head -1 | awk '{print $2}')
+    fi
+}
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
 fi
+
+for arg; do #parse options
+    case "${arg}" in
+        -h) _usage ;;
+        -n) if [ "${#}" -gt "1" ]; then
+                blimit="$(printf "%s " "${@}" | awk '{print $2}')"
+                shift 2
+                if ! _isnum "${blimit}"; then
+                    printf "%s\\n" "Input must be a number: ${blimit}" >&2; _usage
+                fi
+            else
+                _die "Option ${arg} requires a parameter"
+            fi ;;
+        -*) printf "%s\\n" "Unrecognized option: ${arg}" >&2; _usage ;;
+    esac
+done
+
+[ -z "${1}" ] && dir="${HOME}"/.mozilla-backups || dir="${1}"
+[ -z "${blimit}" ] && blimit="5"
+
+_bmozilla "${dir}"
+_blimiter "${dir}" "${blimit}"

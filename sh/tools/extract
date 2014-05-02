@@ -11,6 +11,7 @@
 _usage()
 {
     printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [-s] FILES ..." >&2
+    printf "%s\\n" "           -h       help" >&2
     printf "%s\\n" "           -s       quiet mode" >&2
     exit 1
 }

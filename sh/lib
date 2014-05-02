@@ -215,16 +215,10 @@ _decode64()
 #=================================================================
 
 _die()
-{   #print a stacktrace with a msg, exits with 1
-    if [ -n "${BASH}" ]; then
-        _die_var_frame="0"
-        while caller "${_die_var_frame}"; do
-            _die_var_frame="$((${_die_var_frame} + 1))"
-        done
-    fi
-
-    printf "%s\\n" "${*}"
-    exit
+{
+    [ -z "${1}" ] && return 1
+    printf "%b\\n" "$(expr "${0}" : '.*/\([^/]*\)'): ${*}" >&2
+    exit 1
 }
 #==================================================== Example ====
 #[ -z "${var}" ] && _die "error msg"

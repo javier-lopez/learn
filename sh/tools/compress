@@ -39,6 +39,7 @@ _basename()
 _usage()
 {
     printf "%s\\n" "Usage: $(_basename ${0}) [-s] FILES ... FILE.[tar.gz,tar.bz2,zip...]" >&2
+    printf "%s\\n" "           -h       help" >&2
     printf "%s\\n" "           -s       quiet mode" >&2
     exit 1
 }

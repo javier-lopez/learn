@@ -64,8 +64,7 @@ test X"$(_decode64 "aGVsbG8K" "aGVsbG8K")" = X"hello"
 @end{_decode64}
 
 @begin{_die}
-test X"$(_die)"         = X"$(printf "\\n")"
-test X"$(_die "error")" = X"error"
+_die;           test X"${?}" = X"1"
 @end{_die}
 
 @begin{_dirname}

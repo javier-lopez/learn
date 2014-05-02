@@ -1,54 +1,35 @@
 #!/bin/sh
+#description: create cvs files with geolocalization data of launchpad groups
+#http://viajemotu.wordpress.com/2013/11/14/launchpad-maps/
+#usage: lp-g9n-team [lp group]
 
-_basename()
-{
-    [ -z "${1}" ] && return 1 || _basename_var_1="${1}"
-    [ -z "${2}" ] || _basename_var_suffix="${2}"
-    case "${_basename_var_1}" in
-        /*|*/*) _basename_var_1="$(expr "${_basename_var_1}" : '.*/\([^/]*\)')" ;;
-    esac
-
-    if [ -n "${_basename_var_suffix}" ] && [ "${#_basename_var_1}" -gt "${#2}" ]; then
-        if [ X"$(printf "%s" "${_basename_var_1}" | cut -c"$((${#_basename_var_1} - ${#_basename_var_suffix} + 1))")" \
-           = X"$(printf "%s" "${_basename_var_suffix}" | cut -c1)" ]; then
-            while [ "${#_basename_var_suffix}" -gt "0" ]; do
-                if [ X"$(printf "%s" "${_basename_var_1}" | cut -c"${#_basename_var_1}")" \
-                   = X"$(printf "%s" "${_basename_var_suffix}" | cut -c"${#_basename_var_suffix}")" ]; then
-                    _basename_var_1="$(printf "%s" "${_basename_var_1}" | cut -c1-"$((${#_basename_var_1} - 1))")"
-                    _basename_var_suffix_len="$((${#_basename_var_suffix} - 1))"
-                    if [ "${_basename_var_suffix_len}" -gt "0" ]; then
-                        _basename_var_suffix="$(printf "%s" "${_basename_var_suffix}" | cut -c1-"${_basename_var_suffix_len}")"
-                    else
-                        _basename_var_suffix=""
-                    fi
-                fi
-            done
-        fi
-    fi
-
-    printf "%s\\n" "${_basename_var_1}"
-}
+#example: lp-g9n-team ubuntumembers
+#Outputing data to "lp-g9n-team.csv"
+#Member,City,Latitude,Longitude
+#ivarela,Madrid,40.4167754,-3.7037902
+#..
 
 _usage()
 {
-    printf "%s\\n" "Usage: $(_basename ${0}) [lp-group]"
-    printf "%s\\n" "       lp-group   launchpad group to query, ubuntumembers by default"
-    exit 0
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [lp-group]" >&2
+    printf "%s\\n" "       lp-group   launchpad group to query, ubuntumembers by default" >&2
+    exit 1
 }
 
 _whereis()
 {
     [ -z "${1}" ] && return 1
     [ -n "${2}" ] && return 1
-    if ! command -v "${1}" 2>/dev/null; then
+    if ! command -v "${1}" >/dev/null 2>&1; then
         return 1
     fi
 }
 
 _die()
-{   #print a stacktrace with a msg, exits with 1
-    printf "%s\\n" "${*}"
-    exit
+{
+    [ -z "${1}" ] && return 1
+    printf "%b\\n" "$(expr "${0}" : '.*/\([^/]*\)'): ${*}" >&2
+    exit 1
 }
 
 _internetavailable()
@@ -64,29 +45,28 @@ _internetavailable()
     fi
 }
 
-_deps()
-{
-    _whereis python >/dev/null || _die "$(_basename ${0}): python not found!, $ sudo apt-get install python"
-    _whereis wget   >/dev/null || _die "$(_basename ${0}): wget not found!, $ sudo apt-get install wget"
-
-    if ! _internetavailable; then
-        _die "$(_basename ${0}): You must have an internet connection to run this script"
-        exit 1
-    fi
-
-    if ! $(printf "%s" "from launchpadlib.launchpad import Launchpad" | python >/dev/null 2>/dev/null); then
-        _die "$(_basename ${0}): launchpadlib not found!, $ sudo apt-get install python-launchpadlib"
-    fi
-
-    if ! $(printf "%s" "from geopy import geocoders" | python >/dev/null 2>/dev/null ); then
-        _die "$(_basename ${0}): geopy not found!, $ sudo apt-get install python-pip && sudo pip install geopy"
-    fi
-}
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
+fi
 
 [ -n "${1}" ] && team="${1}" || team="ubuntumembers"
 
-_deps
+_whereis python || _die "$(expr "${0}" : '.*/\([^/]*\)'): python was not found!, $ sudo apt-get install python"
+_whereis wget   || _die "$(expr "${0}" : '.*/\([^/]*\)'): wget was not found!, $ sudo apt-get install wget"
 
-[ -f lp-g9n.py ] || wget https://raw.github.com/chilicuil/learn/master/python/lp-g9n -O lp-g9n.py >/dev/null 2>/dev/null
-[ -f lp-g9n.py ] && printf "%s\\n" "Outputing data to \"lp-g9n-team.csv\"" || _die "lp-g9n-team: failed to connect to launchpad, verify your connection"
-python lp-g9n.py "${team}" | tee lp-g9n-team.csv
+if ! $(printf "%s" "from launchpadlib.launchpad import Launchpad" | python >/dev/null 2>&1); then
+    _die "$(expr "${0}" : '.*/\([^/]*\)'): launchpadlib was not found!, $ sudo apt-get install python-launchpadlib"
+fi
+
+if ! $(printf "%s" "from geopy import geocoders" | python >/dev/null 2>&1); then
+    _die "$(expr "${0}" : '.*/\([^/]*\)'): geopy was not found!, $ sudo apt-get install python-pip && sudo pip install geopy"
+fi
+
+if ! _internetavailable; then
+    _die "$(expr "${0}" : '.*/\([^/]*\)'): you must have an active internet connection to run this script"
+fi
+
+[ -f /tmp/lp-g9n.py ] || wget https://raw.github.com/chilicuil/learn/master/python/lp-g9n -O /tmp/lp-g9n.py >/dev/null 2>&1
+[ -f /tmp/lp-g9n.py ] && printf "%s\\n" "Outputing data to \"lp-g9n-team.csv\"" || _die "lp-g9n-team: failed to connect to launchpad, verify your connection"
+python /tmp/lp-g9n.py "${team}" | tee lp-g9n-team.csv

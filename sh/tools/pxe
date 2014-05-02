@@ -1,5 +1,5 @@
 #!/bin/sh
-#description: setup a pxe environment #http://javier.io/blog/es/2013/11/19/entorno-pxe.html (spanish)
+#description: setup a pxe environment
 #usage: pxe [dir]
 
 #example: pxe pxe_env
@@ -14,15 +14,9 @@ _usage()
 }
 
 _die()
-{   #print a stacktrace with a msg, exits with 1
-    if [ -n "${BASH}" ]; then
-        _die_var_frame="0"
-        while caller "${_die_var_frame}"; do
-            _die_var_frame="$((${_die_var_frame} + 1))"
-        done
-    fi
-
-    printf "%s\\n" "${*}" >&2
+{
+    [ -z "${1}" ] && return 1
+    printf "%b\\n" "$(expr "${0}" : '.*/\([^/]*\)'): ${*}" >&2
     exit 1
 }
 
@@ -56,7 +50,7 @@ _whereis()
 
 _writeconf()
 {
-    [ ! -d "${1}" ] && _die "$(expr "${0}" : '.*/\([^/]*\)'): No valid directory ${1}"
+    [ ! -d "${1}" ] && _die "No valid directory ${1}"
 
     _verbose "  - creating "${1}"/pxelinux.cfg/default ..."
     mkdir "${1}"/pxelinux.cfg 2>/dev/null
@@ -183,8 +177,8 @@ EOF
 
 _deps()
 {
-    [ ! -d "${1}" ] && _die "$(expr "${0}" : '.*/\([^/]*\)'): No valid directory ${1}"
-    _whereis python >/dev/null || _die "$(expr "${0}" : '.*/\([^/]*\)'): python was not found!"
+    [ ! -d "${1}" ] && _die "No valid directory ${1}"
+    _whereis python >/dev/null || _die "python was not found!"
 
     #menu.c32 and pxelinux.0 were taken from https://github.com/psychomario/PyPXE
     #python programs are customized version of psychomario work
@@ -800,7 +794,7 @@ X5O3t+c30mvgyn+89Tr9+9/vf7///f73+9/vf7///f73+9/vf7///f73+9/vf7//
 /f73+9/vf7///f73+9/vf7///f/37/8BafNL4wDwAAA=
 E=O=F
 
-    [ -f menu.c32 ] && mv menu.c32 "${1}" || _die "$(expr "${0}" : '.*/\([^/]*\)'): menu.c32 couldn't be created"
+    [ -f menu.c32 ] && mv menu.c32 "${1}" || _die "menu.c32 couldn't be created"
 
     #pxelinux.0
     _verbose "  - creating "${1}"/pxelinux.0 ..."
@@ -1053,7 +1047,7 @@ FE4vLbB3EL59w/1BP7F64/ya8e960aSlXwLSrwCpNtz/FJAqCHa9e2dl9srs3OzS
 B+lBepAepAfpQXqQ/ufT/waif+bvAFAAAA==
 E=O=F
 
-    [ -f pxelinux.0 ] && mv pxelinux.0 "${1}" || _die "$(expr "${0}" : '.*/\([^/]*\)'): pxelinux.0 couldn't be created"
+    [ -f pxelinux.0 ] && mv pxelinux.0 "${1}" || _die "pxelinux.0 couldn't be created"
 
     #simple-dhcpd
     _verbose "  - creating "${1}"/simple-dhcpd ..."
@@ -1115,7 +1109,7 @@ bzuP3sYVL+Map+CVA75kOmJ/oFLtx/IIf6uZ43NDvFmEQmRvYnnJRDqbLMQrDQVR
 83/4/AcUSUzEACgAAA==
 E=O=F
 
-    [ -f simple-dhcpd ] && mv simple-dhcpd "${1}" || _die "$(expr "${0}" : '.*/\([^/]*\)'): simple-dhcpd couldn't be created"
+    [ -f simple-dhcpd ] && mv simple-dhcpd "${1}" || _die "simple-dhcpd couldn't be created"
     chmod +x "${1}"/simple-dhcpd
 
     #simple-tftpd
@@ -1141,7 +1135,7 @@ AKfn2arN3YOljcc6hswzUiF8XlTkTAguHnAxUjs63WnX9VEOo+e/bqLfmY4eMP2g
 YDAYDAaDwWAwGAx/zk+rzcJ+ACgAAA==
 E=O=F
 
-    [ -f simple-tftpd ] && mv simple-tftpd "${1}" || _die "$(expr "${0}" : '.*/\([^/]*\)'): simple-tftpd couldn't be created"
+    [ -f simple-tftpd ] && mv simple-tftpd "${1}" || _die "simple-tftpd couldn't be created"
     chmod +x "${1}"/simple-tftpd
 }
 
@@ -1168,7 +1162,7 @@ for arg; do
 done
 
 [ -z "${_pxe_var_default_dir}" ]   && _pxe_var_default_dir="$(pwd)/pxe_setup"
-mkdir -p "${_pxe_var_default_dir}" || _die "$(expr "${0}" : '.*/\([^/]*\)'): cannot write to "$(_dirname "${_pxe_var_default_dir}")""
-[ ! -d "${_pxe_var_default_dir}" ] && _die "$(expr "${0}" : '.*/\([^/]*\)'): "$(_dirname "${_pxe_var_default_dir}")" is not a valid directory"
+mkdir -p "${_pxe_var_default_dir}" || _die "cannot write to "$(_dirname "${_pxe_var_default_dir}")""
+[ ! -d "${_pxe_var_default_dir}" ] && _die ""$(_dirname "${_pxe_var_default_dir}")" is not a valid directory"
 
 _pxe "${_pxe_var_default_dir}"

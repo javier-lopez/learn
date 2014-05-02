@@ -38,8 +38,6 @@ _script()
         _exec chmod +x "${file}"
         _exec sudo cp -- "${file}" /usr/local/bin
     done
-
-    exit 0
 }
 
 _autocp()
@@ -47,9 +45,12 @@ _autocp()
     [ -n "${1}" ] || (printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): Missing parameter, looking for an .autocp file"; exit 1)
 
     for file; do
-        _exec sudo cp -- "${file}" /usr/share/bash-completion/completions/
+        if [ -d /usr/share/bash-completion/completions/ ]; then
+            _exec sudo cp -- "${file}" /usr/share/bash-completion/completions/
+        elif [ -d /etc/bash_completion.d/ ]; then
+            _exec sudo cp -- "${file}" /etc/bash_completion.d/
+        fi
     done
-    exit 0
 }
 
 if [ ! -t 0 ]; then
@@ -59,11 +60,10 @@ fi
 
 if [ X"${#}" != X"0" ]; then
     case "${1}" in
-        script) shift; _script "${@}" ;;
-        autocp) shift; _autocp "${@}" ;;
-        -h | --help)           _usage ;;
-        *) printf "%s\\n" "Error, unknown option: ${1}" >&2
-           _usage ;;
+        script)    shift; _script "${@}" ;;
+        autocp)    shift; _autocp "${@}" ;;
+        -h|--help) _usage ;;
+        *)         printf "%s\\n" "Error, unknown option: ${1}" >&2; _usage ;;
     esac
 else
     _usage

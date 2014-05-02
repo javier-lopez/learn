@@ -1,44 +1,40 @@
 #!/bin/sh
-#set -e
+#description: dump all available databases
+#usage: dump-dbs [-u USER|-p PASSWD|-o DIR|-c CONFIG|-z|-h] module
 
-BACKUPDIR="/path"
-DBUSER="user"
-DBPASSWD="passwd"
+#example: dump-dbs -u root -p passwd
+#dump-dbs: there is no mysql dbs on this host
 
-_basename()
+#this vars can be specified at ./.dump-dbs, ~/.dump-dbs or /etc/dump-dbs
+module=""
+user=""
+passwd=""
+compression=""
+backup_dir=""
+
+_usage()
 {
-    [ -z "${1}" ] && return 1 || _basename_var_1="${1}"
-    [ -z "${2}" ] || _basename_var_suffix="${2}"
-    case "${_basename_var_1}" in
-        /*|*/*) _basename_var_1="$(expr "${_basename_var_1}" : '.*/\([^/]*\)')" ;;
-    esac
-
-    if [ -n "${_basename_var_suffix}" ] && [ "${#_basename_var_1}" -gt "${#2}" ]; then
-        if [ X"$(printf "%s" "${_basename_var_1}" | cut -c"$((${#_basename_var_1} - ${#_basename_var_suffix} + 1))")" \
-           = X"$(printf "%s" "${_basename_var_suffix}" | cut -c1)" ]; then
-            while [ "${#_basename_var_suffix}" -gt "0" ]; do
-                if [ X"$(printf "%s" "${_basename_var_1}" | cut -c"${#_basename_var_1}")" \
-                   = X"$(printf "%s" "${_basename_var_suffix}" | cut -c"${#_basename_var_suffix}")" ]; then
-                    _basename_var_1="$(printf "%s" "${_basename_var_1}" | cut -c1-"$((${#_basename_var_1} - 1))")"
-                    _basename_var_suffix_len="$((${#_basename_var_suffix} - 1))"
-                    if [ "${_basename_var_suffix_len}" -gt "0" ]; then
-                        _basename_var_suffix="$(printf "%s" "${_basename_var_suffix}" | cut -c1-"${_basename_var_suffix_len}")"
-                    else
-                        _basename_var_suffix=""
-                    fi
-                fi
-            done
-        fi
-    fi
-
-    printf "%s\\n" "${_basename_var_1}"
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [-u USER|-p PASSWD|-o DIR|-c] module" >&2
+    printf "\\n" >&2
+    printf "%s\\n" "modules:" >&2
+    printf "%s\\n" "  mysql" >&2
+    printf "\\n" >&2
+    printf "%s\\n" "options:" >&2
+    printf "%s\\n" "  -h              show help (this text)" >&2
+    printf "%s\\n" "  -z              activate compression (gzip)" >&2
+    printf "%s\\n" "  -u USER         configure db user" >&2
+    printf "%s\\n" "  -p PASSWD       configure db passwd" >&2
+    printf "%s\\n" "  -o DIR          configure dir to save dumps" >&2
+    printf "%s\\n" "  -c CONFIG FILE  read options from a configuration file" >&2
+    exit 1
 }
 
-exec 9>/var/run/$(_basename ${0}).lock    #verify only one instance is running
-if ! flock -n 9  ; then                #http://mywiki.wooledge.org/BashFAQ/045
-    printf "%s\\n" "$(_basename ${0}): another instance is running";
+_die()
+{
+    [ -z "${1}" ] && return 1
+    printf "%b\\n" "$(expr "${0}" : '.*/\([^/]*\)'): ${*}" >&2
     exit 1
-fi
+}
 
 _printtime()
 {  #format seconds to a pretty string
@@ -71,29 +67,130 @@ _printtime()
     ""${_printtime_var_day}"d "${_printtime_var_hour}"h "${_printtime_var_min}"m "${_printtime_var_sec}"s"
 }
 
-sleep "$(tr -cd 0-9 </dev/urandom | head -c 3)"m #wait random minutes to run the backup [0-1000]
-START="$(date +%s)"
+_loadconf()
+{
+    [ -z "${1}" ]   && return 1
+    [ ! -f "${1}" ] && return 1
+    _loadconf_var_options=$(awk '! /export/ {if ($0 ~ "^.*=[^;&]*" && $0 !~ "&&" && $1 !~ "^#") print }' "${1}")
+    eval "${_loadconf_var_options}"
+}
 
-[ ! -d "${BACKUPDIR}" ] && mkdir -p "${BACKUPDIR}"
+_mysql()
+{
+    if ! command -v "mysql" >/dev/null; then
+        printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): there is no mysql dbs on this host" >&2; return 1
+    elif ! command -v "mysqldump" >/dev/null; then
+        printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): mysqldump is not available!" >&2; return 1
+    fi
 
-#http://dba.stackexchange.com/questions/19532/safest-way-to-perform-mysqldump-on-a-live-system-with-active-reads-and-writes
-mysql -u"${DBUSER}" -p"${DBPASSWD}" -Ae"FLUSH TABLES WITH READ LOCK; SELECT SLEEP(86400)" &
-sleep 5
-mysql -u"${DBUSER}" -p"${DBPASSWD}" -ANe"SHOW PROCESSLIST" | grep "SELECT SLEEP(86400)" > "${BACKUPDIR}"/proclist.txt
-SLEEP_ID="$(cat "${BACKUPDIR}"/proclist.txt | awk '{print $1}')"
-printf "%s\\n" "KILL ${SLEEP_ID};" > "${BACKUPDIR}"/kill_sleep.sql
+    if ! mysql -u"${user}" -p${passwd} -ANe"SHOW PROCESSLIST" > /dev/null 2>&1; then
+        printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): invalid db credentials (user=${user}, passwd=${passwd}" >&2; return 1
+    fi
 
-DBS="$(mysql -u"${DBUSER}" -p"${DBPASSWD}" -Bse 'show databases')"
-for DB in ${DBS}; do
-    mysqldump -u "${DBUSER}" -p"${DBPASSWD}" --single-transaction --routines --triggers "${DB}" > "${BACKUPDIR}"/"${DB}".sql
+    start="$(date +%s)"
+    #http://dba.stackexchange.com/questions/19532/safest-way-to-perform-mysqldump-on-a-live-system-with-active-reads-and-writes
+    mysql -u"${user}" -p"${passwd}" -Ae"FLUSH TABLES WITH READ LOCK; SELECT SLEEP(86400)" &
+    sleep 5
+
+    sleep_id="$(mysql -u"${user}" -p"${passwd}" -ANe"SHOW PROCESSLIST" | awk '/SELECT SLEEP(86400)/ {print $1}')"
+    printf "%s\\n" "KILL ${sleep_id};" > "${backup_dir}"/kill_sleep.sql
+
+    dbs="$(mysql -u"${user}" -p"${passwd}" -Bse 'show databases')"
+    for db in ${dbs}; do
+        if [ -z "${compress}" ]; then
+            mysqldump -u "${user}" -p"${passwd}" --single-transaction --routines --triggers "${db}" > "${backup_dir}"/"${db}".sql
+        else
+            mysqldump -u "${user}" -p"${passwd}" --single-transaction --routines --triggers "${db}" | gzip > "${backup_dir}"/"${db}".sql.gz
+        fi
+    done
+
+    mysql -u"${user}" -p"${passwd}" -A < "${backup_dir}"/kill_sleep.sql
+    mysql -u"${user}" -p"${passwd}" -Ae"UNLOCK TABLES;"
+    rm -- "${backup_dir}"/kill_sleep.sql
+
+    end="$(date +%s)"
+    diff="$((${END} - ${start}))"
+
+    printf "%s\\n" "$(date +"%d-%m-%Y"):$(_printtime ${diff})" | tee -a "${backup_dir}"/time.txt
+}
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
+fi
+
+for arg; do #parse options
+    case "${arg}" in
+        -h) _usage ;;
+        -z) compression="seen"; shift;;
+        -u) if [ "${#}" -gt "1" ]; then
+                user="$(printf "%s " "${@}" | awk '{print $2}')"
+                shift 2
+            else
+                _die "Option ${arg} requires a parameter"
+            fi ;;
+        -p) if [ "${#}" -gt "1" ]; then
+                passwd="$(printf "%s " "${@}" | awk '{print $2}')"
+                shift 2
+            else
+                _die "Option ${arg} requires a parameter"
+            fi ;;
+        -o) if [ "${#}" -gt "1" ]; then
+                backup_dir="$(printf "%s " "${@}" | awk '{print $2}')"
+                shift 2
+            else
+                _die "Option ${arg} requires a parameter"
+            fi ;;
+        -c) if [ "${#}" -gt "1" ]; then
+                _var_config_file="$(printf "%s " "${@}" | awk '{print $2}')"
+                shift 2
+            else
+                _die "Option ${arg} requires a parameter"
+            fi ;;
+        -*) printf "%s\\n" "Unrecognized option: ${arg}" >&2; _usage ;;
+    esac
 done
 
-mysql -u"${DBUSER}" -p"${DBPASSWD}" -A < "${BACKUPDIR}"/kill_sleep.sql
-mysql -u"${DBUSER}" -p"${DBPASSWD}" -Ae"UNLOCK TABLES;"
+if [ -z "${1}" ]; then
+    module="mysql"
+else
+    case "${1}" in
+        mysql) module="${1}"; shift; ;;
+        *)     _die "module \`${arg}' unsupported" ;;
+    esac
+fi
 
-tar cvf - "$(find "${BACKUPDIR}" -type f -iname "*sql")" | gzip > "${BACKUPDIR}"/dbs.tar.gz
+[ -z "${backup_dir}" ] && backup_dir="$(pwd)"
+if ! mkdir -p "${backup_dir}"/.dump-dbs >/dev/null 2>&1; then
+    printf "%s\\n" "\`${backup_dir}' is not writable, using \`/tmp' as base instead" >&2
+    backup_dir="/tmp"
+else
+    rm -rf -- "${backup_dir}"/.dump-dbs
+fi
 
-END="$(date +%s)"
-DIFF="$((${END} - ${START}))"
+if [ -z "${_var_config_file}" ]; then
+    if [ -f ./.dump-dbs ]; then
+        _loadconf ./.dump-dbs
+    elif [ -f ~/.dump-dbs ]; then
+        _loadconf ~/.dump-dbs
+    elif [ -f /etc/dump-dbs ]; then
+        _loadconf /etc/dump-dbs
+    fi
+else
+    [ ! -f "${_var_config_file}" ] && _die "couldn't find \`${_var_config_file}'"
+    _loadconf "${_var_config_file}"
+fi
 
-printf "%s\\n" "$(date +"%d-%m-%Y"):$(_printtime ${DIFF})" | tee -a "${BACKUPDIR}"/time.txt
+if [ -z "${module}" ] || [ -z "${user}" ] || [ -z "${passwd}" ] || [ -z "${backup_dir}" ]; then
+    _usage
+fi
+
+exec 9>/tmp/$(expr "${0}" : '.*/\([^/]*\)').lock #http://mywiki.wooledge.org/BashFAQ/045
+if ! flock -n 9  ; then
+    printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): another instance is running";
+    exit 1
+fi
+
+case "${module}" in
+    mysql) _mysql ;;
+esac

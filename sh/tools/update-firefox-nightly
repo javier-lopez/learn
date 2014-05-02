@@ -1,5 +1,5 @@
 #!/bin/sh
-#a simple script to update firefox nightly when the integrated updater doesn't work
+#simple script to update firefox nightly when the integrated updater doesn't work
 
 trap _cleanup 0 15 #trap ctrl-c
 #trap _cleanup SIGINT SIGTERM #trap ctrl-c
@@ -17,16 +17,10 @@ _cmd()
 }
 
 _die()
-{   #print a stacktrace with a msg, exits with 1
-    if [ -n "${BASH}" ]; then
-        _die_var_frame="0"
-        while caller "${_die_var_frame}"; do
-            _die_var_frame="$((${_die_var_frame} + 1))"
-        done
-    fi
-
-    printf "%s\\n" "${*}"
-    exit
+{
+    [ -z "${1}" ] && return 1
+    printf "%b\\n" "$(expr "${0}" : '.*/\([^/]*\)'): ${*}" >&2
+    exit 1
 }
 
 _cleanup()
@@ -34,7 +28,7 @@ _cleanup()
     stty echo
     printf "\\n"
     printf "%s\\n" "[+] cleanup ..."
-    _cmd rm firefox*bz2
+    _cmd rm /tmp/firefox*bz2
 
     [ -z ${1} ] && exit
 }
@@ -76,33 +70,26 @@ _arch()
     printf "%s" "${_arch_var_arch}"
 }
 
-_update_firefox32()
+_update_firefox()
 {
-    nightly="$(curl http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-trunk/ 2>&1 | grep -o -E 'href="([^"#]+)"' | cut -d'"' -f2 |  grep "linux-i686.tar.bz2")"
-    _cmd wget -c http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-trunk/"${nightly}"
-    _cmd "bzcat < firefox*bz2 | tar xf -"
-    _cmd rm -rf firefox-* "${HOME}/.bin/firefox${arch}"
-    _cmd mv firefox "${HOME}/.bin/firefox${arch}"
+    _update_firefox_var_arch="$(_arch)"
+    [ -d "${HOME}/.bin/firefox${_update_firefox_var_arch}" ] && _cmd mkdir -p "${HOME}/.bin/firefox${_update_firefox_var_arch}"
+    case "${_update_firefox_var_arch}" in
+        32) nightly="$(curl http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-trunk/ 2>&1 \
+                | grep -o -E 'href="([^"#]+)"' | cut -d'"' -f2 | grep "linux-i686.tar.bz2")" ;;
+        64) nightly="$(curl http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-trunk/ 2>&1 \
+                | grep -o -E 'href="([^"#]+)"' | cut -d'"' -f2 | grep "linux-x86_64.tar.bz2")" ;;
+    esac
+    _cmd wget -c http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-trunk/"${nightly}" -O /tmp/firefox.tar.bz2
+    _cmd "bzcat < /tmp/firefox.tar.bz2 | tar xf -C /tmp -"
+    _cmd rm -rf /tmp/firefox-* "${HOME}/.bin/firefox.old"
+    _cmd mv "${HOME}/.bin/firefox${_update_firefox_var_arch}" "${HOME}/.bin/firefox.old"
+    _cmd mv /tmp/firefox "${HOME}/.bin/firefox${_update_firefox_var_arch}"
+    _notify "[+]  Done" "restart firefox to apply the update"
 }
 
-
-_update_firefox64()
-{
-    nightly="$(curl http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-trunk/ 2>&1 | grep -o -E 'href="([^"#]+)"' | cut -d'"' -f2 | grep "linux-x86_64.tar.bz2")"
-    _cmd wget -c http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-trunk/"${nightly}"
-    _cmd "bzcat < firefox*bz2 | tar xf -"
-    _cmd rm -rf firefox-* "${HOME}/.bin/firefox${arch}"
-    _cmd mv firefox "${HOME}/.bin/firefox${arch}"
-}
-
-arch="$(_arch)"
-[ ! -f "$(whereis curl |awk '{print $2}')" ] && _die "curl was not found!"
-[ -d "${HOME}/.bin/firefox${arch}" ]         && _cmd mkdir -p "${HOME}/.bin/firefox${arch}"
-
-if [ X"${arch}" = X"32" ]; then
-    _update_firefox32
-else
-    _update_firefox64
+if ! command -v "curl" >/dev/null 2>&1; then
+    _die "curl was not found!"
 fi
 
-_notify "[+]  Done" "restart firefox to apply the update"
+_update_firefox

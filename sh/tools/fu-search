@@ -28,7 +28,8 @@ _usage()
 {
     printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [-c] pattern" >&2
     printf "\\n" >&2
-    printf "%s\\n" "          -c     Colorize the output" >&2
+    printf "%s\\n" "          -h  help" >&2
+    printf "%s\\n" "          -c  colorize output" >&2
     exit 0
 }
 
@@ -41,8 +42,9 @@ fi
 
 PATTERN="${@}"
 
-while getopts ":c:" option; do
+while getopts ":c:h" option; do
     case "${option}" in
+        h)  _usage;;
         c)  CFLAG="yes" PATTERN="${OPTARG}" ;;
         :)  printf "%s\\n" "Option -${OPTARG} requires an argument" >&2
             _usage ;;

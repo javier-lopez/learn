@@ -2,7 +2,26 @@
 #description: backup directories to a remote system
 #usage: backup-remote-rsync [-h|-v|-n|-o|-s|-u USER|-r DOMAIN|-i SSH KEY|-l LOGFILE] [LOCAL_DIR ...]
 
-#if no directory is provided, $HOME is used
+#example: backup-remote-rsync -v -u admin -i /home/user/.ssh/id_rsa /home/user
+#==================================
+#Fri May  2 00:27:38 CDT 2013
+#==================================
+#[V]: exec         : ssh -o PasswordAuthentication=no ...
+#[V]: files        : /home/user|
+#[V]: remote user  : admin
+#[V]: remote server: backup.javier.io:/home/admin/backup/sup
+#[V]: ssh key      : /home/user/.ssh/id_rsa
+#[V]: log          : /tmp/backup-remote-rsync.log
+#[V]: exec         : ssh -i /home/user/.ssh/id_rsa ...
+#[V]:  
+#[V]: realpath     : /home/user
+#[V]: remotepath   : root-home-user
+#[V]: exec         : rsync -avz -e "ssh -i /home/user ...
+#sending incremental file list
+#deleting 05b_refusal.pdf
+#code/learn/sh/lib
+#code/learn/sh/is/kernel-ck-ubuntu
+#...
 
 _basename()
 {
@@ -32,12 +51,6 @@ _basename()
 
     printf "%s\\n" "${_basename_var_1}"
 }
-
-exec 9>/tmp/"$(_basename "${0}")".lock #verify that only one instance is running
-if ! flock -n 9  ; then              #http://mywiki.wooledge.org/BashFAQ/045
-    printf "%s\\n" "$(_basename "${0}"): another instance is running";
-    exit 1
-fi
 
 _realpath()
 {
@@ -95,9 +108,9 @@ _realpath()
 _logger()
 {
     if [ -n "${logfile}" ]; then
-        printf "%s\\n" "${*}" | tee -a "${logfile}"
+        printf "%s\\n" "${*}" >&2 | tee -a "${logfile}"
     else
-        printf "%s\\n" "${*}"
+        printf "%s\\n" "${*}" >&2
     fi
 }
 
@@ -109,22 +122,22 @@ _verbose()
 
 _usage()
 {
-    printf "%s\\n" "Usage: $(_basename "${0}") [-h|-v|-u USER|-r DOMAIN|-i SSH KEY|-l LOGFILE] [LOCAL_DIR ...]"
-    printf "\\n"
-    printf "%s\\n" "optional arguments:"
-    printf "%s\\n" "  LOCAL_DIR|LOCAL_FILE  dirs|files to backup [${HOME}]"
-    printf "%s\\n" "  -h                    this message"
-    printf "%s\\n" "  -v                    verbose"
-    printf "%s\\n" "  -s                    skip ssh auth pre-tests"
-    printf "%s\\n" "  -o                    omit executing commmands, useful with -v"
-    printf "%s\\n" "  -n                    dry run, list files to be modified"
-    printf "%s\\n" "  -u USER               remote user          [${USER}]"
-    printf "%s\\n" "  -r DOMAIN|IP:/path    remote server        [backup.javier.io:${HOME}/backup/$(hostname)]"
-    printf "%s\\n" "  -i SSH KEY            ssh public key       [${HOME}/.ssh/id_rsa]"
-    printf "%s\\n" "  -l FILE               log file             [/tmp/$(_basename "${0}").log ]"
-    printf "\\n"
-    printf "%s\\n" "NOTE: Ssh key authentication must be configured for this script to work"
-    exit
+    printf "%s\\n" "Usage: $(_basename "${0}") [-h|-v|-u USER|-r DOMAIN|-i SSH KEY|-l LOGFILE] [LOCAL_DIR ...]" >&2
+    printf "\\n" >&2
+    printf "%s\\n" "optional arguments:" >&2
+    printf "%s\\n" "  LOCAL_DIR|LOCAL_FILE  dirs|files to backup [${HOME}]" >&2
+    printf "%s\\n" "  -h                    this message" >&2
+    printf "%s\\n" "  -v                    verbose" >&2
+    printf "%s\\n" "  -s                    skip ssh auth pre-tests" >&2
+    printf "%s\\n" "  -o                    omit executing commmands, useful with -v" >&2
+    printf "%s\\n" "  -n                    dry run, list files to be modified" >&2
+    printf "%s\\n" "  -u USER               remote user          [${USER}]" >&2
+    printf "%s\\n" "  -r DOMAIN|IP:/path    remote server        [backup.javier.io:${HOME}/backup/$(hostname)]" >&2
+    printf "%s\\n" "  -i SSH KEY            ssh public key       [${HOME}/.ssh/id_rsa]" >&2
+    printf "%s\\n" "  -l FILE               log file             [/tmp/$(_basename "${0}").log ]" >&2
+    printf "\\n" >&2
+    printf "%s\\n" "NOTE: Ssh key authentication must be configured for this script to work" >&2
+    exit 1
 }
 
 _printtime()
@@ -256,7 +269,18 @@ _backup()
         "${_backup_var_remote_user}@${_backup_var_remote_server}"
 }
 
-for var in "${@}"; do #parse options
+exec 9>/tmp/"$(_basename "${0}")".lock #verify that only one instance is running
+if ! flock -n 9  ; then              #http://mywiki.wooledge.org/BashFAQ/045
+    printf "%s\\n" "$(_basename "${0}"): another instance is running";
+    exit 1
+fi
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
+fi
+
+for var; do #parse options
     case "${var}" in
         -h) _usage ;;
         -v) verbose="true"; shift ;;
@@ -267,44 +291,45 @@ for var in "${@}"; do #parse options
                 remote_user="$(printf "%s " "${@}" | awk '{print $2}')"
                 shift 2
             else
-               printf "%s\\n" "Option ${var} requires a parameter"; exit 1
+               printf "%s\\n" "Option ${var} requires a parameter" >&2; exit 1
             fi ;;
         -r) if [ "${#}" -gt "1" ]; then
                 remote_server="$(printf "%s " "${@}" | awk '{print $2}')"
                 shift 2
             else
-               printf "%s\\n" "Option ${var} requires a parameter"; exit 1
+               printf "%s\\n" "Option ${var} requires a parameter" >&2; exit 1
             fi ;;
         -i) if [ "${#}" -gt "1" ]; then
                 sshkey="$(printf "%s " "${@}" | awk '{print $2}')"
                 shift 2
             else
-               printf "%s\\n" "Option ${var} requires a parameter"; exit 1
+               printf "%s\\n" "Option ${var} requires a parameter" >&2; exit 1
             fi ;;
         -l) if [ "${#}" -gt "1" ]; then
                 logfile="$(printf "%s " "${@}" | awk '{print $2}')"
                 shift 2
             else
-               printf "%s\\n" "Option ${var} requires a parameter"; exit 1
+               printf "%s\\n" "Option ${var} requires a parameter" >&2; exit 1
             fi ;;
-        -*) printf "%s\\n" "Unrecognized option: ${var}"; exit 1 ;;
+        -*) printf "%s\\n" "Unrecognized option: ${var}" >&2; exit 1 ;;
     esac
 done
 
+if ! command -v "rsync" >/dev/null; then
+    printf "%s\\n" "You need to install rsync: $ sudo apt-get install rsync" >&2; exit 1
+elif ! command -v "ssh" >/dev/null; then
+    printf "%s\\n" "You need to install ssh: $ sudo apt-get install openssh-client" >&2; exit 1
+elif ! command -v "wget" >/dev/null; then
+    printf "%s\\n" "You need to install wget: $ sudo apt-get install wget" >&2; exit 1
+fi
+
 [ -z "${logfile}" ]     && logfile="/tmp/$(_basename "${0}").log"
 [ -z "${remote_user}" ] && remote_user="${USER}"
-
-if ! command -v "rsync" >/dev/null; then
-    printf "%s\\n" "You need to install rsync: $ sudo apt-get install rsync"; exit 1
-elif ! command -v "ssh" >/dev/null; then
-    printf "%s\\n" "You need to install ssh: $ sudo apt-get install openssh-client"; exit 1
-elif ! command -v "wget" >/dev/null; then
-    printf "%s\\n" "You need to install wget: $ sudo apt-get install wget"; exit 1
-fi
+#TODO 28-04-2014 18:25 >> add description
 
 if [ -z "${ommit}" ]; then
     if ! _internetavailable; then
-        printf "%s\\n" "$(_basename "${0}"): no internet access"
+        printf "%s\\n" "$(_basename "${0}"): no internet access" >&2
         exit 1
     fi
 fi
@@ -349,7 +374,7 @@ if [ -z "${sshkey}" ]; then
 fi
 
 if [ -z "${skip_ssh_tests}" ]; then
-    [ -z "${sshkey}" ] && { _logger "[E]: no ssh key found!, you may try -i|-s"; printf "\\n"; _usage; }
+    [ -z "${sshkey}" ] && { _logger "[E]: no ssh key found!, you may try -i|-s"; printf "\\n" >&2; _usage; }
 
     remote_ip="$(printf "%s" "${remote_server}"|cut -d':' -f1)"
     ssh_auth_test="$(printf "%s %s %s %s" "ssh -o PasswordAuthentication=no"      \
@@ -374,6 +399,3 @@ _verbose "ssh key      : ${sshkey}"
 _verbose "log          : ${logfile}"
 
 _backup "${files}" "${remote_user}" "${remote_server}" "${sshkey}" "${logfile}"
-
-#simple-httpd -p 80  ./*  (main)
-#simple-httpd -p 80  ./.* (dotfiles)

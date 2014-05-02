@@ -11,8 +11,10 @@
 # $ virn *
 # $ virn a*
 
-_die() {
-    printf "%s\\n" "${@}" >&2
+_die()
+{
+    [ -z "${1}" ] && return 1
+    printf "%b\\n" "$(expr "${0}" : '.*/\([^/]*\)'): ${*}" >&2
     exit 1
 }
 

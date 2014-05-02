@@ -64,6 +64,7 @@ _printfs()
 
 _die()
 {
+    [ -z "${1}"] && return 1
     printf "%b\\n" "[-] Error: ${*}"
     exit 1
 }

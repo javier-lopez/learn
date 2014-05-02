@@ -1,22 +1,23 @@
 #!/bin/sh
-#chilicuil <chilicuil@gmail.com> 2011
-#fixes common problems in my system
+#description: fixes common problems in my system
+#usage: fix module
 
-#===================================================
+#example: fix webcam
+#$ sudo chmod o+rw /dev/video0
 
-#Don't forget update this when adding new functions
 _usage()
 {
-    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') module"
-    printf "%s\\n"
-    printf "%s\\n" "  apache            Moves /etc/init.d/apache2.1 to apache2"
-    printf "%s\\n" "  ipw2200           Restart the ipw2200 module"
-    printf "%s\\n" "  wl                Restart the wl module"
-    printf "%s\\n" "  iwlagn            Restart the iwlagn module"
-    printf "%s\\n" "  mpd               Restart mpd"
-    printf "%s\\n" "  webcam            Fix webcam - thinkpad"
-    printf "\\n"
-    exit 0
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') module" >&2
+    printf "%s\\n" >&2
+    printf "%s\\n" "  -h       help" >&2
+    printf "%s\\n" >&2
+    printf "%s\\n" "  apache   moves /etc/init.d/apache2.1 to apache2" >&2
+    printf "%s\\n" "  ipw2200  restart ipw2200 module" >&2
+    printf "%s\\n" "  wl       restart wl module" >&2
+    printf "%s\\n" "  iwlagn   restart iwlagn module" >&2
+    printf "%s\\n" "  mpd      restart mpd" >&2
+    printf "%s\\n" "  webcam   fix webcam, thinkpad" >&2
+    exit 1
 }
 
 _exec()
@@ -25,13 +26,14 @@ _exec()
     if [ X"${status}" != X"0" ]; then
         exit "${status}"
     fi
-    printf "%s\\n" "[+] ${@}"
+    printf "%s " "$ ${@}"
+    printf "%s\\n"
     ${@}
 }
 
 _apache ()
 {
-    _exec sudo mv -v /etc/init.d/apache2.1 /etc/init.d/apache2
+    _exec sudo mv /etc/init.d/apache2.1 /etc/init.d/apache2
     _exec sudo /etc/init.d/apache2 start
 }
 
@@ -71,8 +73,15 @@ _webcam()
     _exec sudo chmod o+rw /dev/video0
 }
 
-if [ X"${#}" != X"0" ]; then
-    case "${1}" in
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
+fi
+
+[ "${#}" -eq "0" ] && _usage
+
+for arg; do
+    case "${arg}" in
         apache)    _apache  ;;
         ipw2200)   _ipw2200 ;;
         wl)        _wl      ;;
@@ -80,8 +89,6 @@ if [ X"${#}" != X"0" ]; then
         mpd)       _mpd     ;;
         webcam)    _webcam  ;;
         -h|--help) _usage   ;;
-        *)         printf "%s\\n" "Error, unknown option: ${1}"; usage ;;
+        *)         printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unknown option: \`${1}'" >&2; _usage ;;
     esac
-else
-    _usage
-fi
+done
