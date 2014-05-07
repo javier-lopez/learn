@@ -41,4 +41,7 @@ _notify "[+] Gifcast" "in 3.., 2.., 1.., smile =)!"
 
 ffcast -s ffmpeg -r 15 -- -pix_fmt rgb24 "${file}" && _notify "[+] Optimising" "${file}" \
     && convert -layers Optimize "${file}" "${file}".optimized \
-    && mv "${file}".optimized "${file}" && _notify "[+] Done" "${file}"
+    && mv "${file}".optimized "${file}" && _notify "[+] Done" "${file}" && \
+    if command -v "xclip" >/dev/null 2>&1; then
+        printf "%s" "${file}" | xclip -selection clipboard
+    fi

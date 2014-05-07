@@ -28,7 +28,7 @@ line3="E=O=F"
 cmd="${line1}"'\n'"${line2}"'\n'"${line3}"'\n'
 
 if command -v "xclip" >/dev/null 2>&1; then
-    printf "%b" "${cmd}" | tee /dev/fd/2 | xclip
+    printf "%b" "${cmd}" | xclip -selection clipboard; xclip -o -selection clipboard
 else
     printf "%b" "${cmd}"
 fi
