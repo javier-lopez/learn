@@ -24,13 +24,20 @@ _translate()
     [ -z "${1}" ] && return 1
     #update 14-12-2012 05:06: thanks to johnraff #http://crunchbang.org/forums/viewtopic.php?id=17034
     phrase="${*}"
-    page="$(curl -s -i --user-agent ""               \
-        -d "sl=${sl}" -d "tl=${tl}" --data-urlencode \
-        "text=${phrase}" http://translate.google.com)"
-    encoding="$(printf "%s\\n" "${page}" | \
-        awk '/Content-Type: .* charset=/ {sub(/^.*charset=["'\'']?/,""); sub(/[ "'\''].*$/,""); print}')"
-    result="$(printf "%s\\n" "${page}" | iconv -f "${encoding}" | awk 'BEGIN {RS="</div>"};/<span[^>]* id=["'\'']?result_box["'\'']?/' | html2text -utf8)"
-    printf "%s\\n" "${result}"
+    page="$(curl -s -i --user-agent "" -d "sl=${sl}" -d "tl=${tl}" -d "client=t"  \
+                 -d "ie=UTF-8" -d "oe=UTF-8" --data-urlencode "text=${phrase}" http://translate.google.com/translate_a/t)"
+            #"text=${phrase}" http://translate.google.com)"
+    #printf "%s\\n" "${page}"
+    #encoding="$(printf "%s\\n" "${page}" | \
+        #awk '/Content-Type: .* charset=/ {sub(/^.*charset=["'\'']?/,""); sub(/[ "'\''].*$/,""); print}')"
+    #result="$(printf "%s\\n" "${page}" | iconv -f "${encoding}" | awk 'BEGIN {RS="</div>"};/<span[^>]* id=["'\'']?result_box["'\'']?/' | html2text -utf8)"
+    result="$(printf "%s\\n" "${page}" | tail -1 | cut -d\" -f2)"
+
+    if command -v "xclip" >/dev/null 2>&1; then
+        printf "%s" "${result}" | xclip -selection clipboard; xclip -o -selection clipboard; printf "\\n"
+    else
+        printf "%s\\n" "${result}"
+    fi
 }
 
 if [ ! -t 0 ]; then
