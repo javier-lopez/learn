@@ -25,31 +25,20 @@
 
 _basename()
 {
-    [ -z "${1}" ] && return 1 || _basename_var_1="${1}"
+    [ -z "${1}" ] && return 1 || _basename_var_name="${1}"
     [ -z "${2}" ] || _basename_var_suffix="${2}"
-    case "${_basename_var_1}" in
-        /*|*/*) _basename_var_1="$(expr "${_basename_var_1}" : '.*/\([^/]*\)')" ;;
+    case "${_basename_var_name}" in
+        /*|*/*) _basename_var_name="$(expr "${_basename_var_name}" : '.*/\([^/]*\)')" ;;
     esac
 
-    if [ -n "${_basename_var_suffix}" ] && [ "${#_basename_var_1}" -gt "${#2}" ]; then
-        if [ X"$(printf "%s" "${_basename_var_1}" | cut -c"$((${#_basename_var_1} - ${#_basename_var_suffix} + 1))")" \
-           = X"$(printf "%s" "${_basename_var_suffix}" | cut -c1)" ]; then
-            while [ "${#_basename_var_suffix}" -gt "0" ]; do
-                if [ X"$(printf "%s" "${_basename_var_1}" | cut -c"${#_basename_var_1}")" \
-                   = X"$(printf "%s" "${_basename_var_suffix}" | cut -c"${#_basename_var_suffix}")" ]; then
-                    _basename_var_1="$(printf "%s" "${_basename_var_1}" | cut -c1-"$((${#_basename_var_1} - 1))")"
-                    _basename_var_suffix_len="$((${#_basename_var_suffix} - 1))"
-                    if [ "${_basename_var_suffix_len}" -gt "0" ]; then
-                        _basename_var_suffix="$(printf "%s" "${_basename_var_suffix}" | cut -c1-"${_basename_var_suffix_len}")"
-                    else
-                        _basename_var_suffix=""
-                    fi
-                fi
-            done
+    if [ -n "${_basename_var_suffix}" ] && [ "${#_basename_var_name}" -gt "${#2}" ]; then
+        if [ X"$(printf "%s" "${_basename_var_name}" | cut -c"$((${#_basename_var_name} - ${#_basename_var_suffix} + 1))"-"${#_basename_var_name}")" \
+           = X"$(printf "%s" "${_basename_var_suffix}")" ]; then
+            _basename_var_name="$(printf "%s" "${_basename_var_name}" | cut -c1-"$((${#_basename_var_name} - ${#_basename_var_suffix}))")"
         fi
     fi
 
-    printf "%s\\n" "${_basename_var_1}"
+    printf "%s\\n" "${_basename_var_name}"
 }
 
 _realpath()
@@ -238,7 +227,7 @@ _backup()
                 _backup_var_rsync="$(printf "%s %s %s %s %s" "ls ${_backup_var_realpath}"     \
                     "| rsync ${_backup_var_dry_run}-avz -e \"ssh -i ${_backup_var_sshkey}\""  \
                     "--one-file-system  --delete --exclude-from=-"                            \
-                    "--exclude=.gvfs --delete ${_backup_var_realpath}/"                       \
+                    "--exclude=.gvfs ${_backup_var_realpath}/"                                \
                     "${_backup_var_remote_user}@${_backup_var_remote_server}/${_backup_var_dotfiles}")"
                     _verbose "exec         : ${_backup_var_rsync}"
                     [ -z "${ommit}" ] && eval "${_backup_var_rsync}" | tee -a "${logfile}"
