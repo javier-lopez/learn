@@ -334,9 +334,6 @@ _cmd     "patch -p1 < ../0003-block-bfq-add-Early-Queue-Merge-EQM-to-BFQ-${vbfq}
 
 _printfl "Configuring kernel"
 _printfs "downloading optimized config from http://repo-ck.com ...    "
-#_waitfor wget "http://liquorix.net/sources/${kernel}/config.${arqt}"
-##TODO 05-11-2013 20:30 >> liquorix.net current configuration breaks -ck kernel
-#                          starting in >= 3.10, check from time to time if it can be reused
 
 #for now use config mirrored from http://repo-ck.com/
 _waitfor wget "http://javier.io/mirror/${kernel}/config.${arqt}"
