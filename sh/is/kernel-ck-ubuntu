@@ -6,13 +6,13 @@
 
 #####################################
 #kernel version base
-kernel="3.13"
+kernel="3.14"
 #kernel specific version
-patchkernel="3.13.7"
+patchkernel="3.14.4"
 #BFQ patch
-bfq="3.13.0-v7r2"
+bfq="3.14.0-v7r4"
 #CK patch
-patchck="3.13-ck1"
+patchck="3.14-ck1"
 #####################################
 
 ################################################################################
@@ -72,15 +72,10 @@ _die()
 _header()
 {
     clear
-    _printfl "${patchkernel}"
-    printf "%b\\n" "\033[1m Original:\033[0m    http://sourceforge.net/projects/scriptkernel/"
-    printf "%b\\n" "\033[1m Inspired by:\033[0m http://omicron.homeip.net/projects/#easy_e17.sh"
+    _printfl "Kernel ck builder (${patchkernel})"
     printf "%b\\n" "\033[1m Updates:\033[0m     https://github.com/chilicuil/learn/blob/master/sh/is/kernel-ck-ubuntu"
-    printf "%s\\n"    "                            send your push request!"
-    printf "\\n"
     printf "%b\\n" "\033[1m Patches:\033[0m     -bfq, -ck"
     printf "%b\\n" "\033[1m Config:\033[0m      http://repo-ck.com/"
-    printf "\\n"
     _printfl "Current configuration: edit the script to change it"
     printf "%s\\n" "  build path:        ${tmp_path}"
     printf "%s\\n" "  kernel:            ${patchkernel}"
@@ -278,50 +273,45 @@ _waitforsudo apt-get install --no-install-recommends -y ${apps_default}
 
 _printfl "Downloading archives"
 _printfs "downloading main vanilla kernel tree ..."
-_cmd     mkdir -p ${tmp_path}
-_cmd     cd ${tmp_path}
-_waitfor wget --no-check-certificate -N http://www.kernel.org/pub/linux/kernel/v3.x/linux-${kernel}.tar.gz
+_cmd     mkdir -p "${tmp_path}"
+_cmd     cd "${tmp_path}"
+_waitfor wget --no-check-certificate -N http://www.kernel.org/pub/linux/kernel/v3.x/linux-"${kernel}".tar.gz
 [ ! -f linux-"${kernel}".tar.gz ] && _die "couldn't get http://www.kernel.org/pub/linux/kernel/v3.x/linux-${kernel}.tar.gz"
 
 _printfs "downloading mainstream patches ..."
-_waitfor wget --no-check-certificate -N http://www.kernel.org/pub/linux/kernel/v3.x/patch-${patchkernel}.gz
+_waitfor wget --no-check-certificate -N http://www.kernel.org/pub/linux/kernel/v3.x/patch-"${patchkernel}".gz
 [ ! -f patch-"${patchkernel}".gz ] && _die "couldn't get http://www.kernel.org/pub/linux/kernel/v3.x/patch-${patchkernel}.gz"
 
 _printfs "downloading -ck patches ..."
-_waitfor wget -N http://ck.kolivas.org/patches/3.0/${kernel}/${patchck}/patch-${patchck}.bz2
+_waitfor wget -N "http://ck.kolivas.org/patches/3.0/${kernel}/${patchck}/patch-${patchck}.bz2"
 [ ! -f patch-"${patchck}".bz2 ] && _die "couldn't get http://ck.kolivas.org/patches/3.0/${kernel}/${patchck}/patch-${patchck}.bz2"
 
 _printfs "downloading bfq patches ..."
-_waitfor wget -N http://algo.ing.unimo.it/people/paolo/disk_sched/patches/${bfq}/0001-block-cgroups-kconfig-build-bits-for-BFQ-${vbfq}-${kernel}.patch
-[ ! -f 0001-block-cgroups-kconfig-build-bits-for-BFQ-"${vbfq}"-"${kernel}".patch ] && \
+_waitfor wget -N "http://algo.ing.unimo.it/people/paolo/disk_sched/patches/${bfq}/0001-block-cgroups-kconfig-build-bits-for-BFQ-${vbfq}-${kernel}.patch"
+[ ! -f "0001-block-cgroups-kconfig-build-bits-for-BFQ-${vbfq}-${kernel}.patch" ] && \
     _die "couldn't get http://algo.ing.unimo.it/people/paolo/disk_sched/patches/${bfq}/0001-block-cgroups-kconfig-build-bits-for-BFQ-${vbfq}-${kernel}.patch"
-_waitfor wget -N http://algo.ing.unimo.it/people/paolo/disk_sched/patches/${bfq}/0002-block-introduce-the-BFQ-${vbfq}-I-O-sched-for-${kernel}.patch
-[ ! -f 0002-block-introduce-the-BFQ-"${vbfq}"-I-O-sched-for-"${kernel}".patch ] && \
+_waitfor wget -N "http://algo.ing.unimo.it/people/paolo/disk_sched/patches/${bfq}/0002-block-introduce-the-BFQ-${vbfq}-I-O-sched-for-${kernel}.patch"
+[ ! -f "0002-block-introduce-the-BFQ-${vbfq}-I-O-sched-for-${kernel}.patch" ] && \
     _die "couldn't get http://algo.ing.unimo.it/people/paolo/disk_sched/patches/${bfq}/0002-block-introduce-the-BFQ-${vbfq}-I-O-sched-for-${kernel}.patch"
-_waitfor wget -N http://algo.ing.unimo.it/people/paolo/disk_sched/patches/${bfq}/0003-block-bfq-add-Early-Queue-Merge-EQM-to-BFQ-${vbfq}-for-${kernel}.0.patch
-[ ! -f 0003-block-bfq-add-Early-Queue-Merge-EQM-to-BFQ-"${vbfq}"-for-"${kernel}".0.patch ] && \
+_waitfor wget -N "http://algo.ing.unimo.it/people/paolo/disk_sched/patches/${bfq}/0003-block-bfq-add-Early-Queue-Merge-EQM-to-BFQ-${vbfq}-for-${kernel}.0.patch"
+[ ! -f "0003-block-bfq-add-Early-Queue-Merge-EQM-to-BFQ-${vbfq}-for-${kernel}.0.patch" ] && \
     _die "couldn't get http://algo.ing.unimo.it/people/paolo/disk_sched/patches/${bfq}/0003-block-bfq-add-Early-Queue-Merge-EQM-to-BFQ-${vbfq}-for-${kernel}.0.patch"
-
-#not necesary since packaging is done with make-kpkg
-#_printfs "downloading ubuntu patches ..."
-#_waitfor wget -N http://kernel.ubuntu.com/~kernel-ppa/mainline/v${patchkernel}-trusty/0001-base-packaging.patch
-#_waitfor wget -N http://kernel.ubuntu.com/~kernel-ppa/mainline/v${patchkernel}-trusty/0002-debian-changelog.patch
 
 _printfl "Applying patches"
 _printfs "uncompresing kernel to ${tmp_path}/linux-${kernel}/ ..."
 if [ ! -d "/${tmp_path}/linux-${kernel}/" ]; then
-    _waitfor tar zxf ${tmp_path}/linux-${kernel}.tar.gz
+    _waitfor tar zxf "${tmp_path}/linux-${kernel}.tar.gz"
     [ ! -d "${tmp_path}/linux-${kernel}" ] && _die "couldn't unpack ${tmp_path}/linux-${kernel}.tar.gz"
 fi
 
 _printfs "uncompresing patches ..."
-_waitfor gunzip  patch-${patchkernel}.gz; [ ! -f patch-"${patchkernel}" ] && _die "couldn't unpack patch-${patchkernel}.gz"
-_waitfor bunzip2 patch-${patchck}.bz2;    [ ! -f patch-"${patchck}" ]     && _die "couldn't unpack patch-${patchck}.bz2"
+_waitfor gunzip  patch-"${patchkernel}".gz; [ ! -f patch-"${patchkernel}" ] && _die "couldn't unpack patch-${patchkernel}.gz"
+_waitfor bunzip2 patch-"${patchck}".bz2;    [ ! -f patch-"${patchck}" ]     && _die "couldn't unpack patch-${patchck}.bz2"
 
 _printfs "moving to ${tmp_path}/linux-${patchkernel}-${ckk}"
-_waitfor rm -rf linux-${patchkernel}-${ckk}
-_waitfor cp -R --  linux-${kernel} linux-${patchkernel}-${ckk}
-_cmd     cd linux-${patchkernel}-${ckk}
+_waitfor rm -rf "linux-${patchkernel}-${ckk}"
+_waitfor cp -R --  linux-"${kernel}" "linux-${patchkernel}-${ckk}"
+_cmd     cd "linux-${patchkernel}-${ckk}"
 
 _printfs "applying patches ..."
 _cmd     "patch -p1 < ../patch-${patchkernel}"
@@ -329,11 +319,12 @@ _cmd     "patch -p1 < ../patch-${patchck}"
 _cmd     "patch -p1 < ../0001-block-cgroups-kconfig-build-bits-for-BFQ-${vbfq}-${kernel}.patch"
 _cmd     "patch -p1 < ../0002-block-introduce-the-BFQ-${vbfq}-I-O-sched-for-${kernel}.patch"
 _cmd     "patch -p1 < ../0003-block-bfq-add-Early-Queue-Merge-EQM-to-BFQ-${vbfq}-for-${kernel}.0.patch"
-#_cmd    "patch -p1 < ../0001-base-packaging.patch"
-#_cmd    "patch -p1 < ../0002-debian-changelog.patch"
 
 _printfl "Configuring kernel"
 _printfs "downloading optimized config from http://repo-ck.com ...    "
+#_waitfor wget "http://liquorix.net/sources/${kernel}/config.${arqt}"
+##TODO 05-11-2013 20:30 >> liquorix.net current configuration breaks -ck kernel
+#                          starting in >= 3.10, check from time to time if it can be reused
 
 #for now use config mirrored from http://repo-ck.com/
 _waitfor wget "http://javier.io/mirror/${kernel}/config.${arqt}"
@@ -343,32 +334,156 @@ _cmd     cp -- "config.${arqt}" .config
 ##http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=663474
 if [ X"${arqt}" = X"i386" ]; then
     sed -i "/CONFIG_LGUEST_GUEST/d" .config
-    sed -i "/CONFIG_LGUEST/d" .config
+    sed -i "/CONFIG_LGUEST/d"       .config
 elif [ X"${arqt}" = X"amd64" ]; then
     if [ ! -d ./arch/amd64  ]; then
-        cd arch
-        ln -s x86 amd64
-        cd -
+        cd arch >/dev/null 2>&1
+        ln -s x86 amd64 >/dev/null 2>&1
+        cd - >/dev/null 2>&1
     fi
 fi
 
-##thanks to StefanescuCristian: https://github.com/chilicuil/learn/commit/c2d4455
 _printfs "making sure BFS and BFQ are enabled in config ..."
-sed -i "/CONFIG_SCHED_CFS=y/d"                                              .config
-sed -i "s/# CONFIG_SCHED_BFS is not set/CONFIG_SCHED_BFS=y/g"               .config
-sed -i "s/# CONFIG_IOSCHED_BFQ is not set/CONFIG_IOSCHED_BFQ=y/g"           .config
-sed -i "s/CONFIG_DEFAULT_CFQ=y/# CONFIG_DEFAULT_CFQ is not set/g"           .config
-sed -i "s/CONFIG_DEFAULT_DEADLINE=y/# CONFIG_DEFAULT_DEADLINE is not set/g" .config
-sed -i "s/CONFIG_DEFAULT_NOOP=y/# CONFIG_DEFAULT_NOOP is not set/g"         .config
-sed -i "s/CONFIG_DEFAULT_IOSCHED="cfq"/CONFIG_DEFAULT_IOSCHED="bfq"/g"      .config
-sed -i "s/CONFIG_DEFAULT_IOSCHED="deadline"/CONFIG_DEFAULT_IOSCHED="bfq"/g" .config
-sed -i "s/CONFIG_DEFAULT_IOSCHED="noop"/CONFIG_DEFAULT_IOSCHED="bfq"/g"     .config
-sed -i "s/# CONFIG_DEFAULT_BFQ is not set/CONFIG_DEFAULT_BFQ=y/g"           .config
+sed -i "/CONFIG_SCHED_CFS=y/d"                                                 .config
+sed -i -e "s/# CONFIG_SCHED_BFS is not set/CONFIG_SCHED_BFS=y/g"               \
+    -i -e "s/# CONFIG_IOSCHED_BFQ is not set/CONFIG_IOSCHED_BFQ=y/g"           \
+    -i -e "s/CONFIG_DEFAULT_CFQ=y/# CONFIG_DEFAULT_CFQ is not set/g"           \
+    -i -e "s/CONFIG_DEFAULT_DEADLINE=y/# CONFIG_DEFAULT_DEADLINE is not set/g" \
+    -i -e "s/CONFIG_DEFAULT_NOOP=y/# CONFIG_DEFAULT_NOOP is not set/g"         \
+    -i -e "s/CONFIG_DEFAULT_IOSCHED="cfq"/CONFIG_DEFAULT_IOSCHED="bfq"/g"      \
+    -i -e "s/CONFIG_DEFAULT_IOSCHED="deadline"/CONFIG_DEFAULT_IOSCHED="bfq"/g" \
+    -i -e "s/CONFIG_DEFAULT_IOSCHED="noop"/CONFIG_DEFAULT_IOSCHED="bfq"/g"     \
+    -i -e "s/# CONFIG_DEFAULT_BFQ is not set/CONFIG_DEFAULT_BFQ=y/g"           .config
 
-_printfs "making sure CONFIG_HZ is set to 1000, better performance + fixes in resume|suspending issues ..."
+_printfs "making sure CONFIG_HZ is set to 1000, better performance + fixes in resume|suspending issues"
 sed -i -e 's/^CONFIG_HZ_300=y/# CONFIG_HZ_300 is not set/'   \
     -i -e 's/^# CONFIG_HZ_1000 is not set/CONFIG_HZ_1000=y/' \
     -i -e 's/^CONFIG_HZ=300/CONFIG_HZ=1000/' .config
+
+#Avoid stackprotector http://www.spinics.net/lists/linux-kbuild/msg08964.html
+#not available in ubuntu precise gcc (4.6.3)
+_printfs "making sure CONFIG_CC_STACKPROTECTOR_STRONG is disabled, allow compilation in old gcc versions ..."
+sed -i -e 's/^CONFIG_CC_STACKPROTECTOR_STRONG=y/# CONFIG_CC_STACKPROTECTOR_STRONG is not set/'   \
+    -i -e 's/^# CONFIG_CC_STACKPROTECTOR_NONE is not set/CONFIG_CC_STACKPROTECTOR_NONE=y/' .config
+
+##############
+#extra patches
+##############
+
+#a lot of shit made it to 3.14.x =/
+_printfs "setting back FSID to 1, http://www.spinics.net/lists/kernel/msg1716924.html"
+sed -i 's/static int unnamed_dev_start = 0/static int unnamed_dev_start = 1/' ./fs/super.c
+
+_printfs "disable usb autosuspend for intel btusb, http://www.spinics.net/lists/kernel/msg1716461.html"
+sed -i "/usb_enable_autosuspend(data->udev);/d" ./drivers/bluetooth/btusb.c
+
+_printfs "fix Xorg crash for i810 chipset, http://lkml.kernel.org/g/533D01BD.1010200@googlemail.com"
+cat    > ../kernfs-fix-removed-error-check.patch  << EOF
+diff --git a/fs/kernfs/file.c b/fs/kernfs/file.c
+index 8034706..e01ea4a 100644
+--- a/fs/kernfs/file.c
++++ b/fs/kernfs/file.c
+@@ -484,6 +484,8 @@ static int kernfs_fop_mmap(struct file *file, struct vm_area_struct *vma)
+ 
+ 	ops = kernfs_ops(of->kn);
+ 	rc = ops->mmap(of, vma);
++	if (rc)
++		goto out_put;
+ 
+ 	/*
+ 	 * PowerPC's pci_mmap of legacy_mem uses shmem_zero_setup()
+EOF
+_cmd     "patch -p1 < ../kernfs-fix-removed-error-check.patch"
+
+
+_printfs "fix saa7134 video, https://bugzilla.kernel.org/show_bug.cgi?id=73361"
+cat    > ../fix-saa7134.patch  << EOF
+--- a/drivers/media/pci/saa7134/saa7134-video.c	
++++ a/drivers/media/pci/saa7134/saa7134-video.c	
+@@ -1243,6 +1243,7 @@ static int video_release(struct file *file)
+ 		videobuf_streamoff(&dev->cap);
+ 		res_free(dev, fh, RESOURCE_VIDEO);
+ 		videobuf_mmap_free(&dev->cap);
++		INIT_LIST_HEAD(&dev->cap.stream);
+ 	}
+ 	if (dev->cap.read_buf) {
+ 		buffer_release(&dev->cap, dev->cap.read_buf);
+@@ -1254,6 +1255,7 @@ static int video_release(struct file *file)
+ 		videobuf_stop(&dev->vbi);
+ 		res_free(dev, fh, RESOURCE_VBI);
+ 		videobuf_mmap_free(&dev->vbi);
++		INIT_LIST_HEAD(&dev->vbi.stream);
+ 	}
+ 
+ 	/* ts-capture will not work in planar mode, so turn it off Hac: 04.05*/
+@@ -1987,17 +1989,12 @@ int saa7134_streamoff(struct file *file, void *priv,
+ 					enum v4l2_buf_type type)
+ {
+ 	struct saa7134_dev *dev = video_drvdata(file);
+-	int err;
+ 	int res = saa7134_resource(file);
+ 
+ 	if (res != RESOURCE_EMPRESS)
+ 		pm_qos_remove_request(&dev->qos_request);
+ 
+-	err = videobuf_streamoff(saa7134_queue(file));
+-	if (err < 0)
+-		return err;
+-	res_free(dev, priv, res);
+-	return 0;
++	return videobuf_streamoff(saa7134_queue(file));
+ }
+ EXPORT_SYMBOL_GPL(saa7134_streamoff);
+
+EOF
+_cmd     "patch -p1 < ../fix-saa7134.patch"
+
+_printfs "Back port and refine validation of the XSDT root table, https://bugzilla.kernel.org/show_bug.cgi?id=73911"
+cat    > ../fix-xsdt-validation.patch << EOF
+@@ -, +, @@
+ acpi_tb_parse_root_table().
+  Commit: 671cc68dc61f029d44b43a681356078e02d8dab8
+  Subject: ACPICA: Back port and refine validation of the XSDT root table.
+---
+ drivers/acpi/acpica/tbutils.c |    6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+--- a/drivers/acpi/acpica/tbutils.c	
++++ a/drivers/acpi/acpica/tbutils.c	
+@@ -461,6 +461,7 @@ acpi_status __init acpi_tb_parse_root_table(acpi_physical_address rsdp_address)
+ 	u32 table_count;
+ 	struct acpi_table_header *table;
+ 	acpi_physical_address address;
++	acpi_physical_address rsdt_address;
+ 	u32 length;
+ 	u8 *table_entry;
+ 	acpi_status status;
+@@ -488,11 +489,13 @@ acpi_status __init acpi_tb_parse_root_table(acpi_physical_address rsdp_address)
+ 		 * as per the ACPI specification.
+ 		 */
+ 		address = (acpi_physical_address) rsdp->xsdt_physical_address;
++		rsdt_address = (acpi_physical_address) rsdp->rsdt_physical_address;
+ 		table_entry_size = ACPI_XSDT_ENTRY_SIZE;
+ 	} else {
+ 		/* Root table is an RSDT (32-bit physical addresses) */
+ 
+ 		address = (acpi_physical_address) rsdp->rsdt_physical_address;
++		rsdt_address = address;
+ 		table_entry_size = ACPI_RSDT_ENTRY_SIZE;
+ 	}
+ 
+@@ -515,8 +518,7 @@ acpi_status __init acpi_tb_parse_root_table(acpi_physical_address rsdp_address)
+ 
+ 			/* Fall back to the RSDT */
+ 
+-			address =
+-			    (acpi_physical_address) rsdp->rsdt_physical_address;
++			address = rsdt_address;
+ 			table_entry_size = ACPI_RSDT_ENTRY_SIZE;
+ 		}
+ 	}
+
+EOF
+_cmd     "patch -p1 < ../fix-xsdt-validation.patch"
 
 _printfl "Compiling kernel"
 _printfs "running make-kpkg ..."
@@ -377,6 +492,6 @@ printf "\\n" | _cmd fakeroot make-kpkg --initrd kernel_image kernel_headers modu
 
 _printfl "DONE"
 _printfs "copying debs files ..."
-_cmd cp -- ../linux-*.deb "${curr_path}"
+_cmd     cp -- ../linux-*.deb "${curr_path}"
 _printfs "you may want to install the generated packages and reboot your system, run: $ sudo dpkg -i linux-*.deb"
 _printfs "have fun ^_^!"
