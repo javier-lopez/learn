@@ -13,6 +13,7 @@ _usage()
     printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [-n NUMBER] [DIR]" >&2
     printf "%s\\n" "  -h   usage (this text)" >&2
     printf "%s\\n" "  -n   number of copies to save" >&2
+    printf "%s\\n" "  -s   continue with the backup even when firefox isn't running" >&2
     printf "\\n"
     printf "%s\\n" "  dir  directory to save backups (~/.mozilla-backups by default)" >&2
     exit 1
@@ -55,6 +56,7 @@ fi
 for arg; do #parse options
     case "${arg}" in
         -h) _usage ;;
+        -s) static="true" ;;
         -n) if [ "${#}" -gt "1" ]; then
                 blimit="$(printf "%s " "${@}" | awk '{print $2}')"
                 shift 2
@@ -67,6 +69,12 @@ for arg; do #parse options
         -*) printf "%s\\n" "Unrecognized option: ${arg}" >&2; _usage ;;
     esac
 done
+
+if [ -z "${static}" ]; then
+    if ! pgrep firefox >/dev/null 2>&1; then
+        return 1
+    fi
+fi
 
 [ -z "${1}" ] && dir="${HOME}"/.mozilla-backups || dir="${1}"
 [ -z "${blimit}" ] && blimit="5"
