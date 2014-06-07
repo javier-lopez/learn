@@ -96,7 +96,7 @@ _gen_rotate_opts()
 _gen_offauto_opts()
 {
     [ -z "${1}" ] && return 1
-    #never turn off laptop screens
+    #never turn off laptop screen
     [ X"${1}" = X"LVDS1" ] && return
 
     _gen_offauto_opts_var_copy="${offauto}"
@@ -159,7 +159,7 @@ _gen_position_opts()
     while [ "${_gen_position_opts_var_copy}" ]; do
         _gen_rotate_opts_var_option="${_gen_position_opts_var_copy%%,*}"
 
-        _gen_position_opts_var_string="${_gen_position_opts_var_string}""${1}"."${_gen_rotate_opts_var_option}"."$(printf "%s" "${activeoutputs}" | cut -d, -f1)",
+        _gen_position_opts_var_string="${_gen_position_opts_var_string}""${1}"."${_gen_rotate_opts_var_option}"."${activeoutputs%%,*}",
 
         if [ X"${_gen_rotate_opts_var_option}" = X"${_gen_position_opts_var_copy}" ]; then
             _gen_position_opts_var_copy=""
@@ -186,10 +186,12 @@ _gen_mix_opts()
     while [ "${_gen_mix_opts_var_resolutions}" ]; do
         _gen_mix_opts_var_resolution="${_gen_mix_opts_var_resolutions%%,*}"
 
+        #comment to only provide all options to the hightest resolution
+        _gen_mix_opts_var_positions="${position}"
         while [ "${_gen_mix_opts_var_positions}" ]; do
             _gen_mix_opts_var_position="${_gen_mix_opts_var_positions%%,*}"
 
-            _gen_position_opts_var_string="${_gen_position_opts_var_string}""${1}".mode."${_gen_mix_opts_var_resolution}"."${_gen_mix_opts_var_position}"."$(printf "%s" "${activeoutputs}" | cut -d, -f1)",
+            _gen_position_opts_var_string="${_gen_position_opts_var_string}""${1}".mode."${_gen_mix_opts_var_resolution}"."${_gen_mix_opts_var_position}"."${activeoutputs%%,*}",
 
             if [ X"${_gen_mix_opts_var_position}" = X"${_gen_mix_opts_var_positions}" ]; then
                 _gen_mix_opts_var_positions=""
@@ -228,15 +230,16 @@ activeoutputs_len="$(_arraylen "${activeoutputs}")"
 
 [ -z "${outputs}" ] && _die "unable to detect screen interfaces, press <ENTER> to exit"
 
-#get supported modes of each output and save it to mode_$output
+#create mode for each output
 outputs_copy="${outputs}"
 while [ "${outputs_copy}" ]; do
     outputs_option="${outputs_copy%%,*}"
 
     mode_tmp="$(printf "%s" "${xrandr_output}"                                         \
        | awk '/'"${outputs_option}"'/ {flag=1;next} /^[A-Za-z]/{flag=0} flag {print $1}' \
-       | sed -e 's:$:,:g' | tr -d '\n')"
-    eval mode_$outputs_option=\$mode_tmp
+       | sort -nr | sed -e 's:$:,:g' | tr -d '\n')"
+       #| sed -e 's:$:,:g' | tr -d '\n')"
+    eval mode_"${outputs_option}"=\$mode_tmp
     mode_tmp=""
 
     if [ X"${outputs_option}" = X"${outputs_copy}" ]; then
@@ -248,17 +251,17 @@ done
 
 OLDIFS="${IFS}"
 IFS=,
-for output in $outputs; do
+for output in ${outputs}; do
     #mix resolution and position entries
-    options="${options}$(_gen_mix_opts "$(printf "%s" "${output}" | cut -d, -f1)")"
+    options="${options}$(_gen_mix_opts "${output%%,*}")"
     #rotate entries
-    options="${options}$(_gen_rotate_opts "$(printf "%s" "${output}" | cut -d, -f1)")"
+    options="${options}$(_gen_rotate_opts "${output%%,*}")"
     #resolution entries
-    options="${options}$(_gen_resolution_opts "$(printf "%s" "${output}" | cut -d, -f1)")"
+    options="${options}$(_gen_resolution_opts "${output%%,*}")"
     #position entries
-    options="${options}$(_gen_position_opts "$(printf "%s" "${output}" | cut -d, -f1)")"
+    options="${options}$(_gen_position_opts "${output%%,*}")"
     #off-auto entries
-    options="${options}$(_gen_offauto_opts "$(printf "%s" "${output}" | cut -d, -f1)")"
+    options="${options}$(_gen_offauto_opts "${output%%,*}")"
 done
 IFS="${OLDIFS}"
 
