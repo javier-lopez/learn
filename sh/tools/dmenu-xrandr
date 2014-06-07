@@ -3,7 +3,7 @@
 #usage: dmenu-xrandr is best suited to be launched from a shortcut
 
 #example: dmenu-xrandr
-#appears a gui menu appears asking for which settings to change
+#a gui menu appears asking for which resolution to apply
 
 #requires a dmenu version with xft:
 #https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
