@@ -7,24 +7,23 @@
 #commmand2
 #...
 
-CACHE="${HOME}/.dmenu_cache"
-IFS=:
+cachedir=${XDG_CACHE_HOME:-"$HOME/.cache"}
 
-uptodate()
-{
-    [ -f "${CACHE}" ] &&
-        for dir in ${PATH}; do
-            [ -n "$(find "${CACHE}" -newer "${dir}")" ] || return 1
-        done
-}
-
-if ! uptodate ; then
-    for dir in ${PATH}; do
-        cd "${dir}" &&
-            for file in *; do
-                [ -e "${file}" ] && printf "%s\\n" "${file}"
-            done
-        done | sort | uniq > "${CACHE}".${$} && mv "${CACHE}".${$} "${CACHE}"
+if ! command -v "dmenu" >/dev/null; then
+    printf "%s\\n" "stest was not found"
+    exit 1
 fi
 
-cat "${CACHE}"
+if [ -d "$cachedir" ]; then
+	cache=$cachedir/dmenu_cache
+else
+	cache=$HOME/.dmenu_cache # if no xdg dir, fall back to dotfile in ~
+fi
+
+IFS=:
+
+if stest -dqr -n "$cache" $PATH; then
+    stest -flx $PATH | sort -u > "$cache".$$ && mv "$cache".$$ "$cache"
+fi
+
+cat "${cache}"

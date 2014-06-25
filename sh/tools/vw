@@ -80,10 +80,10 @@ _vw()
     exec ${viewer} -f ${_vw_var_arr}
 }
 
-if [ ! -t 0 ]; then
-    #there is input comming from pipe or file, add to the end of $@
-    set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
-fi
+#if [ ! -t 0 ]; then
+    ##there is input comming from pipe or file, add to the end of $@
+    #set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
+#fi
 
 if [ -f "$(command -v sxiv)" ]; then
     viewer=sxiv
