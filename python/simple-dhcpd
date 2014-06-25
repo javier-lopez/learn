@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-#https://github.com/chilicuil/learn/blob/master/python/simple.dhcpd
-#based on psychomario work
 
 #dhcpd.py pure python dhcp server pxe capable
 #psychomario - https://github.com/psychomario

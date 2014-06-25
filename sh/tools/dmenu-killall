@@ -1,6 +1,6 @@
 #!/bin/sh
 #description: dmenu for killall
-#usage: dmenu-killall is best suited to belaunched from a shortcut
+#usage: dmenu-killall is best suited to be launched from a shortcut
 
 #example: dmenu-killall
 #a gui menu appears asking for which app to kill
