@@ -1,5 +1,5 @@
 #!/bin/sh
-#description: fixes common problems in my system
+#description: fix common problems in my system
 #usage: fix module
 
 #example: fix webcam
@@ -22,29 +22,28 @@ _usage()
 
 _exec()
 {
-    status="${?}"
-    if [ X"${status}" != X"0" ]; then
-        exit "${status}"
+    _exec_var_status="${?}"
+    if [ X"${_exec_var_status}" != X"0" ]; then
+        exit "${_exec_var_status}"
     fi
     printf "%s " "$ ${@}"
     printf "%s\\n"
     ${@}
 }
 
-_apache ()
+_apache()
 {
     _exec sudo mv /etc/init.d/apache2.1 /etc/init.d/apache2
     _exec sudo /etc/init.d/apache2 start
 }
 
-_ipw2200 ()
+_ipw2200()
 {
     _exec sudo rmmod ipw2200
     _exec sudo modprobe ipw2200
 }
 
-_wl ()
-{
+_wl(){
     _exec sudo rmmod wl
     _exec sudo service wicd stop
     _exec sleep 3s

@@ -16,8 +16,7 @@ fi
 [ "${#}" -eq "0" ] && { printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') file ..." >&2; exit 1; }
 
 for file; do
-    [ ! -r "${file}" ] && { printf "%s\\n" \
-        "$(expr "${0}" : '.*/\([^/]*\)'): '${file}' does not exist or is not readable" >&2; exit 1; }
+    [ ! -r "${file}" ] && { printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): '${file}' does not exist or is not readable" >&2; exit 1; }
 done
 
 str="$(tar cf - "${@}" | gzip | openssl enc -base64)"

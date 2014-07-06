@@ -7,11 +7,10 @@
 #cronjob (every 3 min)
 #*/3 * * * * /path/to/this/script
 
+PATH=/bin:/usr/bin:/sbin:/usr/sbin
 #if ! pgrep upowerd >/dev/null; then
     #exit 1
 #fi
-
-PATH=/bin:/usr/bin:/usr/local/bin:/sbin:/usr/local/sbin/:/usr/local/bin:/usr/sbin
 
 _basename()
 {
@@ -31,16 +30,9 @@ _basename()
     printf "%s\\n" "${_basename_var_name}"
 }
 
-exec 9>/tmp/"$(_basename ${0})".lock
-if ! flock -n 9 ; then
-    printf "%s\\n" "$(_basename ${0}): another instance is running";
-    exit 1
-fi
-
 _notify()
 {
     [ -z "${1}" ] && return 1
-    [ -z "${2}" ] && return 1
     if [ X"${TERM}" = X"linux" ] || [ -z "${TERM}" ]; then
         kill -9 $(pgrep notify-osd) >/dev/null 2>&1
         if ! DISPLAY=:0 notify-send -t 1000 "${1}"  "${2}"; then
@@ -53,34 +45,55 @@ _notify()
             fi
         fi
     else
-        printf "%s: %s\\n" "${1}" "${2}"
+        if [ -z "${2}" ]; then
+            printf "%s\\n" "${1}"
+        else
+            printf "%s: %s\\n" "${1}" "${2}"
+        fi
     fi
 }
 
-if [ ! -f "$(command -v notify-send)" ] || [ ! -f "$(command -v hibernate)" ] || [ ! -f "$(command -v acpi)" ]; then
-    _notify  "[+] You need install acpi, notify-send and hibernate" "$ sudo apt-get install acpi libnotify-bin hibernate"
+_get_minos_config()
+{
+    [ -z "${1}" ] && return 1
+    [ -z "${_get_minos_config_var_home}" ] && _get_minos_config_var_home=$(awk '!/^#|^$/' "${HOME}"/.minos/config 2>&1)
+    [ -z "${_get_minos_config_var_etc}" ]  && _get_minos_config_var_etc=$(awk '!/^#|^$/'  /etc/minos/config 2>&1)
+
+    _get_minos_config_var_option="$(printf "%s" "${_get_minos_config_var_home}"|awk -v pattern="^${1}=" -F"=" '$0 ~ pattern {print $2; exit}' 2>&1)"
+    [ -z "${_get_minos_config_var_option}" ] && _get_minos_config_var_option="$(printf "%s" "${_get_minos_config_var_etc}"|awk -v pattern="^${1}=" -F"=" '$0 ~ pattern {print $2; exit}' 2>&1)"
+    [ -z "${_get_minos_config_var_option}" ] && printf "%s" "" || { eval _get_minos_config_var_option="${_get_minos_config_var_option}"; printf "%s" "${_get_minos_config_var_option}"; }
+}
+
+exec 9>/tmp/"$(_basename ${0})".lock
+if ! flock -n 9 ; then
+    _notify "$(_basename ${0}): another instance is running";
+    exit 1
+fi
+
+if [ ! -f "$(command -v notify-send)" ] || [ ! -f "$(command -v pm-hibernate)" ] || [ ! -f "$(command -v acpi)" ]; then
+    _notify  "[-] Error" "you need install acpi, notify-send and pm-utils to run this program"
     exit 1
 fi
 
 #=====VARS=====
-# Current battery status (Charging/Discharging/AC/Unknown)
-STAT="$(acpi -b | awk '{sub(",", ""); print $3}')"
-# Battery percentage
-BATT="$(acpi -b |awk '{if ($0 ~ "%,") sub("%,", ""); else sub("%", ""); print $4}')"
-# Actions
-ACTION="$(command -v hibernate)"
-WATCH_BATTERY_CURRENT="$(cat /tmp/"$(_basename ${0})" 2>/dev/null)"
+#current battery status (Charging/Discharging/AC/Unknown)
+stat="$(acpi -b | awk '{sub(",", ""); print $3}')"
+#battery percentage
+batt="$(acpi -b |awk '{if ($0 ~ "%,") sub("%,", ""); else sub("%", ""); print $4}')"
+watch_battery_current="$(cat /tmp/"$(_basename ${0})" 2>/dev/null)"
+action="$(_get_minos_config hibernate_bin)"
+[ -z "${action}" ] && action="$(command -v pm-hibernate)"
 
 # If Discharging...
-if [ X"${STAT}" = X"Discharging" ]; then
+if [ X"${stat}" = X"Discharging" ]; then
     # Battery under 5% -> force to hibernate
-    if [ "${BATT}" -lt "5" ]; then
-        WATCH_BATTERY_CURRENT="5"
+    if [ "${batt}" -lt "5" ]; then
+        watch_battery_current="5"
         _notify "[-] Critical" "battery under 5%, the system will hibernate in 30 seconds, unless you plugin the computer"
         i=0 ; while [ "${i}" -lt "30" ]; do
             sleep 1
-            STAT="$(acpi -b | awk '{sub(",", ""); print $3}')"
-            if [ X"${STAT}" != X"Discharging" ]; then
+            stat="$(acpi -b | awk '{sub(",", ""); print $3}')"
+            if [ X"${stat}" != X"Discharging" ]; then
                 _notify  "[+] Charging" "charging now..."
                 break
             fi
@@ -88,28 +101,28 @@ if [ X"${STAT}" = X"Discharging" ]; then
         done
 
         #check a last time if nobody has pluged in the machine, if not hibernate it
-        STAT="$(acpi -b | awk '{sub(",", ""); print $3}')"
+        stat="$(acpi -b | awk '{sub(",", ""); print $3}')"
 
-        if [ X"${STAT}" = X"Discharging" ]; then
-            if [ -e "$(command -v mpc)" ]; then
+        if [ X"${stat}" = X"Discharging" ]; then
+            if [ -x "$(command -v mpc)" ]; then
                 mpc stop
             fi
-            sudo ${ACTION}
+            sudo ${action}
         fi
 
     # Battery under 7% -> print an alert msg and don't repeat it again
-    elif [ "${BATT}" -lt "7" ] && [ "${BATT}" -gt "4" ] && [ "${WATCH_BATTERY_CURRENT}" != "7" ]; then
-        WATCH_BATTERY_CURRENT="7"
+    elif [ "${batt}" -lt "7" ] && [ "${batt}" -gt "4" ] && [ "${watch_battery_current}" != "7" ]; then
+        watch_battery_current="7"
         _notify  "[-] Warning" "battery under 7%"
     # Battery under 10% -> print an alert msg and don't repeat it again
-    elif [ "${BATT}" -lt "10" ] && [ "${BATT}" -gt "6" ] && [ "$WATCH_BATTERY_CURRENT" != "10" ]; then
-        WATCH_BATTERY_CURRENT="10"
+    elif [ "${batt}" -lt "10" ] && [ "${batt}" -gt "6" ] && [ "$watch_battery_current" != "10" ]; then
+        watch_battery_current="10"
         _notify  "[-] Warning" "battery under 10%"
     # Battery under 15% -> print an alert msg and don't repeat it again
-    elif [ "${BATT}" -lt "15" ] && [ "${BATT}" -gt "9" ] && [ "${WATCH_BATTERY_CURRENT}" != "15" ]; then
-        WATCH_BATTERY_CURRENT="15"
+    elif [ "${batt}" -lt "15" ] && [ "${batt}" -gt "9" ] && [ "${watch_battery_current}" != "15" ]; then
+        watch_battery_current="15"
         _notify  "[-] Warning" "battery under 15%"
     fi
 fi
 
-printf "%s\\n" "${WATCH_BATTERY_CURRENT}" > /tmp/"$(_basename ${0})"
+printf "%s\\n" "${watch_battery_current}" > /tmp/"$(_basename ${0})"

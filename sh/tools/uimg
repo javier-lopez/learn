@@ -46,4 +46,9 @@ fi
 
 [ "${#}" -eq "0" ] && _usage
 
+if ! command -v "curl" >/dev/null 2>&1; then
+    printf "%s\\n" "you need to install 'curl' to run this program" >&2
+    exit 1
+fi
+
 _uimg "${@}"

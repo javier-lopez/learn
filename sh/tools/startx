@@ -4,7 +4,7 @@
 
 #http://bbs.archlinux.org/viewtopic.php?pid=484915
 
-_isnum()
+_num()
 {   #look for a number, returns 0 on success, 1 otherwise
     [ -z "${1}" ] && return 1
     printf "%s\\n" "${@}" | grep -v "[^0-9]" >/dev/null
@@ -17,7 +17,7 @@ fi
 
 [ "${#}" -eq "0" ] && a="24" || a="${1}"
 
-if ! _isnum "${a}" ; then
+if ! _num "${a}" ; then
     printf "%s\\n" "Invalid number '${a}'" >&2
     exit 1
 fi

@@ -1,14 +1,13 @@
 #!/bin/sh
 #description: display selected images in $viewer
 #             browse all other images in the directory as well
-#usage: vw file
+#usage: vw image
 
 #https://wiki.archlinux.org/index.php/Feh#File_Browser_Image_Launcher
 
 _notify()
 {
     [ -z "${1}" ] && return 1
-    [ -z "${2}" ] && return 1
     if [ X"${TERM}" = X"linux" ] || [ -z "${TERM}" ]; then
         kill -9 $(pgrep notify-osd) >/dev/null 2>&1
         if ! DISPLAY=:0 notify-send -t 1000 "${1}"  "${2}"; then
@@ -21,7 +20,11 @@ _notify()
             fi
         fi
     else
-        printf "%s: %s\\n" "${1}" "${2}"
+        if [ -z "${2}" ]; then
+            printf "%s\\n" "${1}"
+        else
+            printf "%s: %s\\n" "${1}" "${2}"
+        fi
     fi
 }
 
@@ -80,7 +83,7 @@ _vw()
     exec ${viewer} -f ${_vw_var_arr}
 }
 
-#if [ ! -t 0 ]; then
+#if [ ! -t 0 ]; then #it doesn't work when launched from pcmanfm
     ##there is input comming from pipe or file, add to the end of $@
     #set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
 #fi
@@ -90,7 +93,7 @@ if [ -f "$(command -v sxiv)" ]; then
 elif [ -f "$(command -v feh)" ]; then
     viewer=feh
 else
-    _notify "[-] No viewer available" "install either sxiv or feh to run this program"
+    _notify "[-] Error" "you need to install either sxiv or feh to run this program"
     exit 1
 fi
 

@@ -156,8 +156,7 @@ _printtime()
     else
         _printtime_var_sec="${_printtime_var_num}"
     fi
-    printf "%s\\n" \
-    ""${_printtime_var_day}"d "${_printtime_var_hour}"h "${_printtime_var_min}"m "${_printtime_var_sec}"s"
+    printf "%s\\n" "${_printtime_var_day}d ${_printtime_var_hour}h ${_printtime_var_min}m ${_printtime_var_sec}s"
 }
 
 _hasdotfiles()
@@ -169,8 +168,7 @@ _hasdotfiles()
 
 _internetavailable()
 {   #check for internet connection, returns 0 on success, 1 otherwise
-    wget --tries=3 --timeout=5 \
-        http://www.google.com -O /tmp/index.google > /dev/null 2>&1
+    wget --tries=3 --timeout=5 http://www.google.com -O /tmp/index.google > /dev/null 2>&1
 
     if [ -s /tmp/index.google ]; then
         rm -rf /tmp/index.google
@@ -305,16 +303,15 @@ for var; do #parse options
 done
 
 if ! command -v "rsync" >/dev/null; then
-    printf "%s\\n" "You need to install rsync: $ sudo apt-get install rsync" >&2; exit 1
+    printf "%s\\n" "you need to install 'rsync' to run this program" >&2; exit 1
 elif ! command -v "ssh" >/dev/null; then
-    printf "%s\\n" "You need to install ssh: $ sudo apt-get install openssh-client" >&2; exit 1
+    printf "%s\\n" "you need to install 'ssh' to run this program" >&2; exit 1
 elif ! command -v "wget" >/dev/null; then
-    printf "%s\\n" "You need to install wget: $ sudo apt-get install wget" >&2; exit 1
+    printf "%s\\n" "you need to install 'wget' to run this program" >&2; exit 1
 fi
 
 [ -z "${logfile}" ]     && logfile="/tmp/$(_basename "${0}").log"
 [ -z "${remote_user}" ] && remote_user="${USER}"
-#TODO 28-04-2014 18:25 >> add description
 
 if [ -z "${ommit}" ]; then
     if ! _internetavailable; then

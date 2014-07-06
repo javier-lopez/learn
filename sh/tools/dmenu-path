@@ -9,21 +9,21 @@
 
 cachedir=${XDG_CACHE_HOME:-"$HOME/.cache"}
 
-if ! command -v "dmenu" >/dev/null; then
-    printf "%s\\n" "stest was not found"
+if ! command -v "stest" >/dev/null; then
+    printf "%s\\n" "you need to install 'stest' to run this program" >&2
     exit 1
 fi
 
-if [ -d "$cachedir" ]; then
-	cache=$cachedir/dmenu_cache
+if [ -d "${cachedir}" ]; then
+	cache="${cachedir}/dmenu_cache"
 else
-	cache=$HOME/.dmenu_cache # if no xdg dir, fall back to dotfile in ~
+	cache="${HOME}/.dmenu_cache" # if no xdg dir, fall back to dotfile in ~
 fi
 
 IFS=:
 
-if stest -dqr -n "$cache" $PATH; then
-    stest -flx $PATH | sort -u > "$cache".$$ && mv "$cache".$$ "$cache"
+if stest -dqr -n "${cache}" ${PATH}; then
+    stest -flx ${PATH} | sort -u > "${cache}.${$}" && mv "${cache}.${$}" "${cache}"
 fi
 
 cat "${cache}"

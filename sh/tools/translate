@@ -23,20 +23,16 @@ _translate()
 {
     [ -z "${1}" ] && return 1
     #update 14-12-2012 05:06: thanks to johnraff #http://crunchbang.org/forums/viewtopic.php?id=17034
-    phrase="${*}"
-    page="$(curl -s -i --user-agent "" -d "sl=${sl}" -d "tl=${tl}" -d "client=t"  \
-                 -d "ie=UTF-8" -d "oe=UTF-8" --data-urlencode "text=${phrase}" http://translate.google.com/translate_a/t)"
-            #"text=${phrase}" http://translate.google.com)"
-    #printf "%s\\n" "${page}"
-    #encoding="$(printf "%s\\n" "${page}" | \
-        #awk '/Content-Type: .* charset=/ {sub(/^.*charset=["'\'']?/,""); sub(/[ "'\''].*$/,""); print}')"
-    #result="$(printf "%s\\n" "${page}" | iconv -f "${encoding}" | awk 'BEGIN {RS="</div>"};/<span[^>]* id=["'\'']?result_box["'\'']?/' | html2text -utf8)"
-    result="$(printf "%s\\n" "${page}" | tail -1 | cut -d\" -f2)"
+    _translate_var_phrase="${*}"
+    _translate_var_page="$(curl -s -i --user-agent "" -d "sl=${sl}" -d "tl=${tl}"      \
+                           -d "client=t"  -d "ie=UTF-8" -d "oe=UTF-8" --data-urlencode \
+                           "text=${_translate_var_phrase}" http://translate.google.com/translate_a/t)"
+    _translate_var_result="$(printf "%s\\n" "${_translate_var_page}" | tail -1 | cut -d\" -f2)"
 
     if command -v "xclip" >/dev/null 2>&1; then
-        printf "%s" "${result}" | xclip -selection clipboard; xclip -o -selection clipboard; printf "\\n"
+        printf "%s" "${_translate_var_result}" | xclip -selection clipboard; xclip -o -selection clipboard; printf "\\n"
     else
-        printf "%s\\n" "${result}"
+        printf "%s\\n" "${_translate_var_result}"
     fi
 }
 
@@ -51,7 +47,7 @@ case "${1}" in
     -*) sl="$(printf "%s" "${1}" | cut -d'-' -f2)"
         tl="$(printf "%s" "${1}" | cut -d'-' -f3)"
         if [ -z "${sl}" ] && [ -z "${tl}" ]; then
-            #maybe return an error message is better
+            #maybe returning an error message is better
             sl="auto"; tl="en";
         elif [ -n "${sl}" ] && [ -z "${tl}" ]; then
             tl="en";
@@ -59,5 +55,10 @@ case "${1}" in
         shift ;;
     *)  sl="auto"; tl="en"; ;;
 esac
+
+if ! command -v "curl" >/dev/null 2>&1; then
+    printf "%s\\n" "you need to install 'curl' to run this program" >&2
+    exit 1
+fi
 
 _translate "${@}"

@@ -2,7 +2,7 @@
 #description: cli utility for elastix
 #usage: elastix-cli [OPTION] TYPE ARGS..
 
-set -e                          #exit as soon as any command fail
+set -e #exit as soon as any command fail
 
 default_ssh_passwd="c2VjcmV0Cg=="
 default_mysql_passwd="c2VjcmV0Cg=="
@@ -122,7 +122,7 @@ _isip4valid()
 
 _isdomainvalid()
 {   #return 0 if parameter is a valid domain address, non-zero otherwise
-    printf "%s\\n" "${@}" | grep -P '(?=^.{5,254}$)(^(?:(?!\d+\.)[a-zA-Z0-9_\-]{1,63}\.?)+(?:[a-zA-Z]{2,})$)' >/dev/null
+    printf "%s" "${@}" | grep -P '(?=^.{5,254}$)(^(?:(?!\d+\.)[a-zA-Z0-9_\-]{1,63}\.?)+(?:[a-zA-Z]{2,})$)' >/dev/null
 }
 
 _elastixfileformatisvalid()
@@ -443,7 +443,7 @@ fi
 if ! command -v "sshpass" >/dev/null 2>&1; then
     #it may be slow but it doesn't requires anything on the server side besides plain password protected ssh access
     #addional remote control mediums are welcome
-    _die "sshpass not found!, $ sudo apt-get install sshpass"
+    _die "you need to install 'sshpass' to run this program"
 fi
 
 for var; do #parse options

@@ -53,6 +53,11 @@ while getopts ":c:h" option; do
     esac
 done
 
+if ! command -v "curl" >/dev/null 2>&1; then
+    printf "%s\\n" "you need to install 'curl' to run this program" >&2
+    exit 1
+fi
+
 if [ -z "${CFLAG}" ]; then
     curl -s "http://www.commandlinefu.com/commands/matching/${PATTERN}/$(printf "%s" "${PATTERN}" | base64)/plaintext/sort-by-votes" |\
     grep --invert-match "commandlinefu.com by David Winterbottom"

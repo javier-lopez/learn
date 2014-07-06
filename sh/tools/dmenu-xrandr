@@ -5,49 +5,15 @@
 #example: dmenu-xrandr
 #a gui menu appears asking for which resolution to apply
 
-#requires a dmenu version with xft:
-#https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
+#requires a dmenu version with xft: https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
 
 DMENU='dmenu -p > -i -fn Bahamas-10 -nb #000000 -nf #FFFFFF -sb #000000 -sf #999999'
 
 _die()
 {
-    printf "%b%b\\n" "${1}" ", press <Enter> to exit" | ${DMENU}
+    [ -z "${1}" ] && _die_msg="dmenu" || _die_msg="${1}"
+    printf "%b%b\\n" "${_die_msg}" ", press <Enter> to exit" | ${DMENU}
     exit 1
-}
-
-_reload_barstatus()
-{
-    [ -z "${1}" ] && return 1
-    if ! command -v "conky" >/dev/null 2>&1; then
-        return 0
-    fi
-    if ! command -v "dzen2" >/dev/null 2>&1; then
-        return 0
-    fi
-
-    case "${1}" in
-        *same*) return 0; ;;
-        *) kill "$(pgrep "conky")" >/dev/null 2>&1
-           kill "$(pgrep "dzen")" >/dev/null 2>&1
-           case "${1}" in
-               *off*)       _x="350"; _y="749";  ;;
-               *1920x1080*) _x="700"; _y="1062"; ;;
-               *1600x1200*) _x="400"; _y="1000"; ;;
-               *1366x768*)  _x="350"; _y="749"; ;;
-           esac
-
-           conky | dzen2 -x "${_x}" -y "${_y}" -fn 'Inconsolata:size=9' -ta r -fg "#999999" -bg "#000000" & 2> /dev/null ;;
-    esac
-}
-
-_reload_wallpaper()
-{
-    if command -v "feh" >/dev/null 2>&1; then
-        if [ -f "${HOME}"/.data/images/wallpapers/sun.jpg ]; then
-            feh --bg-scale "${HOME}"/.data/images/wallpapers/sun.jpg
-        fi
-    fi
 }
 
 _arraylen()
@@ -70,6 +36,23 @@ _arraylen()
     printf "%s" "${_arraylen_var_counter}"
 }
 
+_str2lower()
+{
+    [ -z "${1}" ] && return 1
+    printf "%s\\n" "${@}" | tr 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 'abcdefghijklmnopqrstuvwxyz'
+}
+
+_get_minos_config()
+{
+    [ -z "${1}" ] && return 1
+    [ -z "${_get_minos_config_var_home}" ] && _get_minos_config_var_home=$(awk '!/^#|^$/' "${HOME}"/.minos/config 2>&1)
+    [ -z "${_get_minos_config_var_etc}" ]  && _get_minos_config_var_etc=$(awk '!/^#|^$/'  /etc/minos/config 2>&1)
+
+    _get_minos_config_var_option="$(printf "%s" "${_get_minos_config_var_home}"|awk -v pattern="^${1}=" -F"=" '$0 ~ pattern {print $2; exit}' 2>&1)"
+    [ -z "${_get_minos_config_var_option}" ] && _get_minos_config_var_option="$(printf "%s" "${_get_minos_config_var_etc}"|awk -v pattern="^${1}=" -F"=" '$0 ~ pattern {print $2; exit}' 2>&1)"
+    [ -z "${_get_minos_config_var_option}" ] && printf "%s" "" || { eval _get_minos_config_var_option="${_get_minos_config_var_option}"; printf "%s" "${_get_minos_config_var_option}"; }
+}
+
 _gen_rotate_opts()
 {
     [ -z "${1}" ] && return 1
@@ -79,8 +62,8 @@ _gen_rotate_opts()
     while [ "${_gen_rotate_opts_var_copy}" ]; do
         _gen_rotate_opts_var_option="${_gen_rotate_opts_var_copy%%,*}"
 
-        case "${activeoutputs}" in
-            *"${1}"*) _gen_rotate_opts_var_string="${_gen_rotate_opts_var_string}""${1}".rotate."${_gen_rotate_opts_var_option}", ;;
+        case "${active_outputs}" in
+            *"${1}"*) _gen_rotate_opts_var_string="${_gen_rotate_opts_var_string}${1}.rotate.${_gen_rotate_opts_var_option}", ;;
         esac
 
         if [ X"${_gen_rotate_opts_var_option}" = X"${_gen_rotate_opts_var_copy}" ]; then
@@ -101,15 +84,15 @@ _gen_offauto_opts()
 
     _gen_offauto_opts_var_copy="${offauto}"
     _gen_offauto_opts_var_string=""
-    if [ X"${activeoutputs_len}" = X"1" ]; then
-        _gen_offauto_opts_var_copy="$(printf "%s" "${_gen_offauto_opts_var_copy}" | cut -d, -f2-)"
-    fi
+    #if [ X"${active_outputs_len}" = X"1" ]; then
+        #_gen_offauto_opts_var_copy="$(printf "%s" "${_gen_offauto_opts_var_copy}" | cut -d, -f2-)"
+    #fi
 
     while [ "${_gen_offauto_opts_var_copy}" ]; do
-        _gen_rotate_opts_var_option="${_gen_offauto_opts_var_copy%%,*}"
+        _gen_offauto_opts_var_option="${_gen_offauto_opts_var_copy%%,*}"
+        _gen_offauto_opts_var_string="${_gen_offauto_opts_var_string}${1}.${_gen_offauto_opts_var_option}",
 
-        _gen_offauto_opts_var_string="${_gen_offauto_opts_var_string}""${1}"."${_gen_rotate_opts_var_option}",
-        if [ X"${_gen_rotate_opts_var_option}" = X"${_gen_offauto_opts_var_copy}" ]; then
+        if [ X"${_gen_offauto_opts_var_option}" = X"${_gen_offauto_opts_var_copy}" ]; then
             _gen_offauto_opts_var_copy=""
         else
             _gen_offauto_opts_var_copy="${_gen_offauto_opts_var_copy#*,}"
@@ -127,15 +110,10 @@ _gen_resolution_opts()
     _gen_resolution_opts_var_string=""
 
     while [ "${_gen_resolution_opts_var_copy}" ]; do
-        _gen_rotate_opts_var_option="${_gen_resolution_opts_var_copy%%,*}"
+        _gen_resolution_opts_var_option="${_gen_resolution_opts_var_copy%%,*}"
+        _gen_resolution_opts_var_string="${_gen_resolution_opts_var_string}${1}.mode.${_gen_resolution_opts_var_option}",
 
-        _gen_resolution_opts_var_string="${_gen_resolution_opts_var_string}""${1}".mode."${_gen_rotate_opts_var_option}",
-        #case $activeoutputs in
-            #*$1*)
-            #_gen_resolution_opts_var_string="$_gen_resolution_opts_var_string""$1".mode."$_gen_rotate_opts_var_option", ;;
-        #esac
-
-        if [ X"${_gen_rotate_opts_var_option}" = X"${_gen_resolution_opts_var_copy}" ]; then
+        if [ X"${_gen_resolution_opts_var_option}" = X"${_gen_resolution_opts_var_copy}" ]; then
             _gen_resolution_opts_var_copy=""
         else
             _gen_resolution_opts_var_copy="${_gen_resolution_opts_var_copy#*,}"
@@ -148,8 +126,8 @@ _gen_resolution_opts()
 _gen_position_opts()
 {
     [ -z "${1}" ] && return 1
-    [ "${outputs_len}" -lt "2" ] && return 1
-    case "${activeoutputs}" in
+    [ "${connected_outputs_len}" -lt "2" ] && return 1
+    case "${active_outputs}" in
         *"${1}"*) return 1 ;;
     esac
 
@@ -159,7 +137,7 @@ _gen_position_opts()
     while [ "${_gen_position_opts_var_copy}" ]; do
         _gen_rotate_opts_var_option="${_gen_position_opts_var_copy%%,*}"
 
-        _gen_position_opts_var_string="${_gen_position_opts_var_string}""${1}"."${_gen_rotate_opts_var_option}"."${activeoutputs%%,*}",
+        _gen_position_opts_var_string="${_gen_position_opts_var_string}${1}.${_gen_rotate_opts_var_option}.${active_outputs%%,*}",
 
         if [ X"${_gen_rotate_opts_var_option}" = X"${_gen_position_opts_var_copy}" ]; then
             _gen_position_opts_var_copy=""
@@ -174,8 +152,8 @@ _gen_position_opts()
 _gen_mix_opts()
 {
     [ -z "${1}" ] && return 1
-    [ "${outputs_len}" -lt "2" ] && return 1
-    case "${activeoutputs}" in
+    [ "${connected_outputs_len}" -lt "2" ] && return 1
+    case "${active_outputs}" in
         *"${1}"*) return 1 ;;
     esac
 
@@ -186,12 +164,11 @@ _gen_mix_opts()
     while [ "${_gen_mix_opts_var_resolutions}" ]; do
         _gen_mix_opts_var_resolution="${_gen_mix_opts_var_resolutions%%,*}"
 
-        #comment to only provide all options to the hightest resolution
+        #comment to only provide all options to the highest resolution
         _gen_mix_opts_var_positions="${position}"
         while [ "${_gen_mix_opts_var_positions}" ]; do
             _gen_mix_opts_var_position="${_gen_mix_opts_var_positions%%,*}"
-
-            _gen_position_opts_var_string="${_gen_position_opts_var_string}""${1}".mode."${_gen_mix_opts_var_resolution}"."${_gen_mix_opts_var_position}"."${activeoutputs%%,*}",
+            _gen_position_opts_var_string="${_gen_position_opts_var_string}${1}.mode.${_gen_mix_opts_var_resolution}.${_gen_mix_opts_var_position}.${active_outputs%%,*}",
 
             if [ X"${_gen_mix_opts_var_position}" = X"${_gen_mix_opts_var_positions}" ]; then
                 _gen_mix_opts_var_positions=""
@@ -210,35 +187,68 @@ _gen_mix_opts()
     printf "%s" "${_gen_position_opts_var_string}"
 }
 
-if ! command -v "dmenu" >/dev/null 2>&1; then
-    printf "%s\\n" "dmenu was not found" >&2
-    exit 1
-fi
+_reload_wallpaper()
+{
+    if command -v "feh" >/dev/null 2>&1; then
+        if [ -f "$(_get_minos_config general_wallpaper)" ]; then
+            feh --bg-scale "$(_get_minos_config general_wallpaper)"
+        fi
+    fi
+}
 
-if ! command -v "xrandr" >/dev/null 2>&1; then
-    _die "xrandr was not found, press <ENTER> to exit"
+_reload_barstatus()
+{
+    [ -z "${1}" ] && return 1
+    if ! command -v "conky" >/dev/null 2>&1; then
+        return 0
+    fi
+    if ! command -v "dzen2" >/dev/null 2>&1; then
+        return 0
+    fi
+    _reload_barstatus_var_dzen="$(_get_minos_config dzen_bar)"
+    _reload_barstatus_var_dzen="$(_str2lower "${_reload_barstatus_var_dzen}")"
+    [ X"${_reload_barstatus_var_dzen}" = X"n" ] && return 0
+
+    case "${1}" in
+        *same*) return 0; ;;
+        *) kill "$(pgrep "conky")" >/dev/null 2>&1
+           kill "$(pgrep "dzen")" >/dev/null 2>&1
+           case "${1}" in   #TODO 27-06-2014 11:42 >> fix this
+               *off*)       _reload_barstatus_var_x="350"; _reload_barstatus_var_y="749";  ;;
+               *1920x1080*) _reload_barstatus_var_x="700"; _reload_barstatus_var_y="1062"; ;;
+               *1600x1200*) _reload_barstatus_var_x="400"; _reload_barstatus_var_y="1000"; ;;
+               *1366x768*)  _reload_barstatus_var_x="350"; _reload_barstatus_var_y="749";  ;;
+           esac
+
+           conky | dzen2 -x "${_reload_barstatus_var_x}" -y "${_reload_barstatus_var_y}" -fn 'Inconsolata:size=9' -ta r -fg "#999999" -bg "#000000" & 2> /dev/null ;;
+    esac
+}
+
+if ! command -v "dmenu" >/dev/null 2>&1; then
+    printf "%s\\n" "you need to install 'dmenu' to run this program" >&2
+    exit 1
+elif ! command -v "xrandr" >/dev/null 2>&1; then
+    _die "you need to install 'xrandr' to run this program"
 fi
 
 xrandr_output="$(xrandr)"
-outputs="$(printf "%s" "${xrandr_output}" | awk '/ connected/ {print $1}' | sed -e 's:$:,:g' | tr -d '\n')"
-activeoutputs="$(printf "%s" "${xrandr_output}" | awk '/ connected [^(]/ {print $1}' | sed -e 's:$:,:g' | tr -d '\n')"
+all_outputs="$(printf "%s" "${xrandr_output}" | awk '/^V|^L|^H|^D/ {print $1}' | sed -e 's:$:,:g' | tr -d '\n')"
+connected_outputs="$(printf "%s" "${xrandr_output}" | awk '/ connected/ {print $1}' | sed -e 's:$:,:g' | tr -d '\n')"
+active_outputs="$(printf "%s" "${xrandr_output}" | awk '/ connected [^(]/ {print $1}' | sed -e 's:$:,:g' | tr -d '\n')"
 rotate="normal,inverted,left,right"
 offauto="off,auto"
 position="above,below,same-as,left-of,right-of"
-outputs_len="$(_arraylen "${outputs}")"
-activeoutputs_len="$(_arraylen "${activeoutputs}")"
+connected_outputs_len="$(_arraylen "${connected_outputs}")"
+active_outputs_len="$(_arraylen "${active_outputs}")"
 
-[ -z "${outputs}" ] && _die "unable to detect screen interfaces, press <ENTER> to exit"
+[ -z "${connected_outputs}" ] && _die "unable to detect screen interfaces"
 
 #create mode for each output
-outputs_copy="${outputs}"
+outputs_copy="${connected_outputs}"
 while [ "${outputs_copy}" ]; do
     outputs_option="${outputs_copy%%,*}"
-
-    mode_tmp="$(printf "%s" "${xrandr_output}"                                         \
-       | awk '/'"${outputs_option}"'/ {flag=1;next} /^[A-Za-z]/{flag=0} flag {print $1}' \
-       | sort -nr | sed -e 's:$:,:g' | tr -d '\n')"
-       #| sed -e 's:$:,:g' | tr -d '\n')"
+    mode_tmp="$(printf "%s" "${xrandr_output}" | awk '/'"${outputs_option}"'/ {flag=1;next} /^[A-Za-z]/{flag=0} flag {print $1}' | \
+                sort -nr | sed -e 's:$:,:g' | tr -d '\n')"
     eval mode_"${outputs_option}"=\$mode_tmp
     mode_tmp=""
 
@@ -251,7 +261,7 @@ done
 
 OLDIFS="${IFS}"
 IFS=,
-for output in ${outputs}; do
+for output in ${connected_outputs}; do
     #mix resolution and position entries
     options="${options}$(_gen_mix_opts "${output%%,*}")"
     #rotate entries
@@ -261,8 +271,18 @@ for output in ${outputs}; do
     #position entries
     options="${options}$(_gen_position_opts "${output%%,*}")"
     #off-auto entries
+    [ X"${active_outputs_len}" = X"1" ] && continue
     options="${options}$(_gen_offauto_opts "${output%%,*}")"
 done
+
+#show off entries for every detected device when there is no cable attached
+#useful when you forgot to run dmenu-xrandr to disconnect gracesfully
+#the monitor and wanna get back your environment
+if [ X"${active_outputs_len}" = X"1" ]; then
+    for output in ${all_outputs}; do
+        options="${options}$(_gen_offauto_opts "${output%%,*}")"
+    done
+fi
 IFS="${OLDIFS}"
 
 options="$(printf "%s" "${options}"   | sed 's:,:\n:g')"

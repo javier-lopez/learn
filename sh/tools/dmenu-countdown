@@ -149,7 +149,7 @@ _basename()
     printf "%s\\n" "${_basename_var_name}"
 }
 
-_isnum()
+_num()
 {   #look for a number, returns 0 on success, 1 otherwise
     [ -z "${1}" ] && return 1
     printf "%s\\n" "${@}" | grep -v "[^0-9]" >/dev/null 2>&1
@@ -164,7 +164,6 @@ _invalidformat()
 _notify()
 {
     [ -z "${1}" ] && return 1
-    [ -z "${2}" ] && return 1
     if [ X"${TERM}" = X"linux" ] || [ -z "${TERM}" ]; then
         kill -9 $(pgrep notify-osd) >/dev/null 2>&1
         if ! DISPLAY=:0 notify-send -t 1000 "${1}"  "${2}"; then
@@ -177,7 +176,11 @@ _notify()
             fi
         fi
     else
-        printf "%s: %s\\n" "${1}" "${2}"
+        if [ -z "${2}" ]; then
+            printf "%s\\n" "${1}"
+        else
+            printf "%s: %s\\n" "${1}" "${2}"
+        fi
     fi
 }
 
@@ -212,7 +215,7 @@ _printtime()
 }
 
 if ! command -v "dmenu" >/dev/null 2>&1; then
-    printf "%s\\n" "dmenu was not found" >&2
+    printf "%s\\n" "you need to install 'dmenu' to run this program" >&2
     exit 1
 fi
 
@@ -247,11 +250,11 @@ h="$(printf "%s" "${time}" | cut -d: -f1)"
 m="$(printf "%s" "${time}" | cut -d: -f2)"
 s="$(printf "%s" "${time}" | cut -d: -f3)"
 
-if ! _isnum "${h}" || ! _isnum "${m}" ; then
+if ! _num "${h}" || ! _num "${m}" ; then
     _invalidformat
 else
     if [ -n "${s}" ]; then
-        if ! _isnum "${s}"; then
+        if ! _num "${s}"; then
             _invalidformat
         fi
     fi

@@ -1,14 +1,64 @@
 #!/bin/sh
-#description: control several music apps, currently mpd && mplayerd
-#usage: music-control [pause|next|previous]
+#description: control music apps, currently mpd && mplayerd
+#usage: music-control [play|pause|toggle|next|previous]
 
 #example: music-control next
-#no-output
+#play next song in queue
 
 _usage()
 {
-    printf "%s\\n" "usage: $(expr "${0}" : '.*/\([^/]*\)') pause|next|previous" >&2
+    printf "%s\\n" "usage: $(expr "${0}" : '.*/\([^/]*\)') play|pause|toggle|next|previous" >&2
     exit 1
+}
+
+_die()
+{
+    [ -z "${1}" ] && return 1
+    printf "%b\\n" "$(expr "${0}" : '.*/\([^/]*\)'): ${*}" >&2
+    exit 1
+}
+
+_mplayer()
+{
+    [ -z "${1}" ] && return 1
+    [ ! -p /tmp/mplayer.fifo ] && return 1
+    case "${1}" in
+        play|pause|toggle) printf "%s\\n" "pause"      > /tmp/mplayer.fifo ;;
+        next)              printf "%s\\n" "pt_step 1"  > /tmp/mplayer.fifo ;;
+        previous)          printf "%s\\n" "pt_step -1" > /tmp/mplayer.fifo ;;
+    esac
+}
+
+_mpd()
+{
+    [ -z "${1}" ] && return 1
+    case "${1}" in
+        play)     mpc play >/dev/null ;;
+        pause)    [ "$(mpc status | grep playing)" ] && mpc pause 1>/dev/null ;;
+        toggle)   [ "$(mpc status | grep playing)" ] && mpc pause 1>/dev/null || mpc play 1>/dev/null ;;
+        next)     mpc next > /dev/null ;;
+        previous) mpc prev > /dev/null ;;
+    esac
+}
+
+_music_control()
+{
+    [ -z "${1}" ] && return 1
+    case "${1}" in
+        pl*) _music_control_var_param="play" ;;
+        pa*) _music_control_var_param="pause" ;;
+        t*)  _music_control_var_param="toggle" ;;
+        n*)  _music_control_var_param="next" ;;
+        pr*) _music_control_var_param="previous" ;;
+    esac
+    if [ -n "$(pgrep mplayer)" ] && [ -n "$(pgrep mpd)" ]; then
+        _mpd pause
+    fi
+    if [ -n "$(pgrep mplayer)" ]; then
+        _mplayer "${_music_control_var_param}"
+    elif [ -n "$(pgrep mpd)" ]; then
+        _mpd "${_music_control_var_param}"
+    fi
 }
 
 if [ ! -t 0 ]; then
@@ -16,55 +66,11 @@ if [ ! -t 0 ]; then
     set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
 fi
 
-if [ "${#}" -eq "0" ] || [ "${#}" -gt "1" ]; then
-    _usage
-fi
+[ X"${#}" != X"1" ] && _usage
 
 case "${1}" in
-    pause|next|previous) ;;
+    pl*|pa*|pr*|n*|t*) ;;
     *) _usage ;;
 esac
 
-players="$(command ps axo command= | sed \
-    -e "s/ .*//; s:.*/::; s/:$//;"       \
-    -e "s/^[[(-]//; s/[])]$//"           \
-    -e "s/^<defunct>$//" | grep "mplayer\|mpd")"
-
-for player in ${players}; do
-    case "${player}" in
-        mplayer) mplayer_flag="1";;
-        mpd)     mpd_flag="1";;
-    esac
-done
-
-if [ -n "${mplayer_flag}" ] && [ -n "${mpd_flag}" ]; then
-    if command -v "mpc" >/dev/null 2>&1; then
-        if [ "$(mpc status | grep playing)" ]; then
-            mpc pause 1>/dev/null
-        fi
-    fi
-fi
-
-if [ -n "${mplayer_flag}" ]; then
-    if [ -p /tmp/mplayer.fifo ]; then
-        case "${1}" in
-            pause)    printf "%s\\n" "pause"      > /tmp/mplayer.fifo ;;
-            next)     printf "%s\\n" "pt_step 1"  > /tmp/mplayer.fifo ;;
-            previous) printf "%s\\n" "pt_step -1" > /tmp/mplayer.fifo ;;
-        esac
-    fi
-elif [ -n "${mpd_flag}" ]; then
-    if command -v "mpc" > /dev/null 2>&1; then
-        case "${1}" in
-            pause)
-                if [ "$(mpc status | grep playing)" ]; then
-                    mpc pause 1>/dev/null
-                else
-                    mpc play 1>/dev/null
-                fi
-                ;;
-            next)     mpc next ;;
-            previous) mpc prev ;;
-        esac
-    fi
-fi
+_music_control "${1}"

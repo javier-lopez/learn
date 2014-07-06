@@ -2,6 +2,8 @@
 #movietime - disables power savings to watch movies.
 #usage: movietime
 
+resumetime="1440" #re-enable resume after a full day
+
 _die()
 {
     [ -z "${1}" ] && return 1
@@ -12,7 +14,6 @@ _die()
 _notify()
 {
     [ -z "${1}" ] && return 1
-    [ -z "${2}" ] && return 1
     if [ X"${TERM}" = X"linux" ] || [ -z "${TERM}" ]; then
         kill -9 $(pgrep notify-osd) >/dev/null 2>&1
         if ! DISPLAY=:0 notify-send -t 1000 "${1}"  "${2}"; then
@@ -25,29 +26,43 @@ _notify()
             fi
         fi
     else
-        printf "%s: %s\\n" "${1}" "${2}"
+        if [ -z "${2}" ]; then
+            printf "%s\\n" "${1}"
+        else
+            printf "%s: %s\\n" "${1}" "${2}"
+        fi
     fi
+}
+
+_get_minos_config()
+{
+    [ -z "${1}" ] && return 1
+    [ -z "${_get_minos_config_var_home}" ] && _get_minos_config_var_home=$(awk '!/^#|^$/' "${HOME}"/.minos/config 2>&1)
+    [ -z "${_get_minos_config_var_etc}" ]  && _get_minos_config_var_etc=$(awk '!/^#|^$/'  /etc/minos/config 2>&1)
+
+    _get_minos_config_var_option="$(printf "%s" "${_get_minos_config_var_home}"|awk -v pattern="^${1}=" -F"=" '$0 ~ pattern {print $2; exit}' 2>&1)"
+    [ -z "${_get_minos_config_var_option}" ] && _get_minos_config_var_option="$(printf "%s" "${_get_minos_config_var_etc}"|awk -v pattern="^${1}=" -F"=" '$0 ~ pattern {print $2; exit}' 2>&1)"
+    [ -z "${_get_minos_config_var_option}" ] && printf "%s" "" || { eval _get_minos_config_var_option="${_get_minos_config_var_option}"; printf "%s" "${_get_minos_config_var_option}"; }
 }
 
 _usage()
 {
-    # Help message.
     printf "\\n" >&2
-    printf "%s\\n" "   ${prog} disables screen blanking and screensaver to allow viewing a video.  Running the program again will enable them.  If the 'resumetime' variable is set after that time ${prog} will resume normal powersaving values." | fmt -c -w 76 >&2
+    printf "%s\\n" "   ${prog} disables screen blanking and screensaver to allow viewing a video. Running the program again will enable them." | fmt -c -w 76 >&2
     printf "\\n" >&2
 
-    # Display current values of power management and movietime.
+    #display current values of power management and movietime.
     suspinhtest="$(pgrep -f "${suspinhscript}")"
     suspinhval="$([ -n "${suspinhtest}" ] && printf "%s\\n" "Disabled" || printf "%s\\n" "Desktop settings")"
 
-    # DPMS disabled information
-    printf "%s\\n" "   ${txtbld}Current settings ${txtrst}(in minutes, 0 = disabled):" >&2
+    #DPMS disabled information
+    printf "%s\\n" "   ${txtbld}current settings ${txtrst}(in minutes, 0 = disabled):" >&2
     if [ X"${dispdpms}" = X"Disabled" ]; then
         printf "%s\\n" "   DPMS:         ${dispdpms}" >&2
         printf "%s\\n" "   Suspend:      ${suspinhval}" >&2
     fi
 
-    # DPMS enabled information
+    #DPMS enabled information
     if [ X"${dispdpms}" = X"Enabled" ]; then
         printf "%s\\n" "   DPMS:         ${dispdpms}" >&2
         printf "%s\\n" "   DPMS times:   Blank: ${dispblank}; Standby: ${dispstand}; Suspend: ${dispsusp}; Offtime: ${dispoff}" >&2
@@ -60,32 +75,8 @@ _usage()
     exit 0
 }
 
-_ismonitorattached()
-{
-    xrandr | grep "^VGA" | grep " connected" >/dev/null && return 0
-    xrandr | grep "^HDMI" | grep " connected" >/dev/null && return 0
-    return 1
-}
-
-_arch()
-{   #check for system arch, returns [64|32]
-    if [ -z "${MACHTYPE}" ]; then
-        _arch_var_arch="$(uname -m)"
-    else
-        _arch_var_arch="$(printf "%s" "${MACHTYPE}" | cut -d- -f1)"
-    fi
-
-    case "${_arch_var_arch}" in
-        x86_64) _arch_var_arch="64" ;;
-        i686)   _arch_var_arch="32" ;;
-        *)      return 1 ;;
-    esac
-
-    printf "%s" "${_arch_var_arch}"
-}
-
-# Suspend inhibit script (must be run as separate process)
-_suspinhibit()
+#suspend inhibit script (must be run as a separate process)
+_suspend_script()
 {
     printf "%s\\n" '#!/bin/sh
     for time in $(seq 1 '${resumetime}'); do
@@ -97,95 +88,66 @@ _suspinhibit()
 }
 
 if ! command -v "xdotool" >/dev/null 2>&1; then
-    _notify "[-] You need to install xdotool" "$ sudo apt-get install xdotool"
+    _notify "[-] Error" "you need to install 'xdotool' to run this program"
     exit 1
 fi
 
-if [ ! -t 0 ]; then
-    #there is input comming from pipe or file, add to the end of $@
-    set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
-fi
-
-resumetime="0"
-
-[ X"${resumetime}" = X"0" ] && resumetime="1440" # Re-enable resume after a full day
-
-# Check that values for 'resumetime' are numbers
-case "${resumetime}" in
-    ''|*[!0-9]*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): ${resumetime} is not a number" >&2;exit 1;;
-esac
-
-# Name of suspend script
-tmploc="${HOME}"
-suspinhscript="${tmploc}"/."movietime-suspend-inhibit"
-
-# Program name from it's filename.
+suspinhscript="${HOME}/.movietime-suspend-inhibit"
 prog="$(expr "${0}" : '.*/\([^/]*\)')"
 
-# Text color variables
-txtbld="$(tput bold)"             # Bold
-bldred="${txtbld}$(tput setaf 1)" # red
-txtrst="$(tput sgr0)"             # Reset
+txtbld="$(tput bold)"             #bold
+bldred="${txtbld}$(tput setaf 1)" #red
+txtrst="$(tput sgr0)"             #reset
 warn="${bldred}*${txtrst}"
 
 if [ -z "$(pgrep "X")" ]; then
-    _notify "[-] The Xorg server is not running." ""
+    _notify "[-] Error" "Xorg server is not running"
     exit 1
 fi
 
 if [ X"$(whoami)" = X"root" ]; then
-    _notify "[-] You're root, must be a regular user" ""
+    _notify "[-] Error" "you are root, must be a regular user"
     exit 1
 fi
 
-# Current DPMS times (in minutes)
-dispdpms="$(xset -q  | awk '/DPMS is/ { printf $3 }')" # Enab. or Disb.
+#current DPMS times (in minutes)
+dispdpms="$(xset -q  | awk '/DPMS is/ { printf $3 }')" #enab. or disb.
 dispstand="$(xset -q | awk '/^  Standby: / { printf $2/60 }')"
 dispsusp="$(xset -q  | awk '/^  Standby: / { printf $4/60 }')"
 dispoff="$(xset -q   | awk '/^  Standby: / { printf $6/60 }')"
 dispblank="$(xset -q | awk '/^  timeout: / { printf $2/60 }')"
 
-# Resume time in hours
+#resume time in hours
 resumetimehr="$(printf "%s\\n" "scale=1;${resumetime}/60" | bc)"
 
-# Display help
-case "${1}" in
-    -h|--help|h|help)         _usage;;
-    [a-g,i-z,A-G,I-Z,0-9,-]*) _usage;;
-esac
+[ -z "${1}" ] || _usage
 
-# Toggle powersaving
+#toggle powersaving
 if [ X"${dispdpms}" = X"Enabled" ] && [ -z "${suspinhtest}" ]; then
-    # Disable blanking, screen power saving
+    #disable blanking, screen power saving
     xset s off; xset -dpms
-    # Create script in tmp
-    _suspinhibit > "${suspinhscript}"
-    # Make script executable
+    #create script
+    _suspend_script > "${suspinhscript}"
+    #make script executable
     chmod +x "${suspinhscript}"
-    # Run script
+    #run inhibit script
     "${suspinhscript}" > /dev/null 2>&1 &
-
-    if _ismonitorattached; then
-        if [ -f /usr/local/bin/lights/"$(_arch)"/lights ]; then
-            #TODO 13-02-2014 01:30 >> only when connected
-            /usr/local/bin/lights/"$(_arch)"/lights > /dev/null 2>&1 &
-        else
-            printf "%s\\n" "To enjoy fully the movietime experience install: /usr/local/bin/lights/${_arch}/lights"
-            printf "%s\\n" "  https://github.com/chilicuil/learn/tree/master/java"
-        fi
-    fi
-
+    #run user defined script
+    custom_script="$(_get_minos_config movietime_custom_script)"
+    [ -z "${custom_script}" ] && custom_script="${HOME}/.movietime"
+    [ -x "${custom_script}" ] && _output="$("${custom_script}" start 2>&1 >/dev/null)"
     _notify "[+] ${prog}" "started"
 else
-    # Enable blanking, screen power saving
+    #enable blanking, screen power saving
     xset s on; xset +dpms
-    # Kill script
+    #kill inhibit script
     if [ -z "${suspinhtest}" ]; then
-        kill -9 "$(pgrep -f "movietime-susp")" > /dev/null 2>&1
-        if pgrep -f "lights.jar" >/dev/null 2>&1; then
-            kill -9 "$(pgrep -f "lights.jar")" > /dev/null 2>&1
-        fi
+        kill -9 $(pgrep -f "movietime-susp") > /dev/null 2>&1
         rm -rf "${suspinhscript}"
-        _notify "[+] ${prog}" "stopped"
     fi
+    #kill user defined script
+    custom_script="$(_get_minos_config movietime_custom_script)"
+    [ -z "${custom_script}" ] && custom_script="${HOME}/.movietime"
+    [ -x "${custom_script}" ] && _output="$("${custom_script}" stop 2>&1 >/dev/null)"
+    _notify "[+] ${prog}" "stopped"
 fi

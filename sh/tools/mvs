@@ -1,15 +1,12 @@
 #!/bin/sh
-# virn, Copyright (C) 2007-2010 by Jonas Kramer. All rights reserved.
+# Copyright (C) 2007-2010 by Jonas Kramer. All rights reserved.
 # Published under the terms of the GNU General Public License (GPL).
 
 # Rename lots of files using your favorite text editor.
-# https://github.com/jkramer/virn
+# Original: https://github.com/jkramer/virn
 
-# This is a more portable BASH remake of my old script "vimove" which depended
-# on ZSH.
-
-# $ virn *
-# $ virn a*
+# $ mvs *
+# $ mvs a*
 
 _die()
 {
@@ -23,17 +20,14 @@ if [ ! -t 0 ]; then
     set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
 fi
 
-# Verify that there's an $EDITOR defined.
 [ -z "${EDITOR}" ] && _die "${EDITOR} not defined."
-
-# Exit before doing anything if there are no arguments anyway.
 [ "${#}" -eq "0" ] && exit
 
 # Create targets file.
-TARGETS="/tmp/virn-${$}"
+TARGETS="/tmp/mvs-${$}"
 for FILE in "${@}"; do printf "%s\\n" "${FILE}" >> ${TARGETS}; done
 
-# Start the $EDITOR so we can edit our file names.
+# Start $EDITOR
 if ${EDITOR} ${TARGETS}; then
         [ ! -t 0 ] && reset
         COUNT="$(wc -l "${TARGETS}" | grep -o -E '^[0-9]+')"

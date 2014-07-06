@@ -3,15 +3,31 @@
 #usage: shift-keyboard-layout
 # change keyboard layout to the next configured one
 
-layouts="latam,us,ru" #modify this string to reflect keyboard layouts you want
-                      #it rotates, #see /usr/share/X11/xkb/rules/base.lst
+default_layouts="latam,us,ru" #see /usr/share/X11/xkb/rules/base.lst
+
+_str2lower()
+{
+    [ -z "${1}" ] && return 1
+    printf "%s\\n" "${@}" | tr 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 'abcdefghijklmnopqrstuvwxyz'
+}
+
+_get_minos_config()
+{
+    [ -z "${1}" ] && return 1
+    [ -z "${_get_minos_config_var_home}" ] && _get_minos_config_var_home=$(awk '!/^#|^$/' "${HOME}"/.minos/config 2>&1)
+    [ -z "${_get_minos_config_var_etc}" ]  && _get_minos_config_var_etc=$(awk '!/^#|^$/'  /etc/minos/config 2>&1)
+
+    _get_minos_config_var_option="$(printf "%s" "${_get_minos_config_var_home}"|awk -v pattern="^${1}=" -F"=" '$0 ~ pattern {print $2; exit}' 2>&1)"
+    [ -z "${_get_minos_config_var_option}" ] && _get_minos_config_var_option="$(printf "%s" "${_get_minos_config_var_etc}"|awk -v pattern="^${1}=" -F"=" '$0 ~ pattern {print $2; exit}' 2>&1)"
+    [ -z "${_get_minos_config_var_option}" ] && printf "%s" "" || { eval _get_minos_config_var_option="${_get_minos_config_var_option}"; printf "%s" "${_get_minos_config_var_option}"; }
+}
 
 _notify()
 {
     [ -z "${1}" ] && return 1
     if [ X"${TERM}" = X"linux" ] || [ -z "${TERM}" ]; then
         kill -9 $(pgrep notify-osd) >/dev/null 2>&1
-        if ! DISPLAY=:0 notify-send -t 100 "${1}"  "${2}"; then
+        if ! DISPLAY=:0 notify-send -t 1000 "${1}"  "${2}"; then
             if command -v "gxmessage" 2>/dev/null; then
                 font="Monaco 9"
                 gxmessage "${font:+-fn "$font"}" "${1} ${2}" "ok"
@@ -21,19 +37,41 @@ _notify()
             fi
         fi
     else
-        if [ -n "${2}" ]; then
-            printf "%s: %s\\n" "${1}" "${2}"
+        if [ -z "${2}" ]; then
+            printf "%s\\n" "${1}" "${2}"
         else
-            printf "%s\\n" "${1}"
+            printf "%s: %s\\n" "${1}" "${2}"
         fi
     fi
 }
 
+_return_valid_layouts()
+{
+    [ -z "${1}" ] && { printf "%s" "${default_layouts}"; return; } || _return_valid_layouts_var_arg="${1}"
+    _return_valid_layouts_var_reference=$(awk '/! layout/,/! variant/ {if ($0 !~ "^$" && $1 !~ "!") print $1}' /usr/share/X11/xkb/rules/base.lst 2>&1)
+    _return_valid_layouts_var_arg="$(_str2lower "${_return_valid_layouts_var_arg}")"
+    _return_valid_layouts_var_arg="$(printf "%s" "${_return_valid_layouts_var_arg}" | sed 's: :,:g')"
+    _return_valid_layouts_var_cp="${_return_valid_layouts_var_arg}"
+
+    while [ "${_return_valid_layouts_var_arg}" ]; do
+        _return_valid_layouts_var_option="${_return_valid_layouts_var_arg%%,*}"
+        if [ -z "$(printf "%s" "${_return_valid_layouts_var_reference}" | grep "${_return_valid_layouts_var_option}")" ]; then
+             printf "%s" "${default_layouts}"; return;
+        fi
+        [ X"${_return_valid_layouts_var_arg}" = X"${_return_valid_layouts_var_option}" ] \
+            && _return_valid_layouts_var_arg="" \
+            || _return_valid_layouts_var_arg="${_return_valid_layouts_var_arg#*,}"
+    done
+     printf "%s" "${_return_valid_layouts_var_cp}"; return;
+}
+
 if ! command -v "setxkbmap" >/dev/null; then
-    _notify "[-] setxkbmap was not found!" "$ sudo apt-get install x11-xkb-utils"
+    _notify "[-] Error" "you need to install setxkbmap to run this program"
 fi
 
 current_layout="$(setxkbmap -query | awk '/layout/ {print $2}')"
+layouts="$(_get_minos_config keyboard_layouts)"
+[ -z "${layouts}" ] && layouts="${default_layouts}" || layouts="$(_return_valid_layouts "${layouts}")"
 d_layouts="${layouts}"
 c_layouts="${layouts}"
 c="0";d="0"
@@ -56,8 +94,7 @@ done
 e="$((${c} + 1))"
 [ "${d}" -eq "${c}" ] && e="1" #return to first element if we're in the last one
 
-c="0"
-while [ "${layouts}" ]; do #set next keyboard layout
+c="0"; while [ "${layouts}" ]; do #set next keyboard layout
     option="${layouts%%,*}"
     c="$((${c} + 1))"
     if [ "${c}" -eq "${e}" ]; then

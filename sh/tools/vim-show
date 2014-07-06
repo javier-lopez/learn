@@ -12,11 +12,9 @@ if [ ! -t 0 ]; then
     set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
 fi
 
-program="${1}"
-
 [ "${#}" -eq "0" ] && { printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)'): program" >&2; exit 1; }
 
-if command -v "${program}" >/dev/null 2>&1; then
+if command -v "${1}" >/dev/null 2>&1; then
     [ -z "${EDITOR}" ] && { printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): variable EDITOR was not found" >&2; exit 1; } 
-    ${EDITOR} "$(command -v "${program}" 2>/dev/null)"
+    ${EDITOR} "$(command -v "${1}" 2>/dev/null)"
 fi

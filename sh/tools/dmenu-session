@@ -8,21 +8,214 @@
 #requires a dmenu version with xft: https://bugs.launchpad.net/ubuntu/+source/suckless-tools/+bug/1093745
 DMENU='dmenu -p > -i -fn Bahamas-10 -nb #000000 -nf #FFFFFF -sb #000000 -sf #999999'
 
+_die()
+{
+    [ -z "${1}" ] && _die_msg="dmenu" || _die_msg="${1}"
+    printf "%b%b\\n" "${_die_msg}" ", press <Enter> to exit" | ${DMENU}
+    exit 1
+}
+
+_str2lower()
+{
+    [ -z "${1}" ] && return 1
+    printf "%s\\n" "${@}" | tr 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 'abcdefghijklmnopqrstuvwxyz'
+}
+
+_strlen()
+{
+    [ -z "${1}" ] && return 1
+    printf "%s\\n" "${#1}"
+}
+
+_return_valid_color()
+{   #return white if input is an invalid color code
+    [ -z "${1}" ] && { printf "%s" "ffffffff"; return; } || _return_valid_color_var_arg="${1}"
+    _return_valid_color_var_arg="$(_str2lower "${_return_valid_color_var_arg}")"
+    _return_valid_color_var_arg="$(printf "%s" "${_return_valid_color_var_arg}" | sed 's:#::g')"
+    case "${_return_valid_color_var_arg}" in
+        #http://en.wikipedia.org/wiki/Web_colors#HTML_color_names
+        white)   printf "%s" "ffffffff" ;;
+        silver)  printf "%s" "c0c0c0ff" ;;
+        gray)    printf "%s" "808080ff" ;;
+        black)   printf "%s" "000000ff" ;;
+        red)     printf "%s" "ff0000ff" ;;
+        maroon)  printf "%s" "800000ff" ;;
+        yellow)  printf "%s" "ffff00ff" ;;
+        olive)   printf "%s" "808000ff" ;;
+        lime)    printf "%s" "00ff00ff" ;;
+        green)   printf "%s" "008000ff" ;;
+        aqua)    printf "%s" "00ffffff" ;;
+        teal)    printf "%s" "008080ff" ;;
+        blue)    printf "%s" "0000ffff" ;;
+        navy)    printf "%s" "000080ff" ;;
+        fuchsia) printf "%s" "ff00ffff" ;;
+        purple)  printf "%s" "800080ff" ;;
+        *)
+            case "$(_strlen "${_return_valid_color_var_arg}")" in
+                8)  _return_valid_color_var_arg="$(printf "%s" "${_return_valid_color_var_arg}"|awk '/^[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]$/')"
+                    [ -z "${_return_valid_color_var_arg}" ] && { printf "%s" "ffffffff"; return; }
+                    printf "%s" "${_return_valid_color_var_arg}"
+                    ;;
+                6)  _return_valid_color_var_arg="$(printf "%s" "${_return_valid_color_var_arg}"|awk '/^[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]$/')"
+                    [ -z "${_return_valid_color_var_arg}" ] && { printf "%s" "ffffffff"; return; }
+                    _return_valid_color_var_arg="${_return_valid_color_var_arg}ff"
+                    printf "%s" "${_return_valid_color_var_arg}"
+                    ;;
+                3)  _return_valid_color_var_arg="$(printf "%s" "${_return_valid_color_var_arg}"|awk '/^[0-9a-f][0-9a-f][0-9a-f]$/')"
+                    [ -z "${_return_valid_color_var_arg}" ] && { printf "%s" "ffffffff"; return; }
+                    _return_valid_color_var_arg="$(printf "%s" "${_return_valid_color_var_arg}"|cut -c1)$(printf "%s" "${_return_valid_color_var_arg}"|cut -c1)$(printf "%s" "${_return_valid_color_var_arg}"|cut -c2)$(printf "%s" "${_return_valid_color_var_arg}"|cut -c2)$(printf "%s" "${_return_valid_color_var_arg}"|cut -c3)$(printf "%s" "${_return_valid_color_var_arg}"|cut -c3)ff"
+                    printf "%s" "${_return_valid_color_var_arg}"
+                    ;;
+                *)  printf "%s" "ffffffff" ;;
+            esac
+            ;;
+    esac
+}
+
+_get_minos_config()
+{
+    [ -z "${1}" ] && return 1
+    [ -z "${_get_minos_config_var_home}" ] && _get_minos_config_var_home=$(awk '!/^#|^$/' "${HOME}"/.minos/config 2>&1)
+    [ -z "${_get_minos_config_var_etc}" ]  && _get_minos_config_var_etc=$(awk '!/^#|^$/'  /etc/minos/config 2>&1)
+
+    _get_minos_config_var_option="$(printf "%s" "${_get_minos_config_var_home}"|awk -v pattern="^${1}=" -F"=" '$0 ~ pattern {print $2; exit}' 2>&1)"
+    [ -z "${_get_minos_config_var_option}" ] && _get_minos_config_var_option="$(printf "%s" "${_get_minos_config_var_etc}"|awk -v pattern="^${1}=" -F"=" '$0 ~ pattern {print $2; exit}' 2>&1)"
+    [ -z "${_get_minos_config_var_option}" ] && printf "%s" "" || { eval _get_minos_config_var_option="${_get_minos_config_var_option}"; printf "%s" "${_get_minos_config_var_option}"; }
+}
+
+_get_i3lock_params()
+{
+    if [ -n "$(i3lock --bshlcolor 2>&1 | grep requires 2>&1)" ]; then
+        _get_i3lock_params_var_inside="$(_get_minos_config lock_color_inside)"
+        [ -z "${_get_i3lock_params_var_inside}" ] && _get_i3lock_params_var_inside="ffffffff" || _get_i3lock_params_var_inside="$(_return_valid_color "${_get_i3lock_params_var_inside}")"
+
+        _get_i3lock_params_var_inside_verification="$(_get_minos_config lock_color_inside_verification)"
+        [ -z "${_get_i3lock_params_var_inside_verification}" ] && _get_i3lock_params_var_inside_verification="ffffffff" || _get_i3lock_params_var_inside_verification="$(_return_valid_color "${_get_i3lock_params_var_inside_verification}")"
+
+        _get_i3lock_params_var_inside_wrong="$(_get_minos_config lock_color_inside_wrong)"
+        [ -z "${_get_i3lock_params_var_inside_wrong}" ] && _get_i3lock_params_var_inside_wrong="a52a2aff" || _get_i3lock_params_var_inside_wrong="$(_return_valid_color "${_get_i3lock_params_var_inside_wrong}")"
+
+        _get_i3lock_params_var_ring="$(_get_minos_config lock_color_ring)"
+        [ -z "${_get_i3lock_params_var_ring}" ] && _get_i3lock_params_var_ring="000000ff" || _get_i3lock_params_var_ring="$(_return_valid_color "${_get_i3lock_params_var_ring}")"
+
+        _get_i3lock_params_var_ring_verification="$(_get_minos_config lock_color_ring_verification)"
+        [ -z "${_get_i3lock_params_var_ring_verification}" ] && _get_i3lock_params_var_ring_verification="ffffffff" || _get_i3lock_params_var_ring_verification="$(_return_valid_color "${_get_i3lock_params_var_ring_verification}")"
+
+        _get_i3lock_params_var_ring_wrong="$(_get_minos_config lock_color_ring_wrong)"
+        [ -z "${_get_i3lock_params_var_ring_wrong}" ] && _get_i3lock_params_var_ring_wrong="a52a2aff" || _get_i3lock_params_var_ring_wrong="$(_return_valid_color "${_get_i3lock_params_var_ring_wrong}")"
+
+        _get_i3lock_params_var_line="$(_get_minos_config lock_color_line)"
+        [ -z "${_get_i3lock_params_var_line}" ] && _get_i3lock_params_var_line="00000000" || _get_i3lock_params_var_line="$(_return_valid_color "${_get_i3lock_params_var_line}")"
+
+        _get_i3lock_params_var_keypress="$(_get_minos_config lock_color_keypress)"
+        [ -z "${_get_i3lock_params_var_keypress}" ] && _get_i3lock_params_var_keypress="1e90ffff" || _get_i3lock_params_var_keypress="$(_return_valid_color "${_get_i3lock_params_var_keypress}")"
+
+        _get_i3lock_params_var_delpress="$(_get_minos_config lock_color_delpress)"
+        [ -z "${_get_i3lock_params_var_delpress}" ] && _get_i3lock_params_var_delpress="a52a2aff" || _get_i3lock_params_var_delpress="$(_return_valid_color "${_get_i3lock_params_var_delpress}")"
+
+        i3lock_color_params="--insidecolor=${_get_i3lock_params_var_inside}|
+                             --insidevercolor=${_get_i3lock_params_var_inside_verification}|
+                             --insidewrongcolor=${_get_i3lock_params_var_inside_wrong}|
+                             --ringcolor=${_get_i3lock_params_var_ring}|
+                             --ringvercolor=${_get_i3lock_params_var_ring_verification}|
+                             --ringwrongcolor=${_get_i3lock_params_var_ring_wrong}|
+                             --linecolor=${_get_i3lock_params_var_line}|
+                             --keyhlcolor=${_get_i3lock_params_var_keypress}|
+                             --bshlcolor=${_get_i3lock_params_var_delpress}"
+        i3lock_color_params="$(printf "%s" "${i3lock_color_params}"|awk '{ sub(/[ \t]+/, ""); printf "%s", $0 }')"
+    fi
+
+    _get_i3lock_params_var_wallpaper="$(_get_minos_config lock_wallpaper)"
+
+    if [ -f "${_get_i3lock_params_var_wallpaper}" ]; then
+        printf "%s" "-i|${_get_i3lock_params_var_wallpaper}|-n|-t|${i3lock_color_params}"
+    else
+        printf "%s" "-c|000000|-n|-t|${i3lock_color_params}"
+    fi
+}
+
 if ! command -v "dmenu" >/dev/null 2>&1; then
-    printf "%s\\n" "dmenu was not found" >&2
+    printf "%s\\n" "you need to install 'dmenu' to run this program" >&2
     exit 1
 fi
 
-choice="$(printf "%b\\n" "lock\nlogout\nrestart\nshutdown\nreboot\nsuspend\nhibernate" | ${DMENU})"
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
+fi
+
+if [ -z "${1}" ]; then
+    choice="$(printf "%b\\n" "lock\nlogout\nrestart\nshutdown\nreboot\nsuspend\nhibernate" | ${DMENU})"
+else
+    choice="${1}"
+fi
+
+if command -v "gksudo" >/dev/null 2>&1; then
+    _sudo="gksudo"
+else
+    _sudo="sudo"
+fi
 
 case "${choice}" in
-    logout)    i3-msg exit & ;;
-    restart)   i3-msg restart & ;;
-    shutdown)  dbus-send --system --print-reply --dest="org.freedesktop.ConsoleKit" /org/freedesktop/ConsoleKit/Manager org.freedesktop.ConsoleKit.Manager.Stop ;;
-               #gksudo shutdown -h now &
-    reboot)    dbus-send --system --print-reply --dest="org.freedesktop.ConsoleKit" /org/freedesktop/ConsoleKit/Manager org.freedesktop.ConsoleKit.Manager.Restart ;;
-               #gksudo shutdown -r now & (if u don't have ConsoleKit running)
-    suspend)   i3lock -i "${HOME}"/.data/images/wallpapers/lock.png -n -t & sudo /usr/sbin/pm-suspend ;;
-    hibernate) sudo /usr/sbin/hibernate & ;;
-    lock)      i3lock -i "${HOME}"/.data/images/wallpapers/lock.png -n -t & ;;
+    logout)
+        if ! command -v "i3-msg" >/dev/null 2>&1; then
+            _die "you need to install 'i3-msg' to run this option"
+        fi
+        i3-msg exit &
+        ;;
+
+    restart)
+        if ! command -v "i3-msg" >/dev/null 2>&1; then
+            _die "you need to install i3-msg to run this option"
+        fi
+        i3-msg restart &
+        ;;
+
+    shutdown)
+        if ! command -v "dbus-send" >/dev/null 2>&1; then
+            PATH="${PATH}:/sbin/"
+            ${_sudo} shutdown -h now
+        fi
+        dbus-send --system --print-reply --dest="org.freedesktop.ConsoleKit" /org/freedesktop/ConsoleKit/Manager org.freedesktop.ConsoleKit.Manager.Stop
+        ;;
+
+    reboot)
+        if ! command -v "dbus-send" >/dev/null 2>&1; then
+            PATH="${PATH}:/sbin/"
+            ${_sudo} shutdown -r now
+        fi
+        dbus-send --system --print-reply --dest="org.freedesktop.ConsoleKit" /org/freedesktop/ConsoleKit/Manager org.freedesktop.ConsoleKit.Manager.Restart
+        ;;
+
+    suspend)
+        PATH="${PATH}:/usr/sbin/"
+        suspend="$(_get_minos_config suspend_bin)"
+        [ -z "${suspend}" ] && suspend="pm-suspend"
+        if ! command -v "${suspend}" >/dev/null 2>&1; then
+            _die "you need to install '${suspend}' to run this option"
+        fi
+
+        i3lock_params="$(_get_i3lock_params)"
+        IFS='|'; i3lock ${i3lock_params} & ${_sudo} ${suspend}
+        ;;
+
+    hibernate)
+        PATH="${PATH}:/usr/sbin/"
+        hibernate="$(_get_minos_config hibernate_bin)"
+        [ -z "${hibernate}" ] && hibernate="pm-hibernate"
+        if ! command -v "${hibernate}" >/dev/null 2>&1; then
+            _die "you need to install '${hibernate}' to run this option"
+        fi
+
+        i3lock_params="$(_get_i3lock_params)"
+        IFS='|'; i3lock ${i3lock_params} & ${_sudo} ${hibernate}
+        ;;
+
+    lock)
+        if ! command -v "i3lock" >/dev/null 2>&1; then
+            _die "you need to install 'i3lock' to run this option"
+        fi
+        i3lock_params="$(_get_i3lock_params)"
+        IFS='|'; i3lock ${i3lock_params} #hack to allow spaces on wallpaper files
+        ;;
 esac

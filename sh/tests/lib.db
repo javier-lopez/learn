@@ -130,66 +130,66 @@ _internetavailable; iv="${?}"; true
 (test X"${pv}" = X"${iv}" || test X"$((${pv} - 1))" = X"${iv}")
 @end{_internetavailable}
 
-@begin{_isalphanum}
-_isalphanum;          test X"${?}" = X"1"
-_isalphanum '123$#';  test X"${?}" = X"1"
-_isalphanum '%$123';  test X"${?}" = X"1"
-_isalphanum 'abc$#';  test X"${?}" = X"1"
-_isalphanum '(/abc';  test X"${?}" = X"1"
-_isalphanum '1';      test X"${?}" = X"0"
-_isalphanum '123';    test X"${?}" = X"0"
-_isalphanum 'a';      test X"${?}" = X"0"
-_isalphanum 'abc';    test X"${?}" = X"0"
-_isalphanum '123abc'; test X"${?}" = X"0"
-_isalphanum 'abc123'; test X"${?}" = X"0"
-@end{_isalphanum}
+@begin{_alphanum}
+_alphanum;          test X"${?}" = X"1"
+_alphanum '123$#';  test X"${?}" = X"1"
+_alphanum '%$123';  test X"${?}" = X"1"
+_alphanum 'abc$#';  test X"${?}" = X"1"
+_alphanum '(/abc';  test X"${?}" = X"1"
+_alphanum '1';      test X"${?}" = X"0"
+_alphanum '123';    test X"${?}" = X"0"
+_alphanum 'a';      test X"${?}" = X"0"
+_alphanum 'abc';    test X"${?}" = X"0"
+_alphanum '123abc'; test X"${?}" = X"0"
+_alphanum 'abc123'; test X"${?}" = X"0"
+@end{_alphanum}
 
-@begin{_isempty}
-_isempty; test X"${?}"      = X"1"
+@begin{_empty}
+_empty; test X"${?}"      = X"1"
 touch file
-_isempty file; test X"${?}" = X"0"
+_empty file; test X"${?}" = X"0"
 echo string > file
-_isempty file; test X"${?}" = X"1"
+_empty file; test X"${?}" = X"1"
 rm -f file
-@end{_isempty}
+@end{_empty}
 
-@begin{_islivecd}
-_islivecd; test X"${?}" = X"1"
-@end{_islivecd}
+@begin{_livecd}
+_livecd; test X"${?}" = X"1"
+@end{_livecd}
 
-@begin{_isnewer}
-_isnewer; test X"${?}"             = X"1"
-_isnewer file1; test X"${?}"       = X"1"
-_isnewer file1 file2; test X"${?}" = X"1"
+@begin{_newer}
+_newer; test X"${?}"             = X"1"
+_newer file1; test X"${?}"       = X"1"
+_newer file1 file2; test X"${?}" = X"1"
 touch file1
-_isnewer file1; test X"${?}"       = X"1"
+_newer file1; test X"${?}"       = X"1"
 touch file2
-_isnewer file1 file2; test X"${?}" = X"1"
-_isnewer file2 file1; test X"${?}" = X"0"
+_newer file1 file2; test X"${?}" = X"1"
+_newer file2 file1; test X"${?}" = X"0"
 rm -rf file1 file2
-@end{_isnewer}
+@end{_newer}
 
-@begin{_isnum}
-_isnum;          test X"${?}" = X"1"
-_isnum '123$#';  test X"${?}" = X"1"
-_isnum '%$123';  test X"${?}" = X"1"
-_isnum 'abc$#';  test X"${?}" = X"1"
-_isnum '(/abc';  test X"${?}" = X"1"
-_isnum 'a';      test X"${?}" = X"1"
-_isnum 'abc';    test X"${?}" = X"1"
-_isnum '123abc'; test X"${?}" = X"1"
-_isnum 'abc123'; test X"${?}" = X"1"
-_isnum '1';      test X"${?}" = X"0"
-_isnum '123';    test X"${?}" = X"0"
-@end{_isnum}
+@begin{_num}
+_num;          test X"${?}" = X"1"
+_num '123$#';  test X"${?}" = X"1"
+_num '%$123';  test X"${?}" = X"1"
+_num 'abc$#';  test X"${?}" = X"1"
+_num '(/abc';  test X"${?}" = X"1"
+_num 'a';      test X"${?}" = X"1"
+_num 'abc';    test X"${?}" = X"1"
+_num '123abc'; test X"${?}" = X"1"
+_num 'abc123'; test X"${?}" = X"1"
+_num '1';      test X"${?}" = X"0"
+_num '123';    test X"${?}" = X"0"
+@end{_num}
 
-@begin{_isrunning}
-_isrunning;              test X"${?}" = X"1"
-_isrunning "foobartest"; test X"${?}" = X"1"
-_isrunning "99999999";   test X"${?}" = X"1"
-_isrunning "init";       test X"${?}" = X"0"
-_isrunning "1";          test X"${?}" = X"0"
-@end{_isrunning}
+@begin{_running}
+_running;              test X"${?}" = X"1"
+_running "foobartest"; test X"${?}" = X"1"
+_running "99999999";   test X"${?}" = X"1"
+_running "init";       test X"${?}" = X"0"
+_running "1";          test X"${?}" = X"0"
+@end{_running}
 
 @begin{_lock}
 _lock ./run

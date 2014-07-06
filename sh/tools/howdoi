@@ -54,7 +54,7 @@ _howdoi()
         _howdoi_var_google_links="$(cat "${_howdoi_var_google_links}" 2>/dev/null)"
     fi
 
-    #the google api for some reason don't return the same results
+    #for some reason the google api doesn't return the same results
     #http://ajax.googleapis.com/ajax/services/search/web?v=1.0
     if [ -z "${_howdoi_var_google_links}" ]; then
         _howdoi_var_google_links="$(wget -q -U "Firefox/3.0.5" "http://www.google.com/search?q=site:stackoverflow.com%20${_howdoi_var_question}" -O- |\
@@ -72,9 +72,8 @@ _howdoi()
     _howdoi_var_google_link="$(printf "%s\\n" "${_howdoi_var_google_links}" | awk -v l="${pflag}" 'NR == l {print; exit}')"
     [ -n "${lflag}" ] && { printf "%s\\n" "${_howdoi_var_google_link}"; exit; }
 
-    #if user request a result too high, let's use the latest available
-    [ -z "${_howdoi_var_google_link}" ] && \
-        _howdoi_var_google_link="$(printf "%s\\n" "${_howdoi_var_google_links}" | awk 'END {print}')"
+    #if a user request a link out of scope, return the last link instead
+    [ -z "${_howdoi_var_google_link}" ] && _howdoi_var_google_link="$(printf "%s\\n" "${_howdoi_var_google_links}" | awk 'END {print}')"
     _howdoi_var_so_basename="$(expr "${_howdoi_var_google_link}" : '.*/\([^/]*\)')"
 
     if [ -z "${HOWDOI_DISABLE_CACHE}" ]; then
@@ -120,7 +119,7 @@ fi
 [ "${#}" -eq "0" ] && _usage
 
 if ! command -v "wget" >/dev/null 2>&1; then
-    printf "%s\\n" "wget not found: $ sudo apt-get install wget" >&2
+    printf "%s\\n" "you need to install 'wget' to run this program" >&2
     exit 1
 fi
 

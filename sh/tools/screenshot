@@ -7,7 +7,6 @@
 _notify()
 {
     [ -z "${1}" ] && return 1
-    [ -z "${2}" ] && return 1
     if [ X"${TERM}" = X"linux" ] || [ -z "${TERM}" ]; then
         kill -9 $(pgrep notify-osd) >/dev/null 2>&1
         if ! DISPLAY=:0 notify-send -t 1000 "${1}"  "${2}"; then
@@ -20,7 +19,11 @@ _notify()
             fi
         fi
     else
-        printf "%s: %s\\n" "${1}" "${2}"
+        if [ -z "${2}" ]; then
+            printf "%s\\n" "${1}"
+        else
+            printf "%s: %s\\n" "${1}" "${2}"
+        fi
     fi
 }
 
@@ -38,7 +41,7 @@ _screenshot()
         _screenshot_var_bin="import"
         [ -n "${flag_select}" ] && _screenshot_var_opt=""   || _screenshot_var_opt="-window root"
     else
-        _notify "[-] Error" "install either scrot, gnome-screenshot or imagemagick"
+        _notify "[-] Error" "install either scrot, gnome-screenshot or imagemagick to run this program"
         exit 1
     fi
 

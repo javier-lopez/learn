@@ -1,36 +1,35 @@
 #!/bin/sh
-#description: wrapper for rm compatible with nautilus|pcman trash management
+#description: rm wrapper compatible with nautilus|pcman trash management
 #usage: rm_ [OPTIONS] FILES
 
-# -f files are removed NOT archived
-# -l list archived files
-# -c remove permanently archived files
-# -u recover archived files
-# -h usage
-
-#Taken initially from 'Wicked Cool Shell Scripts: 101 Scripts for Linux, Mac
-#OS X, and Unix Systems'
-
-#If you improve it, drop me an email, <m@javier.io>
+#Taken initially from 'Wicked Cool Shell Scripts: 101 Scripts for Linux, Mac OS X, and Unix Systems'
+#https://github.com/chilicuil/learn/tree/master/sh/tools/rm_
 
 trash_dir="${HOME}"/.local/share/Trash
 
 _usage()
 {
     printf "%b\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [OPTION]... FILE..." >&2
-    printf "%b\\n" "Wrapper for the \`rm' command, compatible with nautilus|pcmanfm file managers\n" >&2
-    printf "%b\\n" "  -l [PATTERN]   list archived files, use -ll and -lll to increase verbosity" >&2
+    printf "%b\\n" "Wrapper for \`rm' compatible with nautilus|pcmanfm file managers\n" >&2
+    printf "%b\\n" "  -l [PATTERN]   list archived files, use -ll or -lll to increase verbosity" >&2
     printf "%b\\n" "  -c [PATTERN]   remove permanently archived files" >&2
     printf "%b\\n" "  -u [PATTERN]   recover archived files" >&2
     printf "%b\\n" "  -y             say yes to all questions" >&2
-    printf "%b\\n" "  -f             remove instead of archive files \`rm' is executed directly" >&2
-    printf "%b\\n" "  -h             shows this message, use --help to obtain \`rm' help" >&2
-    printf "%b\\n" "\n$(expr "${0}" : '.*/\([^/]*\)') deletes directories and files with no distintion therefore no -r option is needed\n" >&2
+    printf "%b\\n" "  -f             force to remove files, \`rm' is executed directly" >&2
+    printf "%b\\n" "  -h             shows this message, use --help to see \`rm' help" >&2
+    printf "%b\\n" "\n$(expr "${0}" : '.*/\([^/]*\)') deletes directories and files with no distintion, an -r option is not provided\n" >&2
 
-    printf "%b\\n" "Last version is available in: <https://github.com/chilicuil/learn/tree/master/sh/tools/rm_>" >&2
-    printf "%b\\n" "Report bugs to m@javier.io" >&2
-
+    printf "%b\\n" "Last available version: https://github.com/chilicuil/learn/tree/master/sh/tools/rm_" >&2
+    printf "%b\\n" "Report bugs to:         m@javier.io" >&2
     exit 1
+}
+
+_str2lower()
+{   #convert a string to lower string
+    [ -z "${1}" ] && return 1
+    printf "%s\\n" "${@}" | \
+    tr 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 'abcdefghijklmnopqrstuvwxyz'
+    # tr '[:upper:]' '[:lower:]'
 }
 
 #http://www.makkintosshu.com/journal/a-realpath-implementation-in-bash
@@ -39,49 +38,39 @@ _realpath()
     _realpath_var_success="true"
     _realpath_var_path="${1}"
 
-    # make sure the string isn't empty as that implies something in further logic
     if [ -z "${_realpath_var_path}" ]; then
         _realpath_var_success="false"
     else
-        # start with the file name (sans the trailing slash)
         _realpath_var_path="${_realpath_var_path%/}"
 
-        # if we stripped off the trailing slash and were left with nothing, that means we're in the root directory
         [ -z "${_realpath_var_path}" ] && _realpath_var_path="/"
 
-        # get the basename of the file (ignoring '.' & '..', because they're really part of the path)
         _realpath_var_file_basename="${_realpath_var_path##*/}"
         if [ X"${_realpath_var_file_basename}" = X"." ] || [ X"${_realpath_var_file_basename}" = X".." ]; then
             _realpath_var_file_basename=""
         fi
 
-        # extracts the directory component of the full path, if it's empty then assume '.' (the current working directory)
         _realpath_var_directory="${_realpath_var_path%${_realpath_var_file_basename}}"
         [ -z "${_realpath_var_directory}" ] && _realpath_var_directory="."
 
-        # attempt to change to the directory
         if ! \cd "${_realpath_var_directory}" >/dev/null 2>/dev/null; then
             _realpath_var_success="false"
         fi
 
         if "${_realpath_var_success}"; then
-            # does the filename exist?
             if [ -n "${_realpath_var_file_basename}" ] && [ ! -e "${_realpath_var_file_basename}" ]; then
                 _realpath_var_success="false"
             fi
 
-            # get the absolute path of the current directory & change back to previous directory
             _realpath_var_abs_path="$(pwd -P)"
             \cd "-" >/dev/null 2>/dev/null
 
-            # Append base filename to absolute path
             if [ X"${_realpath_var_abs_path}" = X"/" ]; then
                 _realpath_var_abs_path="${_realpath_var_abs_path}${_realpath_var_file_basename}"
             else
                 _realpath_var_abs_path="${_realpath_var_abs_path}/${_realpath_var_file_basename}"
             fi
 
-            # output the absolute path
             printf "%s\\n" "${_realpath_var_abs_path}"
         fi
     fi
@@ -96,8 +85,8 @@ _dirname()
 
     case "${1}" in
         /*|*/*) #http://www.linuxselfhelp.com/gnu/autoconf/html_chapter/autoconf_10.html
-            dir=$(expr "x${1}" : 'x\(.*\)/[^/]*' \| '.'      : '.')
-            printf "%s\\n" "${dir}"
+            _dirname_var_dir=$(expr "x${1}" : 'x\(.*\)/[^/]*' \| '.'      : '.')
+            printf "%s\\n" "${_dirname_var_dir}"
             ;;
         *) printf "%s\\n" ".";;
     esac
@@ -105,43 +94,39 @@ _dirname()
 
 _list()
 {
-    #files_in_trash="("$trash_dir"/info/*.trashinfo)"
-    files_in_trash="$(find "${trash_dir}"/info/ -name "*.trashinfo" | wc -l)"
-
-    if [ X"${files_in_trash}" = X"0" ]; then
-        printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): Nothing to list" >&2 ; exit 1
-    fi
+    _list_var_files_in_trash="$(find "${trash_dir}"/info/ -name "*.trashinfo" 2>/dev/null)"
+    [ -z "${_list_var_files_in_trash}" ] && return 0
 
     OLDIFS="${IFS}"; IFS='
    ' #fix case where files have spaces
-    for data_in_trashinfo in $(find "${trash_dir}"/info -name "*.trashinfo" -print0 \
+    for _list_var_data in $(find "${trash_dir}"/info -name "*.trashinfo" -print0 \
         | sort -z | xargs -0 grep -A 1 -Hri "path.*$1" \
         | sed -e 's:^:|:g' -e 's:\.trashinfo.*=:|:g'   \
         | tr -d '\n'| sed -e 's:--:\n:g' | sed -e 's: :%%%%%:g'); do
 
-        datetime="$(printf "%s\\n" "${data_in_trashinfo}" | cut -d\| -f5)"
-        general_date="$(printf "%s\\n" "${datetime}" | cut -dT -f1)"
-        detail_date="$(printf "%s\\n" "${datetime}" | cut -dT -f2)"
-        name="$(printf "%s\\n" "${data_in_trashinfo}" | cut -d\| -f3 | sed -e 's:%%%%%: :g')"
-        real_file="$(printf "%s\\n" "${data_in_trashinfo}" | cut -d\| -f2 | sed -e 's:%%%%%: :g' | sed -e 's:\/info\/:\/files\/:g')"
-        [ -e "${real_file}" ] && size="$(du -sh "${real_file}" | awk '{print $1}')" || size="0.0K"
+        _list_var_date="$(printf "%s\\n" "${_list_var_data}" | cut -d\| -f5)"
+        _list_var_general_date="$(printf "%s\\n" "${_list_var_date}" | cut -dT -f1)"
+        _list_var_detail_date="$(printf "%s\\n" "${_list_var_date}" | cut -dT -f2)"
+        _list_var_name="$(printf "%s\\n" "${_list_var_data}" | cut -d\| -f3 | sed -e 's:%%%%%: :g')"
+        _list_var_real_file="$(printf "%s\\n" "${_list_var_data}" | cut -d\| -f2 | sed -e 's:%%%%%: :g' | sed -e 's:\/info\/:\/files\/:g')"
+        [ -e "${_list_var_real_file}" ] && _list_var_size="$(du -sh "${_list_var_real_file}" | awk '{print $1}')" || _list_var_size="0.0K"
 
-        if [ -d "${real_file}" ] ; then
-            if [ "${verboselist}" -gt "1" ]; then
-                some="$(ls "${real_file}" | wc -l | sed 's/[^[:digit:]]//g')"
-                printf "%b\\n" "${some}\t${size}\t${general_date} ${detail_date} ${name}/"
-                if [ "${verboselist}" -gt "2" ]; then
-                    find "${real_file}" | sed -e "s:${trash_dir}/files::g" | sed -e 's:^:\t\t|_ ..:g'
+        if [ -d "${_list_var_real_file}" ] ; then
+            if [ "${verbose}" -gt "1" ]; then
+                _list_var_some="$(ls "${_list_var_real_file}" | wc -l | sed 's/[^[:digit:]]//g')"
+                printf "%b\\n" "${_list_var_some}\t${_list_var_size}\t${_list_var_general_date} ${_list_var_detail_date} ${_list_var_name}/"
+                if [ "${verbose}" -gt "2" ]; then
+                    find "${_list_var_real_file}" | sed -e "s:${trash_dir}/files::g" | sed -e 's:^:\t\t|_ ..:g'
                 fi
             else
-                printf "%s\\n" "${name}/"
+                printf "%s\\n" "${_list_var_name}/"
             fi
         else
-            if [ "${verboselist}" -gt "1" ]; then
-                some="1"
-                printf "%b\\n" "${some}\t${size}\t${general_date} ${detail_date} ${name}"
+            if [ "${verbose}" -gt "1" ]; then
+                _list_var_some="1"
+                printf "%b\\n" "${_list_var_some}\t${_list_var_size}\t${_list_var_general_date} ${_list_var_detail_date} ${_list_var_name}"
             else
-                printf "%s\\n" "${name}"
+                printf "%s\\n" "${_list_var_name}"
             fi
         fi
     done
@@ -150,27 +135,38 @@ _list()
 
 _archive()
 {
+    # Make sure that the $trash_dir exists
+    if [ ! -w "${HOME}" ]; then
+        printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)') failed: can't create ${trash_dir} in ${HOME}" >&2
+        exit 1
+    fi
+
+    mkdir -p "${trash_dir}"/expunged
+    mkdir -p "${trash_dir}"/files
+    mkdir -p "${trash_dir}"/info
+    chmod -R 700 "${trash_dir}"
+
     #TODO 08-08-2011 01:19 => report nautilus bug: recovering foo/1, foo/bar/1, foo/bar/rar/1
     #                         gives foo/1 foo/bar/1.2 foo/bar/rar/1.3
     for _archive_var_file; do
         if [ -e "${_archive_var_file}" ] ; then
-            archive="${trash_dir}/files/${_archive_var_file##*/}"
-            trashinfo="${trash_dir}/info/${_archive_var_file##*/}.trashinfo"
+            _archive_var_trashfile="${trash_dir}/files/${_archive_var_file##*/}"
+            _archive_var_trashinfo="${trash_dir}/info/${_archive_var_file##*/}.trashinfo"
 
-            num="2"
+            _archive_var_num="2"
 
-            while [ -e "${archive}" ]; do
-                archive="${trash_dir}/files/${_archive_var_file##*/}.${num}"
-                trashinfo="${trash_dir}/info/${_archive_var_file##*/}.${num}.trashinfo"
-                num="$((${num} + 1))"
+            while [ -e "${_archive_var_trashfile}" ]; do
+                _archive_var_trashfile="${trash_dir}/files/${_archive_var_file##*/}.${_archive_var_num}"
+                _archive_var_trashinfo="${trash_dir}/info/${_archive_var_file##*/}.${_archive_var_num}.trashinfo"
+                _archive_var_num="$((${_archive_var_num} + 1))"
             done
 
-            #put $file & $trashinfo vars between "" to capture spaces
-            printf "%s\\n" "[Trash Info]"                             >  "${trashinfo}"
-            printf "%s\\n" "Path=$(_realpath "${_archive_var_file}")" >> "${trashinfo}"
-            printf "%s\\n" "DeletionDate=$(date +%Y-%m-%dT%T)"        >> "${trashinfo}"
+            #put vars between "" to capture spaces
+            printf "%s\\n" "[Trash Info]"                             >  "${_archive_var_trashinfo}"
+            printf "%s\\n" "Path=$(_realpath "${_archive_var_file}")" >> "${_archive_var_trashinfo}"
+            printf "%s\\n" "DeletionDate=$(date +%Y-%m-%dT%T)"        >> "${_archive_var_trashinfo}"
 
-            mv "${_archive_var_file}" "${archive}" || rm -rf "${archive}" "${trashinfo}"
+            mv "${_archive_var_file}" "${_archive_var_trashfile}" || rm -rf "${_archive_var_trashfile}" "${_archive_var_trashinfo}"
         else
             rm "${_archive_var_file}"
         fi
@@ -179,47 +175,48 @@ _archive()
 
 _recover()
 {
-    #TODO 08-08-2011 05:39 => "*" matchs nothing
-
-    _list "${1}"
-
+    #TODO 08-08-2011 05:39 => "*" should match nothing
     if [ -z "${yflag}" ]; then
-        printf "%s" "Recover this items from trash? (Y/n) "
-        answer="y"
-        read answer
+        _recover_var_list="$(verbose=0; _list "${1}")"
+        [ -z "${_recover_var_list}" ] && exit
+        printf "%s\\n" "${_recover_var_list}"
+        printf "%s" "recover these items from trash? (Y/n): "
+        _recover_var_answer="y"
+        read _recover_var_answer
+        _recover_var_answer="$(_str2lower "${_recover_var_answer}")"
     else
-        answer="y"
+        _recover_var_answer="y"
     fi
 
-    if [ ! X"${answer}" = X"y" ]; then
-        printf "%s\\n" "Nothing done" && exit 0
+    if [ ! X"${_recover_var_answer}" = X"y" ]; then
+        exit 1
     else
         OLDIFS="${IFS}"; IFS='
         ' #fix case where files have spaces
-        for data_in_trashinfo in $(find "${trash_dir}"/info -name "*.trashinfo" -print0 \
+        for _recover_var_trashinfo in $(find "${trash_dir}"/info -name "*.trashinfo" -print0 \
             | sort -z | xargs -0 grep -A 1 -Hri "path.*$1" \
             | sed -e 's:^:|:g' -e 's:\.trashinfo.*=:|:g'   \
             | tr -d '\n'| sed -e 's:--:\n:g' | sed -e 's: :%%%%%:g'); do
 
-            datetime="$(printf "%s\\n" "${data_in_trashinfo}" | cut -d\| -f5)"
-            general_date="$(printf "%s\\n" "${datetime}" | cut -dT -f1)"
-            detail_date="$(printf "%s\\n" "${datetime}" | cut -dT -f2)"
-            name="$(printf "%s\\n" "${data_in_trashinfo}" | cut -d\| -f3 | sed -e 's:%%%%%: :g')"
-            real_file="$(printf "%s\\n" "${data_in_trashinfo}" | cut -d\| -f2 | sed -e 's:%%%%%: :g' | sed -e 's:\/info\/:\/files\/:g')"
+            _recover_var_date="$(printf "%s\\n" "${_recover_var_trashinfo}" | cut -d\| -f5)"
+            _recover_var_general_date="$(printf "%s\\n" "${_recover_var_date}" | cut -dT -f1)"
+            _recover_var_detailed_date="$(printf "%s\\n" "${_recover_var_date}" | cut -dT -f2)"
+            _recover_var_name="$(printf "%s\\n" "${_recover_var_trashinfo}" | cut -d\| -f3 | sed -e 's:%%%%%: :g')"
+            _recover_var_real_file="$(printf "%s\\n" "${_recover_var_trashinfo}" | cut -d\| -f2 | sed -e 's:%%%%%: :g' | sed -e 's:\/info\/:\/files\/:g')"
 
-            info_file="${trash_dir}/info/${real_file##*/}.trashinfo"
-            file_file="${trash_dir}/files/${real_file##*/}"
+            _recover_var_info_file="${trash_dir}/info/${_recover_var_real_file##*/}.trashinfo"
+            _recover_var_file_file="${trash_dir}/files/${_recover_var_real_file##*/}"
 
-            if [ ! -d "$(_dirname "${name}")" ]; then
-                printf "%s\\n" "mkdir -p $(_dirname "${name}")"
+            if [ ! -d "$(_dirname "${_recover_var_name}")" ]; then
+                printf "%s\\n" "mkdir -p $(_dirname "${_recover_var_name}")"
             fi
 
-            if [ -e "${name}" ]; then
-                mv "${file_file}" "${name}.${general_date}-${detail_date}.saved"
-                rm "${info_file}"
+            if [ -e "${_recover_var_name}" ]; then
+                mv "${_recover_var_file_file}" "${_recover_var_name}.${_recover_var_general_date}-${_recover_var_detailed_date}.saved"
+                rm "${_recover_var_info_file}"
             else
-                mv "${file_file}" "${name}"
-                rm "${info_file}"
+                mv "${_recover_var_file_file}" "${_recover_var_name}"
+                rm "${_recover_var_info_file}"
             fi
         done
         IFS="${OLDIFS}"
@@ -229,35 +226,38 @@ _recover()
 
 _clean()
 {
-    _list "${1}"
-
     if [ -z "${yflag}" ]; then
-        printf "%s" "Empty this items from trash? (Y/n) "
-        answer="y"
-        read answer
+        _clean_var_list="$(verbose=0; _list "${1}")"
+        [ -z "${_clean_var_list}" ] && exit
+        printf "%s\\n" "${_clean_var_list}"
+        printf "%s" "empty these items from trash? (Y/n): "
+        _clean_var_answer="y"
+        read _clean_var_answer
+        _recover_var_answer="$(_str2lower "${_recover_var_answer}")"
     else
-        answer="y"
+        _clean_var_answer="y"
     fi
 
-    if [ ! X"${answer}" = X"y" ]; then
-        printf "%s\\n" "Nothing done" && exit 0
+    if [ ! X"${_clean_var_answer}" = X"y" ]; then
+        printf "%s\\n" "Nothing done" && exit
     else
         OLDIFS="${IFS}"; IFS='
         ' #fix case where files have spaces
-        for data_in_trashinfo in $(find "$trash_dir"/info -name "*.trashinfo" -print0 \
+        for _clean_var_trashinfo in $(find "$trash_dir"/info -name "*.trashinfo" -print0 \
             | sort -z | xargs -0 grep -A 1 -Hri "path.*$1" \
             | sed -e 's:^:|:g' -e 's:\.trashinfo.*=:|:g'   \
             | tr -d '\n'| sed -e 's:--:\n:g' | sed -e 's: :%%%%%:g'); do
 
-            real_file="$(printf "%s\\n" "${data_in_trashinfo}" | cut -d\| -f2 | sed -e 's:%%%%%: :g' | sed -e 's:\/info\/:\/files\/:g')"
-            info_file="${trash_dir}/info/${real_file##*/}.trashinfo"
-            file_file="${trash_dir}/files/${real_file##*/}"
+            _clean_var_real_file="$(printf "%s\\n" "${_clean_var_trashinfo}" | cut -d\| -f2 | sed -e 's:%%%%%: :g' | sed -e 's:\/info\/:\/files\/:g')"
+            _clean_var_info_file="${trash_dir}/info/${_clean_var_real_file##*/}.trashinfo"
+            _clean_var_file_file="${trash_dir}/files/${_clean_var_real_file##*/}"
 
-            rm -rf "${info_file}"
-            rm -rf "${file_file}"
+            rm -rf "${_clean_var_info_file}"
+            rm -rf "${_clean_var_file_file}"
         done
         IFS="${OLDIFS}"
     fi
+    exit
 }
 
 if [ ! -t 0 ]; then
@@ -269,36 +269,25 @@ if [ "${#}" -eq "0" ] ; then # let 'rm' ouptut the usage error
     exec rm  #our shell is replaced by /bin/rm, keeping original status unmodified
 fi
 
-verboselist="0"
+verbose="0"
 while getopts ":fluhcry" options; do
     case "${options}" in
-        f) exec rm -r "${@}"                              ;;
-        l) verboselist="$((${verboselist} + 1))"          ;;  # list verbose level 1-3
-        u) shift "$((${OPTIND} - 1))"; _recover "${@}"    ;;  # remove the -u
-        h) _usage                                         ;;
-        c) shift "$((${OPTIND} - 1))"; _clean "${@}"      ;;  # remove the -c
-        r)                                                ;;
-        y) yflag="yes"                                    ;;
-        *) exec rm "${@}"                                 ;;  # send the rest to rm
+        f) exec rm -rf "${@}"                          ;;
+        l) verbose="$((${verbose} + 1))"               ;;  # list verbose level 1-3
+        u) shift "$((${OPTIND} - 1))"; _recover "${@}" ;;  # remove the -u
+        h) _usage                                      ;;
+        c) shift "$((${OPTIND} - 1))"; _clean "${@}"   ;;  # remove the -c
+        r)                                             ;;
+        y) yflag="yes"                                 ;;
+        *) exec rm "${@}"                              ;;  # send the rest to rm
     esac
 done
 
 shift "$((${OPTIND} - 1))"
 
-if [ "${verboselist}" -gt "0" ]; then
+if [ "${verbose}" -gt "0" ]; then
     _list "${@}"
     exit
 fi
-
-# Make sure that the $trash_dir exists
-if [ ! -w "${HOME}" ]; then
-    printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)') failed: can't create ${trash_dir} in ${HOME}" >&2
-    exit 1
-fi
-
-mkdir -p "${trash_dir}"/expunged
-mkdir -p "${trash_dir}"/files
-mkdir -p "${trash_dir}"/info
-chmod -R 700 "${trash_dir}"
 
 _archive "${@}"

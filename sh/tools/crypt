@@ -13,8 +13,7 @@ _crypt()
             _crypt_var_header='eval "$((dd if=${0} bs=1 skip=XX|gpg -d)2>/dev/null)"; exit;'
             _crypt_var_header_size="$(printf "%s\\n" "${_crypt_var_header}"|wc -c)"
 
-            printf "%s\\n" "${_crypt_var_header}" | \
-                sed s:XX:"${_crypt_var_header_size}": > "${_crypt_var_file_output}"
+            printf "%s\\n" "${_crypt_var_header}" | sed s:XX:"${_crypt_var_header_size}": > "${_crypt_var_file_output}"
             gpg -c < "${_crypt_var_file}" >> "${_crypt_var_file_output}"
             chmod +x "${_crypt_var_file_output}"
         else
@@ -31,7 +30,7 @@ fi
 [ "${#}" -eq "0" ] && { printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') file ..." >&2; exit 1; }
 
 if ! command -v "gpg" >/dev/null 2>&1; then
-    printf "%s\\n" "You need to install gnupg: $ sudo apt-get install gnupg" >&2
+    printf "%s\\n" "you need to install 'gnupg' to run this program" >&2
     exit 1
 fi
 

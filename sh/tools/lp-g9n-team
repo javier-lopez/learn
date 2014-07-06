@@ -52,19 +52,19 @@ fi
 
 [ -n "${1}" ] && team="${1}" || team="ubuntumembers"
 
-_whereis python || _die "$(expr "${0}" : '.*/\([^/]*\)'): python was not found!, $ sudo apt-get install python"
-_whereis wget   || _die "$(expr "${0}" : '.*/\([^/]*\)'): wget was not found!, $ sudo apt-get install wget"
+_whereis python || _die "$(expr "${0}" : '.*/\([^/]*\)'): you need to install 'python' to run this program, $ sudo apt-get install python"
+_whereis wget   || _die "$(expr "${0}" : '.*/\([^/]*\)'): you need to install 'wget' to run this program, $ sudo apt-get install wget"
 
 if ! $(printf "%s" "from launchpadlib.launchpad import Launchpad" | python >/dev/null 2>&1); then
-    _die "$(expr "${0}" : '.*/\([^/]*\)'): launchpadlib was not found!, $ sudo apt-get install python-launchpadlib"
+    _die "$(expr "${0}" : '.*/\([^/]*\)'): you need to install 'launchpadlib' to run this program, $ sudo apt-get install python-launchpadlib"
 fi
 
 if ! $(printf "%s" "from geopy import geocoders" | python >/dev/null 2>&1); then
-    _die "$(expr "${0}" : '.*/\([^/]*\)'): geopy was not found!, $ sudo apt-get install python-pip && sudo pip install geopy"
+    _die "$(expr "${0}" : '.*/\([^/]*\)'): you need to install 'geopy' to run this program, $ sudo apt-get install python-pip && sudo pip install geopy"
 fi
 
 if ! _internetavailable; then
-    _die "$(expr "${0}" : '.*/\([^/]*\)'): you must have an active internet connection to run this script"
+    _die "$(expr "${0}" : '.*/\([^/]*\)'): you must have an active internet connection to run this program"
 fi
 
 [ -f /tmp/lp-g9n.py ] || wget https://raw.github.com/chilicuil/learn/master/python/lp-g9n -O /tmp/lp-g9n.py >/dev/null 2>&1

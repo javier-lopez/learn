@@ -63,8 +63,7 @@ _printtime()
     else
         _printtime_var_sec="${_printtime_var_num}"
     fi
-    printf "%s\\n" \
-    ""${_printtime_var_day}"d "${_printtime_var_hour}"h "${_printtime_var_min}"m "${_printtime_var_sec}"s"
+    printf "%s" "${_printtime_var_day}d ${_printtime_var_hour}h ${_printtime_var_min}m ${_printtime_var_sec}s"
 }
 
 _loadconf()

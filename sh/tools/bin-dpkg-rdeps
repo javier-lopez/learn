@@ -35,7 +35,7 @@ fi
 [ "${#}" -eq "0" ] && { printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') binary ..." >&2; exit 1; }
 
 if ! command -v "apt-file" >/dev/null 2>&1; then
-    printf "%s\\n" "apt-file not found: $ sudo apt-get install apt-file" >&2
+    printf "%s\\n" "you need to install 'apt-file' to run this program" >&2
     exit 1
 fi
 

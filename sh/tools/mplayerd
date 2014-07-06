@@ -3,7 +3,7 @@
 #usage: mplayerd files
 
 #example: mplayerd *.mp3
-#no-output
+#play all available mp3 tracks in order
 
 #see http://www.mplayerhq.hu/DOCS/tech/slave.txt
 #and https://github.com/chilicuil/learn/tree/master/sh/tools/music-control
@@ -24,11 +24,16 @@ _mplayerd()
     IFS="${OLDIFS}"
 }
 
-#if [ ! -t 0 ]; then #disable since it causes troubles with pcmanfm
+#if [ ! -t 0 ]; then #it causes troubles with pcmanfm
     ##there is input comming from pipe or file, add to the end of $@
     #set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
 #fi
 
 [ "${#}" -eq "0" ] && { printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') track ..." >&2; exit 1; }
+
+if ! command -v "mplayer" >/dev/null 2>&1; then
+    printf "%s\\n" "you need to install 'mplayer' to run this program" >&2
+    exit 1
+fi
 
 _mplayerd "${@}"

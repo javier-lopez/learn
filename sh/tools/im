@@ -5,7 +5,6 @@
 _notify()
 {
     [ -z "${1}" ] && return 1
-    [ -z "${2}" ] && return 1
     if [ X"${TERM}" = X"linux" ] || [ -z "${TERM}" ]; then
         kill -9 $(pgrep notify-osd) >/dev/null 2>&1
         if ! DISPLAY=:0 notify-send -t 1000 "${1}"  "${2}"; then
@@ -18,19 +17,27 @@ _notify()
             fi
         fi
     else
-        printf "%s: %s\\n" "${1}" "${2}"
+        if [ -z "${2}" ]; then
+            printf "%s\\n" "${1}"
+        else
+            printf "%s: %s\\n" "${1}" "${2}"
+        fi
     fi
 }
 
 if [ ! -f "$(command -v "html2text")" ]; then
-    _notify "You need to install html2text" "\$ sudo apt-get install html2text"
+    _notify "you need to install 'html2text' to run this program"
+    exit 1
+elif [ ! -f "$(command -v "curl")" ]; then
+    _notify "you need to install 'curl' to run this program"
     exit 1
 fi
 
 if [ X"${#@}" = X"1" ]; then
     case "${1}" in
-        u|up|update|-u|-up|-update|--update) curl -s http://mononeurona.org/waydings/addwayd | html2text
-                                             exit 0 ;;
+        u|up|update|-u|-up|-update|--update)
+            curl -s http://mononeurona.org/waydings/addwayd | html2text
+            exit 0 ;;
     esac
 fi
 # ============ Settings =============

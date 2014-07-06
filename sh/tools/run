@@ -1,5 +1,5 @@
 #!/bin/sh
-#description: notifies when a command has finish
+#description: notifies when a command has finished
 #usage: run command
 
 #example: run ping -c 3 google.com

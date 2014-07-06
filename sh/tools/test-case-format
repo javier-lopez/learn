@@ -299,7 +299,7 @@ unlet s:cpo_save
 " [-- EOF <runtime>/indent/html.vim --]
 EOF
 
-cat > /tmp/"$(_basename "${0}")"/vimrc << EOF
+    cat > /tmp/"$(_basename "${0}")"/vimrc << EOF
 set runtimepath=/tmp/$(_basename "${0}"),\$VIMRUNTIME
 syntax on
 set ffs=unix,dos
@@ -328,8 +328,8 @@ fi
 
 [ "${#}" -eq "0" ] && _usage
 
-[ -f "$(command -v "vim")" ]  || { printf "%b\\n" "$(_basename "${0}"): You need vim & tidy to run this script\n$ sudo apt-get install vim tidy" >&2; exit 1; }
-[ -f "$(command -v "tidy")" ] || { printf "%b\\n" "$(_basename "${0}"): You need tidy to run this script\n$ sudo apt-get install tidy" >&2; exit 1; }
+[ -f "$(command -v "vim")" ]  || { printf "%b\\n" "$(_basename "${0}"): You need to install 'vim' & 'tidy' to run this program\n$ sudo apt-get install vim tidy" >&2; exit 1; }
+[ -f "$(command -v "tidy")" ] || { printf "%b\\n" "$(_basename "${0}"): You need to install 'tidy' to run this program\n$ sudo apt-get install tidy" >&2; exit 1; }
 
 _tmp_files
 _format "${@}"

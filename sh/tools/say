@@ -8,7 +8,6 @@
 _notify()
 {
     [ -z "${1}" ] && return 1
-    [ -z "${2}" ] && return 1
     if [ X"${TERM}" = X"linux" ] || [ -z "${TERM}" ]; then
         kill -9 $(pgrep notify-osd) >/dev/null 2>&1
         if ! DISPLAY=:0 notify-send -t 1000 "${1}"  "${2}"; then
@@ -21,7 +20,11 @@ _notify()
             fi
         fi
     else
-        printf "%s: %s\\n" "${1}" "${2}"
+        if [ -z "${2}" ]; then
+            printf "%s\\n" "${1}"
+        else
+            printf "%s: %s\\n" "${1}" "${2}"
+        fi
     fi
 }
 
@@ -35,18 +38,19 @@ _usage()
 _say()
 {
     [ -z "${1}" ] && return 1
-    phrase="${*}"
+    _say_var_phrase="${*}"
 
-    while [ "${#phrase}" -gt "99" ]; do
-        tmp="$(printf "%b" "${phrase}" | cut -c1-99 | xxd -plain | tr -d '\n' | sed 's/\(..\)/%\1/g')"
-        mplayer -really-quiet "http://translate.google.com/translate_tts?ie=UTF-8&tl=${sl}&q=${tmp}" > /dev/null 2>&1
-        phrase="$(printf "%b" "${phrase}" | cut -c100-"$((${#phrase} + 1))")"
+    while [ "${#_say_var_phrase}" -gt "99" ]; do
+        #TODO 29-06-2014 05:47 >> separate by word
+        _say_var_tmp="$(printf "%b" "${_say_var_phrase}" | cut -c1-99 | xxd -plain | tr -d '\n' | sed 's/\(..\)/%\1/g')"
+        mplayer -really-quiet "http://translate.google.com/translate_tts?ie=UTF-8&tl=${sl}&q=${_say_var_tmp}" > /dev/null 2>&1
+        _say_var_phrase="$(printf "%b" "${_say_var_phrase}" | cut -c100-"$((${#_say_var_phrase} + 1))")"
         #http://stackoverflow.com/questions/4988155/is-there-a-bash-command-that-can-tell-the-size-of-a-shell-variable
     done
 
     #http://stackoverflow.com/questions/296536/urlencode-from-a-bash-script
-    phrase="$(printf "%b" "${phrase}" | xxd -plain | tr -d '\n' | sed 's/\(..\)/%\1/g')"
-    mplayer -really-quiet "http://translate.google.com/translate_tts?ie=UTF-8&tl=${sl}&q=${phrase}" > /dev/null 2>&1
+    _say_var_phrase="$(printf "%b" "${_say_var_phrase}" | xxd -plain | tr -d '\n' | sed 's/\(..\)/%\1/g')"
+    mplayer -really-quiet "http://translate.google.com/translate_tts?ie=UTF-8&tl=${sl}&q=${_say_var_phrase}" > /dev/null 2>&1
 }
 
 if [ ! -t 0 ]; then
@@ -56,8 +60,7 @@ fi
 
 [ "${#}" -eq "0" ] && _usage
 
-[ ! -f "$(command -v "mplayer")" ] && { _notify "[-] mplayer was not found!"\
-                                      "$ sudo apt-get install mplayer2" 2>&1; exit 1; }
+[ ! -f "$(command -v "mplayer")" ] && { _notify "[-] Error" "you need to install 'mplayer' to run this program" 2>&1; exit 1; }
 
 case "${1}" in
     -*) sl=$(printf "%s" "${1}"  | cut -d'-' -f2)

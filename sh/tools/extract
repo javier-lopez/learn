@@ -10,7 +10,7 @@
 #http://bashscripts.org/forum/viewtopic.php?f=7&t=367
 _usage()
 {
-    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [-s] FILES ..." >&2
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [-s] files ..." >&2
     printf "%s\\n" "           -h       help" >&2
     printf "%s\\n" "           -s       quiet mode" >&2
     exit 1
@@ -18,8 +18,8 @@ _usage()
 
 _exec()
 {
-    status="${?}"
-    [ X"${status}" != X"0" ] && exit "${status}"
+    _exec_var_status="${?}"
+    [ X"${_exec_var_status}" != X"0" ] && exit "${_exec_var_status}"
     printf "%s " "[+] ${@}"
     printf "\\n"
     eval "${@}"
@@ -27,45 +27,45 @@ _exec()
 
 _extract()
 {
-    for FILE; do
+    for _extract_var_file; do
         if [ -z "${SFLAG}" ]; then
-            if [ -f "${FILE}" ] ; then
-                case "${FILE}" in
-                    *.deb|*.udeb)           _exec "ar xv '${FILE}'"                   ;;
-                    *.tar.bz2|*.tbz|*.tbz2) _exec "bzcat < '${FILE}' | tar xvf -"     ;;
-                    *.tar.gz|*.tgz)         _exec "zcat < '${FILE}' | tar xvf -"      ;;
-                    *.bz2)                  _exec "bunzip2 -v '${FILE}'"              ;;
-                    *.rar)                  _exec "rar x '${FILE}'"                   ;;
-                    *.gz)                   _exec "gunzip -v '${FILE}'"               ;;
-                    *.tar)                  _exec "tar xvf '${FILE}'"                 ;;
-                    *.zip|*.xpi)            _exec "unzip '${FILE}'"                   ;;
-                    *.7z)                   _exec "7z x '${FILE}'"                    ;;
-                    *.tar.lzma)             _exec "lzcat < '${FILE}' | tar xvf -"     ;;
-                    *.tar.xz)               _exec "xzcat < '${FILE}' | tar xvf -"     ;;
-                    *.jar)                  _exec "jar xvf '${FILE}'"                 ;;
-                    *.iso)                  _exec "7z x '${FILE}'"                    ;;
-                    *)  printf "%s\\n" "'${FILE}' is not a valid compressed file" >&2 ;;
+            if [ -f "${_extract_var_file}" ] ; then
+                case "${_extract_var_file}" in
+                    *.deb|*.udeb)           _exec "ar xv '${_extract_var_file}'"                   ;;
+                    *.tar.bz2|*.tbz|*.tbz2) _exec "bzcat < '${_extract_var_file}' | tar xvf -"     ;;
+                    *.tar.gz|*.tgz)         _exec "zcat < '${_extract_var_file}' | tar xvf -"      ;;
+                    *.bz2)                  _exec "bunzip2 -v '${_extract_var_file}'"              ;;
+                    *.rar)                  _exec "rar x '${_extract_var_file}'"                   ;;
+                    *.gz)                   _exec "gunzip -v '${_extract_var_file}'"               ;;
+                    *.tar)                  _exec "tar xvf '${_extract_var_file}'"                 ;;
+                    *.zip|*.xpi)            _exec "unzip '${_extract_var_file}'"                   ;;
+                    *.7z)                   _exec "7z x '${_extract_var_file}'"                    ;;
+                    *.tar.lzma)             _exec "lzcat < '${_extract_var_file}' | tar xvf -"     ;;
+                    *.tar.xz)               _exec "xzcat < '${_extract_var_file}' | tar xvf -"     ;;
+                    *.jar)                  _exec "jar xvf '${_extract_var_file}'"                 ;;
+                    *.iso)                  _exec "7z x '${_extract_var_file}'"                    ;;
+                    *)  printf "%s\\n" "'${_extract_var_file}' is not a valid compressed file" >&2 ;;
                 esac
             else
                 _usage
             fi
         else
-            if [ -f "${FILE}" ] ; then
-                case "${FILE}" in
-                    *.deb|*.udeb)           _exec "ar x '${FILE}'"                   ;;
-                    *.tar.bz2|*.tbz|*.tbz2) _exec "bzcat < '${FILE}' | tar xf -"     ;;
-                    *.tar.gz|*.tgz)         _exec "zcat < '${FILE}' | tar xf -"      ;;
-                    *.bz2)                  _exec "bzip2 '${FILE}'"                  ;;
-                    *.rar)                  _exec "rar x '${FILE}'"                  ;;
-                    *.gz)                   _exec "gunzip '${FILE}'"                 ;;
-                    *.tar)                  _exec "tar xf '${FILE}'"                 ;;
-                    *.zip|*.xpi)            _exec "unzip '${FILE}'"                  ;;
-                    *.7z)                   _exec "7z x '${FILE}'"                   ;;
-                    *.tar.lzma)             _exec "lzcat < '${FILE}' | tar xf -"     ;;
-                    *.tar.xz)               _exec "xzcat < '${FILE}' | tar xf -"     ;;
-                    *.jar)                  _exec "jar xf '${FILE}'"                 ;;
-                    *.iso)                  _exec "7z x '${FILE}'"                   ;;
-                    *) printf "%s\\n" "'${FILE}' is not a valid compressed file" >&2 ;;
+            if [ -f "${_extract_var_file}" ] ; then
+                case "${_extract_var_file}" in
+                    *.deb|*.udeb)           _exec "ar x '${_extract_var_file}'"                   ;;
+                    *.tar.bz2|*.tbz|*.tbz2) _exec "bzcat < '${_extract_var_file}' | tar xf -"     ;;
+                    *.tar.gz|*.tgz)         _exec "zcat < '${_extract_var_file}' | tar xf -"      ;;
+                    *.bz2)                  _exec "bzip2 '${_extract_var_file}'"                  ;;
+                    *.rar)                  _exec "rar x '${_extract_var_file}'"                  ;;
+                    *.gz)                   _exec "gunzip '${_extract_var_file}'"                 ;;
+                    *.tar)                  _exec "tar xf '${_extract_var_file}'"                 ;;
+                    *.zip|*.xpi)            _exec "unzip '${_extract_var_file}'"                  ;;
+                    *.7z)                   _exec "7z x '${_extract_var_file}'"                   ;;
+                    *.tar.lzma)             _exec "lzcat < '${_extract_var_file}' | tar xf -"     ;;
+                    *.tar.xz)               _exec "xzcat < '${_extract_var_file}' | tar xf -"     ;;
+                    *.jar)                  _exec "jar xf '${_extract_var_file}'"                 ;;
+                    *.iso)                  _exec "7z x '${_extract_var_file}'"                   ;;
+                    *) printf "%s\\n" "'${_extract_var_file}' is not a valid compressed file" >&2 ;;
                 esac
             else
                 _usage

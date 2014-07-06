@@ -6,8 +6,6 @@
 #no output, it however sets the best governator for performance
 
 #https://bbs.archlinux.org/viewtopic.php?pid=431775#p431775
-#TODO 14-12-2012 03:52 >> add color, status
-
 _usage()
 {
     printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') get" >&2
@@ -17,9 +15,9 @@ _usage()
 
 _exec()
 {
-    status="${?}"
-    if [ X"${status}" != X"0" ]; then
-        exit "${status}"
+    _exec_var_status="${?}"
+    if [ X"${_exec_var_status}" != X"0" ]; then
+        exit "${_exec_var_status}"
     fi
     printf "%s" "[+] ${@}: "
     ${@}
@@ -30,14 +28,16 @@ if [ ! -t 0 ]; then
     set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
 fi
 
-if [ X"${1}" = X"get" ]; then
-    _exec cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
-elif [ X"${1}" = X"set" ]; then
-    case "${2}" in
-        powersave|conservative|ondemand|performance)
-            sudo sh -c "printf %s '${2}' > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor" ;;
-        *) _usage ;;
-    esac
-else
-    _usage
-fi
+case "${1}" in
+    get) _exec cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor ;;
+    set) 
+        case "${2}" in
+            powersave|conservative|ondemand|performance)
+                printf "%s\\n" "[+] ${2} > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor"
+                sudo sh -c "printf %s '${2}' > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor" ;;
+            *) _usage ;;
+        esac
+        ;;
+    -h|--help) _usage;;
+    *) _exec "cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor" ;;
+esac
