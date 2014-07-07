@@ -190,8 +190,8 @@ _gen_mix_opts()
 _reload_wallpaper()
 {
     if command -v "feh" >/dev/null 2>&1; then
-        if [ -f "$(_get_minos_config general_wallpaper)" ]; then
-            feh --bg-scale "$(_get_minos_config general_wallpaper)"
+        if [ -f "$(_get_minos_config general-wallpaper)" ]; then
+            feh --bg-scale "$(_get_minos_config general-wallpaper)"
         fi
     fi
 }
@@ -205,7 +205,7 @@ _reload_barstatus()
     if ! command -v "dzen2" >/dev/null 2>&1; then
         return 0
     fi
-    _reload_barstatus_var_dzen="$(_get_minos_config dzen_bar)"
+    _reload_barstatus_var_dzen="$(_get_minos_config minos-statusbar)"
     _reload_barstatus_var_dzen="$(_str2lower "${_reload_barstatus_var_dzen}")"
     [ X"${_reload_barstatus_var_dzen}" = X"n" ] && return 0
 

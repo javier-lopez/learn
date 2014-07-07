@@ -81,7 +81,7 @@ stat="$(acpi -b | awk '{sub(",", ""); print $3}')"
 #battery percentage
 batt="$(acpi -b |awk '{if ($0 ~ "%,") sub("%,", ""); else sub("%", ""); print $4}')"
 watch_battery_current="$(cat /tmp/"$(_basename ${0})" 2>/dev/null)"
-action="$(_get_minos_config hibernate_bin)"
+action="$(_get_minos_config hibernate-bin)"
 [ -z "${action}" ] && action="$(command -v pm-hibernate)"
 
 # If Discharging...
