@@ -40,8 +40,8 @@ _get_minos_config()
     [ -z "${_get_minos_config_var_home}" ] && _get_minos_config_var_home=$(awk '!/^#|^$/' "${HOME}"/.minos/config 2>&1)
     [ -z "${_get_minos_config_var_etc}" ]  && _get_minos_config_var_etc=$(awk '!/^#|^$/'  /etc/minos/config 2>&1)
 
-    _get_minos_config_var_option="$(printf "%s" "${_get_minos_config_var_home}"|awk -v pattern="^${1}=" -F"=" '$0 ~ pattern {print $2; exit}' 2>&1)"
-    [ -z "${_get_minos_config_var_option}" ] && _get_minos_config_var_option="$(printf "%s" "${_get_minos_config_var_etc}"|awk -v pattern="^${1}=" -F"=" '$0 ~ pattern {print $2; exit}' 2>&1)"
+    _get_minos_config_var_option="$(printf "%s" "${_get_minos_config_var_home}"|awk -v pattern="^${1} " '$0 ~ pattern {$1=""; print substr($0,2); exit}' 2>&1)"
+    [ -z "${_get_minos_config_var_option}" ] && _get_minos_config_var_option="$(printf "%s" "${_get_minos_config_var_etc}"|awk -v pattern="^${1} " '$0 ~ pattern {$1=""; print substr($0,2); exit}' 2>&1)"
     [ -z "${_get_minos_config_var_option}" ] && printf "%s" "" || { eval _get_minos_config_var_option="${_get_minos_config_var_option}"; printf "%s" "${_get_minos_config_var_option}"; }
 }
 
