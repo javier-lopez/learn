@@ -42,17 +42,6 @@ _str2lower()
     printf "%s\\n" "${@}" | tr 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 'abcdefghijklmnopqrstuvwxyz'
 }
 
-_get_minos_config()
-{
-    [ -z "${1}" ] && return 1
-    [ -z "${_get_minos_config_var_home}" ] && _get_minos_config_var_home=$(awk '!/^#|^$/' "${HOME}"/.minos/config 2>&1)
-    [ -z "${_get_minos_config_var_etc}" ]  && _get_minos_config_var_etc=$(awk '!/^#|^$/'  /etc/minos/config 2>&1)
-
-    _get_minos_config_var_option="$(printf "%s" "${_get_minos_config_var_home}"|awk -v pattern="^${1} " '$0 ~ pattern {$1=""; print substr($0,2); exit}' 2>&1)"
-    [ -z "${_get_minos_config_var_option}" ] && _get_minos_config_var_option="$(printf "%s" "${_get_minos_config_var_etc}"|awk -v pattern="^${1} " '$0 ~ pattern {$1=""; print substr($0,2); exit}' 2>&1)"
-    [ -z "${_get_minos_config_var_option}" ] && printf "%s" "" || { eval _get_minos_config_var_option="${_get_minos_config_var_option}"; printf "%s" "${_get_minos_config_var_option}"; }
-}
-
 _gen_rotate_opts()
 {
     [ -z "${1}" ] && return 1
@@ -190,8 +179,8 @@ _gen_mix_opts()
 _reload_wallpaper()
 {
     if command -v "feh" >/dev/null 2>&1; then
-        if [ -f "$(_get_minos_config general-wallpaper)" ]; then
-            feh --bg-scale "$(_get_minos_config general-wallpaper)"
+        if [ -f "$(minos-config general-wallpaper 2>/dev/null)" ]; then
+            feh --bg-scale "$(minos-config general-wallpaper 2>/dev/null)"
         fi
     fi
 }
@@ -205,7 +194,7 @@ _reload_barstatus()
     if ! command -v "dzen2" >/dev/null 2>&1; then
         return 0
     fi
-    _reload_barstatus_var_dzen="$(_get_minos_config minos-statusbar)"
+    _reload_barstatus_var_dzen="$(minos-config statusbar 2>/dev/null)"
     _reload_barstatus_var_dzen="$(_str2lower "${_reload_barstatus_var_dzen}")"
     [ X"${_reload_barstatus_var_dzen}" = X"no" ] && return 0
 
@@ -309,4 +298,4 @@ esac
 sh -c "${cmd}"
 
 _reload_wallpaper
-_reload_barstatus "${cmd}"
+#_reload_barstatus "${cmd}"

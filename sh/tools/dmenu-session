@@ -72,45 +72,34 @@ _return_valid_color()
     esac
 }
 
-_get_minos_config()
-{
-    [ -z "${1}" ] && return 1
-    [ -z "${_get_minos_config_var_home}" ] && _get_minos_config_var_home=$(awk '!/^#|^$/' "${HOME}"/.minos/config 2>&1)
-    [ -z "${_get_minos_config_var_etc}" ]  && _get_minos_config_var_etc=$(awk '!/^#|^$/'  /etc/minos/config 2>&1)
-
-    _get_minos_config_var_option="$(printf "%s" "${_get_minos_config_var_home}"|awk -v pattern="^${1} " '$0 ~ pattern {$1=""; print substr($0,2); exit}' 2>&1)"
-    [ -z "${_get_minos_config_var_option}" ] && _get_minos_config_var_option="$(printf "%s" "${_get_minos_config_var_etc}"|awk -v pattern="^${1} " '$0 ~ pattern {$1=""; print substr($0,2); exit}' 2>&1)"
-    [ -z "${_get_minos_config_var_option}" ] && printf "%s" "" || { eval _get_minos_config_var_option="${_get_minos_config_var_option}"; printf "%s" "${_get_minos_config_var_option}"; }
-}
-
 _get_i3lock_params()
 {
     if [ -n "$(i3lock --bshlcolor 2>&1 | grep requires 2>&1)" ]; then
-        _get_i3lock_params_var_inside="$(_get_minos_config lock-color-inside)"
+        _get_i3lock_params_var_inside="$(minos-config lock-color-inside 2>/dev/null)"
         [ -z "${_get_i3lock_params_var_inside}" ] && _get_i3lock_params_var_inside="ffffffff" || _get_i3lock_params_var_inside="$(_return_valid_color "${_get_i3lock_params_var_inside}")"
 
-        _get_i3lock_params_var_inside_verification="$(_get_minos_config lock-color-inside-verification)"
+        _get_i3lock_params_var_inside_verification="$(minos-config lock-color-inside-verification 2>/dev/null)"
         [ -z "${_get_i3lock_params_var_inside_verification}" ] && _get_i3lock_params_var_inside_verification="ffffffff" || _get_i3lock_params_var_inside_verification="$(_return_valid_color "${_get_i3lock_params_var_inside_verification}")"
 
-        _get_i3lock_params_var_inside_wrong="$(_get_minos_config lock-color-inside-wrong)"
+        _get_i3lock_params_var_inside_wrong="$(minos-config lock-color-inside-wrong 2>/dev/null)"
         [ -z "${_get_i3lock_params_var_inside_wrong}" ] && _get_i3lock_params_var_inside_wrong="a52a2aff" || _get_i3lock_params_var_inside_wrong="$(_return_valid_color "${_get_i3lock_params_var_inside_wrong}")"
 
-        _get_i3lock_params_var_ring="$(_get_minos_config lock-color-ring)"
+        _get_i3lock_params_var_ring="$(minos-config lock-color-ring 2>/dev/null)"
         [ -z "${_get_i3lock_params_var_ring}" ] && _get_i3lock_params_var_ring="000000ff" || _get_i3lock_params_var_ring="$(_return_valid_color "${_get_i3lock_params_var_ring}")"
 
-        _get_i3lock_params_var_ring_verification="$(_get_minos_config lock-color-ring-verification)"
+        _get_i3lock_params_var_ring_verification="$(minos-config lock-color-ring-verification 2>/dev/null)"
         [ -z "${_get_i3lock_params_var_ring_verification}" ] && _get_i3lock_params_var_ring_verification="ffffffff" || _get_i3lock_params_var_ring_verification="$(_return_valid_color "${_get_i3lock_params_var_ring_verification}")"
 
-        _get_i3lock_params_var_ring_wrong="$(_get_minos_config lock-color-ring-wrong)"
+        _get_i3lock_params_var_ring_wrong="$(minos-config lock-color-ring-wrong 2>/dev/null)"
         [ -z "${_get_i3lock_params_var_ring_wrong}" ] && _get_i3lock_params_var_ring_wrong="a52a2aff" || _get_i3lock_params_var_ring_wrong="$(_return_valid_color "${_get_i3lock_params_var_ring_wrong}")"
 
-        _get_i3lock_params_var_line="$(_get_minos_config lock-color-line)"
+        _get_i3lock_params_var_line="$(minos-config lock-color-line 2>/dev/null)"
         [ -z "${_get_i3lock_params_var_line}" ] && _get_i3lock_params_var_line="00000000" || _get_i3lock_params_var_line="$(_return_valid_color "${_get_i3lock_params_var_line}")"
 
-        _get_i3lock_params_var_keypress="$(_get_minos_config lock-color-keypress)"
+        _get_i3lock_params_var_keypress="$(minos-config lock-color-keypress 2>/dev/null)"
         [ -z "${_get_i3lock_params_var_keypress}" ] && _get_i3lock_params_var_keypress="1e90ffff" || _get_i3lock_params_var_keypress="$(_return_valid_color "${_get_i3lock_params_var_keypress}")"
 
-        _get_i3lock_params_var_delpress="$(_get_minos_config lock-color-delpress)"
+        _get_i3lock_params_var_delpress="$(minos-config lock-color-delpress 2>/dev/null)"
         [ -z "${_get_i3lock_params_var_delpress}" ] && _get_i3lock_params_var_delpress="a52a2aff" || _get_i3lock_params_var_delpress="$(_return_valid_color "${_get_i3lock_params_var_delpress}")"
 
         i3lock_color_params="--insidecolor=${_get_i3lock_params_var_inside}|
@@ -125,7 +114,7 @@ _get_i3lock_params()
         i3lock_color_params="$(printf "%s" "${i3lock_color_params}"|awk '{ sub(/[ \t]+/, ""); printf "%s", $0 }')"
     fi
 
-    _get_i3lock_params_var_wallpaper="$(_get_minos_config lock-wallpaper)"
+    _get_i3lock_params_var_wallpaper="$(minos-config lock-wallpaper 2>/dev/null)"
 
     if [ -f "${_get_i3lock_params_var_wallpaper}" ]; then
         printf "%s" "-i|${_get_i3lock_params_var_wallpaper}|-n|-t|${i3lock_color_params}"
@@ -189,7 +178,7 @@ case "${choice}" in
 
     suspend)
         PATH="${PATH}:/usr/sbin/"
-        suspend="$(_get_minos_config suspend-bin)"
+        suspend="$(minos-config suspend-bin 2>/dev/null)"
         [ -z "${suspend}" ] && suspend="pm-suspend"
         if ! command -v "${suspend}" >/dev/null 2>&1; then
             _die "you need to install '${suspend}' to run this option"
@@ -201,7 +190,7 @@ case "${choice}" in
 
     hibernate)
         PATH="${PATH}:/usr/sbin/"
-        hibernate="$(_get_minos_config hibernate-bin)"
+        hibernate="$(minos-config hibernate-bin 2>/dev/null)"
         [ -z "${hibernate}" ] && hibernate="pm-hibernate"
         if ! command -v "${hibernate}" >/dev/null 2>&1; then
             _die "you need to install '${hibernate}' to run this option"

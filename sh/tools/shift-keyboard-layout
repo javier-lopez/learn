@@ -11,17 +11,6 @@ _str2lower()
     printf "%s\\n" "${@}" | tr 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 'abcdefghijklmnopqrstuvwxyz'
 }
 
-_get_minos_config()
-{
-    [ -z "${1}" ] && return 1
-    [ -z "${_get_minos_config_var_home}" ] && _get_minos_config_var_home=$(awk '!/^#|^$/' "${HOME}"/.minos/config 2>&1)
-    [ -z "${_get_minos_config_var_etc}" ]  && _get_minos_config_var_etc=$(awk '!/^#|^$/'  /etc/minos/config 2>&1)
-
-    _get_minos_config_var_option="$(printf "%s" "${_get_minos_config_var_home}"|awk -v pattern="^${1} " '$0 ~ pattern {$1=""; print substr($0,2); exit}' 2>&1)"
-    [ -z "${_get_minos_config_var_option}" ] && _get_minos_config_var_option="$(printf "%s" "${_get_minos_config_var_etc}"|awk -v pattern="^${1} " '$0 ~ pattern {$1=""; print substr($0,2); exit}' 2>&1)"
-    [ -z "${_get_minos_config_var_option}" ] && printf "%s" "" || { eval _get_minos_config_var_option="${_get_minos_config_var_option}"; printf "%s" "${_get_minos_config_var_option}"; }
-}
-
 _notify()
 {
     [ -z "${1}" ] && return 1
@@ -70,7 +59,7 @@ if ! command -v "setxkbmap" >/dev/null; then
 fi
 
 current_layout="$(setxkbmap -query | awk '/layout/ {print $2}')"
-layouts="$(_get_minos_config keyboard-layouts)"
+layouts="$(minos-config keyboard-layouts 2>/dev/null)"
 [ -z "${layouts}" ] && layouts="${default_layouts}" || layouts="$(_return_valid_layouts "${layouts}")"
 d_layouts="${layouts}"
 c_layouts="${layouts}"
