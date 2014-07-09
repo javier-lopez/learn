@@ -1,0 +1,6 @@
+#!/bin/sh
+#description: run initial apps in minos
+#usage: minos-startup
+
+[ -x "${HOME}"/.minos/startup ] && exec "${HOME}"/.minos/startup
+[ -x /etc/minos/startup ]       && exec /etc/minos/startup

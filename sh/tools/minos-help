@@ -18,4 +18,13 @@ font="Monaco 9"
 
 [ X"${XMESSAGE}" = X"xmessage" ] && font="fixed"
 
-${XMESSAGE} ${geometry} ${font:+-fn "$font"} -file "${HOME}"/.i3/minos-shortcuts -buttons "got it"
+if [ -f "${HOME}"/.minos/shortcuts ]; then
+    shortcuts="${HOME}"/.minos/shortcuts
+elif [ -f /etc/minos/shortcuts ]; then
+    shortcuts="${HOME}"/.minos/shortcuts
+else
+    echo 'No help available' > /tmp/minos-help
+    shortcuts=/tmp/minos-help
+fi
+
+${XMESSAGE} ${geometry} ${font:+-fn "$font"} -file "${shortcuts}" -buttons "got it"

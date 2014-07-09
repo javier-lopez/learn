@@ -1,0 +1,10 @@
+#!/bin/sh
+#description: minos statusbar, requires, i3-wm with xbc icon patch and conky
+#usage: use in status_command (~/.i3/config)
+
+#http://www.reddit.com/r/unixporn/comments/22jgrh/debiani3_minimalist_crisp_clear/
+echo "{\"version\":1}"
+echo '['
+echo '[] ,'
+[ -f "${HOME}"/.minos/statusbar ] && exec conky -c "${HOME}"/.minos/statusbar
+[ -f /etc/minos/statusbar ]       && exec conky -c /etc/minos/statusbar

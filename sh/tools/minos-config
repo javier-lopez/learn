@@ -1,0 +1,79 @@
+#!/bin/sh
+#description: minos-config query program
+#usage: minos-config [options] key
+
+#example: minos-config general-wallpaper
+#/usr/share/minos/wallpapers/minos.png
+
+_usage()
+{
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] key" >&2
+    printf "%s\\n" "Query tool for minos configuration files" >&2
+    printf "\\n" >&2
+    printf "%s\\n" "  -h, --help     show help (this text)" >&2
+    printf "%s\\n" "  -c, --config   read values from this configuration file" >&2
+    printf "%s\\n" "  -d, --dump     dump detected keys and its values" >&2
+    printf "\\n" >&2
+    printf "%s\\n" "For detailed information of available keys see: /etc/minos/config" >&2
+    exit 0
+}
+
+_die()
+{
+    [ -z "${1}" ] && return 1
+    printf "%s\\n" "${*}" >&2
+    printf "%s\\n" "See: $(expr "${0}" : '.*/\([^/]*\)') --help" >&2
+    exit 1
+}
+
+_get_minos_config()
+{
+    [ -z "${1}" ] && return 1
+    if [ -z "${config_file}" ]; then
+        _get_minos_config_var_option="$(awk -v pattern="^${1} " '$0 ~ pattern {$1=""; print substr($0,2); exit}' "${HOME}"/.minos/config 2>/dev/null)"
+    else
+        _get_minos_config_var_option="$(awk -v pattern="^${1} " '$0 ~ pattern {$1=""; print substr($0,2); exit}' "${config_file}" 2>/dev/null)"
+    fi
+
+    [ -z "${_get_minos_config_var_option}" ] && _get_minos_config_var_option="$(awk -v pattern="^${1} " '$0 ~ pattern {$1=""; print substr($0,2); exit}' /etc/minos/config 2>/dev/null)"
+    [ -z "${_get_minos_config_var_option}" ] && printf "%s" "" || { eval _get_minos_config_var_option="${_get_minos_config_var_option}"; printf "%s\\n" "${_get_minos_config_var_option}"; }
+}
+
+_dump_minos_config()
+{
+    if [ -z "${config_file}" ]; then
+        _get_minos_config_var_home=$(awk '!/^#|^$/' "${HOME}"/.minos/config 2>/dev/null)
+    else
+        _get_minos_config_var_home=$(awk '!/^#|^$/' "${config_file}" 2>/dev/null)
+    fi
+    _get_minos_config_var_etc=$(awk '!/^#|^$/'  /etc/minos/config 2>/dev/null)
+    printf "%s\\n" "${_get_minos_config_var_home}" | sed "s: [ \t]*:=:" | column -s= -t
+    printf "%s\\n" "${_get_minos_config_var_etc}"  | sed "s: [ \t]*:=:" | column -s= -t
+}
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
+fi
+
+[ -z "${1}" ] && _usage
+
+for var; do #parse options
+    case "${var}" in
+        -h|--help)   _usage ;;
+        -d|--dump)   _dump_minos_config  ;;
+        -c|--config)
+            if [ "${#}" -gt "1" ]; then
+                shift
+                config_file="${1}"
+                shift
+                [ -f "${config_file}" ] || _die "'${config_file}' is not a valid configuration file"
+            else
+                _die "Option ${var} requires a config file"
+            fi
+            ;;
+        -*) _die "Unrecognized option: ${var}" ;;
+    esac
+done
+
+_get_minos_config "${1}"
