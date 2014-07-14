@@ -1,8 +1,8 @@
 #!/bin/sh
-#description: rm wrapper compatible with nautilus|pcman trash management
+#description: rm wrapper compatible with nautilus|pcmanfm trash management
 #usage: rm_ [OPTIONS] FILES
 
-#Taken initially from 'Wicked Cool Shell Scripts: 101 Scripts for Linux, Mac OS X, and Unix Systems'
+#Inspired by 'Wicked Cool Shell Scripts: 101 Scripts for Linux, Mac OS X, and Unix Systems'
 #https://github.com/chilicuil/learn/tree/master/sh/tools/rm_
 
 trash_dir="${HOME}"/.local/share/Trash
@@ -27,8 +27,7 @@ _usage()
 _str2lower()
 {   #convert a string to lower string
     [ -z "${1}" ] && return 1
-    printf "%s\\n" "${@}" | \
-    tr 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 'abcdefghijklmnopqrstuvwxyz'
+    printf "%s\\n" "${@}" | tr 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 'abcdefghijklmnopqrstuvwxyz'
     # tr '[:upper:]' '[:lower:]'
 }
 
@@ -94,37 +93,38 @@ _dirname()
 
 _list()
 {
-    _list_var_files_in_trash="$(find "${trash_dir}"/info/ -name "*.trashinfo" 2>/dev/null)"
-    [ -z "${_list_var_files_in_trash}" ] && return 0
-
     OLDIFS="${IFS}"; IFS='
    ' #fix case where files have spaces
-    for _list_var_data in $(find "${trash_dir}"/info -name "*.trashinfo" -print0 \
-        | sort -z | xargs -0 grep -A 1 -Hri "path.*$1" \
-        | sed -e 's:^:|:g' -e 's:\.trashinfo.*=:|:g'   \
-        | tr -d '\n'| sed -e 's:--:\n:g' | sed -e 's: :%%%%%:g'); do
+    for _list_var_data in $(grep -A 1 -Hri "path.*${1}" \
+        "${trash_dir}"/info/*.trashinfo "${trash_dir}"/info/.*.trashinfo 2>/dev/null  \
+        | sed -e 's:.*-Deletion.*=:|:g' -e 's:\.trashinfo.*=:|:g' | tr -d '\n'        \
+        | sed -e 's:--:\n:g' -e 's: :%%%%%:g' | sort); do
 
-        _list_var_date="$(printf "%s\\n" "${_list_var_data}" | cut -d\| -f5)"
-        _list_var_general_date="$(printf "%s\\n" "${_list_var_date}" | cut -dT -f1)"
-        _list_var_detail_date="$(printf "%s\\n" "${_list_var_date}" | cut -dT -f2)"
-        _list_var_name="$(printf "%s\\n" "${_list_var_data}" | cut -d\| -f3 | sed -e 's:%%%%%: :g')"
-        _list_var_real_file="$(printf "%s\\n" "${_list_var_data}" | cut -d\| -f2 | sed -e 's:%%%%%: :g' | sed -e 's:\/info\/:\/files\/:g')"
-        [ -e "${_list_var_real_file}" ] && _list_var_size="$(du -sh "${_list_var_real_file}" | awk '{print $1}')" || _list_var_size="0.0K"
+        #/real/path/file|/past/path/file|date
+        _list_var_date="${_list_var_data##*|}"
+        _list_var_general_date="${_list_var_date%%T*}"
+        _list_var_detail_date="${_list_var_date##*T}"
+        _list_var_name="${_list_var_data%|*}"
+        _list_var_name="${_list_var_name#*|}"
+        _list_var_real_file="${_list_var_data%%|*}"
+        _list_var_real_file="$(printf "%s" "${_list_var_real_file}"|sed -e 's:%%%%%: :g' -e 's:\/info\/:\/files\/:')"
 
         if [ -d "${_list_var_real_file}" ] ; then
             if [ "${verbose}" -gt "1" ]; then
-                _list_var_some="$(ls "${_list_var_real_file}" | wc -l | sed 's/[^[:digit:]]//g')"
-                printf "%b\\n" "${_list_var_some}\t${_list_var_size}\t${_list_var_general_date} ${_list_var_detail_date} ${_list_var_name}/"
+                _list_var_number_files="$(ls "${_list_var_real_file}" 2>/dev/null |wc -l)"
+                [ -e "${_list_var_real_file}" ] && _list_var_size="$(du -sh "${_list_var_real_file}" | awk '{print $1}')" || _list_var_size="0.0K"
+                printf "%b\\n" "${_list_var_number_files}\t${_list_var_size}\t${_list_var_general_date} ${_list_var_detail_date} ${_list_var_name}/"
                 if [ "${verbose}" -gt "2" ]; then
-                    find "${_list_var_real_file}" | sed -e "s:${trash_dir}/files::g" | sed -e 's:^:\t\t|_ ..:g'
+                    find "${_list_var_real_file}" | sed -e "s:${trash_dir}/files/::g" -e 's:^:\t\t\t\t    |_ ./:g'
                 fi
             else
                 printf "%s\\n" "${_list_var_name}/"
             fi
         else
             if [ "${verbose}" -gt "1" ]; then
-                _list_var_some="1"
-                printf "%b\\n" "${_list_var_some}\t${_list_var_size}\t${_list_var_general_date} ${_list_var_detail_date} ${_list_var_name}"
+                _list_var_number_files="1"
+                [ -e "${_list_var_real_file}" ] && _list_var_size="$(du -sh "${_list_var_real_file}" | awk '{print $1}')" || _list_var_size="0.0K"
+                printf "%b\\n" "${_list_var_number_files}\t${_list_var_size}\t${_list_var_general_date} ${_list_var_detail_date} ${_list_var_name}"
             else
                 printf "%s\\n" "${_list_var_name}"
             fi
@@ -141,15 +141,16 @@ _archive()
         exit 1
     fi
 
-    mkdir -p "${trash_dir}"/expunged
-    mkdir -p "${trash_dir}"/files
-    mkdir -p "${trash_dir}"/info
+    [ ! -d "${trash_dir}"/expunged ] && mkdir -p "${trash_dir}"/expunged
+    [ ! -d "${trash_dir}"/files ]    && mkdir -p "${trash_dir}"/files
+    [ ! -d "${trash_dir}"/info ]     && mkdir -p "${trash_dir}"/info
     chmod -R 700 "${trash_dir}"
 
     #TODO 08-08-2011 01:19 => report nautilus bug: recovering foo/1, foo/bar/1, foo/bar/rar/1
     #                         gives foo/1 foo/bar/1.2 foo/bar/rar/1.3
     for _archive_var_file; do
         if [ -e "${_archive_var_file}" ] ; then
+            [ -d "${_archive_var_file}" ] && _archive_var_file="${_archive_var_file%*/}"
             _archive_var_trashfile="${trash_dir}/files/${_archive_var_file##*/}"
             _archive_var_trashinfo="${trash_dir}/info/${_archive_var_file##*/}.trashinfo"
 
@@ -161,11 +162,9 @@ _archive()
                 _archive_var_num="$((${_archive_var_num} + 1))"
             done
 
-            #put vars between "" to capture spaces
             printf "%s\\n" "[Trash Info]"                             >  "${_archive_var_trashinfo}"
             printf "%s\\n" "Path=$(_realpath "${_archive_var_file}")" >> "${_archive_var_trashinfo}"
             printf "%s\\n" "DeletionDate=$(date +%Y-%m-%dT%T)"        >> "${_archive_var_trashinfo}"
-
             mv "${_archive_var_file}" "${_archive_var_trashfile}" || rm -rf "${_archive_var_trashfile}" "${_archive_var_trashinfo}"
         else
             rm "${_archive_var_file}"
@@ -193,26 +192,29 @@ _recover()
     else
         OLDIFS="${IFS}"; IFS='
         ' #fix case where files have spaces
-        for _recover_var_trashinfo in $(find "${trash_dir}"/info -name "*.trashinfo" -print0 \
-            | sort -z | xargs -0 grep -A 1 -Hri "path.*$1" \
-            | sed -e 's:^:|:g' -e 's:\.trashinfo.*=:|:g'   \
-            | tr -d '\n'| sed -e 's:--:\n:g' | sed -e 's: :%%%%%:g'); do
+        for _recover_var_data in $(grep -A 1 -Hri "path.*${1}" \
+            "${trash_dir}"/info/*.trashinfo "${trash_dir}"/info/.*.trashinfo 2>/dev/null  \
+            | sed -e 's:.*-Deletion.*=:|:g' -e 's:\.trashinfo.*=:|:g' | tr -d '\n'        \
+            | sed -e 's:--:\n:g' -e 's: :%%%%%:g' | sort); do
 
-            _recover_var_date="$(printf "%s\\n" "${_recover_var_trashinfo}" | cut -d\| -f5)"
-            _recover_var_general_date="$(printf "%s\\n" "${_recover_var_date}" | cut -dT -f1)"
-            _recover_var_detailed_date="$(printf "%s\\n" "${_recover_var_date}" | cut -dT -f2)"
-            _recover_var_name="$(printf "%s\\n" "${_recover_var_trashinfo}" | cut -d\| -f3 | sed -e 's:%%%%%: :g')"
-            _recover_var_real_file="$(printf "%s\\n" "${_recover_var_trashinfo}" | cut -d\| -f2 | sed -e 's:%%%%%: :g' | sed -e 's:\/info\/:\/files\/:g')"
+            #/real/path/file|/past/path/file|date
+            _recover_var_date="${_recover_var_data##*|}"
+            _recover_var_general_date="${_recover_var_date%%T*}"
+            _recover_var_detail_date="${_recover_var_date##*T}"
+            _recover_var_name="${_recover_var_data%|*}"
+            _recover_var_name="${_recover_var_name#*|}"
+            _recover_var_real_file="${_recover_var_data%%|*}"
+            _recover_var_real_file="$(printf "%s" "${_recover_var_real_file}"|sed -e 's:%%%%%: :g' -e 's:\/info\/:\/files\/:')"
 
             _recover_var_info_file="${trash_dir}/info/${_recover_var_real_file##*/}.trashinfo"
             _recover_var_file_file="${trash_dir}/files/${_recover_var_real_file##*/}"
 
             if [ ! -d "$(_dirname "${_recover_var_name}")" ]; then
-                printf "%s\\n" "mkdir -p $(_dirname "${_recover_var_name}")"
+                mkdir -p $(_dirname "${_recover_var_name}")
             fi
 
             if [ -e "${_recover_var_name}" ]; then
-                mv "${_recover_var_file_file}" "${_recover_var_name}.${_recover_var_general_date}-${_recover_var_detailed_date}.saved"
+                mv "${_recover_var_file_file}" "${_recover_var_name}.${_recover_var_general_date}-${_recover_var_detail_date}.saved"
                 rm "${_recover_var_info_file}"
             else
                 mv "${_recover_var_file_file}" "${_recover_var_name}"
@@ -241,14 +243,19 @@ _clean()
     if [ ! X"${_clean_var_answer}" = X"y" ]; then
         printf "%s\\n" "Nothing done" && exit
     else
+        [ -z "${1}" ] && { rm -rf "${trash_dir}"/files/.* "${trash_dir}"/files/* 2>/dev/null ; \
+                rm -rf "${trash_dir}"/info/* rm -rf "${trash_dir}"/info/.* 2>/dev/null ; exit 0; }
         OLDIFS="${IFS}"; IFS='
         ' #fix case where files have spaces
-        for _clean_var_trashinfo in $(find "$trash_dir"/info -name "*.trashinfo" -print0 \
-            | sort -z | xargs -0 grep -A 1 -Hri "path.*$1" \
-            | sed -e 's:^:|:g' -e 's:\.trashinfo.*=:|:g'   \
-            | tr -d '\n'| sed -e 's:--:\n:g' | sed -e 's: :%%%%%:g'); do
+        for _clean_var_data in $(grep -A 1 -Hri "path.*${1}" \
+            "${trash_dir}"/info/*.trashinfo "${trash_dir}"/info/.*.trashinfo 2>/dev/null  \
+            | sed -e 's:.*-Deletion.*=:|:g' -e 's:\.trashinfo.*=:|:g' | tr -d '\n'        \
+            | sed -e 's:--:\n:g' -e 's: :%%%%%:g' | sort); do
 
-            _clean_var_real_file="$(printf "%s\\n" "${_clean_var_trashinfo}" | cut -d\| -f2 | sed -e 's:%%%%%: :g' | sed -e 's:\/info\/:\/files\/:g')"
+            #/real/path/file|/past/path/file|date
+
+            _clean_var_real_file="${_clean_var_data%%|*}"
+            _clean_var_real_file="$(printf "%s" "${_clean_var_real_file}"|sed -e 's:%%%%%: :g' -e 's:\/info\/:\/files\/:')"
             _clean_var_info_file="${trash_dir}/info/${_clean_var_real_file##*/}.trashinfo"
             _clean_var_file_file="${trash_dir}/files/${_clean_var_real_file##*/}"
 
