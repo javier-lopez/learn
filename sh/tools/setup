@@ -6,7 +6,7 @@
 #[+] chmod +x dmenu-killall
 #[+] sudo cp dmenu-killall /usr/local/bin
 
-#Don't forget update this when adding new functions
+#Don't forget to update this when adding new functions
 _usage()
 {
   printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): setup my common tasks" >&2

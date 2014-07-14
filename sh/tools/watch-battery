@@ -3,7 +3,7 @@
 #             suspend the system if not action is taken
 #usage: watch-battery
 
-#it makes more sense to add it as a cron job
+#it makes more sense to run it as a cron job
 #cronjob (every 3 min)
 #*/3 * * * * /path/to/this/script
 

@@ -1,6 +1,5 @@
 #!/bin/sh
 #description: create cvs files with geolocalization data of launchpad groups
-#http://viajemotu.wordpress.com/2013/11/14/launchpad-maps/
 #usage: lp-g9n-team [lp group]
 
 #example: lp-g9n-team ubuntumembers
@@ -8,6 +7,8 @@
 #Member,City,Latitude,Longitude
 #ivarela,Madrid,40.4167754,-3.7037902
 #..
+
+#http://viajemotu.wordpress.com/2013/11/14/launchpad-maps/
 
 _usage()
 {

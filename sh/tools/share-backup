@@ -51,7 +51,7 @@ _usage()
     exit 1
 }
 
-#because of being used over ssh stdin get connected to the remote shell and stay waiting for input
+#because of being used over ssh stdin gets blocked
 #so I'll disable reading from pipes till I figure out a solution
 #if [ ! -t 0 ]; then
     ##there is input comming from pipe or file, add to the end of $@

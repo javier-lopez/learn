@@ -221,9 +221,9 @@ elif ! command -v "xrandr" >/dev/null 2>&1; then
 fi
 
 xrandr_output="$(xrandr)"
-all_outputs="$(printf "%s" "${xrandr_output}" | awk '/^V|^L|^H|^D/ {print $1}' | sed -e 's:$:,:g' | tr -d '\n')"
-connected_outputs="$(printf "%s" "${xrandr_output}" | awk '/ connected/ {print $1}' | sed -e 's:$:,:g' | tr -d '\n')"
-active_outputs="$(printf "%s" "${xrandr_output}" | awk '/ connected [^(]/ {print $1}' | sed -e 's:$:,:g' | tr -d '\n')"
+all_outputs="$(printf "%s" "${xrandr_output}"       | awk '/^V|^L|^H|^D/ {print $1","}'     | tr -d '\n')"
+connected_outputs="$(printf "%s" "${xrandr_output}" | awk '/ connected/ {print $1","}'      | tr -d '\n')"
+active_outputs="$(printf "%s" "${xrandr_output}"    | awk '/ connected [^(]/ {print $1","}' | tr -d '\n')"
 rotate="normal,inverted,left,right"
 offauto="off,auto"
 position="above,below,same-as,left-of,right-of"
@@ -236,8 +236,8 @@ active_outputs_len="$(_arraylen "${active_outputs}")"
 outputs_copy="${connected_outputs}"
 while [ "${outputs_copy}" ]; do
     outputs_option="${outputs_copy%%,*}"
-    mode_tmp="$(printf "%s" "${xrandr_output}" | awk '/'"${outputs_option}"'/ {flag=1;next} /^[A-Za-z]/{flag=0} flag {print $1}' | \
-                sort -nr | sed -e 's:$:,:g' | tr -d '\n')"
+    mode_tmp="$(printf "%s" "${xrandr_output}" | awk '/'"${outputs_option}"'/ {flag=1;next} /^[A-Za-z]/{flag=0} flag {print $1","}' | \
+                sort -nr | tr -d '\n')"
     eval mode_"${outputs_option}"=\$mode_tmp
     mode_tmp=""
 

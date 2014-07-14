@@ -8,6 +8,26 @@
 #to-a-remote-shell
 #...
 
+_cpb64()
+{
+    for file; do
+        [ ! -r "${file}" ] && { printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): '${file}' does not exist or is not readable" >&2; exit 1; }
+    done
+
+    str="$(tar cf - "${@}" | gzip | openssl enc -base64)"
+    line1="cat<<E=O=F | openssl enc -base64 -d | zcat | tar xvf -"
+    line2="${str}"
+    line3="E=O=F"
+
+    cmd="${line1}"'\n'"${line2}"'\n'"${line3}"'\n'
+
+    if command -v "xclip" >/dev/null 2>&1; then
+        printf "%b" "${cmd}" | xclip -selection clipboard; xclip -o -selection clipboard
+    else
+        printf "%b" "${cmd}"
+    fi
+}
+
 if [ ! -t 0 ]; then
     #there is input comming from pipe or file, add to the end of $@
     set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
@@ -15,19 +35,4 @@ fi
 
 [ "${#}" -eq "0" ] && { printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') file ..." >&2; exit 1; }
 
-for file; do
-    [ ! -r "${file}" ] && { printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): '${file}' does not exist or is not readable" >&2; exit 1; }
-done
-
-str="$(tar cf - "${@}" | gzip | openssl enc -base64)"
-line1="cat<<E=O=F | openssl enc -base64 -d | zcat | tar xvf -"
-line2="${str}"
-line3="E=O=F"
-
-cmd="${line1}"'\n'"${line2}"'\n'"${line3}"'\n'
-
-if command -v "xclip" >/dev/null 2>&1; then
-    printf "%b" "${cmd}" | xclip -selection clipboard; xclip -o -selection clipboard
-else
-    printf "%b" "${cmd}"
-fi
+_cpb64 "${@}"

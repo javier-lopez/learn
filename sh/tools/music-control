@@ -44,20 +44,13 @@ _mpd()
 _music_control()
 {
     [ -z "${1}" ] && return 1
-    case "${1}" in
-        pl*) _music_control_var_param="play" ;;
-        pa*) _music_control_var_param="pause" ;;
-        t*)  _music_control_var_param="toggle" ;;
-        n*)  _music_control_var_param="next" ;;
-        pr*) _music_control_var_param="previous" ;;
-    esac
     if [ -n "$(pgrep mplayer)" ] && [ -n "$(pgrep mpd)" ]; then
         _mpd pause
     fi
     if [ -n "$(pgrep mplayer)" ]; then
-        _mplayer "${_music_control_var_param}"
+        _mplayer "${1}"
     elif [ -n "$(pgrep mpd)" ]; then
-        _mpd "${_music_control_var_param}"
+        _mpd "${1}"
     fi
 }
 
@@ -69,8 +62,12 @@ fi
 [ X"${#}" != X"1" ] && _usage
 
 case "${1}" in
-    pl*|pa*|pr*|n*|t*) ;;
-    *) _usage ;;
+    pl*) _param="play"     ;;
+    pa*) _param="pause"    ;;
+    pr*) _param="previous" ;;
+    n*)  _param="next"     ;;
+    t*)  _param="toggle"   ;;
+    *)   _usage            ;;
 esac
 
-_music_control "${1}"
+_music_control "${_param}"
