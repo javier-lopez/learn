@@ -8,8 +8,8 @@ _governator()
     local cur prev words cword
     _init_completion || return
 
-    #set_opts="$(governator 2>&1 | awk '/set/ {print $NF}' | sed 's:|: :g')"
-    set_opts="$(governator 2>&1 | awk '/set/ {gsub(/\|/," "); $1=""; $2=""; sub(/^[ \t]+/, ""); print}')"
+    #set_opts="$(governator set 2>&1 | awk '/set/ {print $NF}' | sed 's:|: :g')"
+    set_opts="$(governator set 2>&1 | awk '/set/ {gsub(/\|/," "); $1=""; $2=""; sub(/^[ \t]+/, ""); print}')"
 
     #cur="${COMP_WORDS[COMP_CWORD]}"
     #prev="${COMP_WORDS[COMP_CWORD-1]}"
