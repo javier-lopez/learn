@@ -6,13 +6,13 @@
 
 #####################################
 #kernel version base
-kernel="3.14"
+kernel="3.15"
 #kernel specific version
-patchkernel="3.14.4"
+patchkernel="3.15.5"
 #BFQ patch
-bfq="3.14.0-v7r4"
+bfq="3.15.0-v7r5"
 #CK patch
-patchck="3.14-ck1"
+patchck="3.15-ck1"
 #####################################
 
 ################################################################################
@@ -366,124 +366,127 @@ _printfs "making sure CONFIG_CC_STACKPROTECTOR_STRONG is disabled, allow compila
 sed -i -e 's/^CONFIG_CC_STACKPROTECTOR_STRONG=y/# CONFIG_CC_STACKPROTECTOR_STRONG is not set/'   \
     -i -e 's/^# CONFIG_CC_STACKPROTECTOR_NONE is not set/CONFIG_CC_STACKPROTECTOR_NONE=y/' .config
 
+_printfs "removing double -ck suffix ..."
+sed -i -e 's/CONFIG_LOCALVERSION="-ck"/# CONFIG_LOCALVERSION="-ck"/' .config
+
 ##############
 #extra patches
 ##############
 
 #a lot of shit made it to 3.14.x =/
-_printfs "setting back FSID to 1, http://www.spinics.net/lists/kernel/msg1716924.html"
-sed -i 's/static int unnamed_dev_start = 0/static int unnamed_dev_start = 1/' ./fs/super.c
+#_printfs "setting back FSID to 1, http://www.spinics.net/lists/kernel/msg1716924.html"
+#sed -i 's/static int unnamed_dev_start = 0/static int unnamed_dev_start = 1/' ./fs/super.c
 
-_printfs "disable usb autosuspend for intel btusb, http://www.spinics.net/lists/kernel/msg1716461.html"
-sed -i "/usb_enable_autosuspend(data->udev);/d" ./drivers/bluetooth/btusb.c
+#_printfs "disable usb autosuspend for intel btusb, http://www.spinics.net/lists/kernel/msg1716461.html"
+#sed -i "/usb_enable_autosuspend(data->udev);/d" ./drivers/bluetooth/btusb.c
 
-_printfs "fix Xorg crash for i810 chipset, http://lkml.kernel.org/g/533D01BD.1010200@googlemail.com"
-cat    > ../kernfs-fix-removed-error-check.patch  << EOF
-diff --git a/fs/kernfs/file.c b/fs/kernfs/file.c
-index 8034706..e01ea4a 100644
---- a/fs/kernfs/file.c
-+++ b/fs/kernfs/file.c
-@@ -484,6 +484,8 @@ static int kernfs_fop_mmap(struct file *file, struct vm_area_struct *vma)
+#_printfs "fix Xorg crash for i810 chipset, http://lkml.kernel.org/g/533D01BD.1010200@googlemail.com"
+#cat    > ../kernfs-fix-removed-error-check.patch  << EOF
+#diff --git a/fs/kernfs/file.c b/fs/kernfs/file.c
+#index 8034706..e01ea4a 100644
+#--- a/fs/kernfs/file.c
+#+++ b/fs/kernfs/file.c
+#@@ -484,6 +484,8 @@ static int kernfs_fop_mmap(struct file *file, struct vm_area_struct *vma)
  
- 	ops = kernfs_ops(of->kn);
- 	rc = ops->mmap(of, vma);
-+	if (rc)
-+		goto out_put;
+         #ops = kernfs_ops(of->kn);
+         #rc = ops->mmap(of, vma);
+#+	if (rc)
+#+		goto out_put;
  
- 	/*
- 	 * PowerPC's pci_mmap of legacy_mem uses shmem_zero_setup()
-EOF
-_cmd     "patch -p1 < ../kernfs-fix-removed-error-check.patch"
+         #/*
+          #* PowerPC's pci_mmap of legacy_mem uses shmem_zero_setup()
+#EOF
+#_cmd     "patch -p1 < ../kernfs-fix-removed-error-check.patch"
 
 
-_printfs "fix saa7134 video, https://bugzilla.kernel.org/show_bug.cgi?id=73361"
-cat    > ../fix-saa7134.patch  << EOF
---- a/drivers/media/pci/saa7134/saa7134-video.c	
-+++ a/drivers/media/pci/saa7134/saa7134-video.c	
-@@ -1243,6 +1243,7 @@ static int video_release(struct file *file)
- 		videobuf_streamoff(&dev->cap);
- 		res_free(dev, fh, RESOURCE_VIDEO);
- 		videobuf_mmap_free(&dev->cap);
-+		INIT_LIST_HEAD(&dev->cap.stream);
- 	}
- 	if (dev->cap.read_buf) {
- 		buffer_release(&dev->cap, dev->cap.read_buf);
-@@ -1254,6 +1255,7 @@ static int video_release(struct file *file)
- 		videobuf_stop(&dev->vbi);
- 		res_free(dev, fh, RESOURCE_VBI);
- 		videobuf_mmap_free(&dev->vbi);
-+		INIT_LIST_HEAD(&dev->vbi.stream);
- 	}
+#_printfs "fix saa7134 video, https://bugzilla.kernel.org/show_bug.cgi?id=73361"
+#cat    > ../fix-saa7134.patch  << EOF
+#--- a/drivers/media/pci/saa7134/saa7134-video.c	
+#+++ a/drivers/media/pci/saa7134/saa7134-video.c	
+#@@ -1243,6 +1243,7 @@ static int video_release(struct file *file)
+                 #videobuf_streamoff(&dev->cap);
+                 #res_free(dev, fh, RESOURCE_VIDEO);
+                 #videobuf_mmap_free(&dev->cap);
+#+		INIT_LIST_HEAD(&dev->cap.stream);
+         #}
+         #if (dev->cap.read_buf) {
+                 #buffer_release(&dev->cap, dev->cap.read_buf);
+#@@ -1254,6 +1255,7 @@ static int video_release(struct file *file)
+                 #videobuf_stop(&dev->vbi);
+                 #res_free(dev, fh, RESOURCE_VBI);
+                 #videobuf_mmap_free(&dev->vbi);
+#+		INIT_LIST_HEAD(&dev->vbi.stream);
+         #}
  
- 	/* ts-capture will not work in planar mode, so turn it off Hac: 04.05*/
-@@ -1987,17 +1989,12 @@ int saa7134_streamoff(struct file *file, void *priv,
- 					enum v4l2_buf_type type)
- {
- 	struct saa7134_dev *dev = video_drvdata(file);
--	int err;
- 	int res = saa7134_resource(file);
+         #/* ts-capture will not work in planar mode, so turn it off Hac: 04.05*/
+#@@ -1987,17 +1989,12 @@ int saa7134_streamoff(struct file *file, void *priv,
+                                         #enum v4l2_buf_type type)
+ #{
+         #struct saa7134_dev *dev = video_drvdata(file);
+#-	int err;
+         #int res = saa7134_resource(file);
  
- 	if (res != RESOURCE_EMPRESS)
- 		pm_qos_remove_request(&dev->qos_request);
+         #if (res != RESOURCE_EMPRESS)
+                 #pm_qos_remove_request(&dev->qos_request);
  
--	err = videobuf_streamoff(saa7134_queue(file));
--	if (err < 0)
--		return err;
--	res_free(dev, priv, res);
--	return 0;
-+	return videobuf_streamoff(saa7134_queue(file));
- }
- EXPORT_SYMBOL_GPL(saa7134_streamoff);
+#-	err = videobuf_streamoff(saa7134_queue(file));
+#-	if (err < 0)
+#-		return err;
+#-	res_free(dev, priv, res);
+#-	return 0;
+#+	return videobuf_streamoff(saa7134_queue(file));
+ #}
+ #EXPORT_SYMBOL_GPL(saa7134_streamoff);
 
-EOF
-_cmd     "patch -p1 < ../fix-saa7134.patch"
+#EOF
+#_cmd     "patch -p1 < ../fix-saa7134.patch"
 
-_printfs "Back port and refine validation of the XSDT root table, https://bugzilla.kernel.org/show_bug.cgi?id=73911"
-cat    > ../fix-xsdt-validation.patch << EOF
-@@ -, +, @@
- acpi_tb_parse_root_table().
-  Commit: 671cc68dc61f029d44b43a681356078e02d8dab8
-  Subject: ACPICA: Back port and refine validation of the XSDT root table.
----
- drivers/acpi/acpica/tbutils.c |    6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
---- a/drivers/acpi/acpica/tbutils.c	
-+++ a/drivers/acpi/acpica/tbutils.c	
-@@ -461,6 +461,7 @@ acpi_status __init acpi_tb_parse_root_table(acpi_physical_address rsdp_address)
- 	u32 table_count;
- 	struct acpi_table_header *table;
- 	acpi_physical_address address;
-+	acpi_physical_address rsdt_address;
- 	u32 length;
- 	u8 *table_entry;
- 	acpi_status status;
-@@ -488,11 +489,13 @@ acpi_status __init acpi_tb_parse_root_table(acpi_physical_address rsdp_address)
- 		 * as per the ACPI specification.
- 		 */
- 		address = (acpi_physical_address) rsdp->xsdt_physical_address;
-+		rsdt_address = (acpi_physical_address) rsdp->rsdt_physical_address;
- 		table_entry_size = ACPI_XSDT_ENTRY_SIZE;
- 	} else {
- 		/* Root table is an RSDT (32-bit physical addresses) */
+#_printfs "Back port and refine validation of the XSDT root table, https://bugzilla.kernel.org/show_bug.cgi?id=73911"
+#cat    > ../fix-xsdt-validation.patch << EOF
+#@@ -, +, @@
+ #acpi_tb_parse_root_table().
+  #Commit: 671cc68dc61f029d44b43a681356078e02d8dab8
+  #Subject: ACPICA: Back port and refine validation of the XSDT root table.
+#---
+ #drivers/acpi/acpica/tbutils.c |    6 ++++--
+ #1 file changed, 4 insertions(+), 2 deletions(-)
+#--- a/drivers/acpi/acpica/tbutils.c	
+#+++ a/drivers/acpi/acpica/tbutils.c	
+#@@ -461,6 +461,7 @@ acpi_status __init acpi_tb_parse_root_table(acpi_physical_address rsdp_address)
+         #u32 table_count;
+         #struct acpi_table_header *table;
+         #acpi_physical_address address;
+#+	acpi_physical_address rsdt_address;
+         #u32 length;
+         #u8 *table_entry;
+         #acpi_status status;
+#@@ -488,11 +489,13 @@ acpi_status __init acpi_tb_parse_root_table(acpi_physical_address rsdp_address)
+                  #* as per the ACPI specification.
+                  #*/
+                 #address = (acpi_physical_address) rsdp->xsdt_physical_address;
+#+		rsdt_address = (acpi_physical_address) rsdp->rsdt_physical_address;
+                 #table_entry_size = ACPI_XSDT_ENTRY_SIZE;
+         #} else {
+                 #/* Root table is an RSDT (32-bit physical addresses) */
  
- 		address = (acpi_physical_address) rsdp->rsdt_physical_address;
-+		rsdt_address = address;
- 		table_entry_size = ACPI_RSDT_ENTRY_SIZE;
- 	}
+                 #address = (acpi_physical_address) rsdp->rsdt_physical_address;
+#+		rsdt_address = address;
+                 #table_entry_size = ACPI_RSDT_ENTRY_SIZE;
+         #}
  
-@@ -515,8 +518,7 @@ acpi_status __init acpi_tb_parse_root_table(acpi_physical_address rsdp_address)
+#@@ -515,8 +518,7 @@ acpi_status __init acpi_tb_parse_root_table(acpi_physical_address rsdp_address)
  
- 			/* Fall back to the RSDT */
+                         #/* Fall back to the RSDT */
  
--			address =
--			    (acpi_physical_address) rsdp->rsdt_physical_address;
-+			address = rsdt_address;
- 			table_entry_size = ACPI_RSDT_ENTRY_SIZE;
- 		}
- 	}
+#-			address =
+#-			    (acpi_physical_address) rsdp->rsdt_physical_address;
+#+			address = rsdt_address;
+                         #table_entry_size = ACPI_RSDT_ENTRY_SIZE;
+                 #}
+         #}
 
-EOF
-_cmd     "patch -p1 < ../fix-xsdt-validation.patch"
+#EOF
+#_cmd     "patch -p1 < ../fix-xsdt-validation.patch"
 
 _printfl "Compiling kernel"
 _printfs "running make-kpkg ..."
@@ -495,3 +498,4 @@ _printfs "copying debs files ..."
 _cmd     cp -- ../linux-*.deb "${curr_path}"
 _printfs "you may want to install the generated packages and reboot your system, run: $ sudo dpkg -i linux-*.deb"
 _printfs "have fun ^_^!"
+
