@@ -155,21 +155,6 @@ _animcui()
     printf "%b" "\b\b\b\b\b" && printf "%5s\n" ""
 }
 
-_waitforsudo()
-{   #print, execute and wait for a command to finish
-    [ -z "${1}" ] && return 1
-
-    printf "%s " "    $ sudo ${@} ..."
-    printf "%s\\n" "${sudopwd}" | ${sudocmd} sh -c "eval ${*}" >/dev/null 2>&1 &
-    sleep 1s
-
-    if [ X"${1}" = X"DEBIAN_FRONTEND=noninteractive" ]; then
-        _animcui "$(pidof "${2}")"
-    else
-        _animcui "$(pidof "${1}")"
-    fi
-}
-
 _cmdsudo()
 {   #print && execute a command, exit on fail
     [ -z "${1}" ] && return 1
@@ -190,8 +175,8 @@ _header
 _getroot
 _printfl
 _printfs "installing deps ..."
-_waitforsudo apt-get update
-_waitforsudo apt-get install --no-install-recommends -y ${apps_deps}
+_cmdsudo apt-get update
+_cmdsudo apt-get install --no-install-recommends -y ${apps_deps}
 _cmdsudo gem install ${gems_deps}
 printf "%s\\n" "source 'https://rubygems.org'"  > Gemfile
 printf "%s\\n" "gem 'github-pages'"            >> Gemfile
