@@ -97,9 +97,9 @@ _realpath()
 _logger()
 {
     if [ -n "${logfile}" ]; then
-        printf "%s\\n" "${*}" >&2 | tee -a "${logfile}"
+        printf "%s\\n" "${*}" | tee -a "${logfile}"
     else
-        printf "%s\\n" "${*}" >&2
+        printf "%s\\n" "${*}"
     fi
 }
 
