@@ -56,6 +56,7 @@ if __name__ == "__main__":
     for member in members:
       if member.time_zone != None:
         name=member.display_name
+        name=name.replace('"', '')
         city=basename(member.time_zone)
         coordinates = lookup(city.encode('utf-8'), google)
         #randomize a litle bit to avoid melting members on the same city
