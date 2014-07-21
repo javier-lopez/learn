@@ -2,6 +2,7 @@
 ##
 ##  Based on the GNU shtool test suite driver
 ##  Copyright (c) 1999-2008 Ralf S. Engelschall <rse@engelschall.com>
+##  Copyright (c) 2011-2014 Javier Lopez        <m@javier.io>
 ##
 ##  This file is part of shtool and free software; you can redistribute
 ##  it and/or modify it under the terms of the GNU General Public
@@ -22,7 +23,7 @@
 lib=../lib
 lib_db=./lib.db
 
-#make sure the tool and database exists
+#make sure tool and database exist
 [ -f $lib ]|| exit 1
 [ -f $lib_db ]|| exit 1
 
@@ -62,7 +63,7 @@ for function in $FUNCTIONS_WITH_TESTS; do
     rm -rf ./* >/dev/null 2>&1
     printf "%s\\n" "${function}........................." | awk '{ printf("%s", substr($0, 0, 25)); }'
     printf "%s\\n" ". ../$lib" >run.sh
-    sed -e "/^@begin{$function}/,/^@end{$function}/p" -e '1,$d' ../$lib_db |\
+    sed -e "/^@begin{$function}/,/^@end/p" -e '1,$d' ../$lib_db |\
     sed -e '/^@begin/d' -e '/^@end/d' \
         -e 's/\([^\\]\)[ 	]*$/\1 || exit 1/g' >>run.sh
     echo "exit 0" >>run.sh
