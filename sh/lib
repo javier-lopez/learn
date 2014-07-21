@@ -1,15 +1,16 @@
-#!/usr/bin/env sh
+#!/bin/sh
 #functions, copy and paste them in your own scripts
 
 #https://github.com/chilicuil/learn/blob/master/sh/lib
 #if you have more or can improve the current ones please send your push request!
 
 #new functions:
-#[+] must be self contained, with no dependencies on other functions
-#[+] can depend on exotic cli commands but must be at least comply POSIX sh
+#[+] must be self contained, with no dependencies in other functions
+#[+] can depend on exotic cli commands but must comply with POSIX sh
 #[+] must follow general style (read guideline.md)
 #[+] must not print errors, return 1 instead
-#[+] must provide an example
+#[+] must provide an example behind the definition of the function
+#[+] must provide at least 1 unit test (tests/lib.db)
 
 _abs()
 {   #return the absolute value of the argument, or 1 on failure
@@ -22,100 +23,16 @@ _abs()
 #_abs 2  #return 2
 #=================================================================
 
-_animcui()
-{   #wait animation
-    [ -z "${1}" ] && { printf "%5s\n" ""; return 1; }
-
-    if ! printf "%s" "$(pidof "${1}")" | grep "[0-9].*" >/dev/null; then
-        printf "%5s\n" ""
-        return 1;
-    fi
-
-    _animcui_var_animation_state="1"
-
-    if [ ! "$(ps -p "$(pidof "${1}")" -o comm= 2>/dev/null)" ]; then
-        printf "%5s\n" ""
-        return 1
-    fi
-
-    printf "%5s" ""
-
-    while [ "$(ps -p "$(pidof "${1}")" -o comm= 2>/dev/null)" ]; do
-        printf "%b" "\b\b\b\b\b"
-        case "${_animcui_var_animation_state}" in
-            1) printf "%s" '\o@o\'
-               _animcui_var_animation_state="2" ;;
-            2) printf "%s" '|o@o|'
-               _animcui_var_animation_state="3" ;;
-            3) printf "%s" '/o@o/'
-               _animcui_var_animation_state="4" ;;
-            4) printf "%s" '|o@o|'
-               _animcui_var_animation_state="1" ;;
-        esac
-        sleep 1
-    done
-    printf "%b" "\b\b\b\b\b" && printf "%5s\n" ""
+_aptproxy()
+{   #test if an apt proxy exist on the local network
+    #return 0 on sucess, 1 otherwise
+    avahi-browse -a  -t | grep apt-cacher-ng >/dev/null && return 0
+    return 1
 }
 #==================================================== Example ====
-#tar zxf big_file.tar.gz > /dev/null 2>&1 &
-#printf "%s" "[+] tar is running ..." && _animcui $(pidof tar)
-#=================================================================
-
-_animrotate()
-{   #shows an animation as long as a process is in memory
-    [ -z "${1}" ] && return 1
-
-    if ! printf "%s" "$(pidof "${1}")" | grep "[0-9].*" >/dev/null; then
-        printf "%5s\n" ""
-        return 1;
-    fi
-
-    _animrotate_var_animation_state="1"
-
-    if [ ! "$(ps -p "$(pidof "${1}")" -o comm= 2>/dev/null)" ]; then
-        printf "%5s\n" ""
-        return 1
-    fi
-
-    printf "%5s" ""
-
-    while [ "$(ps -p "$(pidof "${1}")" -o comm= 2>/dev/null)" ]; do
-        # rotating star
-        printf "%b" "\b\b\b"
-        case "${_animrotate_var_animation_state}" in
-            1)
-                printf "%s" "["
-                printf "%b" "\033[1m|\033[0m"
-                printf "%s" "]"
-                _animrotate_var_animation_state="2"
-                ;;
-            2)
-                printf "%s" "["
-                printf "%b" "\033[1m/\033[0m"
-                printf "%s" "]"
-                _animrotate_var_animation_state="3"
-                ;;
-            3)
-                printf "%s" "["
-                printf "%b" "\033[1m-\033[0m"
-                printf "%s" "]"
-                _animrotate_var_animation_state="4"
-                ;;
-            4)
-                printf "%s" "["
-                printf "%b" "\033[1m"
-                printf "%s" "\\"
-                printf "%b" "\033[0m"
-                printf "%s" "]"
-                _animrotate_var_animation_state="1"
-                ;;
-        esac
-        sleep 1
-    done
-    printf "%b" "\b\b\b\b\b\b\b       "
-}
-#==================================================== Example ====
-#printf "%s" "[+] tar" && _animrotate $(pidof tar)
+#if ! _aptproxy; then
+    #printf "%s\\n" "no apt proxy was found, setting up one ..."
+#fi
 #=================================================================
 
 _arch()
@@ -157,40 +74,7 @@ _basename()
     printf "%s\\n" "${_basename_var_name}"
 }
 #==================================================== Example ====
-#_basename /path/file #returns file
-#=================================================================
-
-_cleanup()
-{   #clean tmp files, exits with no parameters
-    stty echo
-    printf "\\n"
-    printf "%s\\n" "[+] cleanup ..."
-    #your_commands_here
-
-    [ -z "${1}" ] && exit
-}
-#==================================================== Example ====
-#trap _cleanup SIGINT SIGTERM #trap ctrl-c
-#_cleanup 1
-#=================================================================
-
-_cmd()
-{   #print and execute a command, exit on fail
-    [ -z "${1}" ] && return 1
-
-    printf "%s \\n" "    $ ${*}"
-    _cmd_var_output="$(eval ${@} 2>&1)"
-    _cmd_var_status="${?}"
-
-    if [ X"${_cmd_var_status}" != X"0" ]; then
-        printf "> %s:%s" "${*}" "${_cmd_var_output}"
-        exit "${_cmd_var_status}"
-    else
-        return "${_cmd_var_status}"
-    fi
-}
-#==================================================== Example ====
-#_cmd rm file
+#_basename /path/file #return file
 #=================================================================
 
 _decode64()
@@ -214,7 +98,7 @@ _die()
 #=================================================================
 
 _dirname()
-{   #returns string containing dirname on success, 1 on fail
+{   #return string containing dirname on success, 1 on fail
     [ -z "${1}" ] && return 1
 
     case "${1}" in
@@ -226,7 +110,7 @@ _dirname()
     esac
 }
 #==================================================== Example ====
-#_dirname /path/file #returns /path
+#_dirname /path/file #return /path
 #=================================================================
 
 _distro()
@@ -303,6 +187,9 @@ _echo()
 
     printf "${fmt}${end}" "${*}"
 }
+#==================================================== Example ====
+#_echo 'Hello World!' #print Hello World!
+#=================================================================
 
 _encode64()
 {
@@ -325,19 +212,7 @@ _ensurecron()
 #_ensurecron "* * * * * /path/task"
 #=================================================================
 
-_existaptproxy()
-{   #test if an apt proxy exist on the local network
-    #return 0 on sucess, 1 otherwise
-    avahi-browse -a  -t | grep apt-cacher-ng >/dev/null && return 0
-    return 1
-}
-#==================================================== Example ====
-#if ! _existaptproxy; then
-    #printf "%s\\n" "no apt proxy was found, setting up one ..."
-#fi
-#=================================================================
-
-_existuser()
+_user()
 {   #test if an user exists on the system
     #return 0 on sucess, 1 otherwise
     [ -z "${1}" ] && return 1
@@ -348,7 +223,7 @@ _existuser()
     fi
 }
 #==================================================== Example ====
-#if _existuser user; then
+#if _user user; then
     #printf "%s\\n" "user was found ..."
 #fi
 #=================================================================
@@ -359,7 +234,7 @@ _getfs()
     udevadm info -q all -n "${1}" | awk -F"=" '/ID_FS_TYPE/ {print $2 }'
 }
 #==================================================== Example ====
-#_getfs /dev/sda1 #returns "ext4" or the format found
+#_getfs /dev/sda1 #print "ext4" or the format found
 #=================================================================
 
 _getpasswd()
@@ -386,99 +261,6 @@ _getpasswd()
 #printf "%s\\n" "${configpasswd}"
 #=================================================================
 
-_getrelease()
-{   #print debian|ubuntu release version
-    if command -v "lsb_release" >/dev/null 2>&1; then
-        _getrelease_var_release="$(lsb_release -s -c)"
-    else
-        if [ -f /etc/apt/sources.list ]; then
-            _getrelease_var_release="$(awk -F" " '/^deb .*/ {print $3; exit}' /etc/apt/sources.list)"
-        fi
-    fi
-
-    printf "%s" "${_getrelease_var_release}"
-}
-#==================================================== Example ====
-#release="$(_getrelease)"
-#=================================================================
-
-_getroot()
-{   #get sudo's password, define $sudopwd and $sudocmd
-    if [ ! X"${LOGNAME}" = X"root" ]; then
-        printf "%s\\n" "Detecting user ${LOGNAME} (non-root) ..."
-        printf "%s\\n" "Checking if sudo is available ..."
-
-        if command -v "sudo" >/dev/null 2>&1; then
-            sudo -K
-
-            if [ -n "${sudopwd}" ]; then
-                # password check
-                _getroot_var_test="$(printf "%s\\n" "${sudopwd}" | sudo -S ls 2>&1)"
-                _getroot_var_status="${?}"
-                _getroot_var_not_allowed="$(printf "%s" "${_getroot_var_test}" | \
-                                         grep -i "sudoers")"
-
-                if [ -n "${_getroot_var_not_allowed}" ]; then
-                    printf "%s %s\\n" "You're not allowed to use sudo," \
-                    "get in contact with your local administrator"
-                    exit
-                fi
-
-                if [ X"${_getroot_var_status}" != X"0" ]; then
-                    sudopwd=""
-                    printf "%s\\n" "Incorrect preseed password"
-                    exit
-                else
-                    sudocmd="sudo -S"
-                fi
-                printf "%s\\n" "    - all set ..."
-                return
-            fi
-
-            i=0 ; while [ "${i}" -lt "3" ]; do
-                i="$((${i} + 1))"
-                printf "%s" "   - enter sudo password: "
-                stty -echo
-                read sudopwd
-                stty echo
-
-                # password check
-                _getroot_var_test="$(printf "%s\\n" "${sudopwd}" | sudo -S ls 2>&1)"
-                _getroot_var_status="${?}"
-                _getroot_var_not_allowed="$(printf "%s" "${_getroot_var_test}" | \
-                                         grep -i "sudoers")"
-
-                if [ -n "${_getroot_var_not_allowed}" ]; then
-                    printf "\\n%s %s\\n" "You're not allowed to use sudo," \
-                    "get in contact with your local administrator"
-                    exit
-                fi
-
-                printf "\\n"
-                if [ X"${_getroot_var_status}" != X"0" ]; then
-                    sudopwd=""
-                else
-                    sudocmd="sudo -S"
-                    break
-                fi
-            done
-
-            if [ -z "${sudopwd}" ]; then
-                printf "%s\\n" "Failed authentication"
-                exit
-            fi
-        else
-            printf "%s %s\\n" "You're not root and sudo isn't available." \
-            "Please run this script as root!"
-            exit
-        fi
-    fi
-}
-#==================================================== Example ====
-#_getroot
-#printf "%s\\n" "${sudopwd}" | ${sudocmd} rm file
-#=================================================================
-
 _getuuid()
 {   #returns a uuid or 1 on error
     [ -z "${1}" ] && return 1
@@ -488,11 +270,9 @@ _getuuid()
 #_getuuid /dev/sda1 #returns "793e9a6d-d545-46f0-ac9c-49071c450b62"
 #=================================================================
 
-_internetavailable()
+_internet()
 {   #check for internet connection, returns 0 on success, 1 otherwise
-    wget --tries=3 --timeout=5 \
-        http://www.google.com -O /tmp/index.google > /dev/null 2>&1
-
+    wget --tries=3 --timeout=5 http://www.google.com -O /tmp/index.google > /dev/null 2>&1
     if [ -s /tmp/index.google ]; then
         rm -rf /tmp/index.google
         return 0
@@ -502,7 +282,7 @@ _internetavailable()
     fi
 }
 #==================================================== Example ====
-#if ! _internetavailable; then
+#if ! _internet; then
     #printf "%s\\n" \
     #"You must have an Internet connection to run this script"
     #exit 1
@@ -579,6 +359,13 @@ _newer()
         return 1
     fi
 }
+#==================================================== Example ====
+#if _newer 1stfile 2ndfile; then
+    #printf "%s\\n" "1stfile is newer"
+#else
+    #printf "%s\\n" "2ndfile is newer"
+#fi
+#=================================================================
 
 _num()
 {   #look for a number, returns 0 on success, 1 otherwise
@@ -597,13 +384,6 @@ _num()
 #exit 0
 #=================================================================
 
-_running()
-{
-    [ -z "${1}" ] && return 1
-    pgrep "${1}" >/dev/null && return 0
-    return 1
-}
-
 _lock()
 {
     exec 9>/tmp/$(expr "${1}" : '.*/\([^/]*\)').lock #verify only one instance is running
@@ -613,7 +393,7 @@ _lock()
     fi
 }
 #==================================================== Example ====
-#_lock "${0}"
+#_lock "${0}" #locks script till finish
 #=================================================================
 
 _notify()
@@ -655,14 +435,14 @@ _printfl()
 {   #print lines
     _printfl_var_max_len="80"
     if [ -n "${1}" ]; then
-        _printfl_var_word_len="$((${#1} + 2))"
+        _printfl_var_word_len="$((${#*} + 2))"
         _printfl_var_sub="$((${_printfl_var_max_len} - ${_printfl_var_word_len}))"
         _printfl_var_half="$((${_printfl_var_sub} / 2))"
         _printfl_var_other_half="$((${_printfl_var_sub} - ${_printfl_var_half}))"
         printf "%b" "\033[1m" #white strong
         printf '%*s' "${_printfl_var_half}" '' | tr ' ' -
         printf "%b" "\033[7m" #white background
-        printf " %s " "${1}"
+        printf " %s " "${*}"
         printf "%b" "\033[0m\033[1m" #white strong
         printf '%*s' "${_printfl_var_other_half}" '' | tr ' ' -
         printf "%b" "\033[0m" #back to normal
@@ -950,9 +730,12 @@ _substr()
 
     printf "%s\\n" "${1}" | cut -c"${_substr_var_start}"-"${_substr_var_len}"
 }
+#==================================================== Example ====
+#_substr "abcdef" 0 4 #print "abcd"
+#=================================================================
 
 _uploadimg()
-{   #uploads an image, returns url on success, 1 otherwise
+{   #upload images, return url on success, 1 otherwise
     #requires curl, and optionally xclip
     [ -z "${1}" ] && return 1
 
@@ -1002,28 +785,14 @@ _unprintf()
 #prinf "bye world"
 #=================================================================
 
-_usage()
-{   #prints an usage msg and exits with 0
-    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [OPTION] FILE"
-    printf "%s\\n" "  -a   description"
-    printf "%s\\n" "  -b   description"
-    printf "%s\\n" "  -c   description"
-    exit 0
-}
-#===================================================== Example ====
-#case "${1}" in
-  #-h | --help | h | help ) _usage;;
-#esac
-#=================================================================
-
-_validinterface()
+_validnetinterface()
 {   #return 0 if parameter is a valid network interface, 1 otherwise
     [ -z "${1}" ] && return 1
     ip addr show | grep "${1}": >/dev/null && return 0
     return 1
 }
 #===================================================== Example ====
-#if ! _validinterface "${interface}"; then
+#if ! _validnetinterface "${interface}"; then
     #printf "%s\\n" "not valid interface ${interface}"
 #fi
 #=================================================================
@@ -1058,7 +827,7 @@ _validmail()
 
     case "${1}" in
         *@*) return 0 ;;
-        *) return 1 ;;
+        *)   return 1 ;;
     esac
 }
 #===================================================== Example ====
@@ -1072,62 +841,9 @@ _verbose()
     [ -z "${1}" ] && return 1
     [ -n "${VERBOSE}" ] && printf "%s\\n" "${*}"
 }
-
-_waitfor()
-{   #wait for a program, shows an animation
-    [ -z "${1}" ] && return 1
-
-    printf "%s " "    $ ${@}"
-    eval "${@}" > /dev/null 2>/dev/null &
-    sleep 1s
-
-    running="$(pidof "${1}")"; running="${?}"
-    if [ X"${running}" = X"1" ]; then
-        printf "\\n"
-    else
-        pid="$(pidof "${1}")"
-        animation_state="1"
-        printf "%b" "    "
-
-        while [ "$(ps -p "${pid}" -o comm=)" ]; do
-            # rotating star
-            printf "%b" "\b\b\b"
-            case "${animation_state}" in
-                1)
-                    printf "%s" "["
-                    printf "%b" "\033[1m|\033[0m"
-                    printf "%s" "]"
-                    animation_state="2"
-                    ;;
-                2)
-                    printf "%s" "["
-                    printf "%b" "\033[1m/\033[0m"
-                    printf "%s" "]"
-                    animation_state="3"
-                    ;;
-                3)
-                    printf "%s" "["
-                    printf "%b" "\033[1m-\033[0m"
-                    printf "%s" "]"
-                    animation_state="4"
-                    ;;
-                4)
-                    printf "%s" "["
-                    printf "%b" "\033[1m"
-                    printf "%s" "\\"
-                    printf "%b" "\033[0m"
-                    printf "%s" "]"
-                    animation_state="1"
-                    ;;
-            esac
-            sleep 1
-        done
-        printf "%b\\n" "\b\b\b   "
-        printf "\\n"
-    fi
-}
 #==================================================== Example ====
-#_waitfor "bzcat file.tar.bz2 | tar xf -"
+#_verbose "hello"           # print nothing
+#VERBOSE=1 _verbose "hello" # print verbose
 #=================================================================
 
 _whereis()
@@ -1148,12 +864,11 @@ _xmessage()
     [ -z "${1}" ] && return 1
     XMESSAGE="$(command -v gxmessage 2>/dev/null)" || XMESSAGE="$(command -v xmessage 2>/dev/null)"
     MESSAGE="$(expr "${0}" : '.*/\([^/]*\)'): ${*}"
-    printf "%s\\n" "${MESSAGE}" | fold -s -w ${COLUMNS:-80} >&2
+    printf "%s\\n" "${MESSAGE}" | fold -s -w ${COLUMNS:-80}
     if [ -n "${DISPLAY}" ] && [ -n "${XMESSAGE}" ]; then
-        printf "%s\\n" "${MESSAGE}" | fold -s -w ${COLUMNS:-80} \
-               | "${XMESSAGE}" -center -file -
+        printf "%s\\n" "${MESSAGE}" | fold -s -w ${COLUMNS:-80} | "${XMESSAGE}" -center -file -
     fi
 }
 #==================================================== Example ====
-#_xmessage "Notice ..."
+#_xmessage "Notice ..." #show a dialog with notice
 #=================================================================
