@@ -71,10 +71,28 @@ _basename()
         fi
     fi
 
-    printf "%s\\n" "${_basename_var_name}"
+    printf "%s" "${_basename_var_name}"
 }
 #==================================================== Example ====
 #_basename /path/file #return file
+#=================================================================
+
+_bbasename()
+{
+    [ -z "${1}" ] && return 1 || _bbasename_var_name="${1}"
+    [ -z "${2}" ] || _bbasename_var_suffix="${2}"
+    case "${_bbasename_var_name}" in
+        /*|*/*) _bbasename_var_name="${_bbasename_var_name##*/}"
+    esac
+
+    if [ -n "${_bbasename_var_suffix}" ] && [ "${#_bbasename_var_name}" -gt "${#2}" ]; then
+        _bbasename_var_name="${_bbasename_var_name%$_bbasename_var_suffix}"
+    fi
+
+    printf "%s" "${_bbasename_var_name}"
+}
+#==================================================== Example ====
+#_bbasename /path/file #return file
 #=================================================================
 
 _decode64()

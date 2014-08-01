@@ -50,6 +50,31 @@ test X"$(_basename /usr/local/bin/test t)"  = X"tes"
 test X"$(_basename /usr/local/bin/test st)" = X"te"
 @end
 
+@begin{_bbasename}
+_bbasename; test X"${?}"                     = X"1"
+test X"$(_bbasename test)"                   = X"test"
+test X"$(_bbasename ./test)"                 = X"test"
+test X"$(_bbasename ../test)"                = X"test"
+test X"$(_bbasename .././test)"              = X"test"
+test X"$(_bbasename ../../test)"             = X"test"
+test X"$(_bbasename /usr/local/bin/test)"    = X"test"
+test X"$(_bbasename test t)"                 = X"tes"
+test X"$(_bbasename test st)"                = X"te"
+test X"$(_bbasename test est)"               = X"t"
+test X"$(_bbasename test test)"              = X"test"
+test X"$(_bbasename test tes)"               = X"test"
+test X"$(_bbasename ./test test)"            = X"test"
+test X"$(_bbasename ./test tes)"             = X"test"
+test X"$(_bbasename ../test test)"           = X"test"
+test X"$(_bbasename ../test tes)"            = X"test"
+test X"$(_bbasename ./test t)"               = X"tes"
+test X"$(_bbasename ./test st)"              = X"te"
+test X"$(_bbasename ../test t)"              = X"tes"
+test X"$(_bbasename ../test st)"             = X"te"
+test X"$(_bbasename /usr/local/bin/test t)"  = X"tes"
+test X"$(_bbasename /usr/local/bin/test st)" = X"te"
+@end
+
 @begin{_decode64}
 _decode64; test X"${?}"                    = X"1"
 test X"$(_decode64 "aGVsbG8K")"            = X"hello"
