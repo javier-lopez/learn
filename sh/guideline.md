@@ -4,14 +4,14 @@
     - array contructs
     - `<()` or `>()`
     - `{a,b,c}` or `{1..10}`
-    - `function` at the definition of a function
+    - `function` keyword at the beginning of a function
     - C-like for loops, `for ((i=0; i<3; i++))`
-- Avoid `basename`, use `expr` instead
+- Avoid `basename`, use `expr` or substrings (${variable##\*/}) instead
 - Use `=` over `==`
 - Use `[` or `test` over `[[`
+- Use `case` over `test` or `[` for regex
 - Use `command -v` over `which`
 - Use `awk` over `sed`, `grep`, `cut`, `sort`, `tr` or `unique`
-- Use `case` over `test` for regex
 - Use `/bin/sh` over `/bin/bash` or `/usr/bin/env sh`
 - Use `$(foo)` over `foo`
 - Use `$((${i}+1))` over `$(expr "${i}" + 1)`
@@ -130,7 +130,7 @@
 
   **Best**
    ```sh
-   [ -f "$(command -v "mplayer")" ] && $(command -v "ps")
+   [ -f "$(command -v "mplayer")" ] && $(command -v "mplayer")
    ```
 - Avoid -q in grep
 
@@ -161,7 +161,7 @@
    ```sh
    printf "%s\\n" "$(ls)"
    ```
-- On string comparations use X as a prefix for comparitions
+- On string comparations use X as a prefix
 
   **Bad**
    ```sh
