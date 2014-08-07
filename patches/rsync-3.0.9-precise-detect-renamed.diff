@@ -33,8 +33,8 @@ TODO:
   that could use it.
 
 based-on: 40afd365cc8ca968fd16e161d24df5b8a8a520cc
---- compat.c.orig	2012-04-03 10:38:42.000000000 -0400
-+++ compat.c	2012-04-03 10:38:42.000000000 -0400
+--- a/compat.c
++++ b/compat.c
 @@ -41,6 +41,7 @@ extern int read_batch;
  extern int delay_updates;
  extern int checksum_seed;
@@ -51,8 +51,8 @@ based-on: 40afd365cc8ca968fd16e161d24df5b8a8a520cc
  	  || delay_updates || prune_empty_dirs))
  		allow_inc_recurse = 0;
  	else if (am_server && !local_server
---- flist.c.orig	2012-04-03 10:38:42.000000000 -0400
-+++ flist.c	2012-04-03 10:38:42.000000000 -0400
+--- a/flist.c
++++ b/flist.c
 @@ -61,6 +61,7 @@ extern int non_perishable_cnt;
  extern int prune_empty_dirs;
  extern int copy_links;
@@ -142,8 +142,8 @@ based-on: 40afd365cc8ca968fd16e161d24df5b8a8a520cc
  	if (protocol_version < 30) {
  		/* Recv the io_error flag */
  		if (ignore_errors)
---- generator.c.orig	2012-04-03 10:38:42.000000000 -0400
-+++ generator.c	2012-04-03 23:16:14.000000000 -0400
+--- a/generator.c
++++ b/generator.c
 @@ -79,6 +79,7 @@ extern char *basis_dir[MAX_BASIS_DIRS+1]
  extern int compare_dest;
  extern int copy_dest;
@@ -552,8 +552,8 @@ based-on: 40afd365cc8ca968fd16e161d24df5b8a8a520cc
  	phase++;
  	if (verbose > 2)
  		rprintf(FINFO, "generate_files phase=%d\n", phase);
---- options.c.orig	2012-04-03 10:38:42.000000000 -0400
-+++ options.c	2012-04-03 10:38:42.000000000 -0400
+--- a/options.c
++++ b/options.c
 @@ -82,6 +82,7 @@ int am_sender = 0;
  int am_starting_up = 1;
  int relative_paths = -1;
@@ -604,8 +604,8 @@ based-on: 40afd365cc8ca968fd16e161d24df5b8a8a520cc
  	} else {
  		if (skip_compress) {
  			if (asprintf(&arg, "--skip-compress=%s", skip_compress) < 0)
---- rsync.yo.orig	2012-04-03 10:38:42.000000000 -0400
-+++ rsync.yo	2012-04-03 10:38:42.000000000 -0400
+--- a/rsync.yo
++++ b/rsync.yo
 @@ -403,6 +403,7 @@ to the detailed description below for a 
       --modify-window=NUM     compare mod-times with reduced accuracy
   -T, --temp-dir=DIR          create temporary files in directory DIR
@@ -636,8 +636,8 @@ based-on: 40afd365cc8ca968fd16e161d24df5b8a8a520cc
  dit(bf(--compare-dest=DIR)) This option instructs rsync to use em(DIR) on
  the destination machine as an additional hierarchy to compare destination
  files against doing transfers (if the files are missing in the destination
---- syscall.c.orig	2011-02-21 14:32:51.000000000 -0500
-+++ syscall.c	2012-04-04 11:01:33.000000000 -0400
+--- a/syscall.c
++++ b/syscall.c
 @@ -217,6 +217,22 @@ void trim_trailing_slashes(char *name)
  	}
  }
@@ -661,8 +661,8 @@ based-on: 40afd365cc8ca968fd16e161d24df5b8a8a520cc
  int do_mkdir(char *fname, mode_t mode)
  {
  	if (dry_run) return 0;
---- util.c.orig	2012-04-03 10:38:42.000000000 -0400
-+++ util.c	2012-04-03 23:15:12.000000000 -0400
+--- a/util.c
++++ b/util.c
 @@ -1172,7 +1172,7 @@ int handle_partial_dir(const char *fname
  			}
  			statret = -1;
@@ -705,8 +705,8 @@ based-on: 40afd365cc8ca968fd16e161d24df5b8a8a520cc
  /* Determine if a symlink points outside the current directory tree.
   * This is considered "unsafe" because e.g. when mirroring somebody
   * else's machine it might allow them to establish a symlink to
---- proto.h.orig	2012-04-03 10:38:42.000000000 -0400
-+++ proto.h	2012-04-03 23:29:23.000000000 -0400
+--- a/proto.h
++++ b/proto.h
 @@ -305,6 +305,7 @@ int do_chmod(const char *path, mode_t mo
  int do_rename(const char *fname1, const char *fname2);
  int do_ftruncate(int fd, OFF_T size);
@@ -724,8 +724,8 @@ based-on: 40afd365cc8ca968fd16e161d24df5b8a8a520cc
  int unsafe_symlink(const char *dest, const char *src);
  char *human_num(int64 num);
  char *human_dnum(double dnum, int decimal_digits);
---- rsync.1.orig	2012-04-03 10:38:42.000000000 -0400
-+++ rsync.1	2012-04-03 21:48:49.000000000 -0400
+--- a/rsync.1
++++ b/rsync.1
 @@ -479,6 +479,7 @@ to the detailed description below for a 
       \-\-modify\-window=NUM     compare mod\-times with reduced accuracy
   \-T, \-\-temp\-dir=DIR          create temporary files in directory DIR
