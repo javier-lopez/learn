@@ -1,5 +1,5 @@
 #!/bin/sh
-#description:  edit code of scripting utilities located in the system PATH
+#description: edit code of scripting utilities located in the system PATH
 #usage: vim-show script
 
 #example: vim-show vim-show
