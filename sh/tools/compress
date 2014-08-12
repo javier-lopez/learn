@@ -56,6 +56,11 @@ _compress()
                 printf "\\n"
                 ar rv "${_compress_var_compression}" ${_compress_var_files}
                 ;;
+            *.tar.lrz|*.tlrz|*.tlz)
+                printf "%s " "[+] tar cvf - ${_compress_var_files_format} | lrzip -L 9 > ${_compress_var_compression}"
+                printf "\\n"
+                tar cvf - ${_compress_var_files} | lrzip -L 9 > "${_compress_var_compression}"
+                ;;
             *.tar.bz2|*.tbz|*.tbz2)
                 printf "%s " "[+] tar cvf - ${_compress_var_files_format} | bzip2 > ${_compress_var_compression}"
                 printf "\\n"
@@ -65,6 +70,16 @@ _compress()
                 printf "%s " "[+] tar cvf - ${_compress_var_files_format} | gzip > ${_compress_var_compression}"
                 printf "\\n"
                 tar cvf - ${_compress_var_files} | gzip > "${_compress_var_compression}"
+                ;;
+            *.tar.lzma)
+                printf "%s " "[+] tar cvf - ${_compress_var_files_format} | lzma > ${_compress_var_compression}"
+                printf "\\n"
+                tar cvf - ${_compress_var_files} | lzma > "${_compress_var_compression}"
+                ;;
+            *.tar.xz)
+                printf "%s " "[+] tar cvf - ${_compress_var_files_format} | xz > ${_compress_var_compression}"
+                printf "\\n"
+                tar cvf - ${_compress_var_files} | xz > "${_compress_var_compression}"
                 ;;
             *.bz2)
                 x="0"
@@ -110,16 +125,6 @@ _compress()
                 printf "\\n"
                 7z a "${_compress_var_compression}" ${_compress_var_files}
                 ;;
-            *.tar.lzma)
-                printf "%s " "[+] tar cvf - ${_compress_var_files_format} | lzma > ${_compress_var_compression}"
-                printf "\\n"
-                tar cvf - ${_compress_var_files} | lzma > "${_compress_var_compression}"
-                ;;
-            *.tar.xz)
-                printf "%s " "[+] tar cvf - ${_compress_var_files_format} | xz > ${_compress_var_compression}"
-                printf "\\n"
-                tar cvf - ${_compress_var_files} | xz > "${_compress_var_compression}"
-                ;;
             *.jar)
                 printf "%s " "[+] jar cvf ${_compress_var_compression} ${_compress_var_files_format}"
                 printf "\\n"
@@ -141,6 +146,11 @@ _compress()
                 printf "\\n"
                 ar r "${_compress_var_compression}" ${_compress_var_files}
                 ;;
+            *.tar.lrz|*.tlrz|*.tlz)
+                printf "%s " "[+] tar cf - ${_compress_var_files_format} | lrzip -q -L 9 > ${_compress_var_compression}"
+                printf "\\n"
+                tar cf - ${_compress_var_files} | lrzip -q -L 9 > "${_compress_var_compression}"
+                ;;
             *.tar.bz2|*.tbz|*.tbz2)
                 printf "%s " "[+] tar cf - ${_compress_var_files_format} | bzip2 > ${_compress_var_compression}"
                 printf "\\n"
@@ -150,6 +160,16 @@ _compress()
                 printf "%s " "[+] tar cf - ${_compress_var_files_format} | gzip > ${_compress_var_compression}"
                 printf "\\n"
                 tar cf - ${_compress_var_files} | gzip > "${_compress_var_compression}"
+                ;;
+            *.tar.lzma)
+                printf "%s " "[+] tar cf - ${_compress_var_files_format} | lzma > ${_compress_var_compression}"
+                printf "\\n"
+                tar cf - ${_compress_var_files} | lzma > "${_compress_var_compression}"
+                ;;
+            *.tar.xz)
+                printf "%s " "[+] tar cf - ${_compress_var_files_format} | xz > ${_compress_var_compression}"
+                printf "\\n"
+                tar cf - ${_compress_var_files} | xz > "${_compress_var_compression}"
                 ;;
             *.bz2)
                 x="0"
@@ -194,16 +214,6 @@ _compress()
                 printf "%s " "[+] 7z a ${_compress_var_compression} ${_compress_var_files_format}"
                 printf "\\n"
                 7z a "${_compress_var_compression}" ${_compress_var_files}
-                ;;
-            *.tar.lzma)
-                printf "%s " "[+] tar cf - ${_compress_var_files_format} | lzma > ${_compress_var_compression}"
-                printf "\\n"
-                tar cf - ${_compress_var_files} | lzma > "${_compress_var_compression}"
-                ;;
-            *.tar.xz)
-                printf "%s " "[+] tar cf - ${_compress_var_files_format} | xz > ${_compress_var_compression}"
-                printf "\\n"
-                tar cf - ${_compress_var_files} | xz > "${_compress_var_compression}"
                 ;;
             *.jar)
                 printf "%s " "[+] jar cf ${_compress_var_compression} ${_compress_var_files_format}"
