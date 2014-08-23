@@ -101,13 +101,14 @@ _list()
         | sed -e 's:--:\n:g' -e 's: :%%%%%:g' | sort); do
 
         #/real/path/file|/past/path/file|date
+        _list_var_data="$(printf "%s" "${_list_var_data}"|sed -e 's:%%%%%: :g' -e 's:\/info\/:\/files\/:')"
         _list_var_date="${_list_var_data##*|}"
         _list_var_general_date="${_list_var_date%%T*}"
         _list_var_detail_date="${_list_var_date##*T}"
         _list_var_name="${_list_var_data%|*}"
         _list_var_name="${_list_var_name#*|}"
         _list_var_real_file="${_list_var_data%%|*}"
-        _list_var_real_file="$(printf "%s" "${_list_var_real_file}"|sed -e 's:%%%%%: :g' -e 's:\/info\/:\/files\/:')"
+        #_list_var_real_file="$(printf "%s" "${_list_var_real_file}"|sed -e 's:%%%%%: :g' -e 's:\/info\/:\/files\/:')"
 
         if [ -d "${_list_var_real_file}" ] ; then
             if [ "${verbose}" -gt "1" ]; then
