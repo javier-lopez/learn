@@ -17,6 +17,8 @@ _setup()
         *"${prev}"*) _filedir; return 0; ;;
     esac
 
+    [ "${cword}" -gt "2" ] && { _filedir; return 0; }
+
     #general options
     case "${cur}" in
         *) COMPREPLY=($(compgen -W "${commands}" -- ${cur})) ;;

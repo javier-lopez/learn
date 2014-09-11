@@ -1,0 +1,220 @@
+#Based on GNU shtool test suite
+#Copyright (c) 1999-2008 Ralf S. Engelschall <rse@engelschall.com>
+#Copyright (c) 2014      Javier Lopez        <m@javier.io>
+
+@begin{governator}
+governator; test X"${?}"              = X"0"
+test X"$(governator -h|head -1)"      = X"Usage: governator get"
+test X"$(governator s|head -1)"       = X"Usage: governator get"
+test X"$(governator set|head -1)"     = X"Usage: governator get"
+test X"$(governator set cui|head -1)" = X"Usage: governator get"
+test X"$(governator|awk '{print $1,$2}')"         = X"[+] cat"
+test X"$(governator g|awk '{print $1,$2}')"       = X"[+] cat"
+test X"$(governator get|awk '{print $1,$2}')"     = X"[+] cat"
+test X"$(governator get cui|awk '{print $1,$2}')" = X"[+] cat"
+@end
+
+@begin{dmenu-path}
+dmenu-path; test X"${?}" = X"0"
+dmenu-path | grep ".*"
+@end
+
+@begin{update-cd}
+#update-cd
+test -d ~/.wcd
+test -f ~/.wcd/.treedata.wcd
+@end
+
+@begin{music-control}
+music-control;     test X"${?}"   = X"1"
+music-control cui; test X"${?}"   = X"1"
+test X"$(music-control)"          = X""
+test X"$(music-control 2>&1)"     = X"usage: music-control play|pause|toggle|next|previous"
+test X"$(music-control cui 2>&1)" = X"usage: music-control play|pause|toggle|next|previous"
+@end
+
+@begin{dmenu-killall}
+dmenu-killall & pid="$(pgrep dmenu|head -1)"; xdotool search "dmenu"; xdotool key "Escape"; wait "${pid}"; test X"${?}" = X"1"
+dmenu-killall & pid="$(pgrep dmenu|head -1)"; xdotool search "dmenu"; xdotool type "cui"; xdotool key "Return"; wait "${pid}"; test X"${?}" = X"1"
+killall htop ;:
+htop 2>&1 >/dev/null & :
+sleep 0.1 && pgrep -x htop | grep ".*"
+dmenu-killall & pid="$(pgrep dmenu|head -1)"; xdotool search "dmenu"; xdotool type "htop"; xdotool key "Return"; wait "${pid}"; test X"${?}" = X"0"
+sleep 0.1 && test X"$(pgrep -x htop)" = X""
+htop 2>&1 >/dev/null & :
+htop 2>&1 >/dev/null & :
+sleep 0.1 && pgrep -x htop | grep ".*"
+dmenu-killall & pid="$(pgrep dmenu|head -1)"; xdotool search "dmenu"; xdotool type "htop"; xdotool key "Return"; wait "${pid}"; test X"${?}" = X"0"
+sleep 0.1 && test X"$(pgrep -x htop)" = X""
+
+#dmenu-killall & pid="$(pgrep dmenu|head -1)"; xdotool search "dmenu"; sleep 0.2; xdotool key "Escape"; wait "${pid}"; test X"${?}" = X"1"
+#dmenu-killall & num=$(xdotool search "dmenu"); sleep 1;  xdotool key "Escape"
+#dmenu-killall & num=$(xdotool search "dmenu"); sleep 1;  xdotool type "htop"; xdotool key "Return"
+#dmenu-killall;     test X"${?}" = X"1" #TODO 06-09-2014 12:50 >> status background process linux
+@end
+
+#@begin{gifcast}
+#@end
+
+@begin{say}
+say; test X"${?}" = X"1"
+test X"$(say 2>&1|head -1)" = X"Usage: say [-sl] phrase"
+@end
+
+#@begin{crypt}
+#@end
+
+#@begin{dmenu-vbox}
+#@end
+
+#@begin{update-firefox-nightly}
+#@end
+
+#@begin{setup}
+#@end
+
+#@begin{share-backup}
+#@end
+
+#@begin{extract}
+#@end
+
+#@begin{mail}
+#@end
+
+#@begin{minos-startup}
+#@end
+
+#@begin{whats}
+#@end
+
+#@begin{dmenu-session}
+#@end
+
+#@begin{dmenu-session}
+#@end
+
+#@begin{cpb64}
+#@end
+
+#@begin{fu-search}
+#@end
+
+#@begin{lp-g9n-team}
+#@end
+
+#@begin{shift-keyboard-layout}
+#@end
+
+#@begin{compress}
+#@end
+
+#@begin{cat-show}
+#@end
+
+#@begin{dump-dbs}
+#@end
+
+#@begin{vw}
+#@end
+
+#@begin{dmenu-tell}
+#@end
+
+#@begin{startx}
+#@end
+
+#@begin{showterm}
+#@end
+
+#@begin{dmenu-mpd}
+#@end
+
+#@begin{vim-show}
+#@end
+
+#@begin{translate}
+#@end
+
+#@begin{mkpass}
+#@end
+
+#@begin{run}
+#@end
+
+#@begin{mvs}
+#@end
+
+#@begin{dmenu-run}
+#@end
+
+#@begin{bin-dpkg-rdeps}
+#@end
+
+#@begin{howdoi}
+#@end
+
+#@begin{minos-statusbar}
+#@end
+
+#@begin{minos-config}
+#@end
+
+#@begin{dmenu-xrandr}
+#@end
+
+#@begin{run-on-datacenters}
+#@end
+
+#@begin{backup-mozilla}
+#@end
+
+#@begin{fuck}
+#@end
+
+#@begin{fix}
+#@end
+
+#@begin{shellshock}
+#@end
+
+#@begin{backup-remote-rsync}
+#@end
+
+#@begin{elastix-cli}
+#@end
+
+##@begin{test-case-format}
+##@end
+
+#@begin{rm_}
+#@end
+
+#@begin{minos-help}
+#@end
+
+#@begin{screenshot}
+#@end
+
+#@begin{movietime}
+#@end
+
+#@begin{watch-battery}
+#@end
+
+#@begin{uimg}
+#@end
+
+#@begin{pxe}
+#@end
+
+#@begin{wcd}
+#@end
+
+#@begin{dmenu-countdown}
+#@end
+
+#@begin{im}
+#@end
+
+# vim: set ts=8 sw=4 tw=0 ft=sh :

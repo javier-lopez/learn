@@ -1,7 +1,6 @@
-##
-##  Based on GNU shtool test suite
-##  Copyright (c) 1999-2008 Ralf S. Engelschall <rse@engelschall.com>
-##
+#Based on GNU shtool test suite
+#Copyright (c) 1999-2008 Ralf S. Engelschall <rse@engelschall.com>
+#Copyright (c) 2014      Javier Lopez        <m@javier.io>
 
 @begin{_abs}
 _abs;         test X"${?}" = X"1"
