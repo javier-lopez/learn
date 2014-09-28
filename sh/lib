@@ -849,7 +849,7 @@ _validmail()
     esac
 }
 #===================================================== Example ====
-#if ! _validip4 "${address}"; then
+#if ! _validmail "${address}"; then
     #printf "%s\\n" "not valid email address: ${address}"
 #fi
 #=================================================================
