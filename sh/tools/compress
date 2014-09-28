@@ -27,9 +27,11 @@ _basename()
 
 _usage()
 {
-    printf "%s\\n" "Usage: $(_basename ${0}) [-s] files ... file.[tar.gz,tar.bz2,zip...]" >&2
-    printf "%s\\n" "           -h       help" >&2
-    printf "%s\\n" "           -s       quiet mode" >&2
+    printf "%s\\n" "Usage: $(_basename ${0}) [options] files ... file.[tar.gz,tar.bz2,zip...]" >&2
+    printf "%s\\n" "Compress files." >&2
+    printf "\\n" >&2
+    printf "%s\\n" "  -s          quiet mode" >&2
+    printf "%s\\n" "  -h,--help   show this help message and exit" >&2
     exit 1
 }
 
@@ -40,7 +42,7 @@ _compress()
     for _compress_var_file; do
         i="$((${i} + 1))"
         [ "${#}" -eq "${i}" ] && continue
-        [ ! -r "${_compress_var_file}" ] && { printf "%s\\n" "$(_basename ${0}): ${_compress_var_file} does not exist or is not readable" >&2; exit 1; }
+        [ ! -r "${_compress_var_file}" ] && { printf "%s\\n" "$(_basename ${0}): '${_compress_var_file}' does not exist or is not readable" >&2; exit 1; }
         _compress_var_files="${_compress_var_file}""|""${_compress_var_files}"
     done
 
@@ -240,15 +242,18 @@ fi
 
 [ "${#}" -lt "2" ] && _usage
 
-while getopts ":s:" option; do
-    case "${option}" in
-        s) SFLAG="yes"
-           shift 1; _compress "${@}"
-           exit 0 ;;
-        :) printf "%s\\n" "Option -${OPTARG} requires an argument" >&2
-           _usage ;;
-        \?) printf "%s\\n" "Invalid option: -${OPTARG}" >&2
-           _usage ;;
+for arg; do #parse options
+    case "${arg}" in
+        --) shift; break   ;;
+        -h|--help) _usage  ;;
+        -s) SFLAG="true" && shift
+            if [ -z "${2}" ]; then
+                _usage
+            else
+                _compress "${@}"
+                exit 0
+            fi ;;
+        -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" >&2; _usage ;;
     esac
 done
 

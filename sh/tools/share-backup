@@ -1,6 +1,6 @@
 #!/bin/sh
 #description: share a directory over http
-#usage: share-backup [-u USER|-p PORT|-P PASSWD|-c CERT|-h] [stop] [directory|file]
+#usage: share-backup [options] [stop] [directory|file]
 
 #example: share-backup backup
 #Starting server ..."
@@ -35,19 +35,24 @@ _basename()
     printf "%s\\n" "${_basename_var_name}"
 }
 
+_num()
+{   #look for a number, returns 0 on success, 1 otherwise
+    [ -z "${1}" ] && return 1
+    printf "%s\\n" "${@}" | grep -v "[^0-9]" >/dev/null
+}
+
 _usage()
 {
-    printf "%b\\n" "Usage: $(_basename "${0}") [OPTION]... [DIRECTORY|FILE]" >&2
+    printf "%b\\n" "Usage: $(_basename "${0}") [options] [stop] [directory|file]" >&2
+    printf "%s\\n" "Share a directory over http." >&2
     printf "\\n" >&2
-    printf "%b\\n" "  stop            stop sharing" >&2
+    printf "%b\\n" "  stop             stop sharing" >&2
     printf "\\n" >&2
-    printf "%b\\n" "  -h              show this text" >&2
-    printf "%b\\n" "  -u [USER]       set user (guest by default)" >&2
-    printf "%b\\n" "  -p [PORT]       set port (random above 1025 by default)" >&2
-    printf "%b\\n" "  -P [PASSWORD]   recover archived files" >&2
-    printf "%b\\n" "  -c [CERT_FILE]  set certificate.pem" >&2
-    printf "\\n" >&2
-
+    printf "%b\\n" "  -u [user]        set user (guest by default)" >&2
+    printf "%b\\n" "  -p [port]        set port (random above 1025 by default)" >&2
+    printf "%b\\n" "  -P [password]    set password (random by default)" >&2
+    printf "%b\\n" "  -c [cert_file]   set certificate.pem" >&2
+    printf "%b\\n" "  -h, --help       show this help message and exit" >&2
     exit 1
 }
 
@@ -60,8 +65,7 @@ _usage()
 
 if [ X"${1}" = X"stop" ]; then
     ID="$(pgrep -f simple-httpd)"
-    [ -n "$ID" ] && { kill -9 "${ID}"; printf "%s\\n" "Stopped"; } || printf "%s\\n" "No instance found" >&2
-    exit
+    [ -n "$ID" ] && { kill -9 "${ID}"; printf "%s\\n" "Stopped"; exit 0; } || { printf "%s\\n" "No instance found" >&2; exit 1; }
 fi
 
 if ! command -v "simple-httpd" >/dev/null 2>&1; then
@@ -70,34 +74,39 @@ if ! command -v "simple-httpd" >/dev/null 2>&1; then
     exit 1
 fi
 
-for var; do #parse options
-    case "${var}" in
-        -h) _usage ;;
+for arg; do #parse options
+    case "${arg}" in
+        --) shift; break  ;;
+        -h|--help) _usage ;;
         -u) if [ "${#}" -gt "1" ]; then
                 user="$(printf "%s " "${@}" | awk '{print $2}')"
                 shift 2
             else
-               printf "%s\\n" "Option ${var} requires a parameter" >&2; exit 1
+               printf "%s\\n" "Option \`${arg}' requires a parameter" >&2; _usage
             fi ;;
         -p) if [ "${#}" -gt "1" ]; then
                 port="$(printf "%s " "${@}" | awk '{print $2}')"
                 shift 2
+                if ! _num "${port}"; then
+                    printf "%s\\n" "Option \`${arg}' requires a number: '${port}'" >&2
+                    _usage
+                fi
             else
-               printf "%s\\n" "Option ${var} requires a parameter" >&2; exit 1
+               printf "%s\\n" "Option \`${arg}' requires a parameter" >&2; _usage
             fi ;;
         -P) if [ "${#}" -gt "1" ]; then
                 passwd="$(printf "%s " "${@}" | awk '{print $2}')"
                 shift 2
             else
-               printf "%s\\n" "Option ${var} requires a parameter" >&2; exit 1
+               printf "%s\\n" "Option \`${arg}' requires a parameter" >&2; _usage
             fi ;;
         -c) if [ "${#}" -gt "1" ]; then
                 cert="$(printf "%s " "${@}" | awk '{print $2}')"
                 shift 2
             else
-               printf "%s\\n" "Option ${var} requires a parameter" >&2; exit 1
+               printf "%s\\n" "Option \`${arg}' requires a parameter" >&2; _usage
             fi ;;
-        -*) printf "%s\\n" "Unrecognized option: ${var}" >&2; _usage ;;
+        -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" >&2; _usage ;;
     esac
 done
 
@@ -108,7 +117,7 @@ if ! flock -n 9; then               #http://mywiki.wooledge.org/BashFAQ/045
 fi
 
 [ -z "${user}" ]   && user="guest"
-[ -z "${port}" ]   && port="$(($(tr -cd 0-9 </dev/urandom | head -c 4) + 1025))"
+[ -z "${port}" ]   && port="$(($(od -An -N2 -i /dev/random|awk '{print $1}'|head -c 4) + 1025))"
 [ -z "${passwd}" ] && passwd="$(date +%s | sha256sum | base64 | head -c 8)"
 [ -f "${cert}" ]   && ssl_opts="--ssl --certificate=${CERT}"
 

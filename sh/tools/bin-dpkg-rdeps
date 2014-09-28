@@ -21,7 +21,7 @@ _rdeps()
             if ldd "${fpath}" >/dev/null 2>/dev/null; then
                 ldd "${fpath}" | sort -n | uniq | awk '{print $1}' | xargs -i apt-file search {} | cut -d':' -f1 | sort | uniq
             else
-                printf "$(expr "${0}" : '.*/\([^/]*\)'): %s\\n" "not a dynamic executable '${fpath}'" >&2
+                printf "$(expr "${0}" : '.*/\([^/]*\)'): %s\\n" "not a dynamic executable '${fpath}'" >&2 && false
             fi
         fi
     done
@@ -33,6 +33,17 @@ if [ ! -t 0 ]; then
 fi
 
 [ "${#}" -eq "0" ] && { printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') binary ..." >&2; exit 1; }
+
+for arg; do #parse options
+    case "${arg}" in
+        --) shift; break ;;
+        -h|--help) { printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') binary ..." >&2; exit 1; } ;;
+        -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" >&2
+            printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') binary ..." >&2
+            exit 1
+            ;;
+    esac
+done
 
 if ! command -v "apt-file" >/dev/null 2>&1; then
     printf "%s\\n" "you need to install 'apt-file' to run this program" >&2

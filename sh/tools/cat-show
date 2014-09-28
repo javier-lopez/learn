@@ -12,12 +12,24 @@ if [ ! -t 0 ]; then
     set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
 fi
 
-program="${1}"
+[ "${#}" -eq "0" ] && { printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)'): script" >&2; exit 1; }
 
-[ "${#}" -eq "0" ] && { printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)'): program" >&2; exit 1; }
+for arg; do #parse options
+    case "${arg}" in
+        --) shift; break ;;
+        -h|--help) { printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') script" >&2; exit 1; } ;;
+        -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" >&2
+            printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') script" >&2
+            exit 1
+            ;;
+    esac
+done
 
-if command -v "${program}" >/dev/null 2>&1; then
-    less "$(command -v "${program}" 2>/dev/null)"
+script="${1}"
+
+if command -v "${script}" >/dev/null 2>&1; then
+    less "$(command -v "${script}" 2>/dev/null)"
 else
-    printf "$(expr "${0}" : '.*/\([^/]*\)'): %s\\n" "program '${program}' was not found in PATH" >&2
+    printf "$(expr "${0}" : '.*/\([^/]*\)'): %s\\n" "script '${script}' was not found in \$PATH" >&2
+    exit 1
 fi

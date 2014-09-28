@@ -207,4 +207,5 @@ case "${choice}" in
         i3lock_params="$(_get_i3lock_params)"
         IFS='|'; i3lock ${i3lock_params} #hack to allow spaces on wallpaper files
         ;;
+    *)  exit 1 ;;
 esac

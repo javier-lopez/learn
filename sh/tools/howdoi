@@ -1,35 +1,40 @@
 #!/bin/sh
 #description: instant coding answers via the command line
-#usage: howdoi [-h|-p POS|-a|-l|-c|-n NUM_ANSWERS|-C] query
+#usage: howdoi [options] query
 
 #example: howdoi format date bash
 #DATE=`date +%Y-%m-%d`
 
 _usage()
 {
-    printf "%b\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [-h|-p POS|-a|-l|-c|-n NUM_ANSWERS|-C] QUERY ..." >&2
+    printf "%b\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] query ..." >&2
+    printf "%b\\n" "Instant coding answers via the command line." >&2
     printf "\\n" >&2
-    printf "%b\\n" "instant coding answers via the command line" >&2
+    printf "%b\\n" "Positional arguments:" >&2
+    printf "%b\\n" "  query       the question to answer" >&2
     printf "\\n" >&2
-    printf "%b\\n" "positional arguments:" >&2
-    printf "%b\\n" "  QUERY                the question to answer" >&2
-    printf "\\n" >&2
-    printf "%b\\n" "optional arguments:" >&2
-    printf "%b\\n" "  -h                   show this help message and exit" >&2
-    printf "%b\\n" "  -p POS               select answer in specified position (default: 1)" >&2
-    printf "%b\\n" "  -a                   display all the answers in full text" >&2
-    printf "%b\\n" "  -l                   display only the answer link" >&2
-    printf "%b\\n" "  -c                   enable colorized output" >&2
-    printf "%b\\n" "  -C                   clear cache" >&2
-    printf "%b\\n" "  -n NUM_ANSWERS       number of answers to return" >&2
+    printf "%b\\n" "Optional arguments:" >&2
+    printf "%b\\n" "  -p pos       select answer in specified position (default: 1)" >&2
+    printf "%b\\n" "  -a           display all the answers in full text" >&2
+    printf "%b\\n" "  -l           display only the answer link" >&2
+    printf "%b\\n" "  -c           enable colorized output" >&2
+    printf "%b\\n" "  -C           clear cache" >&2
+    printf "%b\\n" "  -n num       number of answers to return" >&2
+    printf "%b\\n" "  -h, --help   show this help message and exit" >&2
     exit 1
+}
+
+_num()
+{   #look for a number, returns 0 on success, 1 otherwise
+    [ -z "${1}" ] && return 1
+    printf "%s\\n" "${@}" | grep -v "[^0-9]" >/dev/null
 }
 
 _die()
 {
     [ -z "${1}" ] && return 1
-    printf "%b\\n" "$(expr "${0}" : '.*/\([^/]*\)'): ${*}" >&2
-    exit 1
+    printf "%b\\n" "${*}" >&2
+    _usage
 }
 
 _howdoi()
@@ -67,7 +72,7 @@ _howdoi()
             printf "%s\\n" "${_howdoi_var_google_links}" > ~/.cache/howdoi/"${_howdoi_var_question_format}".links
     fi
 
-    [ -z "${_howdoi_var_google_links}" ] && _die "No results"
+    [ -z "${_howdoi_var_google_links}" ] && { printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): No results"; exit 1; }
 
     _howdoi_var_google_link="$(printf "%s\\n" "${_howdoi_var_google_links}" | awk -v l="${pflag}" 'NR == l {print; exit}')"
     [ -n "${lflag}" ] && { printf "%s\\n" "${_howdoi_var_google_link}"; exit; }
@@ -94,7 +99,7 @@ _howdoi()
 
     _howdoi_var_so_answers_len="$(printf "%s" "${_howdoi_var_so_answers}" | awk '/-----/ {i++} END {print i}')"
 
-    [ -z "${_howdoi_var_so_answers}" ] && _die "No answers for your question"
+    [ -z "${_howdoi_var_so_answers}" ] && { printf "%s\\n" "No answers for your question"; exit 1; }
 
     if [ -z "${HOWDOI_DISABLE_CACHE}" ]; then
         [ ! -d ~/.cache/howdoi/ ] && mkdir ~/.cache/howdoi/
@@ -123,22 +128,36 @@ if ! command -v "wget" >/dev/null 2>&1; then
     exit 1
 fi
 
-while getopts ":hp:alcCn:" options; do
-    case "${options}" in
-        h) _usage            ;;
-        p) pflag="${OPTARG}" ;;
-        a) aflag="yes"       ;;
-        l) lflag="yes"       ;;
-        c) cflag="yes"       ;;
-        C) rm -rf ~/.cache/howdoi && printf "%s\\n" "Cache cleared successfully"
-           exit 0            ;;
-        n) nflag="${OPTARG}" ;;
-        *) printf "%s\\n" "Invalid option: -${OPTARG}" >&2
-           _usage
-          ;;
+for arg; do #parse options
+    case "${arg}" in
+        --) shift; break  ;;
+        -h|--help) _usage ;;
+        -a) aflag="true"; shift;;
+        -l) lflag="true"; shift;;
+        -c) cflag="true"; shift;;
+        -C) rm -rf ~/.cache/howdoi && printf "%s\\n" "Cache cleared successfully" && exit ;;
+        -p) if [ "${#}" -gt "1" ]; then
+                pflag="$(printf "%s " "${@}" | awk '{print $2}')"
+                shift 2
+                if ! _num "${pflag}" ; then
+                    printf "%s\\n" "Option \`${arg}' requires a number: '${pflag}'" >&2
+                    _usage
+                fi
+            else
+                _die "Option \`${arg}' requires a parameter"
+            fi ;;
+        -n) if [ "${#}" -gt "1" ]; then
+                nflag="$(printf "%s " "${@}" | awk '{print $2}')"
+                shift 2
+                if ! _num "${nflag}" ; then
+                    printf "%s\\n" "Option \`${arg}' requires a number: '${nflag}'" >&2
+                    _usage
+                fi
+            else
+                _die "Option \`${arg}' requires a parameter"
+            fi ;;
+        -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" >&2; _usage ;;
     esac
 done
-
-shift "$((${OPTIND} - 1))"
 
 _howdoi "${@}"

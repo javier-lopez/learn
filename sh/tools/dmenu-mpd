@@ -27,8 +27,4 @@ song="$(mkfifo /tmp/fifo; mpc playlist|nl -s ';' > /tmp/fifo & sed -n "s@^ *\([0
 song="$(printf "%s\\n" "${song}" | head -1)"
 rm -rf /tmp/fifo
 
-if [ -z "${song}" ]; then
-    exit 0;
-else
-    mpc play "${song}"
-fi
+[ -z "${song}" ] && exit 1 || mpc play "${song}"

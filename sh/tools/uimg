@@ -7,8 +7,8 @@
 
 _usage()
 {
-    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') img ..." >&2
-    printf "%s\\n" "        img must be a valid image: *.[png|jpg]" >&2
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') image.[png|jpg] ..." >&2
+    printf "%s\\n" "Upload images to http://imgur.com." >&2
     exit 1
 }
 
@@ -19,11 +19,19 @@ _uimg()
             case "${_uimg_var_img}" in
                 *.jpg|*.JPG|*.jpeg|*.png|*.PNG)
                     if command -v "xclip" >/dev/null 2>&1; then
-                        curl -s -F "image=@${_uimg_var_img}"                   \
-                            -F "key=486690f872c678126a2c09a9e196ce1b"          \
-                            http://imgur.com/api/upload.xml |                  \
-                            egrep -o "<original_image>(.)*</original_image>" | \
-                            egrep -o "http://i.imgur.com/[^<]*" | xclip -selection clipboard; xclip -o -selection clipboard
+                        if [ ! -t 1 ]; then
+                            curl -s -F "image=@${_uimg_var_img}"                   \
+                                -F "key=486690f872c678126a2c09a9e196ce1b"          \
+                                http://imgur.com/api/upload.xml |                  \
+                                egrep -o "<original_image>(.)*</original_image>" | \
+                                egrep -o "http://i.imgur.com/[^<]*"
+                        else
+                            curl -s -F "image=@${_uimg_var_img}"                   \
+                                -F "key=486690f872c678126a2c09a9e196ce1b"          \
+                                http://imgur.com/api/upload.xml |                  \
+                                egrep -o "<original_image>(.)*</original_image>" | \
+                                egrep -o "http://i.imgur.com/[^<]*" | xclip -selection clipboard; xclip -o -selection clipboard
+                        fi
                     else
                         curl -s -F "image=@${_uimg_var_img}"                   \
                             -F "key=486690f872c678126a2c09a9e196ce1b"          \
@@ -31,7 +39,7 @@ _uimg()
                             egrep -o "<original_image>(.)*</original_image>" | \
                             egrep -o "http://i.imgur.com/[^<]*"
                     fi ;;
-                *)  printf "%s\\n" "'${_uimg_var_img}' is not a valid img file" >&2 ;;
+                *)  printf "%s\\n" "'${_uimg_var_img}' is not a valid image file" >&2 ;;
             esac
         else
             printf "%s\\n" "'${_uimg_var_img}' doesn't exist" >&2
@@ -45,6 +53,14 @@ if [ ! -t 0 ]; then
 fi
 
 [ "${#}" -eq "0" ] && _usage
+
+for arg in "${@}"; do #parse options
+    case "${arg}" in
+        --) shift; break  ;;
+        -h|--help) _usage ;;
+        -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" >&2; _usage ;;
+    esac
+done
 
 if ! command -v "curl" >/dev/null 2>&1; then
     printf "%s\\n" "you need to install 'curl' to run this program" >&2

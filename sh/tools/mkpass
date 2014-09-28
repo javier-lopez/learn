@@ -2,10 +2,32 @@
 #description: create a secure password with 8 chars by default
 #usage: mkpass [LENGTH]
 
+_usage()
+{
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [length]" >&2
+    printf "%s\\n" "Create secure passwords." >&2
+    exit 1
+}
+
+_die()
+{
+    [ -z "${1}" ] && return 1
+    printf "%s\\n" "${*}" >&2
+    _usage
+}
+
 if [ ! -t 0 ]; then
     #there is input comming from pipe or file, add to the end of $@
     set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
 fi
+
+for arg; do #parse options
+    case "${arg}" in
+        --) shift;   break  ;;
+        -h|--help)   _usage ;;
+        -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" ;;
+    esac
+done
 
 if [ ! "${1}" ]; then
     mkpasswd_length="8"
@@ -13,14 +35,19 @@ else
     #isnum?
     #http://stackoverflow.com/questions/806906/how-do-i-test-if-a-variable-is-a-number-in-bash
     case "${1}" in
-        ''|*[!0-9]*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): not a number ${1}" >&2; exit 1;;
+        ''|*[!0-9]*) printf "%s\\n" "Argument requires a number: '${1}'" >&2; _usage;;
         *) mkpasswd_length="${1}";;
     esac
 fi
 
 if command -v "xclip" >/dev/null 2>&1; then
+    if [ ! -t 1 ]; then
+        printf "%b" "$(strings /dev/urandom | grep -o '[[:alnum:]]' | head -n "${mkpasswd_length}" | tr -d '\n')"
+    else
     #http://unix.stackexchange.com/questions/28503/how-can-i-send-stdout-to-multiple-commands
-    strings /dev/urandom | grep -o '[[:alnum:]]' | head -n "${mkpasswd_length}" | tr -d '\n' | xclip -selection clipboard; xclip -o -selection clipboard; printf "\\n"
+        strings /dev/urandom | grep -o '[[:alnum:]]' | head -n "${mkpasswd_length}" \
+            | tr -d '\n' | xclip -selection clipboard; xclip -o -selection clipboard; printf "\\n"
+    fi
 else
     strings /dev/urandom | grep -o '[[:alnum:]]' | head -n "${mkpasswd_length}" | tr -d '\n'; printf "\\n"
 fi

@@ -26,4 +26,4 @@ fi
 
 vboxmachine="$(vboxmanage list vms | cut -d\" -f2 | ${DMENU})"
 
-[ -z "${vboxmachine}" ] && exit 0 || vboxmanage -q startvm "${vboxmachine}" --type gui
+[ -z "${vboxmachine}" ] && exit 1 || vboxmanage -q startvm "${vboxmachine}" --type gui

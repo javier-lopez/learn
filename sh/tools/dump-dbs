@@ -1,6 +1,6 @@
 #!/bin/sh
 #description: dump all available databases
-#usage: dump-dbs [-u USER|-p PASSWD|-o DIR|-c CONFIG|-z|-h] module
+#usage: dump-dbs [options] module
 
 #example: dump-dbs -u root -p passwd
 #dump-dbs: there is no mysql dbs on this host
@@ -14,26 +14,26 @@ backup_dir=""
 
 _usage()
 {
-    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [-u USER|-p PASSWD|-o DIR|-c] module" >&2
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] module" >&2
+    printf "%s\\n" "Dump available databases." >&2
     printf "\\n" >&2
-    printf "%s\\n" "modules:" >&2
+    printf "%s\\n" "  -z               activate compression (gzip)" >&2
+    printf "%s\\n" "  -u user          configure db user" >&2
+    printf "%s\\n" "  -p passwd        configure db passwd" >&2
+    printf "%s\\n" "  -o dir           configure dir to save dumps" >&2
+    printf "%s\\n" "  -c config file   read options from a configuration file" >&2
+    printf "%s\\n" "  -h, --help       show this help message and exit" >&2
+    printf "\\n" >&2
+    printf "%s\\n" "Modules:" >&2
     printf "%s\\n" "  mysql" >&2
-    printf "\\n" >&2
-    printf "%s\\n" "options:" >&2
-    printf "%s\\n" "  -h              show help (this text)" >&2
-    printf "%s\\n" "  -z              activate compression (gzip)" >&2
-    printf "%s\\n" "  -u USER         configure db user" >&2
-    printf "%s\\n" "  -p PASSWD       configure db passwd" >&2
-    printf "%s\\n" "  -o DIR          configure dir to save dumps" >&2
-    printf "%s\\n" "  -c CONFIG FILE  read options from a configuration file" >&2
     exit 1
 }
 
 _die()
 {
     [ -z "${1}" ] && return 1
-    printf "%b\\n" "$(expr "${0}" : '.*/\([^/]*\)'): ${*}" >&2
-    exit 1
+    printf "%b\\n" "${*}" >&2
+    _usage
 }
 
 _printtime()
@@ -96,7 +96,7 @@ _mysql()
 
     dbs="$(mysql -u"${user}" -p"${passwd}" -Bse 'show databases')"
     for db in ${dbs}; do
-        if [ -z "${compress}" ]; then
+        if [ -z "${compression}" ]; then
             mysqldump -u "${user}" -p"${passwd}" --single-transaction --routines --triggers "${db}" > "${backup_dir}"/"${db}".sql
         else
             mysqldump -u "${user}" -p"${passwd}" --single-transaction --routines --triggers "${db}" | gzip > "${backup_dir}"/"${db}".sql.gz
@@ -120,33 +120,34 @@ fi
 
 for arg; do #parse options
     case "${arg}" in
-        -h) _usage ;;
-        -z) compression="seen"; shift;;
+        --) shift; break   ;;
+        -h|--help) _usage  ;;
+        -z) compression="true"; shift;;
         -u) if [ "${#}" -gt "1" ]; then
                 user="$(printf "%s " "${@}" | awk '{print $2}')"
                 shift 2
             else
-                _die "Option ${arg} requires a parameter"
+                _die "Option \`${arg}' requires a parameter"
             fi ;;
         -p) if [ "${#}" -gt "1" ]; then
                 passwd="$(printf "%s " "${@}" | awk '{print $2}')"
                 shift 2
             else
-                _die "Option ${arg} requires a parameter"
+                _die "Option \`${arg}' requires a parameter"
             fi ;;
         -o) if [ "${#}" -gt "1" ]; then
                 backup_dir="$(printf "%s " "${@}" | awk '{print $2}')"
                 shift 2
             else
-                _die "Option ${arg} requires a parameter"
+                _die "Option \`${arg}' requires a parameter"
             fi ;;
         -c) if [ "${#}" -gt "1" ]; then
                 _var_config_file="$(printf "%s " "${@}" | awk '{print $2}')"
                 shift 2
             else
-                _die "Option ${arg} requires a parameter"
+                _die "Option \`${arg}' requires a parameter"
             fi ;;
-        -*) printf "%s\\n" "Unrecognized option: ${arg}" >&2; _usage ;;
+        -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" >&2; _usage ;;
     esac
 done
 

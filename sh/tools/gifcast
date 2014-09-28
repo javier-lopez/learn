@@ -2,6 +2,15 @@
 #description: record a gif movie from a selected region
 #usage: gifcast [filename.gif]
 
+_usage()
+{
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] file.gif" >&2
+    printf "%s\\n" "Record a gif movie from a selected region." >&2
+    printf "\\n" >&2
+    printf "%s\\n" "  -h,--help   show this help message and exit" >&2
+    exit 1
+}
+
 _notify()
 {
     [ -z "${1}" ] && return 1
@@ -25,6 +34,19 @@ _notify()
     fi
 }
 
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
+fi
+
+for arg; do
+    case "${arg}" in
+        --) shift; break   ;;
+        -h|--help) _usage  ;;
+        -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" >&2; _usage ;;
+    esac
+done
+
 if ! command -v "ffcast" >/dev/null 2>&1; then
     _notify "[-] Error" "you need to install 'ffcast' to run this program"
     exit 1
@@ -33,12 +55,12 @@ elif ! command -v "convert" >/dev/null 2>&1; then
     exit 1
 fi
 
-if [ ! -t 0 ]; then
-    #there is input comming from pipe or file, add to the end of $@
-    set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
-fi
-
 [ -z "${1}" ] && file="${HOME}/$(</dev/urandom tr -dc A-Za-z0-9 | head -c 8).gif" || file="${1}"
+
+case "${file}" in
+    *.gif) :      ;;
+    *)     _usage ;;
+esac
 
 _notify "[+] Gifcast" "in 3.., 2.., 1.., smile =)!"
 

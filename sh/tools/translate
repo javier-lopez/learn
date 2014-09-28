@@ -1,28 +1,30 @@
 #!/bin/sh
 #description: translate string
-#usage: translate [OPTION] string
+#usage: translate [options] string
 
 #example: translate -en-es "hello world"
 #hola mundo
-
 #example: translate -es "hola mundo"
 #hello world
-
+#example: translate -pt-es "oi mundo"
+#hola mundo
 #example: translate "hola mundo"
 #hello world
 
 _usage()
 {
-    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [-sl-tl] phrase" >&2
-    printf "%s\\n" "       sl     source language (auto by default)" >&2
-    printf "%s\\n" "       tl     target language (english by default)" >&2
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [-sl-tl] string ..." >&2
+    printf "%s\\n" "Translate strings using google online translator." >&2
+    printf "\\n" >&2
+    printf "%s\\n" "  sl   source language (auto by default)" >&2
+    printf "%s\\n" "  tl   target language (english by default)" >&2
     exit 1
 }
 
 _translate()
 {
     [ -z "${1}" ] && return 1
-    #update 14-12-2012 05:06: thanks to johnraff #http://crunchbang.org/forums/viewtopic.php?id=17034
+    #update 14-12-2012 05:06: http://crunchbang.org/forums/viewtopic.php?id=17034
     _translate_var_phrase="${*}"
     _translate_var_page="$(curl -s -i --user-agent "" -d "sl=${sl}" -d "tl=${tl}"      \
                            -d "client=t"  -d "ie=UTF-8" -d "oe=UTF-8" --data-urlencode \
@@ -30,7 +32,11 @@ _translate()
     _translate_var_result="$(printf "%s\\n" "${_translate_var_page}" | tail -1 | cut -d\" -f2)"
 
     if command -v "xclip" >/dev/null 2>&1; then
-        printf "%s" "${_translate_var_result}" | xclip -selection clipboard; xclip -o -selection clipboard; printf "\\n"
+        if [ ! -t 1 ]; then
+            printf "%s\\n" "${_translate_var_result}"
+        else
+            printf "%s" "${_translate_var_result}" | xclip -selection clipboard; xclip -o -selection clipboard; printf "\\n"
+        fi
     else
         printf "%s\\n" "${_translate_var_result}"
     fi
@@ -44,6 +50,8 @@ fi
 [ "${#}" -eq "0" ] && _usage
 
 case "${1}" in
+    --) shift; break  ;;
+    -h|--help) _usage ;;
     -*) sl="$(printf "%s" "${1}" | cut -d'-' -f2)"
         tl="$(printf "%s" "${1}" | cut -d'-' -f3)"
         if [ -z "${sl}" ] && [ -z "${tl}" ]; then

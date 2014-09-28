@@ -6,15 +6,16 @@
 #[+] chmod +x dmenu-killall
 #[+] sudo cp dmenu-killall /usr/local/bin
 
-#Don't forget to update this when adding new functions
+#Don't forget to update _usage when adding new functions
 _usage()
 {
-  printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): setup my common tasks" >&2
-  printf "\\n" >&2
-  printf "%s\\n" "  autocp            cp custom autocomplete file" >&2
-  printf "%s\\n" "  script            cp custom script to the path system" >&2
-  printf "\\n"
-  exit 1
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') module" >&2
+    printf "%s\\n" "Setup my common tasks." >&2
+    printf "\\n" >&2
+    printf "%s\\n" "Modules:" >&2
+    printf "%s\\n" "  autocp   cp custom autocomplete file" >&2
+    printf "%s\\n" "  script   cp custom script to the path system" >&2
+    exit 1
 }
 
 _exec()
@@ -60,10 +61,11 @@ fi
 
 if [ X"${#}" != X"0" ]; then
     case "${1}" in
+        --) shift; break  ;;
+        -h|--help) _usage ;;
         script)    shift; _script "${@}" ;;
         autocp)    shift; _autocp "${@}" ;;
-        -h|--help) _usage ;;
-        *)         printf "%s\\n" "Error, unknown option: ${1}" >&2; _usage ;;
+        *)         printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${1}'" >&2; _usage ;;
     esac
 else
     _usage

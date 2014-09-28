@@ -8,8 +8,12 @@
 _usage()
 {
     printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] [dir]" >&2
-    printf "%s\\n" "  -v   verbose mode" >&2
-    printf "%s\\n" "  dir  where to create the pxe environment (./pxe_setup by default)" >&2
+    printf "%s\\n" "Setup a pxe environment." >&2
+    printf "\\n" >&2
+    printf "%s\\n" "  -v           verbose mode" >&2
+    printf "%s\\n" "  -h, --help   help" >&2
+    printf "\\n" >&2
+    printf "%s\\n" "  dir          creates the pxe environment in this directory (./pxe_setup by default)" >&2
     exit 1
 }
 
@@ -1155,9 +1159,11 @@ fi
 
 for arg; do
     case "${arg}" in
+        --) shift; break;;
         -h|--help)    _usage ;;
         -v|--verbose) _verbose_flag="seen"; ;;
-        *)            _pxe_var_default_dir="${arg}"; break;;
+        -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" >&2; _usage ;;
+        *)  _pxe_var_default_dir="${arg}"; break;;
     esac
 done
 

@@ -1,6 +1,6 @@
 #!/bin/sh
 #description: display a warning when the system is running out of energy
-#             suspend the system if not action is taken
+#             and suspend|hibernate the system if no action is taken
 #usage: watch-battery
 
 #it makes more sense to run it as a cron job
@@ -11,6 +11,13 @@ PATH=/bin:/usr/bin:/sbin:/usr/sbin
 #if ! pgrep upowerd >/dev/null; then
     #exit 1
 #fi
+
+_usage()
+{
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)')" >&2
+    printf "%s\\n" "Battery guard, it should be run in a cron job: */3 * * * * $(expr "${0}" : '.*/\([^/]*\)')" >&2
+    exit 1
+}
 
 _basename()
 {
@@ -52,6 +59,14 @@ _notify()
         fi
     fi
 }
+
+for arg in "${@}"; do #parse options
+    case "${arg}" in
+        --) shift; break  ;;
+        -h|--help) _usage ;;
+        -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" >&2; _usage ;;
+    esac
+done
 
 exec 9>/tmp/"$(_basename ${0})".lock
 if ! flock -n 9 ; then

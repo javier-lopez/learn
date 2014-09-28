@@ -1,7 +1,7 @@
 #!/bin/sh
 #description: control keyboard layouts, best suited for tiling window managers
 #usage: shift-keyboard-layout
-# change keyboard layout to the next configured one
+#change keyboard layout to the next configured one
 
 default_layouts="latam,us,ru" #see /usr/share/X11/xkb/rules/base.lst
 
@@ -27,9 +27,9 @@ _notify()
         fi
     else
         if [ -z "${2}" ]; then
-            printf "%s\\n" "${1}" "${2}"
+            printf "%s\\n" "${1}"
         else
-            printf "%s: %s\\n" "${1}" "${2}"
+            printf "%s: %s" "${1}" "${2}"; printf "\\n"
         fi
     fi
 }
@@ -54,6 +54,22 @@ _return_valid_layouts()
      printf "%s" "${_return_valid_layouts_var_cp}"; return;
 }
 
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
+fi
+
+for arg; do #parse options
+    case "${arg}" in
+        --) shift; break ;;
+        -h|--help) { printf "Usage: %b\\n" "$(expr "${0}" : '.*/\([^/]*\)')\\nChange keyboard layout (see minos-config)." >&2; exit 1; } ;;
+        -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" >&2
+            printf "Usage: %b\\n" "$(expr "${0}" : '.*/\([^/]*\)')\\nChange keyboard layout (see minos-config)." >&2
+            exit 1
+            ;;
+    esac
+done
+
 if ! command -v "setxkbmap" >/dev/null; then
     _notify "[-] Error" "you need to install setxkbmap to run this program"
 fi
@@ -65,23 +81,23 @@ d_layouts="${layouts}"
 c_layouts="${layouts}"
 c="0";d="0"
 
-while [ "${d_layouts}" ]; do #items in array
+while [ "${d_layouts}" ]; do
     option="${d_layouts%%,*}"
     d="$((${d} + 1))"
     [ X"${d_layouts}" = X"${option}" ] && d_layouts="" || d_layouts="${d_layouts#*,}"
 done
 
-while [ "${c_layouts}" ]; do #what position is current_layout respect to array
+while [ "${c_layouts}" ]; do #in what position is the current_layout with respect to the array?
     option="${c_layouts%%,*}"
     c="$((${c} + 1))"
     [ X"${current_layout}" = X"${option}" ] && break
     [ X"${c_layouts}" = X"${option}" ] && c_layouts="" || c_layouts="${c_layouts#*,}"
 done
 
-[ -z "${c_layouts}" ] && exit #invalid layout format
+[ -z "${c_layouts}" ] && exit 1 #invalid layout format
 
 e="$((${c} + 1))"
-[ "${d}" -eq "${c}" ] && e="1" #return to first element if we're in the last one
+[ "${d}" -eq "${c}" ] && e="1" #return to first element if we're in the last item
 
 c="0"; while [ "${layouts}" ]; do #set next keyboard layout
     option="${layouts%%,*}"

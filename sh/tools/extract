@@ -10,9 +10,11 @@
 #http://bashscripts.org/forum/viewtopic.php?f=7&t=367
 _usage()
 {
-    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [-s] files ..." >&2
-    printf "%s\\n" "           -h       help" >&2
-    printf "%s\\n" "           -s       quiet mode" >&2
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] files ..." >&2
+    printf "%s\\n" "Extract files." >&2
+    printf "\\n" >&2
+    printf "%s\\n" "  -s          quiet mode" >&2
+    printf "%s\\n" "  -h,--help   show this help message and exit" >&2
     exit 1
 }
 
@@ -48,7 +50,7 @@ _extract()
                     *)  printf "%s\\n" "'${_extract_var_file}' is not a valid compressed file" >&2 ;;
                 esac
             else
-                _usage
+                printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): '${_extract_var_file}' does not exist or is not readable" >&2
             fi
         else
             if [ -f "${_extract_var_file}" ] ; then
@@ -70,7 +72,7 @@ _extract()
                     *) printf "%s\\n" "'${_extract_var_file}' is not a valid compressed file" >&2 ;;
                 esac
             else
-                _usage
+                printf "%s\\n" "$(expr "${0}"): '${_extract_var_file}' does not exist or is not readable" >&2
             fi
         fi
     done
@@ -83,15 +85,18 @@ fi
 
 [ "${#}" -eq "0" ] && _usage
 
-while getopts ":s:" option; do
-    case "${option}" in
-        s)  SFLAG=yes
-            shift 1; _extract "${@}"
-            exit 0 ;;
-        :)  printf "%s\\n" "Option -${OPTARG} requires an argument" >&2
-            _usage ;;
-        \?) printf "%s\\n" "Invalid option: -${OPTARG}" >&2
-            _usage ;;
+for arg; do #parse options
+    case "${arg}" in
+        --) shift; break   ;;
+        -h|--help) _usage  ;;
+        -s) SFLAG="true" && shift
+            if [ -z "${1}" ]; then
+                _usage
+            else
+                _extract "${@}"
+                exit 0
+            fi ;;
+        -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" >&2; _usage ;;
     esac
 done
 

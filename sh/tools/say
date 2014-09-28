@@ -1,6 +1,6 @@
 #!/bin/sh
 #description: say phrase
-#usage: say [OPTION] phrase
+#usage: say [options] phrase
 
 #example: say -en "hello world"
 #no-output, only audio
@@ -31,7 +31,9 @@ _notify()
 _usage()
 {
     printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [-sl] phrase" >&2
-    printf "%s\\n" "       sl     source language (en by default)" >&2
+    printf "%s\\n" "Say a phrase." >&2
+    printf "\\n" >&2
+    printf "%s\\n" "  sl   source language ('en' by default)" >&2
     exit 1
 }
 
@@ -59,6 +61,14 @@ if [ ! -t 0 ]; then
 fi
 
 [ "${#}" -eq "0" ] && _usage
+
+for arg; do #parse options
+    case "${arg}" in
+        --) shift; break       ;;
+        -h|--help) _usage      ;;
+        -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" >&2; _usage ;;
+    esac
+done
 
 [ ! -f "$(command -v "mplayer")" ] && { _notify "[-] Error" "you need to install 'mplayer' to run this program" 2>&1; exit 1; }
 

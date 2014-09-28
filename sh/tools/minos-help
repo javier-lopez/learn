@@ -2,6 +2,15 @@
 #description: show shortcut information in minos
 #usage: minos-help
 
+_usage()
+{
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options]" >&2
+    printf "%s\\n" "Minos help window." >&2
+    printf "\\n" >&2
+    printf "%s\\n" "  -h, --help   show this help message and exit" >&2
+    exit 1
+}
+
 _whereis()
 {
     [ -z "${1}" ] && return 1
@@ -10,8 +19,21 @@ _whereis()
     fi
 }
 
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
+fi
+
+for arg; do #parse options
+    case "${arg}" in
+        --) shift;   break  ;;
+        -h|--help)   _usage ;;
+        -*) printf "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'\\n" >&2; _usage ;;
+    esac
+done
+
 running="$(ps aux | awk '/got it/ {if ($0 !~ "awk") print $2}')"
-[ -n "${running}" ] && exit
+[ -n "${running}" ] && exit 1
 
 XMESSAGE="$(_whereis gxmessage)" && geometry="-geometry 400x520" || XMESSAGE="xmessage"
 font="Monaco 9"
@@ -23,7 +45,7 @@ if [ -f "${HOME}"/.minos/shortcuts ]; then
 elif [ -f /etc/minos/shortcuts ]; then
     shortcuts="${HOME}"/.minos/shortcuts
 else
-    echo 'No help available' > /tmp/minos-help
+    printf "%s\\n" 'No help available' > /tmp/minos-help
     shortcuts=/tmp/minos-help
 fi
 

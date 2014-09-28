@@ -9,18 +9,17 @@ trash_dir="${HOME}"/.local/share/Trash
 
 _usage()
 {
-    printf "%b\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [OPTION]... FILE..." >&2
-    printf "%b\\n" "Wrapper for \`rm' compatible with nautilus|pcmanfm file managers\n" >&2
-    printf "%b\\n" "  -l [PATTERN]   list archived files, use -ll or -lll to increase verbosity" >&2
-    printf "%b\\n" "  -c [PATTERN]   remove permanently archived files" >&2
-    printf "%b\\n" "  -u [PATTERN]   recover archived files" >&2
+    printf "%b\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] file ..." >&2
+    printf "%b\\n" "rm wrapper compatible with nautilus|pcmanfm file managers." >&2
+    printf "\\n" >&2
+    printf "%b\\n" "  -l [pattern]   list archived files, use -ll or -lll to increase verbosity" >&2
+    printf "%b\\n" "  -c [pattern]   remove permanently archived files" >&2
+    printf "%b\\n" "  -u [pattern]   recover archived files" >&2
     printf "%b\\n" "  -y             say yes to all questions" >&2
     printf "%b\\n" "  -f             force to remove files, \`rm' is executed directly" >&2
     printf "%b\\n" "  -h             shows this message, use --help to see \`rm' help" >&2
-    printf "%b\\n" "\n$(expr "${0}" : '.*/\([^/]*\)') deletes directories and files with no distintion, an -r option is not provided\n" >&2
-
-    printf "%b\\n" "Last available version: https://github.com/chilicuil/learn/tree/master/sh/tools/rm_" >&2
-    printf "%b\\n" "Report bugs to:         m@javier.io" >&2
+    printf "\\n" >&2
+    printf "%b\\n" "$(expr "${0}" : '.*/\([^/]*\)') deletes directories and files without distintion, an -r option is not provided" >&2
     exit 1
 }
 

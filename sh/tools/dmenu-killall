@@ -14,8 +14,9 @@ if ! command -v "dmenu" >/dev/null 2>&1; then
     exit 1
 fi
 
-npid="$(printf "%s\\n" "$(command ps axo command= | sed -e "s: .*::; s:.*/::; s/:$//;"  -e "s:^[[(-]::; s:[])]$::"  -e "s:^<defunct>$::")" | ${DMENU})"
+npid="$(printf "%s\\n" "$(command ps xo command=|sed -e "s: .*::; s:.*/::; s/:$//;" -e "s:^\[.*\]$::" -e "/^$/d" -e "s:^<defunct>$::")"|sort|uniq|${DMENU})"
+#npid="$(printf "%s\\n" "$(command ps xo command=|sed -e "s:^\[.*\]$::" -e "/^$/d" -e "s:^<defunct>$::")"|${DMENU})"
+#npid="$(printf "%s\\n" "$(command ps axo command=|sed -e "s:^\[.*\]$::" -e "/^$/d" -e "s:^<defunct>$::")"|${DMENU})"
 
-[ -n "${npid}" ] || exit 0
-
-kill -9 $(pgrep "${npid}")
+[ -z "${npid}" ] && exit 1
+[ -z "$(pgrep -x "${npid}")" ] && exit 1 || kill -9 $(pgrep -x "${npid}")

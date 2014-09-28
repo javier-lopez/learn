@@ -74,7 +74,7 @@ _usage()
     printf "%s\\n" "   ${txtbld}${prog} settings${txtrst}:" >&2
     printf "%s\\n" "   Resume after: ${_usage_var_hours} hours" >&2
     printf "\\n" >&2
-    exit 0
+    exit 1
 }
 
 #suspend inhibit script (must be run as a separate process)
@@ -139,6 +139,11 @@ fi
 if [ X"$(whoami)" = X"root" ]; then
     _notify "[-] Error" "you are root, must be a regular user"
     exit 1
+fi
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
 fi
 
 [ -z "${1}" ] || _usage

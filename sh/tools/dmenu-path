@@ -7,7 +7,7 @@
 #commmand2
 #...
 
-cachedir=${XDG_CACHE_HOME:-"$HOME/.cache"}
+cachedir="${XDG_CACHE_HOME:-"$HOME/.cache"}"
 
 if ! command -v "stest" >/dev/null; then
     printf "%s\\n" "you need to install 'stest' to run this program" >&2

@@ -26,7 +26,7 @@ fi
 
 phrase="$(${DMENU} <&- && printf "\\n")"
 
-[ -z "${phrase}" ] && exit 0;
+[ -z "${phrase}" ] && exit 1;
 
 if [ -f "$(command -v "xclip")" ]; then
     clipboard="xclip -o"

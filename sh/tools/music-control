@@ -7,7 +7,8 @@
 
 _usage()
 {
-    printf "%s\\n" "usage: $(expr "${0}" : '.*/\([^/]*\)') play|pause|toggle|next|previous" >&2
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') play|pause|toggle|next|previous" >&2
+    printf "%s\\n" "Control music applications." >&2
     exit 1
 }
 

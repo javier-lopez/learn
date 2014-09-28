@@ -8,22 +8,19 @@
 _usage()
 {
     printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] key" >&2
-    printf "%s\\n" "Query tool for minos configuration files" >&2
+    printf "%s\\n" "Query tool for minos configuration files." >&2
     printf "\\n" >&2
-    printf "%s\\n" "  -h, --help     show help (this text)" >&2
     printf "%s\\n" "  -c, --config   read values from this configuration file" >&2
     printf "%s\\n" "  -d, --dump     dump detected keys and its values" >&2
-    printf "\\n" >&2
-    printf "%s\\n" "For detailed information of available keys see: /etc/minos/config" >&2
-    exit 0
+    printf "%s\\n" "  -h, --help     show help (this text)" >&2
+    exit 1
 }
 
 _die()
 {
     [ -z "${1}" ] && return 1
     printf "%s\\n" "${*}" >&2
-    printf "%s\\n" "See: $(expr "${0}" : '.*/\([^/]*\)') --help" >&2
-    exit 1
+    _usage
 }
 
 _get_minos_config()
@@ -36,7 +33,7 @@ _get_minos_config()
     fi
 
     [ -z "${_get_minos_config_var_option}" ] && _get_minos_config_var_option="$(awk -v pattern="^${1} " '$0 ~ pattern {$1=""; print substr($0,2); exit}' /etc/minos/config 2>/dev/null)"
-    [ -z "${_get_minos_config_var_option}" ] && printf "%s" "" || { eval _get_minos_config_var_option="${_get_minos_config_var_option}"; printf "%s\\n" "${_get_minos_config_var_option}"; }
+    [ -z "${_get_minos_config_var_option}" ] && return 1 || { eval _get_minos_config_var_option="${_get_minos_config_var_option}"; printf "%s\\n" "${_get_minos_config_var_option}"; }
 }
 
 _dump_minos_config()
@@ -49,6 +46,11 @@ _dump_minos_config()
     _get_minos_config_var_etc=$(awk '!/^#|^$/'  /etc/minos/config 2>/dev/null)
     printf "%s\\n" "${_get_minos_config_var_home}" | sed "s: [ \t]*:=:" | column -s= -t
     printf "%s\\n" "${_get_minos_config_var_etc}"  | sed "s: [ \t]*:=:" | column -s= -t
+    if [ -z "${_get_minos_config_var_home}" ] && [ -z "${_get_minos_config_var_etc}" ]; then
+        exit 1
+    else
+        exit 0
+    fi
 }
 
 if [ ! -t 0 ]; then
@@ -58,8 +60,9 @@ fi
 
 [ -z "${1}" ] && _usage
 
-for var; do #parse options
-    case "${var}" in
+for arg; do #parse options
+    case "${arg}" in
+        --) shift;   break  ;;
         -h|--help)   _usage ;;
         -d|--dump)   _dump_minos_config  ;;
         -c|--config)
@@ -69,10 +72,10 @@ for var; do #parse options
                 shift
                 [ -f "${config_file}" ] || _die "'${config_file}' is not a valid configuration file"
             else
-                _die "Option ${var} requires a config file"
+                _die "Option \`${arg}' requires a config file"
             fi
             ;;
-        -*) _die "Unrecognized option: ${var}" ;;
+        -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" ;;
     esac
 done
 

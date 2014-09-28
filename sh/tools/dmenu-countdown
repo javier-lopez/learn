@@ -158,7 +158,7 @@ _num()
 _invalidformat()
 {
     _notify "[-] Invalid format" "$(_basename ${0}): HH:MM[:SS]"
-    exit
+    exit 1
 }
 
 _notify()

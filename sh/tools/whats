@@ -24,7 +24,25 @@ if [ ! -t 0 ]; then
     set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
 fi
 
-[ "${#}" -eq "0" ] && (printf "%s\\n" "${0}: word ..." >&2; exit 1)
+[ "${#}" -eq "0" ] && {   \
+    printf "Usage: %b\\n" \
+    "$(expr "${0}" : '.*/\([^/]*\)') word ...\\nDefine words using wikipedia over dns, https://dgl.cx/wikipedia-dns." >&2;\
+    exit 1; }
+
+for arg; do #parse options
+    case "${arg}" in
+        --) shift; break  ;;
+        -h|--help) { \
+            printf "Usage: %b\\n" \
+            "$(expr "${0}" : '.*/\([^/]*\)') word ...\\nDefine words using wikipedia over dns, https://dgl.cx/wikipedia-dns." >&2;\
+            exit 1; } ;;
+        -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" >&2;
+            { \
+            printf "Usage: %b\\n" \
+            "$(expr "${0}" : '.*/\([^/]*\)') word ...\\nDefine words using wikipedia over dns, https://dgl.cx/wikipedia-dns." >&2;\
+            exit 1; } ;;
+    esac
+done
 
 if ! command -v "dig" >/dev/null 2>&1; then
     printf "%s\\n" "you need to install 'dig' to run this program" >&2

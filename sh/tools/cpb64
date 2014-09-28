@@ -22,7 +22,11 @@ _cpb64()
     cmd="${line1}"'\n'"${line2}"'\n'"${line3}"'\n'
 
     if command -v "xclip" >/dev/null 2>&1; then
-        printf "%b" "${cmd}" | xclip -selection clipboard; xclip -o -selection clipboard
+        if [ ! -t 1 ]; then
+            printf "%b" "${cmd}"
+        else
+            printf "%b" "${cmd}" | xclip -selection clipboard; xclip -o -selection clipboard
+        fi
     else
         printf "%b" "${cmd}"
     fi
@@ -34,5 +38,16 @@ if [ ! -t 0 ]; then
 fi
 
 [ "${#}" -eq "0" ] && { printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') file ..." >&2; exit 1; }
+
+for arg; do #parse options
+    case "${arg}" in
+        --) shift; break ;;
+        -h|--help) { printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') file ..." >&2; exit 1; } ;;
+        -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" >&2
+            printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') file ..." >&2
+            exit 1
+            ;;
+    esac
+done
 
 _cpb64 "${@}"

@@ -5,6 +5,13 @@
 
 #https://wiki.archlinux.org/index.php/Feh#File_Browser_Image_Launcher
 
+_usage()
+{
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') image ..." >&2
+    printf "%s\\n" "Browse image launcher." >&2
+    exit 1
+}
+
 _notify()
 {
     [ -z "${1}" ] && return 1
@@ -59,46 +66,74 @@ _dirname()
     esac
 }
 
+_validimage()
+{
+    [ -z "${1}" ]   && return 1
+    [ ! -f "${1}" ] && return 1
+    case "${1}" in
+        *png|*PNG|*jpg|*JPG|*jpeg|*JPEG) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
 _vw()
 {
     [ -z "${1}" ] && return 1
+    if [ -d "${1}" ]; then
+        _vw_var_dir="${1}"
+        shift
+        cd -- "${_vw_var_dir}"
+        for _vw_var_img in *; do
+            if _validimage "${_vw_var_img}"; then
+                _vw_var_arr="${_vw_var_arr}|${_vw_var_img}"
+            fi
+        done
+    elif _validimage "${1}"; then
+        _vw_var_dir="$(_dirname "${1}")"
+        _vw_var_arg="${1}"
+        _vw_var_arr="${_vw_var_arg}"
+        _vw_var_arr_b="$(_basename "${_vw_var_arg}")"
+        shift
 
-    _vw_var_dir="$(_dirname "${1}")"
-    _vw_var_arg="${1}"
-    _vw_var_arr="${_vw_var_arg}"
-    _vw_var_arr_b="$(_basename "${_vw_var_arg}")"
-    shift
+        cd -- "${_vw_var_dir}"
+        for _vw_var_img in *; do
+            [ X"${_vw_var_img}" = X"${_vw_var_arr_b}"  ] && continue
+            if _validimage "${_vw_var_img}"; then
+                _vw_var_arr="${_vw_var_arr}|${_vw_var_img}"
+            fi
+        done
+    else
+        _notify "[-] Error" "'${1}' is not a valid image file"
+    fi
 
-    cd -- "${_vw_var_dir}"
-    for _vw_var_img in *; do
-        [ ! -f "${_vw_var_img}" ]                    && continue
-        [ X"${_vw_var_img}" = X"${_vw_var_arr_b}"  ] && continue
-        case "${_vw_var_img}" in
-            *png|*PNG|*jpg|*JPG|*jpeg|*JPEG) _vw_var_arr="${_vw_var_arr}|${_vw_var_img}" ;;
-        esac
-    done
+    [ -z "${_vw_var_arr}" ] && return 1 || _vw_var_arr="${_vw_var_arr#|}"
 
     IFS="|"
     printf "%s\\n" "[+] ${viewer} ${_vw_var_arg}"
     exec ${viewer} -f ${_vw_var_arr}
 }
 
-#if [ ! -t 0 ]; then #it doesn't work when launched from pcmanfm
+#if [ ! -t 0 ]; then #it doesn't work when mixed with pcmanfm
     ##there is input comming from pipe or file, add to the end of $@
     #set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
 #fi
 
+[ "${#}" -eq "0" ] && _usage
+
+for arg in "${@}"; do #parse options
+    case "${arg}" in
+        --) shift; break  ;;
+        -h|--help) _usage ;;
+        -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" >&2; _usage ;;
+    esac
+done
+
 if [ -f "$(command -v sxiv)" ]; then
-    viewer=sxiv
+    viewer="sxiv"
 elif [ -f "$(command -v feh)" ]; then
-    viewer=feh
+    viewer="feh"
 else
     _notify "[-] Error" "you need to install either sxiv or feh to run this program"
-    exit 1
-fi
-
-if [ ! -f "${1}" ]; then
-    printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): '${1}' is not a file" >&2
     exit 1
 fi
 

@@ -25,7 +25,7 @@ _basename()
 _usage()
 {
     printf "%s\\n" "Usage: $(_basename "${0}") testcase ..." >&2
-    printf "%s\\n" "       https://wiki.ubuntu.com/Testing/TestCaseFormat" >&2
+    printf "%s\\n" "https://wiki.ubuntu.com/Testing/TestCaseFormat" >&2
     exit 1
 }
 
@@ -327,6 +327,14 @@ if [ ! -t 0 ]; then
 fi
 
 [ "${#}" -eq "0" ] && _usage
+
+for arg in "${@}"; do #parse options
+    case "${arg}" in
+        --) shift; break  ;;
+        -h|--help) _usage ;;
+        -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" >&2; _usage ;;
+    esac
+done
 
 [ -f "$(command -v "vim")" ]  || { printf "%b\\n" "$(_basename "${0}"): You need to install 'vim' & 'tidy' to run this program\n$ sudo apt-get install vim tidy" >&2; exit 1; }
 [ -f "$(command -v "tidy")" ] || { printf "%b\\n" "$(_basename "${0}"): You need to install 'tidy' to run this program\n$ sudo apt-get install tidy" >&2; exit 1; }

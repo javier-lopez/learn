@@ -1,6 +1,6 @@
 #!/bin/sh
 #description: create cvs files with geolocalization data of launchpad groups
-#usage: lp-g9n-team [lp group]
+#usage: lp-g9n-team [options] [lp group]
 
 #example: lp-g9n-team ubuntumembers
 #Outputing data to "lp-g9n-team.csv"
@@ -12,8 +12,12 @@
 
 _usage()
 {
-    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [lp-group]" >&2
-    printf "%s\\n" "       lp-group   launchpad group to query, ubuntumembers by default" >&2
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] [lp-group]" >&2
+    printf "%s\\n" "Create CVS files with geolocalization data of launchpad groups."
+    printf "\\n"
+    printf "%s\\n" "  -h,--help   show this message and exits" >&2
+    printf "\\n"
+    printf "%s\\n" "  lp-group    launchpad group to query, 'ubuntumembers' by default" >&2
     exit 1
 }
 
@@ -51,21 +55,29 @@ if [ ! -t 0 ]; then
     set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
 fi
 
-[ -n "${1}" ] && team="${1}" || team="ubuntumembers"
+for arg; do #parse options
+    case "${arg}" in
+        --) shift; break  ;;
+        -h|--help) _usage ;;
+        -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" >&2; _usage ;;
+    esac
+done
 
-_whereis python || _die "$(expr "${0}" : '.*/\([^/]*\)'): you need to install 'python' to run this program, $ sudo apt-get install python"
-_whereis wget   || _die "$(expr "${0}" : '.*/\([^/]*\)'): you need to install 'wget' to run this program, $ sudo apt-get install wget"
+[ ! -z "${1}" ] && team="${1}" || team="ubuntumembers"
+
+_whereis python || _die "you need to install 'python' to run this program, $ sudo apt-get install python"
+_whereis wget   || _die "you need to install 'wget' to run this program, $ sudo apt-get install wget"
 
 if ! $(printf "%s" "from launchpadlib.launchpad import Launchpad" | python >/dev/null 2>&1); then
-    _die "$(expr "${0}" : '.*/\([^/]*\)'): you need to install 'launchpadlib' to run this program, $ sudo apt-get install python-launchpadlib"
+    _die "you need to install 'launchpadlib' to run this program, $ sudo apt-get install python-launchpadlib"
 fi
 
 if ! $(printf "%s" "from geopy import geocoders" | python >/dev/null 2>&1); then
-    _die "$(expr "${0}" : '.*/\([^/]*\)'): you need to install 'geopy' to run this program, $ sudo apt-get install python-pip && sudo pip install geopy"
+    _die "you need to install 'geopy' to run this program, $ sudo apt-get install python-pip && sudo pip install geopy"
 fi
 
 if ! _internetavailable; then
-    _die "$(expr "${0}" : '.*/\([^/]*\)'): you must have an active internet connection to run this program"
+    _die "you must have an active internet connection to run this program"
 fi
 
 [ -f /tmp/lp-g9n.py ] || wget https://raw.github.com/chilicuil/learn/master/python/lp-g9n -O /tmp/lp-g9n.py >/dev/null 2>&1

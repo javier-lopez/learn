@@ -2,6 +2,20 @@
 #description: send and watch messages in your "ke estas haciendo?" in mononeurona.org
 #usage: im "string"
 
+_usage()
+{
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] string ..." >&2
+    printf "%s\\n" "Send and watch messages in your \"ke estas haciendo?\" in mononeurona.org." >&2
+    printf "\\n" >&2
+    printf "%s\\n" "Positional arguments:" >&2
+    printf "%s\\n" "  string        message" >&2
+    printf "\\n" >&2
+    printf "%s\\n" "Optional arguments:" >&2
+    printf "%s\\n" "  -u           display last messages" >&2
+    printf "%s\\n" "  -h, --help   show this help message and exit" >&2
+    exit 1
+}
+
 _notify()
 {
     [ -z "${1}" ] && return 1
@@ -33,13 +47,21 @@ elif [ ! -f "$(command -v "curl")" ]; then
     exit 1
 fi
 
-if [ X"${#@}" = X"1" ]; then
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
+fi
+
+if [ ! -z "${1}" ]; then
     case "${1}" in
         u|up|update|-u|-up|-update|--update)
             curl -s http://mononeurona.org/waydings/addwayd | html2text
             exit 0 ;;
+        -h|--help) _usage;;
+        -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${1}'" >&2; _usage ;;
     esac
 fi
+
 # ============ Settings =============
 #Avoid writing user/password every time
 MNron="disco299@gmail.com"
@@ -49,17 +71,17 @@ MNtask="${@}"
 
 if [ -z "${MNron}" ]; then
     printf "%s" "User: "
-    read -e MNron
+    read MNron
 fi
 
 if [ -z "${MNpwd}" ]; then
     printf "%s" "Password: "
-    read -e MNpwd
+    read MNpwd
 fi
 
 if [ -z "${MNtask}" ]; then
     printf "%s" "k estas haciendo?: "
-    read -e MNtask
+    read MNtask
 fi
 
 curl -s -c /tmp/MNc -d "_method=POST&data[User][email]=${MNron}&data[User][pwd]=${MNpwd}" http://mononeurona.org/users/login > /tmp/MN.log

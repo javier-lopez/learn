@@ -1,12 +1,24 @@
 #!/bin/sh
 # Copyright (C) 2007-2010 by Jonas Kramer. All rights reserved.
+# Copyright (C) 2013-2014 by Javier Lopez. All rights reserved.
 # Published under the terms of the GNU General Public License (GPL).
 
 # Rename lots of files using your favorite text editor.
 # Original: https://github.com/jkramer/virn
 
-# $ mvs *
-# $ mvs a*
+#examples
+# mvs *
+# mvs a*
+
+_usage()
+{
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] file ..." >&2
+    printf "%s\\n" "Rename lots of files using your favorite text editor." >&2
+    printf "\\n" >&2
+    printf "%b\\n" "  -e, --editor   use this editor instead of the default \$EDITOR" >&2
+    printf "%b\\n" "  -h, --help     show this help message and exit" >&2
+    exit 1
+}
 
 _die()
 {
@@ -20,34 +32,50 @@ if [ ! -t 0 ]; then
     set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
 fi
 
-[ -z "${EDITOR}" ] && _die "${EDITOR} not defined."
-[ "${#}" -eq "0" ] && exit
+[ "${#}" -eq "0" ] && _usage
+
+for arg; do #parse options
+    case "${arg}" in
+        --) shift; break;;
+        -h|--help) _usage ;;
+        -e|--editor)if [ "${#}" -gt "1" ]; then
+                        editor="$(printf "%s " "${@}" | awk '{print $2}')"
+                        shift 2
+                    else
+                        _die "Option \`${arg}' requires a parameter"
+                    fi ;;
+        -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" >&2; _usage ;;
+    esac
+done
+
+[ -z "${editor}" ] && editor="${EDITOR}"
+[ -z "${EDITOR}" ] && _die "\${EDITOR} not defined."
 
 # Create targets file.
-TARGETS="/tmp/mvs-${$}"
-for FILE in "${@}"; do printf "%s\\n" "${FILE}" >> ${TARGETS}; done
+targets="/tmp/mvs-${$}"
+for FILE; do printf "%s\\n" "${FILE}" >> "${targets}"; done
 
 # Start $EDITOR
-if ${EDITOR} ${TARGETS}; then
+if ${editor} ${targets}; then
         [ ! -t 0 ] && reset
-        COUNT="$(wc -l "${TARGETS}" | grep -o -E '^[0-9]+')"
+        count="$(wc -l "${targets}" | grep -o -E '^[0-9]+')"
 
 	# Exit with error message if number of arguments and line count of
 	# targets file differ.
-        if [ "${COUNT}" -ne "${#}" ]; then
-            rm -- "${TARGETS}"
+        if [ "${count}" -ne "${#}" ]; then
+            rm -- "${targets}"
             _die 'Numbers of files mismatch.'
         fi
 
 	# Read targets file line by line and rename the source
 	# files from ARGV appropriately.
-        while read TARGET; do
-            SOURCE="${1}"
+        while read target; do
+            source="${1}"
             shift
-            if [ X"${SOURCE}" != X"${TARGET}" ]; then
-                mv -v -f -- "${SOURCE}" "${TARGET}"
+            if [ X"${source}" != X"${target}" ]; then
+                mv -v -f -- "${source}" "${target}"
             fi
-        done < "${TARGETS}"
+        done < "${targets}"
 fi
 
-rm "${TARGETS}"
+rm "${targets}"

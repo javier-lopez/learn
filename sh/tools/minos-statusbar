@@ -2,6 +2,35 @@
 #description: minos statusbar, requires, i3-wm with xbc icon patch and conky
 #usage: use only as argument in status_command (~/.i3/config)
 
+_usage()
+{
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options]" >&2
+    printf "%s\\n" "WARNING, use only as an argument in status_command for i3 (~/.i3/config)" >&2
+    printf "\\n" >&2
+    printf "%s\\n" "  -h, --help   show this help message and exit" >&2
+    exit 1
+}
+
+_die()
+{
+    [ -z "${1}" ] && return 1
+    printf "%s\\n" "${*}" >&2
+    _usage
+}
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
+fi
+
+for arg; do #parse options
+    case "${arg}" in
+        --) shift;   break  ;;
+        -h|--help)   _usage ;;
+        -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" ;;
+    esac
+done
+
 #http://www.reddit.com/r/unixporn/comments/22jgrh/debiani3_minimalist_crisp_clear/
 echo "{\"version\":1}"
 echo '['

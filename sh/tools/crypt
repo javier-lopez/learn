@@ -5,6 +5,21 @@
 #example: crypt script
 #creates script.crypt
 
+_basename()
+{
+    [ -z "${1}" ] && return 1 || _bbasename_var_name="${1}"
+    [ -z "${2}" ] || _bbasename_var_suffix="${2}"
+    case "${_bbasename_var_name}" in
+        /*|*/*) _bbasename_var_name="${_bbasename_var_name##*/}"
+    esac
+
+    if [ -n "${_bbasename_var_suffix}" ] && [ "${#_bbasename_var_name}" -gt "${#2}" ]; then
+        _bbasename_var_name="${_bbasename_var_name%$_bbasename_var_suffix}"
+    fi
+
+    printf "%s" "${_bbasename_var_name}"
+}
+
 _crypt()
 {
     for _crypt_var_file; do
@@ -13,11 +28,16 @@ _crypt()
             _crypt_var_header='eval "$((dd if=${0} bs=1 skip=XX|gpg -d)2>/dev/null)"; exit;'
             _crypt_var_header_size="$(printf "%s\\n" "${_crypt_var_header}"|wc -c)"
 
-            printf "%s\\n" "${_crypt_var_header}" | sed s:XX:"${_crypt_var_header_size}": > "${_crypt_var_file_output}"
-            gpg -c < "${_crypt_var_file}" >> "${_crypt_var_file_output}"
-            chmod +x "${_crypt_var_file_output}"
+            _crypt_var_header="$(printf "%s\\n" "${_crypt_var_header}" | sed s:XX:"${_crypt_var_header_size}":)"
+            gpg -c < "${_crypt_var_file}" > /tmp/"$(_basename "${_crypt_var_file_output}")"
+            if [ "${?}" -eq 0 ]; then
+                printf "%s\\n" "${_crypt_var_header}" > "${_crypt_var_file_output}"
+                cat /tmp/"$(_basename "${_crypt_var_file_output}")" >> "${_crypt_var_file_output}"
+                chmod +x "${_crypt_var_file_output}"
+                rm -rf /tmp/"$(_basename "${_crypt_var_file_output}")"
+            fi
         else
-            printf "%s\\n" "'${_crypt_var_file}' doesn't exist"
+            printf "%s\\n" "'${_crypt_var_file}' doesn't exist" && false
         fi
     done
 }
@@ -28,6 +48,16 @@ if [ ! -t 0 ]; then
 fi
 
 [ "${#}" -eq "0" ] && { printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') file ..." >&2; exit 1; }
+
+for arg; do #parse options
+    case "${arg}" in
+        --) shift; break ;;
+        -h|--help) { printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') file ..." >&2; exit 1; } ;;
+        -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" >&2;
+            printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') file ..." >&2
+            exit 1 ;;
+    esac
+done
 
 if ! command -v "gpg" >/dev/null 2>&1; then
     printf "%s\\n" "you need to install 'gnupg' to run this program" >&2

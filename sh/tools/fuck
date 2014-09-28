@@ -39,6 +39,11 @@ fi
 
 case "${1}" in
     you|off) shift ;;
+    --) shift; break ;;
+    -h|--help) { printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') [you|off] process_name ..." >&2; exit 1; } ;;
+    -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${1}'" >&2;
+        printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') [you|off] process_name ..." >&2
+        exit 1 ;;
 esac
 
 _fuck "${@}"

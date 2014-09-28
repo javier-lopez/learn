@@ -2,7 +2,16 @@
 #description: take screenshot in 3.., 2.., 1
 #             if no name is provided save image in $HOME with a random name
 #             otherwise use the full name provided and add a .png sufix
-#usage: screenshot [-s] [output]
+#Usage: screenshot [-s] [output]
+
+_usage()
+{
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [-s] [output-file]" >&2
+    printf "%s\\n" "Take a screenshot in 3.., 2.., 1." >&2
+    printf "\\n" >&2
+    printf "%s\\n" "  -h,--help   show this help message and exit" >&2
+    exit 1
+}
 
 _notify()
 {
@@ -48,15 +57,30 @@ _screenshot()
     eval "${_screenshot_var_bin} ${_screenshot_var_opt} ${1}"
 }
 
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
+fi
+
 if [ "${#}" -eq "0" ]; then
     file="${HOME}"/$(</dev/urandom tr -dc A-Za-z0-9 | head -c 8).png
 else
-    for var in "${@}"; do #parse options
-        case "${var}" in
+    for arg in "${@}"; do #parse options
+        case "${arg}" in
+            --) shift; break  ;;
+            -h|--help) _usage ;;
             -s) flag_select="y"; shift; ;;
+            -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" >&2; _usage ;;
         esac
     done
-    [ -z "${1}" ] && file="${HOME}"/$(</dev/urandom tr -dc A-Za-z0-9 | head -c 8).png || file="${1}".png
+    if [ -z "${1}" ]; then
+        file="${HOME}"/$(</dev/urandom tr -dc A-Za-z0-9 | head -c 8).png
+    else
+        case "${1}" in
+            *.png|*.jpg|*.jpeg) file="${1}" ;;
+            *) file="${1}".png ;;
+        esac
+    fi
 fi
 
 _notify "[+] Screenshot" "in 3.., 2.., 1.., smile =)!"
