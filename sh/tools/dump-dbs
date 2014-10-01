@@ -5,7 +5,7 @@
 #example: dump-dbs -u root -p passwd
 #dump-dbs: there is no mysql dbs on this host
 
-#this vars can be specified at ./.dump-dbs, ~/.dump-dbs or /etc/dump-dbs
+#these vars can be specified at ./.dump-dbs, ~/.dump-dbs or /etc/dump-dbs
 module=""
 user=""
 passwd=""
@@ -68,7 +68,6 @@ _printtime()
 
 _loadconf()
 {
-    [ -z "${1}" ]   && return 1
     [ ! -f "${1}" ] && return 1
     _loadconf_var_options=$(awk '! /export/ {if ($0 ~ "^.*=[^;&]*" && $0 !~ "&&" && $1 !~ "^#") print }' "${1}")
     eval "${_loadconf_var_options}"
