@@ -5,7 +5,7 @@
 _usage()
 {
     printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options]" >&2
-    printf "%s\\n" "WARNING, use only as an argument in status_command for i3 (~/.i3/config)" >&2
+    printf "%s\\n" "WARNING, use this program only as an argument to status_command in i3 (~/.i3/config)" >&2
     printf "\\n" >&2
     printf "%s\\n" "  -h, --help   show this help message and exit" >&2
     exit 1
@@ -31,9 +31,25 @@ for arg; do #parse options
     esac
 done
 
-#http://www.reddit.com/r/unixporn/comments/22jgrh/debiani3_minimalist_crisp_clear/
-echo "{\"version\":1}"
-echo '['
-echo '[] ,'
-[ -f "${HOME}"/.minos/statusbar ] && exec conky -c "${HOME}"/.minos/statusbar
-[ -f /etc/minos/statusbar ]       && exec conky -c /etc/minos/statusbar
+[ -z "$(minos-config statusbar-custom 2>/dev/null)" ] || exec sh -c "$(minos-config statusbar-custom)"
+[ X"$(minos-config statusbar 2>/dev/null)" = X"no" ] && return 0
+
+if [ -f "${HOME}"/.minos/statusbar ]; then
+    minos_statusbar="${HOME}/.minos/statusbar"
+elif [ -f /etc/minos/statusbar ]; then
+    minos_statusbar="/etc/minos/statusbar"
+fi
+
+if [ -z "${minos_statusbar}" ]; then
+    return 0
+else
+    minos_statusbar_icons="$(minos-config statusbar-icons 2>/dev/null)"
+    [ -z "${minos_statusbar_icons}" ] && minos_statusbar_icons="sm4tik"
+    sed "s:sm4tik:${minos_statusbar_icons}:g" ${minos_statusbar} > /tmp/minos-statusbar
+
+    #http://www.reddit.com/r/unixporn/comments/22jgrh/debiani3_minimalist_crisp_clear/
+    echo "{\"version\":1}"
+    echo '['
+    echo '[] ,'
+    exec conky -c /tmp/minos-statusbar
+fi
