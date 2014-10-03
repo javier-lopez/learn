@@ -1,13 +1,13 @@
 #!/bin/sh
-#description: send emails
-#usage: mail [options] to@domain.tld "message"
+#description: send emails using mailgun api
+#usage: mailgun [options] to@domain.tld "message"
 
-#these vars can be specified at ./.mail, ~/.mail or /etc/mail
+#these vars can be specified at ./.mailgun, ~/.mailgun or /etc/mailgun
 from="No reply <noreply@correo.io>"
 subject="Automated mail from $(hostname)"
 to=""
 message=""
-api=""   #mailgun api, required
+api="" #mailgun api, required
 
 _usage()
 {
@@ -46,18 +46,18 @@ _loadconf()
     eval "${_loadconf_var_options}"
 }
 
-_mail()
+_mailgun()
 {
     [ -z "${5}" ] && return 1
 
-    _mail_var_api="${1}";     shift
-    _mail_var_from="${1}";    shift
-    _mail_var_to="${1}";      shift
-    _mail_var_subject="${1}"; shift
-    _mail_var_msg="${*}"
-    curl -s --user "${_mail_var_api}" -G https://api.mailgun.net/v2/correo.io/messages \
-         -F from="${_mail_var_from}" -F to="${_mail_var_to}" \
-         -F subject="${_mail_var_subject}" -F text="${_mail_var_msg}"
+    _mailgun_var_api="${1}";     shift
+    _mailgun_var_from="${1}";    shift
+    _mailgun_var_to="${1}";      shift
+    _mailgun_var_subject="${1}"; shift
+    _mailgun_var_msg="${*}"
+    curl -s --user "${_mailgun_var_api}" -G https://api.mailgun.net/v2/correo.io/messages \
+         -F from="${_mailgun_var_from}" -F to="${_mailgun_var_to}" \
+         -F subject="${_mailgun_var_subject}" -F text="${_mailgun_var_msg}"
 }
 
 if [ ! -t 0 ]; then
@@ -106,11 +106,11 @@ msg="${*}"
 
 #TODO 01-10-2014 12:50 >> no source options when they had already been provided through the cli interface
 if [ -z "${config}" ]; then
-    if [ -f ./.mail ]; then
+    if [ -f ./.mailgun ]; then
         _loadconf ./.mail
-    elif [ -f ~/.mail ]; then
+    elif [ -f ~/.mailgun ]; then
         _loadconf ~/.mail
-    elif [ -f /etc/mail ]; then
+    elif [ -f /etc/mailgun ]; then
         _loadconf /etc/mail
     fi
 else
@@ -130,4 +130,4 @@ elif ! _validmail "${to}"; then
     _die "$(expr "${0}" : '.*/\([^/]*\)'): Invalid email address: '${to}'"
 fi
 
-_mail "${api}" "${from}" "${to}" "${subject}" "${msg}"
+_mailgun "${api}" "${from}" "${to}" "${subject}" "${msg}"

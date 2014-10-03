@@ -1,9 +1,8 @@
 #!/bin/sh
 #description: rm wrapper compatible with nautilus|pcmanfm trash management
-#usage: rm_ [OPTIONS] FILES
+#usage: trash [OPTIONS] FILES
 
 #Inspired by 'Wicked Cool Shell Scripts: 101 Scripts for Linux, Mac OS X, and Unix Systems'
-#https://github.com/chilicuil/learn/tree/master/sh/tools/rm_
 
 trash_dir="${HOME}"/.local/share/Trash
 
