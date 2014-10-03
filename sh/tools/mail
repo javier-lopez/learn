@@ -1,0 +1,133 @@
+#!/bin/sh
+#description: send emails
+#usage: mail [options] to@domain.tld "message"
+
+#these vars can be specified at ./.mail, ~/.mail or /etc/mail
+from="No reply <noreply@correo.io>"
+subject="Automated mail from $(hostname)"
+to=""
+message=""
+api=""   #mailgun api, required
+
+_usage()
+{
+    printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') [options] to@address.tld message ..." >&2
+    printf "%s\\n" "Send emails." >&2
+    printf "%s\\n" >&2
+    printf "%s\\n" "  -a, --api       mailgun api" >&2
+    printf "%s\\n" "  -f, --from      from header" >&2
+    printf "%s\\n" "  -s, --subject   subject header" >&2
+    printf "%s\\n" "  -c, --config    use FILE instead of ~/.mail" >&2
+    printf "%s\\n" "  -h, --help      show this help message and exit" >&2
+    exit 1
+}
+
+_die()
+{
+    [ -z "${1}" ] && return 1
+    printf "%b\\n" "${*}" >&2
+    _usage
+}
+
+_validmail()
+{
+    [ -z "${1}" ] && return 1
+
+    case "${1}" in
+        *@*.*) return 0 ;;
+        *)   return 1 ;;
+    esac
+}
+
+_loadconf()
+{
+    [ ! -e "${1}" ] && return 1
+    _loadconf_var_options=$(awk '! /export/ {if ($0 ~ "^.*=[^;&]*" && $0 !~ "&&" && $1 !~ "^#") print }' "${1}")
+    eval "${_loadconf_var_options}"
+}
+
+_mail()
+{
+    [ -z "${5}" ] && return 1
+
+    _mail_var_api="${1}";     shift
+    _mail_var_from="${1}";    shift
+    _mail_var_to="${1}";      shift
+    _mail_var_subject="${1}"; shift
+    _mail_var_msg="${*}"
+    curl -s --user "${_mail_var_api}" -G https://api.mailgun.net/v2/correo.io/messages \
+         -F from="${_mail_var_from}" -F to="${_mail_var_to}" \
+         -F subject="${_mail_var_subject}" -F text="${_mail_var_msg}"
+}
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
+fi
+
+[ "${#}" -eq "0" ] && _usage
+
+for arg; do #parse options
+    case "${arg}" in
+        --) shift; break  ;;
+        -a|--api) if [ "${#}" -gt "1" ]; then
+                     api="$(printf "%s " "${@}" | awk '{print $2}')"
+                     shift 2
+                  else
+                     _die "Option \`${arg}' requires a parameter"
+                  fi ;;
+        -f|--from)if [ "${#}" -gt "1" ]; then
+                     from="$(printf "%s " "${@}" | awk '{print $2}')"
+                     shift 2
+                  else
+                     _die "Option \`${arg}' requires a parameter"
+                  fi ;;
+        -s|--subject)if [ "${#}" -gt "1" ]; then
+                        subject="$(printf "%s " "${@}" | awk '{print $2}')"
+                        shift 2
+                     else
+                        _die "Option \`${arg}' requires a parameter"
+                     fi ;;
+        -c|--config) if [ "${#}" -gt "1" ]; then
+                        config="$(printf "%s " "${@}" | awk '{print $2}')"
+                        shift 2
+                     else
+                        _die "Option \`${arg}' requires a parameter"
+                     fi ;;
+        -h|--help) _usage ;;
+        -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" ;;
+    esac
+done
+
+[ "${#}" -lt "2" ] && _usage
+
+to="${1}"; shift
+msg="${*}"
+
+#TODO 01-10-2014 12:50 >> no source options when they had already been provided through the cli interface
+if [ -z "${config}" ]; then
+    if [ -f ./.mail ]; then
+        _loadconf ./.mail
+    elif [ -f ~/.mail ]; then
+        _loadconf ~/.mail
+    elif [ -f /etc/mail ]; then
+        _loadconf /etc/mail
+    fi
+else
+    [ ! -e "${config}" ] && _die "\`${_var_config_file}' doesn't exist"
+    _loadconf "${config}"
+fi
+
+[ "${#api}" -ne "40" ] && _die "Specify a valid mailgun api and try again (api:... 36 characters long)"
+
+if ! command -v "curl" >/dev/null 2>&1; then
+    _die "you need to install 'curl' to run this program"
+fi
+
+if ! _validmail "${from}"; then
+    _die "$(expr "${0}" : '.*/\([^/]*\)'): Invalid email address: '${from}'"
+elif ! _validmail "${to}"; then
+    _die "$(expr "${0}" : '.*/\([^/]*\)'): Invalid email address: '${to}'"
+fi
+
+_mail "${api}" "${from}" "${to}" "${subject}" "${msg}"
