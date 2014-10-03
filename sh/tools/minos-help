@@ -40,13 +40,13 @@ font="Monaco 9"
 
 [ X"${XMESSAGE}" = X"xmessage" ] && font="fixed"
 
-if [ -f "${HOME}"/.minos/shortcuts ]; then
-    shortcuts="${HOME}"/.minos/shortcuts
-elif [ -f /etc/minos/shortcuts ]; then
-    shortcuts="${HOME}"/.minos/shortcuts
+if [ -f "${HOME}"/.minos/help ]; then
+    help="${HOME}"/.minos/help
+elif [ -f /etc/minos/help ]; then
+    help="${HOME}"/.minos/help
 else
     printf "%s\\n" 'No help available' > /tmp/minos-help
-    shortcuts=/tmp/minos-help
+    help=/tmp/minos-help
 fi
 
-${XMESSAGE} ${geometry} ${font:+-fn "$font"} -file "${shortcuts}" -buttons "got it"
+${XMESSAGE} ${geometry} ${font:+-fn "$font"} -file "${help}" -buttons "got it"
