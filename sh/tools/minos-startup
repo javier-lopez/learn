@@ -31,5 +31,10 @@ for arg; do #parse options
     esac
 done
 
-[ -x "${HOME}"/.minos/startup ] && exec "${HOME}"/.minos/startup
-[ -x /etc/minos/startup ]       && exec /etc/minos/startup
+[ X"$(minos-config startup 2>/dev/null)" = X"no" ]  && return 0
+if [ -z "$(minos-config startup-custom 2>/dev/null)" ]; then
+    [ -e /etc/minos/startup ]       && exec /etc/minos/startup
+    [ -e "${HOME}"/.minos/startup ] && exec "${HOME}"/.minos/startup
+else
+   exec $(minos-config startup-custom 2>/dev/null)
+fi
