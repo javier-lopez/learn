@@ -501,6 +501,21 @@ test X"$(mail -c 2>&1|head -1)"                           = X"Option \`-c' requi
 test X"$(printf "%s" '--config' | mail 2>&1|head -1)"     = X"Option \`--config' requires a parameter"
 @end
 
+@begin{minos-autostart}
+minos-autostart -h; test X"${?}"                               = X"1"
+printf "%s" '-h' | minos-autostart; test X"${?}"               = X"1"
+minos-autostart -c; test X"${?}"                               = X"1"
+printf "%s" '-c' | minos-autostart; test X"${?}"               = X"1"
+minos-autostart --help ; test X"${?}"                          = X"1"
+printf "%s" '--help' | minos-autostart; test X"${?}"           = X"1"
+test X"$(minos-autostart -h 2>&1|head -1)"                     = X"Usage: minos-autostart [options]"
+test X"$(printf "%s" '-h' | minos-autostart 2>&1|head -1)"     = X"Usage: minos-autostart [options]"
+test X"$(minos-autostart --help 2>&1|head -1)"                 = X"Usage: minos-autostart [options]"
+test X"$(printf "%s" '--help' | minos-autostart 2>&1|head -1)" = X"Usage: minos-autostart [options]"
+test X"$(minos-autostart -c 2>&1|head -1)"                     = X"minos-autostart: unrecognized option \`-c'"
+test X"$(printf "%s" '-c' | minos-autostart 2>&1|head -1)"     = X"minos-autostart: unrecognized option \`-c'"
+@end
+
 @begin{minos-config}
 minos-config; test X"${?}"                                   = X"1"
 minos-config cui; test X"${?}"                               = X"1"
@@ -563,21 +578,6 @@ minos-help & sleep 0.3 && test ! -z "$(ps aux | awk '/got it/ {if ($0 !~ "awk") 
 minos-help; test X"${?}"                                  = X"1"
 kill "$(ps aux | awk '/got it/ {if ($0 !~ "awk") print $2}')"
 test -z "$(ps aux | awk '/got it/ {if ($0 !~ "awk") print $2}')"
-@end
-
-@begin{minos-startup}
-minos-startup -h; test X"${?}"                               = X"1"
-printf "%s" '-h' | minos-startup; test X"${?}"               = X"1"
-minos-startup -c; test X"${?}"                               = X"1"
-printf "%s" '-c' | minos-startup; test X"${?}"               = X"1"
-minos-startup --help ; test X"${?}"                          = X"1"
-printf "%s" '--help' | minos-startup; test X"${?}"           = X"1"
-test X"$(minos-startup -h 2>&1|head -1)"                     = X"Usage: minos-startup [options]"
-test X"$(printf "%s" '-h' | minos-startup 2>&1|head -1)"     = X"Usage: minos-startup [options]"
-test X"$(minos-startup --help 2>&1|head -1)"                 = X"Usage: minos-startup [options]"
-test X"$(printf "%s" '--help' | minos-startup 2>&1|head -1)" = X"Usage: minos-startup [options]"
-test X"$(minos-startup -c 2>&1|head -1)"                     = X"minos-startup: unrecognized option \`-c'"
-test X"$(printf "%s" '-c' | minos-startup 2>&1|head -1)"     = X"minos-startup: unrecognized option \`-c'"
 @end
 
 @begin{minos-statusbar}

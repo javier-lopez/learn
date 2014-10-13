@@ -1,6 +1,6 @@
 #!/bin/sh
 #description: run initial apps in minos
-#usage: minos-startup
+#usage: minos-autostart
 
 _usage()
 {
@@ -31,10 +31,10 @@ for arg; do #parse options
     esac
 done
 
-[ X"$(minos-config startup 2>/dev/null)" = X"no" ]  && return 0
-if [ -z "$(minos-config startup-custom 2>/dev/null)" ]; then
-    [ -e /etc/minos/startup ]       && exec /etc/minos/startup
-    [ -e "${HOME}"/.minos/startup ] && exec "${HOME}"/.minos/startup
+[ X"$(minos-config autostart 2>/dev/null)" = X"no" ]  && return 0
+if [ -z "$(minos-config autostart-custom 2>/dev/null)" ]; then
+    [ -e /etc/minos/autostart ]       && exec /etc/minos/autostart
+    [ -e "${HOME}"/.minos/autostart ] && exec "${HOME}"/.minos/autostart
 else
-   exec $(minos-config startup-custom 2>/dev/null)
+   exec $(minos-config autostart-custom 2>/dev/null)
 fi
