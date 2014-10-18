@@ -109,7 +109,7 @@ _movietime()
         _movietime_var_custom_script="$(minos-config movietime-custom-script 2>/dev/null)"
         [ -z "${_movietime_var_custom_script}" ] && _movietime_var_custom_script="${HOME}/.movietime"
         [ -x "${_movietime_var_custom_script}" ] && _movietime_var_output="$("${_movietime_var_custom_script}" start 2>&1 >/dev/null)"
-        _notify "[+] ${prog}" "started"
+        _notify "${prog}" "started"
     else
         #enable blanking, screen power saving
         xset s on; xset +dpms
@@ -122,22 +122,22 @@ _movietime()
         _movietime_var_custom_script="$(minos-config movietime-custom-script 2>/dev/null)"
         [ -z "${_movietime_var_custom_script}" ] && _movietime_var_custom_script="${HOME}/.movietime"
         [ -x "${_movietime_var_custom_script}" ] && _movietime_var_output="$("${_movietime_var_custom_script}" stop 2>&1 >/dev/null)"
-        _notify "[+] ${prog}" "stopped"
+        _notify "${prog}" "stopped"
     fi
 }
 
 if ! command -v "xdotool" >/dev/null 2>&1; then
-    _notify "[-] Error" "you need to install 'xdotool' to run this program"
+    _notify "Error" "you need to install 'xdotool' to run this program"
     exit 1
 fi
 
 if [ -z "$(pgrep "X")" ]; then
-    _notify "[-] Error" "Xorg server is not running"
+    _notify "Error" "Xorg server is not running"
     exit 1
 fi
 
 if [ X"$(whoami)" = X"root" ]; then
-    _notify "[-] Error" "you are root, must be a regular user"
+    _notify "Error" "you are root, must be a regular user"
     exit 1
 fi
 
