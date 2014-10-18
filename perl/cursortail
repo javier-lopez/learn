@@ -1,0 +1,95 @@
+#! perl
+
+# Based on the digital clock example
+
+# USAGE EXAMPLE:
+# urxvt -rv -tr -sh 30 -ls +sb -vb -fade 30 -fn "xft:Bitstream Vera Sans Mono:pixelsize=12" --urgentOnBell --perl-lib ./ -pe cursortail
+
+use strict;
+
+# Speed in milliseconds - higher speed will fade faster
+my $fade_speed = 0.05;
+
+#blue & magenta
+#my @color_list = qw(
+  #51 45 39 33 27 21 21 20 20 20 19 19 19
+#);
+
+#blue & purple
+#my @color_list = qw(
+  #66 65 64 100 21 21 20 20 20 19 19 19 19 18 18 18
+#);
+
+#gray
+my @color_list = qw(
+0 104 61 10 10 237 238 239 235 234 1
+);
+
+#gray & red
+#my @color_list = qw(
+#0 104 104 61 10 10 237 238 239 235 234 1 199
+#);
+
+#red
+#my @color_list = qw(
+#200 54 54 90 90 126 126 162 162 199 234 1
+#);
+
+#170 171 172 173 174 175 176 177 178 179
+#186 187 188 189 191 192 229
+
+sub on_init {
+  my ($self) = @_;
+
+  $self->{tail_cells} = {};
+
+  # force a refresh to do our fading
+  $self->{cursor_tail_refresh} = urxvt::timer
+    ->new
+    ->start (1 + int urxvt::NOW)
+    ->interval ($fade_speed)
+    ->cb (sub { $self->want_refresh });
+
+  return ();
+}
+
+# before refreshing: replace upper right with the clock display
+sub on_refresh_begin {
+  my ($self) = @_;
+
+  foreach my $cell (values %{ $self->{tail_cells} }) {
+    my ($row, $col, $color, $original_rend, $original_text) = @$cell;
+    $color++;
+    if($color > $#color_list) {
+      delete $self->{tail_cells}->{"$row,$col"};
+    } else {
+      my $original_rend = $self->ROW_r($row)->[$col];
+      my $r = urxvt::SET_BGCOLOR($original_rend, $color_list[$color]);
+      $self->ROW_r($row, [$r], $col);
+      $self->{tail_cells}->{"$row,$col"} = [$row, $col, $color, $original_rend];
+    }
+  }
+
+  return ();
+}
+
+# after refreshing: restore previous screen contents
+sub on_refresh_end {
+   my ($self) = @_;
+
+   foreach my $cell (values %{ $self->{tail_cells} }) {
+     my ($row, $col, $color, $original_rend) = @$cell;
+     $self->ROW_r($row, [$original_rend], $col);
+   }
+
+   return ();
+}
+
+# When a key is pressed, start the highlighting tail at that location
+sub on_key_press {
+  my ($self, $event, $keysm, $octets) = @_;
+  my ($row, $col) = $self->screen_cur();
+  $self->{tail_cells}->{"$row,$col"} = [$row, $col, 0];
+  return ();
+}
+
