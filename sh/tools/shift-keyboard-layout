@@ -71,7 +71,7 @@ for arg; do #parse options
 done
 
 if ! command -v "setxkbmap" >/dev/null; then
-    _notify "[-] Error" "you need to install setxkbmap to run this program"
+    _notify "Error" "you need to install setxkbmap to run this program"
 fi
 
 current_layout="$(setxkbmap -query | awk '/layout/ {print $2}')"
@@ -104,7 +104,7 @@ c="0"; while [ "${layouts}" ]; do #set next keyboard layout
     c="$((${c} + 1))"
     if [ "${c}" -eq "${e}" ]; then
         setxkbmap "${option}"
-        _notify "[+] Keyboard layout: $(printf "%s\\n" "${option}" | \
+        _notify "Keyboard layout: $(printf "%s\\n" "${option}" | \
             tr 'abcdefghijklmnopqrstuvwxyz' 'ABCDEFGHIJKLMNOPQRSTUVWXYZ')"
     fi
     [ X"${layouts}" = X"${option}" ] && layouts="" || layouts="${layouts#*,}"
