@@ -157,7 +157,7 @@ _num()
 
 _invalidformat()
 {
-    _notify "[-] Invalid format" "$(_basename ${0}): HH:MM[:SS]"
+    _notify "Invalid format" "$(_basename ${0}): HH:MM[:SS]"
     exit 1
 }
 
@@ -281,28 +281,28 @@ half="$((${secs}/2))"
 quarter="$((${secs}/4))"
 almost="$((${secs}/10))"
 
-_notify "[+] Countdown" "time left: ${time}"
+_notify "Countdown" "time left: ${time}"
 while [ "${secs}" -gt "0" ]; do
     if [ ! -f /tmp/dmenu-countdown.lock ]; then
-        _notify "[+] Cancel" "countdown canceled!"
+        _notify "Cancel" "countdown canceled!"
         exit
     fi
     case "${secs}" in
-        "${half}")    _notify "[+] Countdown" "time left: $(_printtime "${secs}")" ;;
-        "${quarter}") _notify "[+] Countdown" "time left: $(_printtime "${secs}")" ;;
-        "${almost}")  _notify "[+] Almost!"   "time left: $(_printtime "${secs}")" ;;
+        "${half}")    _notify "Countdown" "time left: $(_printtime "${secs}")" ;;
+        "${quarter}") _notify "Countdown" "time left: $(_printtime "${secs}")" ;;
+        "${almost}")  _notify "Almost!"   "time left: $(_printtime "${secs}")" ;;
     esac
     sleep 1 &
     secs="$((${secs} - 1))"
     wait
 done
 
-_notify "[+] ALARM" "countdown done!"
+_notify "ALARM" "countdown done!"
 "${tune}" | aplay &
 
 while :; do
     if [ ! -f /tmp/dmenu-countdown.lock ]; then
-        _notify "[+] Stop" "countdown stopped!"
+        _notify "Stop" "countdown stopped!"
         killall aplay >/dev/null 2>&1
         killall dmenu-countdown.tone >/dev/null 2>&1
         rm -rf "${HOME}"/.dmenu_countdown
