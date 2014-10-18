@@ -54,6 +54,7 @@ _screenshot()
         exit 1
     fi
 
+    kill -9 $(pgrep notify-osd) >/dev/null 2>&1
     eval "${_screenshot_var_bin} ${_screenshot_var_opt} ${1}"
 }
 
@@ -85,7 +86,6 @@ fi
 
 _notify "Screenshot" "in 3.., 2.., 1.., smile =)!"
 sleep 3
-sleep .5
-[ -n "${flag_select}" ] && _notify "Select" "a rectangle to save"
+[ -n "${flag_select}" ] && { _notify "Select" "a rectangle to save"; sleep 3; }
 _screenshot "${file}"
 [ -f "${file}" ] && _notify "Done" "${file}" || _notify "Error" "couldn't take screenshot"
