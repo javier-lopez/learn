@@ -50,7 +50,7 @@ _screenshot()
         _screenshot_var_bin="import"
         [ -n "${flag_select}" ] && _screenshot_var_opt=""   || _screenshot_var_opt="-window root"
     else
-        _notify "[-] Error" "install either scrot, gnome-screenshot or imagemagick to run this program"
+        _notify "Error" "install either scrot, gnome-screenshot or imagemagick to run this program"
         exit 1
     fi
 
@@ -83,9 +83,9 @@ else
     fi
 fi
 
-_notify "[+] Screenshot" "in 3.., 2.., 1.., smile =)!"
+_notify "Screenshot" "in 3.., 2.., 1.., smile =)!"
 sleep 3
 sleep .5
-[ -n "${flag_select}" ] && _notify "[+] Select" "a rectangle to save"
+[ -n "${flag_select}" ] && _notify "Select" "a rectangle to save"
 _screenshot "${file}"
-[ -f "${file}" ] && _notify "[+] Done" "${file}" || _notify "[+] Error" "couldn't take screenshot"
+[ -f "${file}" ] && _notify "Done" "${file}" || _notify "Error" "couldn't take screenshot"
