@@ -17,7 +17,7 @@ fi
 if [ -d "${cachedir}" ]; then
 	cache="${cachedir}/dmenu_cache"
 else
-	cache="${HOME}/.dmenu_cache" # if no xdg dir, fall back to dotfile in ~
+	cache="${HOME}/.dmenu_cache" # if there is no xdg dir, fall back to a dotfile in ~
 fi
 
 IFS=:

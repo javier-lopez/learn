@@ -86,8 +86,8 @@ test X"$(cat-show --help 2>&1|head -1)"                 = X"Usage: cat-show scri
 test X"$(printf "%s" '--help' | cat-show 2>&1|head -1)" = X"Usage: cat-show script"
 test X"$(cat-show --cui 2>&1|head -1)"                  = X"cat-show: unrecognized option \`--cui'"
 test X"$(printf "%s" '--cui' | cat-show 2>&1|head -1)"  = X"cat-show: unrecognized option \`--cui'"
-test X"$(cat-show cui 2>&1|head -1)"                    = X"cat-show: script 'cui' was not found in \$PATH"
-test X"$(printf "%s" 'cui' | cat-show 2>&1|head -1)"    = X"cat-show: script 'cui' was not found in \$PATH"
+test X"$(cat-show cui 2>&1|head -1)"                    = X"cat-show: 'cui' was not found in \$PATH"
+test X"$(printf "%s" 'cui' | cat-show 2>&1|head -1)"    = X"cat-show: 'cui' was not found in \$PATH"
 @end
 
 @begin{compress}
@@ -397,22 +397,22 @@ sleep 1; ffcast -k; sleep 3; test -s file.gif
 @end
 
 @begin{governator}
-governator; test X"${?}"                                           = X"0"
-test X"$(governator -h|head -1)"                                   = X"Usage: governator get"
-test X"$(printf "%s" '-h' | governator | head -1)"                 = X"Usage: governator get"
-test X"$(governator s|head -1)"                                    = X"Usage: governator get"
-test X"$(printf "%s" 's' | governator | head -1)"                  = X"Usage: governator get"
-test X"$(governator set|head -1)"                                  = X"Usage: governator get"
-test X"$(printf "%s" 'set' | governator | head -1)"                = X"Usage: governator get"
-test X"$(governator set cui|head -1)"                              = X"Usage: governator get"
-test X"$(printf "%s" 'set cui' | governator | head -1)"            = X"Usage: governator get"
-test X"$(governator|awk '{print $1,$2}')"                          = X"[+] cat"
-test X"$(governator g|awk '{print $1,$2}')"                        = X"[+] cat"
-test X"$(printf "%s" 'g' | governator |awk '{print $1,$2}')"       = X"[+] cat"
-test X"$(governator get|awk '{print $1,$2}')"                      = X"[+] cat"
-test X"$(printf "%s" 'get' | governator |awk '{print $1,$2}')"     = X"[+] cat"
-test X"$(governator get cui|awk '{print $1,$2}')"                  = X"[+] cat"
-test X"$(printf "%s" 'get cui' | governator |awk '{print $1,$2}')" = X"[+] cat"
+governator; test X"${?}"                                        = X"0"
+test X"$(governator -h|head -1)"                                = X"Usage: governator get"
+test X"$(printf "%s" '-h' | governator | head -1)"              = X"Usage: governator get"
+test X"$(governator s|head -1)"                                 = X"Usage: governator get"
+test X"$(printf "%s" 's' | governator | head -1)"               = X"Usage: governator get"
+test X"$(governator set|head -1)"                               = X"Usage: governator get"
+test X"$(printf "%s" 'set' | governator | head -1)"             = X"Usage: governator get"
+test X"$(governator set cui|head -1)"                           = X"Usage: governator get"
+test X"$(printf "%s" 'set cui' | governator | head -1)"         = X"Usage: governator get"
+test X"$(governator|awk '{print $1}')"                          = X"cat"
+test X"$(governator g|awk '{print $1}')"                        = X"cat"
+test X"$(printf "%s" 'g' | governator |awk '{print $1}')"       = X"cat"
+test X"$(governator get|awk '{print $1}')"                      = X"cat"
+test X"$(printf "%s" 'get' | governator |awk '{print $1}')"     = X"cat"
+test X"$(governator get cui|awk '{print $1}')"                  = X"cat"
+test X"$(printf "%s" 'get cui' | governator |awk '{print $1}')" = X"cat"
 @end
 
 @begin{howdoi}
@@ -630,9 +630,9 @@ test X"$(printf "%s" '--help' | movietime 2>&1|head -2|tail -1)" = X"   movietim
 test X"$(movietime -c 2>&1|head -2|tail -1)"                     = X"   movietime disables screen blanking and screensaver to allow viewing"
 test X"$(printf "%s" '-c'|movietime 2>&1|head -2|tail -1)"       = X"   movietime disables screen blanking and screensaver to allow viewing"
 xset s on; xset +dpms; kill -9 $(pgrep -f "movietime-susp"); rm -rf "${HOME}/.movietime-suspend-inhibit"
-test X"$(movietime 2>&1)" = X"[+] movietime: started"
+test X"$(movietime 2>&1)" = X"movietime: started"
 sleep 0.5 && pgrep -f "movietime-susp"
-test X"$(movietime 2>&1)" = X"[+] movietime: stopped"
+test X"$(movietime 2>&1)" = X"movietime: stopped"
 sleep 0.5 && test X"$(pgrep -f "movietime-susp")" = X""
 @end
 
@@ -641,7 +641,7 @@ music-control;     test X"${?}"                = X"1"
 music-control cui; test X"${?}"                = X"1"
 music-control -h; test X"${?}"                 = X"1"
 printf "%s" '-h' | music-control; test X"${?}" = X"1"
-test X"$(music-control)"        = X""
+test X"$(music-control)"                       = X""
 test X"$(music-control 2>&1 | head -1)"                     = X"Usage: music-control play|pause|toggle|next|previous"
 test X"$(music-control cui 2>&1 | head -1)"                 = X"Usage: music-control play|pause|toggle|next|previous"
 test X"$(printf "%s" 'cui' | music-control 2>&1 | head -1)" = X"Usage: music-control play|pause|toggle|next|previous"
@@ -927,8 +927,8 @@ test X"$(vim-show --help 2>&1|head -1)"                 = X"Usage: vim-show scri
 test X"$(printf "%s" '--help' | vim-show 2>&1|head -1)" = X"Usage: vim-show script"
 test X"$(vim-show --cui 2>&1|head -1)"                  = X"vim-show: unrecognized option \`--cui'"
 test X"$(printf "%s" '--cui' | vim-show 2>&1|head -1)"  = X"vim-show: unrecognized option \`--cui'"
-test X"$(vim-show cui 2>&1|head -1)"                    = X"vim-show: script 'cui' was not found in \$PATH"
-test X"$(printf "%s" 'cui' | vim-show 2>&1|head -1)"    = X"vim-show: script 'cui' was not found in \$PATH"
+test X"$(vim-show cui 2>&1|head -1)"                    = X"vim-show: 'cui' was not found in \$PATH"
+test X"$(printf "%s" 'cui' | vim-show 2>&1|head -1)"    = X"vim-show: 'cui' was not found in \$PATH"
 @end
 
 @begin{vw}
@@ -940,9 +940,9 @@ test X"$(vw 2>&1|head -1)"        = X"Usage: vw image ..."
 test X"$(vw -h 2>&1|head -1)"     = X"Usage: vw image ..."
 test X"$(vw --help 2>&1|head -1)" = X"Usage: vw image ..."
 test X"$(vw --cui 2>&1|head -1)"  = X"vw: unrecognized option \`--cui'"
-test X"$(vw cui 2>&1|head -1)"    = X"[-] Error: 'cui' is not a valid image file"
+test X"$(vw cui 2>&1|head -1)"    = X"Error: 'cui' is not a valid image file"
 touch cui
-test X"$(vw cui 2>&1|head -1)"    = X"[-] Error: 'cui' is not a valid image file"
+test X"$(vw cui 2>&1|head -1)"    = X"Error: 'cui' is not a valid image file"
 @end
 
 @begin{watch-battery}

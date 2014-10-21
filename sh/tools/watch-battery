@@ -75,7 +75,7 @@ if ! flock -n 9 ; then
 fi
 
 if [ ! -f "$(command -v notify-send)" ] || [ ! -f "$(command -v pm-hibernate)" ] || [ ! -f "$(command -v acpi)" ]; then
-    _notify  "[-] Error" "you need install acpi, notify-send and pm-utils to run this program"
+    _notify  "Error" "you need install acpi, notify-send and pm-utils to run this program"
     exit 1
 fi
 
@@ -93,12 +93,12 @@ if [ X"${stat}" = X"Discharging" ]; then
     # Battery under 5% -> force to hibernate
     if [ "${batt}" -lt "5" ]; then
         watch_battery_current="5"
-        _notify "[-] Critical" "battery under 5%, the system will hibernate in 30 seconds, unless you plugin the computer"
+        _notify "Critical" "battery under 5%, the system will hibernate in 30 seconds, unless you plugin the computer"
         i=0 ; while [ "${i}" -lt "30" ]; do
             sleep 1
             stat="$(acpi -b | awk '{sub(",", ""); print $3}')"
             if [ X"${stat}" != X"Discharging" ]; then
-                _notify  "[+] Charging" "charging now..."
+                _notify  "Charging" "charging now..."
                 break
             fi
             i="$((${i} + 1))"
@@ -117,15 +117,15 @@ if [ X"${stat}" = X"Discharging" ]; then
     # Battery under 7% -> print an alert msg and don't repeat it again
     elif [ "${batt}" -lt "7" ] && [ "${batt}" -gt "4" ] && [ "${watch_battery_current}" != "7" ]; then
         watch_battery_current="7"
-        _notify  "[-] Warning" "battery under 7%"
+        _notify  "Warning" "battery under 7%"
     # Battery under 10% -> print an alert msg and don't repeat it again
     elif [ "${batt}" -lt "10" ] && [ "${batt}" -gt "6" ] && [ "$watch_battery_current" != "10" ]; then
         watch_battery_current="10"
-        _notify  "[-] Warning" "battery under 10%"
+        _notify  "Warning" "battery under 10%"
     # Battery under 15% -> print an alert msg and don't repeat it again
     elif [ "${batt}" -lt "15" ] && [ "${batt}" -gt "9" ] && [ "${watch_battery_current}" != "15" ]; then
         watch_battery_current="15"
-        _notify  "[-] Warning" "battery under 15%"
+        _notify  "Warning" "battery under 15%"
     fi
 fi
 

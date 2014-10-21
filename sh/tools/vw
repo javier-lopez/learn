@@ -103,13 +103,13 @@ _vw()
             fi
         done
     else
-        _notify "[-] Error" "'${1}' is not a valid image file"
+        _notify "Error" "'${1}' is not a valid image file"
     fi
 
     [ -z "${_vw_var_arr}" ] && return 1 || _vw_var_arr="${_vw_var_arr#|}"
 
     IFS="|"
-    printf "%s\\n" "[+] ${viewer} ${_vw_var_arg}"
+    printf "%s\\n" "${viewer} ${_vw_var_arg}"
     exec ${viewer} -f ${_vw_var_arr}
 }
 
@@ -133,7 +133,7 @@ if [ -f "$(command -v sxiv)" ]; then
 elif [ -f "$(command -v feh)" ]; then
     viewer="feh"
 else
-    _notify "[-] Error" "you need to install either sxiv or feh to run this program"
+    _notify "Error" "you need to install either sxiv or feh to run this program"
     exit 1
 fi
 

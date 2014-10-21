@@ -19,7 +19,7 @@ _exec()
     if [ X"${_exec_var_status}" != X"0" ]; then
         exit "${_exec_var_status}"
     fi
-    printf "%s" "[+] ${@}: "
+    printf "%s" "${@}: "
     ${@}
 }
 
@@ -35,7 +35,7 @@ case "${1}" in
     s*)
         case "${2}" in
             powersave|conservative|ondemand|performance)
-                printf "%s\\n" "[+] echo ${2} > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor"
+                printf "%s\\n" "echo ${2} > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor"
                 sudo sh -c "printf %s '${2}'  > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor" ;;
             *) _usage ;;
         esac

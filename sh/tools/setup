@@ -3,8 +3,8 @@
 #usage: setup [autocp|script]
 
 #example: setup script /path/file
-#[+] chmod +x dmenu-killall
-#[+] sudo cp dmenu-killall /usr/local/bin
+#chmod +x dmenu-killall
+#sudo cp dmenu-killall /usr/local/bin
 
 #Don't forget to update _usage when adding new functions
 _usage()
@@ -22,7 +22,7 @@ _exec()
 {   #print current command, exits on fail
     [ -z "${1}" ] && return 0
 
-    printf "%s " "[+] ${@}"
+    printf "%s " "${@}"
     printf "\\n"
     eval "${@}"
 

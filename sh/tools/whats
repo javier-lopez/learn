@@ -19,28 +19,26 @@ _whats()
     done
 }
 
+_usage()
+{
+    printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') word ..." >&2
+    printf "%s\\n" "Define words using wikipedia over dns, https://dgl.cx/wikipedia-dns." >&2
+    exit 1
+}
+
 if [ ! -t 0 ]; then
     #there is input comming from pipe or file, add to the end of $@
     set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
 fi
 
-[ "${#}" -eq "0" ] && {   \
-    printf "Usage: %b\\n" \
-    "$(expr "${0}" : '.*/\([^/]*\)') word ...\\nDefine words using wikipedia over dns, https://dgl.cx/wikipedia-dns." >&2;\
-    exit 1; }
+[ "${#}" -eq "0" ] && _usage
 
 for arg; do #parse options
     case "${arg}" in
         --) shift; break  ;;
-        -h|--help) { \
-            printf "Usage: %b\\n" \
-            "$(expr "${0}" : '.*/\([^/]*\)') word ...\\nDefine words using wikipedia over dns, https://dgl.cx/wikipedia-dns." >&2;\
-            exit 1; } ;;
-        -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" >&2;
-            { \
-            printf "Usage: %b\\n" \
-            "$(expr "${0}" : '.*/\([^/]*\)') word ...\\nDefine words using wikipedia over dns, https://dgl.cx/wikipedia-dns." >&2;\
-            exit 1; } ;;
+        -h|--help) _usage ;;
+        -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" >&2
+            _usage ;;
     esac
 done
 
