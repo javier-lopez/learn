@@ -18,7 +18,7 @@
 - Use `:` as a sed separator, eg: `sed -e 's:foo:bar:'`
 - Use lowercase over uppercase, except in vars users will interact with, eg: `PROGNAME_ENV`
 - Use spaces over tabs
-- Use braces around variables, eg, 
+- Use braces around variables, eg,
 
   **Bad**
    ```sh
