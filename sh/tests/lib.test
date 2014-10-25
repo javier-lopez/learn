@@ -123,6 +123,17 @@ test X"$(crontab -l | grep test_lib.db | wc -l )" = X"1"
 crontab -l | grep -v test_lib.db | crontab
 @end
 
+@begin{_getfirstvalue}
+_getfirstvalue; test X"${?}" = X"1"
+var="$(_getfirstvalue "$ZDQxZDhjZDk4ZjAw" first)"
+test X"${var}" = X"first"
+var="$(_getfirstvalue "$ZDQxZDhjZDk4ZjAw" second first)"
+test X"${var}" = X"second"
+ZDQxZDhjZDk4ZjAw="first"
+var="$(_getfirstvalue "$ZDQxZDhjZDk4ZjAw" second first)"
+test X"${var}" = X"first"
+@end
+
 @begin{_getfs}
 _getfs; test X"${?}" = X"1"
 drive="$(grep "swap" /etc/fstab | grep -o "/dev/.*" | cut -d" " -f1)"

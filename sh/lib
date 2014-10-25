@@ -9,7 +9,7 @@
 #[+] can depend on exotic cli commands but must comply with POSIX sh
 #[+] must follow general style (read guideline.md)
 #[+] must not print errors, return 1 instead
-#[+] must provide an example behind the definition of the function
+#[+] must provide an example after the definition of the function
 #[+] must provide at least 1 unit test (tests/lib.db)
 
 _abs()
@@ -244,6 +244,20 @@ _user()
 #if _user user; then
     #printf "%s\\n" "user was found ..."
 #fi
+#=================================================================
+
+_getfirstvalue()
+{   #returns first value that is non-empty
+    for _getfirstvalue_var_param; do
+        if [ ! -z "${_getfirstvalue_var_param}" ]; then
+            printf "%s\\n" "${_getfirstvalue_var_param}"
+            return 0
+        fi
+    done
+    return 1
+}
+#==================================================== Example ====
+#EDITOR="$(_getfirstvalue "$VISUAL" "$EDITOR" vi)"
 #=================================================================
 
 _getfs()
