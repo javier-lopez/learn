@@ -8,16 +8,16 @@ _fix()
     local cur prev words cword
     _init_completion || return
 
-    commands="$(fix -h 2>&1 | awk '/ . / {if ($0 !~ "-") print $1}')"
-    opts="$(fix -h 2>&1 | awk '/ -./ {print $1}')"
-
+    #general options
     case "${cur}" in
-        -*) completions="$opts" ;;
-        *)  completions="$commands" ;;
+        --*) long_opts="$(extract  -h 2>&1 | awk 'match($0,/--[0-9A-Za-z]* /) {print substr($0,RSTART,RLENGTH)}')"
+             COMPREPLY=($(compgen -W "${long_opts}" -- ${cur}));  return ;;
+        -*)  short_opts="$(extract -h 2>&1 | awk '/^ *-.+ / {sub(/,/, ""); print $1}')"
+             COMPREPLY=($(compgen -W "${short_opts}" -- ${cur})); return ;;
+        *)   commands="$(fix -h 2>&1 | awk '/ . / {if ($0 !~ "-") print $1}')"
+             COMPREPLY=($(compgen -W "${commands}" -- ${cur}));   return ;;
     esac
-
-    COMPREPLY=($(compgen -W "$completions" -- $cur))
-    return 0
 } &&
 complete -F _fix fix
-# vim: set ts=8 sw=4 tw=0 ft=sh : 
+
+# vim: set ts=8 sw=4 tw=0 ft=sh :

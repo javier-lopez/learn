@@ -1,6 +1,6 @@
-_extract()
+_elastix_cli()
 {
-    if ! command -v "extract" >/dev/null 2>&1; then
+    if ! command -v "elastix-cli" >/dev/null 2>&1; then
         return
     fi
 
@@ -11,15 +11,21 @@ _extract()
     #cur="${COMP_WORDS[COMP_CWORD]}"
     #prev="${COMP_WORDS[COMP_CWORD-1]}"
 
+    case "${prev}" in
+        -c) case "${cur}" in
+                *)  _filedir; return ;;
+            esac ;;
+    esac
+
     #general options
     case "${cur}" in
-        --*) long_opts="$(extract  -h 2>&1 | awk 'match($0,/--[0-9A-Za-z]* /) {print substr($0,RSTART,RLENGTH)}')"
+        --*) long_opts="$(elastix-cli  --help 2>&1 | awk 'match($0,/--[0-9A-Za-z]* /) {print substr($0,RSTART,RLENGTH)}')"
              COMPREPLY=($(compgen -W "${long_opts}" -- ${cur}));  return ;;
-        -*)  short_opts="$(extract -h 2>&1 | awk '/^ *-.+ / {sub(/,/, ""); print $1}')"
+        -*)  short_opts="$(elastix-cli --help 2>&1 | awk '/^ *-.? / {sub(/,/, ""); print $1}')"
              COMPREPLY=($(compgen -W "${short_opts}" -- ${cur})); return ;;
         *)   _filedir; return ;;
     esac
 } &&
-complete -F _extract extract
+complete -F _elastix_cli elastix-cli
 
 # vim: set ts=8 sw=4 tw=0 ft=sh :

@@ -349,4 +349,5 @@ _vboxmanage()
     fi
 } &&
 complete -F _vboxmanage VBoxManage vboxmanage
-# vim: set ts=8 sw=4 tw=80 ft=sh : 
+
+# vim: set ts=8 sw=4 tw=80 ft=sh :

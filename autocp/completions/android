@@ -174,4 +174,5 @@ _android()
     esac
 } &&
 complete -F _android android
-# vim: set ts=8 sw=4 tw=0 ft=sh : 
+
+# vim: set ts=8 sw=4 tw=0 ft=sh :

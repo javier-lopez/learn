@@ -12,7 +12,6 @@ _share_backup()
     prev="${COMP_WORDS[COMP_CWORD-1]}"
 
     cmd="stop"
-    opts="$(share-backup -h 2>&1 | awk '/ -. / {print $1}')"
 
     case "${prev}" in
         -c) case "${cur}" in
@@ -23,9 +22,13 @@ _share_backup()
 
     #general options
     case "${cur}" in
-        -*) COMPREPLY=($(compgen -W "${opts}" -- ${cur})); return ;;
-        *)  COMPREPLY=($(compgen -W "${cmd}" -- ${cur})); _filedir; return ;;
+        --*) long_opts="$(howdoi  -h 2>&1 | awk 'match($0,/--[0-9A-Za-z]* /) {print substr($0,RSTART,RLENGTH)}')"
+             COMPREPLY=($(compgen -W "${long_opts}" -- ${cur}));  return ;;
+        -*)  short_opts="$(howdoi -h 2>&1 | awk '/^ *-.+ / {sub(/,/, ""); print $1}')"
+             COMPREPLY=($(compgen -W "${short_opts}" -- ${cur})); return ;;
+        *)   COMPREPLY=($(compgen -W "${cmd}" -- ${cur})); _filedir; return ;;
     esac
 } &&
 complete -F _share_backup share-backup
-# vim: set ts=8 sw=4 tw=0 ft=sh : 
+
+# vim: set ts=8 sw=4 tw=0 ft=sh :

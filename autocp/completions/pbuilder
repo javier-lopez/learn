@@ -20,4 +20,5 @@ _pbuilder()
     return 0
 } &&
 complete -F _pbuilder -o filenames pbuilder pbuilder.precise.amd64 pbuilder.precise.i386 pbuilder.quantal.amd64 pbuilder.quantal.i386 pbuilder.raring.i386 pbuilder.raring.amd64 pbuilder.saucy.i386 pbuilder.saucy.amd64 pbuilder.trusty.i386 pbuilder.trusty.amd64 pbuilder.sid.amd64 pbuilder.sid.i386
-# vim: set ts=8 sw=4 tw=0 ft=sh : 
+
+# vim: set ts=8 sw=4 tw=0 ft=sh :
