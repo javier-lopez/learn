@@ -848,8 +848,8 @@ screenshot --help;  test X"${?}"                = X"1"
 printf "%s" '--help' | screenshot; test X"${?}" = X"1"
 screenshot --cui;  test X"${?}"                 = X"1"
 printf "%s" '--cui' | screenshot; test X"${?}"  = X"1"
-test X"$(screenshot -h 2>&1|head -1)"           = X"Usage: screenshot [-s] [output-file]"
-test X"$(screenshot --help 2>&1|head -1)"       = X"Usage: screenshot [-s] [output-file]"
+test X"$(screenshot -h 2>&1|head -1)"           = X"Usage: screenshot [options] [output-file]"
+test X"$(screenshot --help 2>&1|head -1)"       = X"Usage: screenshot [options] [output-file]"
 test X"$(screenshot --cui 2>&1|head -1)"        = X"screenshot: unrecognized option \`--cui'"
 screenshot cui;     sleep 4; test -f cui.png
 screenshot cc.png;  sleep 4; test -f cc.png

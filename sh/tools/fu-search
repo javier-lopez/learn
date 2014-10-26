@@ -29,8 +29,8 @@ _usage()
     printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] pattern ..." >&2
     printf "%s\\n" "Look for related commands in commandlinefu.com." >&2
     printf "\\n" >&2
-    printf "%s\\n" "  -c          colorize output" >&2
-    printf "%s\\n" "  -h,--help   show this help message and exit" >&2
+    printf "%s\\n" "  -c           colorize output" >&2
+    printf "%s\\n" "  -h, --help   show this help message and exit" >&2
     exit 1
 }
 

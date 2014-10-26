@@ -1146,7 +1146,7 @@ E=O=F
 _pxe()
 {
     [ -z "${1}" ] && return 1
-    _verbose "[+] setting pxe environment in ${1} ..."
+    _verbose "- setting pxe environment in ${1} ..."
     _deps      "${1}" #memdisk,menu.c32,pxelinux.0,simple-dhcpd,simple-tftpd
     _writeconf "${1}" #pxelinux.cfg/default,ubuntu,fedora,tools
     printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): created directory \`${1}'"

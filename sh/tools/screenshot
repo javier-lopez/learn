@@ -6,10 +6,11 @@
 
 _usage()
 {
-    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [-s] [output-file]" >&2
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] [output-file]" >&2
     printf "%s\\n" "Take a screenshot in 3.., 2.., 1." >&2
     printf "\\n" >&2
-    printf "%s\\n" "  -h,--help   show this help message and exit" >&2
+    printf "%s\\n" "  -s           select a rectangle to save" >&2
+    printf "%s\\n" "  -h, --help   show this help message and exit" >&2
     exit 1
 }
 

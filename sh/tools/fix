@@ -10,15 +10,15 @@ _usage()
     printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] module" >&2
     printf "%s\\n" "Fix common problems." >&2
     printf "%s\\n" >&2
-    printf "%s\\n" "  -h,--help   show this help message and exit" >&2
+    printf "%s\\n" "  -h, --help   show this help message and exit" >&2
     printf "%s\\n" >&2
     printf "%s\\n" "Modules" >&2
-    printf "%s\\n" "  apache      moves /etc/init.d/apache2.1 to apache2" >&2
-    printf "%s\\n" "  ipw2200     restart ipw2200 module" >&2
-    printf "%s\\n" "  wl          restart wl module" >&2
-    printf "%s\\n" "  iwlagn      restart iwlagn module" >&2
-    printf "%s\\n" "  mpd         restart mpd" >&2
-    printf "%s\\n" "  webcam      fix webcam, thinkpad" >&2
+    printf "%s\\n" "  apache       moves /etc/init.d/apache2.1 to apache2" >&2
+    printf "%s\\n" "  ipw2200      restart ipw2200 module" >&2
+    printf "%s\\n" "  wl           restart wl module" >&2
+    printf "%s\\n" "  iwlagn       restart iwlagn module" >&2
+    printf "%s\\n" "  mpd          restart mpd" >&2
+    printf "%s\\n" "  webcam       fix webcam, thinkpad" >&2
     exit 1
 }
 

@@ -7,7 +7,7 @@ _usage()
     printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] file.gif" >&2
     printf "%s\\n" "Record a gif movie from a selected region." >&2
     printf "\\n" >&2
-    printf "%s\\n" "  -h,--help   show this help message and exit" >&2
+    printf "%s\\n" "  -h, --help   show this help message and exit" >&2
     exit 1
 }
 

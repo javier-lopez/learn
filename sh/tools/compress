@@ -30,8 +30,8 @@ _usage()
     printf "%s\\n" "Usage: $(_basename ${0}) [options] files ... file.[tar.gz,tar.bz2,zip...]" >&2
     printf "%s\\n" "Compress files." >&2
     printf "\\n" >&2
-    printf "%s\\n" "  -s          quiet mode" >&2
-    printf "%s\\n" "  -h,--help   show this help message and exit" >&2
+    printf "%s\\n" "  -s           quiet mode" >&2
+    printf "%s\\n" "  -h, --help   show this help message and exit" >&2
     exit 1
 }
 
