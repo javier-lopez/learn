@@ -169,14 +169,14 @@ if __name__ == "__main__":
     #next line creates the (blank) leases table. This probably isn't necessary.
     for ip in ['.'.join(elements_in_address[0:3])+'.'+str(x) for x in range(int(offerfrom[offerfrom.rfind('.')+1:]),int(offerto[offerto.rfind('.')+1:])+1)]:
         leases.append([ip,False,'000000000000',0])
-    
+
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.setsockopt(socket.SOL_SOCKET,IN.SO_BINDTODEVICE,interface+'\0') #experimental
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
     s.bind(('',port))
     #s.sendto(data,(ip,port))
-    
+
     while 1: #main loop
         try:
             message, addressf = s.recvfrom(8192)
