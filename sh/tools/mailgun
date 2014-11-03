@@ -12,12 +12,12 @@ api="" #mailgun api, required
 _usage()
 {
     printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') [options] to@address.tld message ..." >&2
-    printf "%s\\n" "Send emails." >&2
+    printf "%s\\n" "Send emails using the mailgun service." >&2
     printf "%s\\n" >&2
     printf "%s\\n" "  -a, --api       mailgun api" >&2
     printf "%s\\n" "  -f, --from      from header" >&2
     printf "%s\\n" "  -s, --subject   subject header" >&2
-    printf "%s\\n" "  -c, --config    use FILE instead of ~/.mail" >&2
+    printf "%s\\n" "  -c, --config    use FILE instead of ~/.mailgun" >&2
     printf "%s\\n" "  -h, --help      show this help message and exit" >&2
     exit 1
 }
@@ -107,11 +107,9 @@ msg="${*}"
 #TODO 01-10-2014 12:50 >> no source options when they had already been provided through the cli interface
 if [ -z "${config}" ]; then
     if [ -f ./.mailgun ]; then
-        _loadconf ./.mail
-    elif [ -f ~/.mailgun ]; then
-        _loadconf ~/.mail
+        _loadconf ./.mailgun
     elif [ -f /etc/mailgun ]; then
-        _loadconf /etc/mail
+        _loadconf /etc/mailgun
     fi
 else
     [ ! -e "${config}" ] && _die "\`${_var_config_file}' doesn't exist"
