@@ -27,7 +27,7 @@ from random import randint
 from time import gmtime, time, strftime
 from urllib import quote, unquote
 
-NAME = 'Custom'
+NAME = 'Simple-httpd'
 VERSION = '1.0'
 
 ################################################################################
@@ -1045,7 +1045,7 @@ def main(options):
 
 
 if __name__ == '__main__':
-  parser = OptionParser(description='%prog - a simple HTTP server for quickly sharing files', usage='%prog [options] [paths]')
+  parser = OptionParser(description='%prog - a simple HTTP server', usage='%prog [options] [paths]')
 
   parser.add_option("-f", "--filelist", dest="filelist", action="store", help='Serve files listed in a filelist. The list should contain a single path per line. If the list is modified while the server is running, it will be reloaded. The directory that contains the filelist is considered the base directory for relative paths in the list. Absolute paths should be preferred.')
 
