@@ -6,9 +6,9 @@
 
 #new functions:
 #[+] must be self contained, with no dependencies in other functions
-#[+] can depend on exotic cli commands but must comply with POSIX sh
-#[+] must follow general style (read guideline.md)
-#[+] must not print errors, return 1 instead
+#[+] can depend on exotic cli commands
+#[+] must follow general style (read guideline.md) and comply with POSIX sh
+#[+] must no print errors, use return instead
 #[+] must provide an example after the definition of the function
 #[+] must provide at least 1 unit test (tests/lib.db)
 
@@ -19,8 +19,8 @@ _abs()
     printf "%s" "${1}" | awk '{ print ($1 >= 0) ? $1 : 0 - $1}'
 }
 #==================================================== Example ====
-#_abs -2 #return 2
-#_abs 2  #return 2
+#_abs -2 #print 2
+#_abs 2  #print 2
 #=================================================================
 
 _aptproxy()
@@ -36,7 +36,7 @@ _aptproxy()
 #=================================================================
 
 _arch()
-{   #check for system arch, returns [64|32]
+{   #check system arch, return 64|32 (32 by default)
     if [ -z "${MACHTYPE}" ]; then
         _arch_var_arch="$(uname -m)"
     else
@@ -45,8 +45,7 @@ _arch()
 
     case "${_arch_var_arch}" in
         x86_64) _arch_var_arch="64" ;;
-        i686)   _arch_var_arch="32" ;;
-        *)      return 1 ;;
+        *)      _arch_var_arch="32" ;;
     esac
 
     printf "%s" "${_arch_var_arch}"
@@ -57,7 +56,7 @@ _arch()
 #=================================================================
 
 _basename()
-{
+{   #basename portable version
     [ -z "${1}" ] && return 1 || _basename_var_name="${1}"
     [ -z "${2}" ] || _basename_var_suffix="${2}"
     case "${_basename_var_name}" in
@@ -74,11 +73,11 @@ _basename()
     printf "%s" "${_basename_var_name}"
 }
 #==================================================== Example ====
-#_basename /path/file #return file
+#_basename /path/file #print file
 #=================================================================
 
 _bbasename()
-{
+{   #alternative basename portable version, faster! but with possible drawbacks
     [ -z "${1}" ] && return 1 || _bbasename_var_name="${1}"
     [ -z "${2}" ] || _bbasename_var_suffix="${2}"
     case "${_bbasename_var_name}" in
@@ -92,11 +91,11 @@ _bbasename()
     printf "%s" "${_bbasename_var_name}"
 }
 #==================================================== Example ====
-#_bbasename /path/file #return file
+#_bbasename /path/file #print file
 #=================================================================
 
 _decode64()
-{
+{   #decode a string in base64
     [ -z "${1}" ] && return 1
     printf "%s\\n" "${1}" | openssl enc -base64 -d
 }
@@ -106,7 +105,7 @@ _decode64()
 #=================================================================
 
 _die()
-{
+{   # exit execution after printing a message
     [ -z "${1}" ] && return 1
     printf "%b\\n" "$(expr "${0}" : '.*/\([^/]*\)'): ${*}" >&2
     exit 1
@@ -116,7 +115,7 @@ _die()
 #=================================================================
 
 _dirname()
-{   #return string containing dirname on success, 1 on fail
+{   #return string containing dirname on success, 1 on failure
     [ -z "${1}" ] && return 1
 
     case "${1}" in
@@ -128,11 +127,11 @@ _dirname()
     esac
 }
 #==================================================== Example ====
-#_dirname /path/file #return /path
+#_dirname /path/file #print /path
 #=================================================================
 
 _distro()
-{   #return distro name in a lower string
+{   #return distro name in lower string
     _distro_var_DIST_INFO="/etc/lsb-release"
     if [ -r "${_distro_var_DIST_INFO}" ]; then
         . "${_distro_var_DIST_INFO}"
@@ -190,7 +189,7 @@ _distro()
 #=================================================================
 
 _echo()
-{   #http://www.etalabs.net/sh_tricks.html
+{   #safe echo, http://www.etalabs.net/sh_tricks.html
     fmt=%s end=\\n IFS=" "
 
     while [ "${#}" -gt "1" ] ; do
@@ -210,13 +209,12 @@ _echo()
 #=================================================================
 
 _encode64()
-{
+{   #encode a string in base64
     [ -z "${1}" ] && return 1
     printf "%s\\n" "${1}" | openssl enc -base64
 }
 #==================================================== Example ====
 #string="$(_encode64 "${string}")"
-#[ -z "${string}" ] && printf "%s\\n" "fail, empty string"
 #=================================================================
 
 _ensurecron()
@@ -242,7 +240,7 @@ _user()
 }
 #==================================================== Example ====
 #if _user user; then
-    #printf "%s\\n" "user was found ..."
+    #printf "%s\\n" "user exists"
 #fi
 #=================================================================
 
@@ -261,7 +259,7 @@ _getfirstvalue()
 #=================================================================
 
 _getfs()
-{   #returns file system detected or 1 on error
+{   #returns file system detected or 1 on failure
     [ -z "${1}" ] && return 1
     udevadm info -q all -n "${1}" | awk -F"=" '/ID_FS_TYPE/ {print $2 }'
 }
@@ -294,16 +292,16 @@ _getpasswd()
 #=================================================================
 
 _getuuid()
-{   #returns a uuid or 1 on error
+{   #returns a uuid or 1 on failure
     [ -z "${1}" ] && return 1
     udevadm info -q all -n "${1}" | awk -F"/" '/^S.*uuid.*/ {print $3}'
 }
 #==================================================== Example ====
-#_getuuid /dev/sda1 #returns "793e9a6d-d545-46f0-ac9c-49071c450b62"
+#_getuuid /dev/sda1 #print "793e9a6d-d545-46f0-ac9c-49071c450b62"
 #=================================================================
 
 _internet()
-{   #check for internet connection, returns 0 on success, 1 otherwise
+{   #check for internet connection, return 0 on success, 1 otherwise
     wget --tries=3 --timeout=5 http://www.google.com -O /tmp/index.google > /dev/null 2>&1
     if [ -s /tmp/index.google ]; then
         rm -rf /tmp/index.google
@@ -417,7 +415,8 @@ _num()
 #=================================================================
 
 _lock()
-{
+{   #locks the execution of a program, it should be used at the
+    #beggining of it, exit on failure
     exec 9>/tmp/$(expr "${1}" : '.*/\([^/]*\)').lock #verify only one instance is running
     if ! flock -n 9  ; then         #http://mywiki.wooledge.org/BashFAQ/045
         printf "%s\\n" "$(expr "${1}" : '.*/\([^/]*\)'): another instance is running";
@@ -429,7 +428,8 @@ _lock()
 #=================================================================
 
 _notify()
-{
+{   #output messages through the notification system, prints to
+    #stdout in the worst escenario
     [ -z "${1}" ] && return 1
     if [ X"${TERM}" = X"linux" ] || [ -z "${TERM}" ]; then
         kill -9 $(pgrep notify-osd) >/dev/null 2>&1
@@ -557,7 +557,7 @@ _privport()
 #=================================================================
 
 _realpath()
-{
+{   # print the absolute path
     _realpath_var_success="true"
     _realpath_var_path="${1}"
 
@@ -603,7 +603,6 @@ _realpath()
                 _realpath_var_abs_path="${_realpath_var_abs_path}/${_realpath_var_file_basename}"
             fi
 
-            # output the absolute path
             printf "%s\\n" "${_realpath_var_abs_path}"
         fi
     fi
@@ -621,7 +620,7 @@ _realpath()
 #=================================================================
 
 _rmcron()
-{   #remove cron job, returns 1 on error
+{   #remove cron jobs, returns 1 on failure
     [ -z "${1}" ] && return 1
     crontab -l | grep -v "${1}" | crontab
 }
@@ -656,7 +655,7 @@ _str2upper()
 #=================================================================
 
 _strdiff()
-{
+{   #prints the diff of two strings
     [ -z "${1}" ] && return 1
     [ -z "${2}" ] && return 1
 
@@ -681,8 +680,8 @@ _strdiff()
 #=================================================================
 
 _strlen()
-{
-    [ -z "${1}" ] && return 1
+{   #print the length of a string, return 1 on failure
+    [ -z "${1}" ] && return 0
     printf "%s\\n" "${#1}"
 }
 #==================================================== Example ====
@@ -690,7 +689,7 @@ _strlen()
 #=================================================================
 
 _stronlyduplicates()
-{
+{   #print duplicated strings, return 1 on failure
     [ -z "${1}" ] && return 1
     [ -z "${2}" ] && return 1
     printf "%s\\n" ${@} | awk 'x[$0]++'
@@ -703,7 +702,7 @@ _stronlyduplicates()
 #=================================================================
 
 _strreplace()
-{
+{   #replace param in string, return 1 on failure
     [ -z "${1}" ] && return 1
     [ -z "${2}" ] && return 1
     [ -z "${3}" ] && return 1
@@ -717,7 +716,7 @@ _strreplace()
 #=================================================================
 
 _strunique()
-{
+{   #print unique strings, return 1 on failure
     [ -z "${1}" ] && return 1
     [ -z "${2}" ] && return 1
     _strunique_var_unique="$(printf "%s\\n" ${@} | \
@@ -735,7 +734,7 @@ _strunique()
 #=================================================================
 
 _substr()
-{
+{   #print a substring
     [ -z "${1}" ] && return 1
     [ -z "${2}" ] && return 1
 
@@ -854,7 +853,7 @@ _validip4()
 #=================================================================
 
 _validmail()
-{
+{   #verify if an email is valid, return 1 on failure
     [ -z "${1}" ] && return 1
 
     case "${1}" in
@@ -869,7 +868,7 @@ _validmail()
 #=================================================================
 
 _verbose()
-{
+{   #print a message when in verbose mode
     [ -z "${1}" ] && return 1
     [ -n "${VERBOSE}" ] && printf "%s\\n" "${*}"
 }
@@ -879,7 +878,7 @@ _verbose()
 #=================================================================
 
 _whereis()
-{
+{   #whereis portable version
     [ -z "${1}" ] && return 1
     if ! command -v "${1}" 2>/dev/null; then
         return 1
