@@ -1,8 +1,0 @@
-#!/bin/sh
-#description: update wcd db if available
-#usage: update-cd
-
-if [ -f "$(command -v "wcd")" ] && [ -f "$(command -v "wcd.exec")" ]; then
-    mkdir "${HOME}"/.wcd; wcd.exec -GN -j -xf "${HOME}"/.ban.wcd -S "${HOME}"
-    [ -f "${HOME}"/.treedata.wcd ] && mv "${HOME}"/.treedata.wcd "${HOME}"/.wcd/
-fi

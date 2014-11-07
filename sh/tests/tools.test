@@ -168,68 +168,6 @@ bash a.crypt > a.output & sleep 0.5 && xdotool type "pass"  && xdotool key "Retu
 #TODO 09-09-2014 15:10 >> fix bash dependency
 @end
 
-@begin{dmenu-countdown}
-dmenu-countdown & pid="$(pgrep dmenu|head -1)" && sleep 0.3 && xdotool type "o@o/"  && xdotool key "Return" && wait "${pid}"; test X"${?}" = X"1"
-dmenu-countdown & pid="$(pgrep dmenu|head -1)" && sleep 0.3 && xdotool type "0:0:1" && xdotool key "Return"
-sleep 1.3 && pgrep -fl countdown.tone
-dmenu-countdown & sleep 0.3 && xdotool type "stop" && xdotool key "Return"
-sleep 0.5 && test X"$(pgrep -fl countdown.tone)" = X""
-@end
-
-@begin{dmenu-killall}
-dmenu-killall & pid="$(pgrep dmenu|head -1)" && sleep 0.3 && xdotool key "Escape" && wait "${pid}"; test X"${?}" = X"1"
-dmenu-killall & pid="$(pgrep dmenu|head -1)" && sleep 0.3 && xdotool type "cui" && xdotool key "Return" && wait "${pid}"; test X"${?}" = X"1"
-killall top ;:
-top -b 2>&1 >/dev/null & :
-sleep 0.1 && pgrep -x top
-dmenu-killall & pid="$(pgrep dmenu|head -1)" && sleep 0.3 && xdotool type "top" && xdotool key "Return" && wait "${pid}"; test X"${?}" = X"0"
-sleep 0.2 && test X"$(pgrep -x top)" = X""
-top -b 2>&1 >/dev/null & :
-top -b 2>&1 >/dev/null & :
-sleep 0.1 && pgrep -x top
-dmenu-killall & pid="$(pgrep dmenu|head -1)" && sleep 0.3 && xdotool type "top" && xdotool key "Return" && wait "${pid}"; test X"${?}" = X"0"
-sleep 0.2 && test X"$(pgrep -x top)" = X""
-@end
-
-@begin{dmenu-mpd}
-dmenu-mpd & pid="$(pgrep dmenu|head -1)" && sleep 0.3 && xdotool key "Escape" && wait "${pid}"; test X"${?}" = X"1"
-dmenu-mpd & pid="$(pgrep dmenu|head -1)" && sleep 0.3 && xdotool type "XaMTWGfu89iQpJk6" && xdotool key "Return" && wait "${pid}"; test X"${?}" = X"1"
-@end
-
-@begin{dmenu-path}
-dmenu-path; test X"${?}" = X"0"
-dmenu-path | grep ".*"
-@end
-
-@begin{dmenu-run}
-dmenu-run & pid="$(pgrep dmenu|head -1)" && sleep 0.3 && xdotool key "Escape" && wait "${pid}"; test X"${?}" = X"1"
-dmenu-run & pid="$(pgrep dmenu|head -1)" && sleep 0.3 && xdotool type "cui" && xdotool key "Return" && wait "${pid}"; test X"${?}" = X"127"
-killall dmenu ;:
-dmenu-run & pid="$(pgrep dmenu|head -1)" && sleep 0.3 && xdotool type "dmenu" && xdotool key "Return"
-sleep 0.2 && pgrep -x dmenu
-killall dmenu ;:
-sleep 0.2 && test X"$(pgrep -x dmenu)" = X""
-@end
-
-@begin{dmenu-session}
-dmenu-session & pid="$(pgrep dmenu|head -1)" && sleep 0.3 && xdotool key "Escape" && wait "${pid}"; test X"${?}" = X"1"
-dmenu-session & pid="$(pgrep dmenu|head -1)" && sleep 0.3 && xdotool type "XaMTWGfu89iQpJk6" && xdotool key "Return" && wait "${pid}"; test X"${?}" = X"1"
-@end
-
-@begin{dmenu-tell}
-dmenu-tell & pid="$(pgrep dmenu|head -1)" && sleep 0.3 && xdotool key "Escape" && wait "${pid}"; test X"${?}" = X"1"
-@end
-
-@begin{dmenu-vbox}
-dmenu-vbox & pid="$(pgrep dmenu|head -1)" && sleep 1 && xdotool key "Escape" && wait "${pid}"; test X"${?}" = X"1"
-dmenu-vbox & pid="$(pgrep dmenu|head -1)" && sleep 0.5 && xdotool type "XaMTWGfu89iQpJk6" && xdotool key "Return" && wait "${pid}"; test X"${?}" = X"1"
-@end
-
-@begin{dmenu-xrandr}
-dmenu-xrandr & pid="$(pgrep dmenu|head -1)" && sleep 0.3 && xdotool key "Escape" && wait "${pid}"; test X"${?}" = X"1"
-dmenu-xrandr & pid="$(pgrep dmenu|head -1)" && sleep 0.3 && xdotool type "XaMTWGfu89iQpJk6" && xdotool key "Return" && wait "${pid}"; test X"${?}" = X"1"
-@end
-
 @begin{dump-dbs}
 dump-dbs; test X"${?}"                                  = X"1"
 dump-dbs -h ; test X"${?}"                              = X"1"
@@ -375,27 +313,6 @@ test X"$(fuck you dmenu top 2>&1|head -1)"          = X"ヽ(\`Д´)ﾉ⌒ n𝗎�
 sleep 0.2 && test X"$(pgrep -x top)" = X"" && test X"$(pgrep -x dmenu)" = X""
 @end
 
-@begin{gifcast}
-gifcast cui; test X"${?}"                    = X"1"
-printf "%s" 'cui' | gifcast; test X"${?}"    = X"1"
-gifcast -h;  test X"${?}"                    = X"1"
-printf "%s" '-h' | gifcast; test X"${?}"     = X"1"
-gifcast --help;  test X"${?}"                = X"1"
-printf "%s" '--help' | gifcast; test X"${?}" = X"1"
-gifcast --cui;  test X"${?}"                 = X"1"
-printf "%s" '--cui' | gifcast; test X"${?}"  = X"1"
-test X"$(gifcast cui 2>&1|head -1)"          = X"Usage: gifcast [options] file.gif"
-test X"$(gifcast -h 2>&1|head -1)"           = X"Usage: gifcast [options] file.gif"
-test X"$(gifcast --help 2>&1|head -1)"       = X"Usage: gifcast [options] file.gif"
-test X"$(gifcast --cui 2>&1|head -1)"        = X"gifcast: unrecognized option \`--cui'"
-gifcast > cui &    sleep 6; xdotool mousemove 50 50 mousedown 1 mousemove 150 150 mouseup 1
-sleep 1; ffcast -k; sleep 3; file="$(awk '/Done:/ {print $3; exit}' cui)"; test -s "${file}"; rm "${file}"
-#TODO 25-09-2014 23:02 >> figure out why the following sometimes crashes i3|X11
-xdotool click --clearmodifiers 1
-gifcast file.gif & sleep 6; xdotool mousemove 50 50 mousedown 1 mousemove 150 150 mouseup 1
-sleep 1; ffcast -k; sleep 3; test -s file.gif
-@end
-
 @begin{governator}
 governator; test X"${?}"                                        = X"0"
 test X"$(governator -h|head -1)"                                = X"Usage: governator get"
@@ -522,37 +439,6 @@ pass=$(mkpass 100) && test X"${#pass}" = X"100"
 pass=$(mkpass 0)   && test X"${#pass}" = X"0"
 @end
 
-@begin{movietime}
-movietime -h; test X"${?}"                     = X"1"
-printf "%s" '-h' | movietime; test X"${?}"     = X"1"
-movietime -c; test X"${?}"                     = X"1"
-printf "%s" '-c' | movietime; test X"${?}"     = X"1"
-movietime --help ; test X"${?}"                = X"1"
-printf "%s" '--help' | movietime; test X"${?}" = X"1"
-test X"$(movietime -h 2>&1|head -2|tail -1)"                     = X"   movietime disables screen blanking and screensaver to allow viewing"
-test X"$(printf "%s" '-h'|movietime 2>&1|head -2|tail -1)"       = X"   movietime disables screen blanking and screensaver to allow viewing"
-test X"$(movietime --help 2>&1|head -2|tail -1)"                 = X"   movietime disables screen blanking and screensaver to allow viewing"
-test X"$(printf "%s" '--help' | movietime 2>&1|head -2|tail -1)" = X"   movietime disables screen blanking and screensaver to allow viewing"
-test X"$(movietime -c 2>&1|head -2|tail -1)"                     = X"   movietime disables screen blanking and screensaver to allow viewing"
-test X"$(printf "%s" '-c'|movietime 2>&1|head -2|tail -1)"       = X"   movietime disables screen blanking and screensaver to allow viewing"
-xset s on; xset +dpms; kill -9 $(pgrep -f "movietime-susp"); rm -rf "${HOME}/.movietime-suspend-inhibit"
-test X"$(movietime 2>&1)" = X"movietime: started"
-sleep 0.5 && pgrep -f "movietime-susp"
-test X"$(movietime 2>&1)" = X"movietime: stopped"
-sleep 0.5 && test X"$(pgrep -f "movietime-susp")" = X""
-@end
-
-@begin{music-control}
-music-control;     test X"${?}"                = X"1"
-music-control cui; test X"${?}"                = X"1"
-music-control -h; test X"${?}"                 = X"1"
-printf "%s" '-h' | music-control; test X"${?}" = X"1"
-test X"$(music-control)"                       = X""
-test X"$(music-control 2>&1 | head -1)"                     = X"Usage: music-control play|pause|toggle|next|previous"
-test X"$(music-control cui 2>&1 | head -1)"                 = X"Usage: music-control play|pause|toggle|next|previous"
-test X"$(printf "%s" 'cui' | music-control 2>&1 | head -1)" = X"Usage: music-control play|pause|toggle|next|previous"
-@end
-
 @begin{mvs}
 mvs;  test X"${?}"                                   = X"1"
 mvs -h; test X"${?}"                                 = X"1"
@@ -658,29 +544,6 @@ run ls & pid="$(pgrep -f "bin/sh .*run"|head -1)" && sleep 0.5 && xdotool key "R
 @end
 #TODO 24-09-2014 22:23 >> true = :; false = ?, google
 
-@begin{update-cd}
-#update-cd
-test -d ~/.wcd
-test -f ~/.wcd/.treedata.wcd
-@end
-
-@begin{say}
-say; test X"${?}"                                  = X"1"
-say -h; test X"${?}"                               = X"1"
-printf "%s" '-h' | say; test X"${?}"               = X"1"
-say --help ; test X"${?}"                          = X"1"
-printf "%s" '--help' | say; test X"${?}"           = X"1"
-say --cui; test X"${?}"                            = X"1"
-printf "%s" '--cui' | say; test X"${?}"            = X"1"
-test X"$(say 2>&1|head -1)"                        = X"Usage: say [-sl] phrase"
-test X"$(say -h 2>&1|head -1)"                     = X"Usage: say [-sl] phrase"
-test X"$(printf "%s" '-h' | say 2>&1|head -1)"     = X"Usage: say [-sl] phrase"
-test X"$(say --help 2>&1|head -1)"                 = X"Usage: say [-sl] phrase"
-test X"$(printf "%s" '--help' | say 2>&1|head -1)" = X"Usage: say [-sl] phrase"
-test X"$(say --cui 2>&1|head -1)"                  = X"say: unrecognized option \`--cui'"
-test X"$(printf "%s" '--cui' | say 2>&1|head -1)"  = X"say: unrecognized option \`--cui'"
-@end
-
 @begin{setup}
 setup; test X"${?}"                                  = X"1"
 setup -h; test X"${?}"                               = X"1"
@@ -734,34 +597,8 @@ test X"$(pgrep -f share-backup|wc -l)" = X"0"
 #TODO 28-09-2014 14:52 >> is there any way to test this?
 @end
 
-@begin{shift-keyboard-layout}
-shift-keyboard-layout -h; test X"${?}"               = X"1"
-shift-keyboard-layout --help ; test X"${?}"          = X"1"
-shift-keyboard-layout --cui; test X"${?}"            = X"1"
-test X"$(shift-keyboard-layout -h 2>&1|head -1)"     = X"Usage: shift-keyboard-layout"
-test X"$(shift-keyboard-layout --help 2>&1|head -1)" = X"Usage: shift-keyboard-layout"
-test X"$(shift-keyboard-layout --cui 2>&1|head -1)"  = X"shift-keyboard-layout: unrecognized option \`--cui'"
-@end
-
 @begin{showterm}
 #TODO 28-09-2014 14:52 >> is there any way to test this?
-@end
-
-@begin{screenshot}
-screenshot -h;  test X"${?}"                    = X"1"
-printf "%s" '-h' | screenshot; test X"${?}"     = X"1"
-screenshot --help;  test X"${?}"                = X"1"
-printf "%s" '--help' | screenshot; test X"${?}" = X"1"
-screenshot --cui;  test X"${?}"                 = X"1"
-printf "%s" '--cui' | screenshot; test X"${?}"  = X"1"
-test X"$(screenshot -h 2>&1|head -1)"           = X"Usage: screenshot [options] [output-file]"
-test X"$(screenshot --help 2>&1|head -1)"       = X"Usage: screenshot [options] [output-file]"
-test X"$(screenshot --cui 2>&1|head -1)"        = X"screenshot: unrecognized option \`--cui'"
-screenshot cui;     sleep 4; test -f cui.png
-screenshot cc.png;  sleep 4; test -f cc.png
-screenshot > cui;   sleep 4; test -f "$(grep "Done:" cui|awk '{print $3}')" && rm -rf "$(grep "Done:" cui|awk '{print $3}')"
-screenshot -s ccui.png & sleep 4; xdotool mousemove 50 50 mousedown 1 mousemove 150 150 mouseup 1
-sleep 0.5 && test -f ccui.png
 @end
 
 @begin{startx}
@@ -835,33 +672,6 @@ test X"$(vim-show --cui 2>&1|head -1)"                  = X"vim-show: unrecogniz
 test X"$(printf "%s" '--cui' | vim-show 2>&1|head -1)"  = X"vim-show: unrecognized option \`--cui'"
 test X"$(vim-show cui 2>&1|head -1)"                    = X"vim-show: 'cui' was not found in \$PATH"
 test X"$(printf "%s" 'cui' | vim-show 2>&1|head -1)"    = X"vim-show: 'cui' was not found in \$PATH"
-@end
-
-@begin{vw}
-vw; test X"${?}"                  = X"1"
-vw -h ; test X"${?}"              = X"1"
-vw --help ; test X"${?}"          = X"1"
-vw --cui; test X"${?}"            = X"1"
-test X"$(vw 2>&1|head -1)"        = X"Usage: vw image ..."
-test X"$(vw -h 2>&1|head -1)"     = X"Usage: vw image ..."
-test X"$(vw --help 2>&1|head -1)" = X"Usage: vw image ..."
-test X"$(vw --cui 2>&1|head -1)"  = X"vw: unrecognized option \`--cui'"
-test X"$(vw cui 2>&1|head -1)"    = X"Error: 'cui' is not a valid image file"
-touch cui
-test X"$(vw cui 2>&1|head -1)"    = X"Error: 'cui' is not a valid image file"
-@end
-
-@begin{watch-battery}
-watch-battery -h ; test X"${?}"              = X"1"
-watch-battery --help ; test X"${?}"          = X"1"
-watch-battery --cui; test X"${?}"            = X"1"
-test X"$(watch-battery -h 2>&1|head -1)"     = X"Usage: watch-battery"
-test X"$(watch-battery --help 2>&1|head -1)" = X"Usage: watch-battery"
-test X"$(watch-battery --cui 2>&1|head -1)"  = X"watch-battery: unrecognized option \`--cui'"
-@end
-
-@begin{wcd}
-#TODO 28-09-2014 14:52 >> is there any way to test this?
 @end
 
 @begin{whats}
