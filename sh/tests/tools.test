@@ -390,32 +390,32 @@ test X"$(lp-g9n-team -cui 2>&1|head -1)"                   = X"lp-g9n-team: unre
 test X"$(printf "%s" '-cui' | lp-g9n-team 2>&1|head -1)"   = X"lp-g9n-team: unrecognized option \`-cui'"
 @end
 
-@begin{mail}
-mail;  test X"${?}"                                       = X"1"
-mail -h; test X"${?}"                                     = X"1"
-printf "%s" '-h' | mail; test X"${?}"                     = X"1"
-mail --help ; test X"${?}"                                = X"1"
-printf "%s" '--help' | mail; test X"${?}"                 = X"1"
-mail --cui; test X"${?}"                                  = X"1"
-printf "%s" '--cui' | mail; test X"${?}"                  = X"1"
-test X"$(mail 2>&1|head -1)"                              = X"Usage: mail [options] to@address.tld message ..."
-test X"$(mail -h 2>&1|head -1)"                           = X"Usage: mail [options] to@address.tld message ..."
-test X"$(printf "%s" '-h' | mail 2>&1|head -1)"           = X"Usage: mail [options] to@address.tld message ..."
-test X"$(mail --help 2>&1|head -1)"                       = X"Usage: mail [options] to@address.tld message ..."
-test X"$(printf "%s" '--help' | mail 2>&1|head -1)"       = X"Usage: mail [options] to@address.tld message ..."
-test X"$(mail --cui 2>&1|head -1)"                        = X"mail: unrecognized option \`--cui'"
-test X"$(printf "%s" '--cui' | mail 2>&1|head -1)"        = X"mail: unrecognized option \`--cui'"
-test X"$(mail cui 2>&1|head -1)"                          = X"Usage: mail [options] to@address.tld message ..."
-test X"$(printf "%s" 'cui cuak' | mail 2>&1|head -1)"     = X"mail: Invalid email address: 'cui'"
-test X"$(printf "%s" 'cui@cui cuak' | mail 2>&1|head -1)" = X"mail: Invalid email address: 'cui@cui'"
-test X"$(mail -a 2>&1|head -1)"                           = X"Option \`-a' requires a parameter"
-test X"$(printf "%s" '--api' | mail 2>&1|head -1)"        = X"Option \`--api' requires a parameter"
-test X"$(mail -f 2>&1|head -1)"                           = X"Option \`-f' requires a parameter"
-test X"$(printf "%s" '--from' | mail 2>&1|head -1)"       = X"Option \`--from' requires a parameter"
-test X"$(mail -s 2>&1|head -1)"                           = X"Option \`-s' requires a parameter"
-test X"$(printf "%s" '--subject' | mail 2>&1|head -1)"    = X"Option \`--subject' requires a parameter"
-test X"$(mail -c 2>&1|head -1)"                           = X"Option \`-c' requires a parameter"
-test X"$(printf "%s" '--config' | mail 2>&1|head -1)"     = X"Option \`--config' requires a parameter"
+@begin{mailgun}
+mailgun;  test X"${?}"                                       = X"1"
+mailgun -h; test X"${?}"                                     = X"1"
+printf "%s" '-h' | mailgun; test X"${?}"                     = X"1"
+mailgun --help ; test X"${?}"                                = X"1"
+printf "%s" '--help' | mailgun; test X"${?}"                 = X"1"
+mailgun --cui; test X"${?}"                                  = X"1"
+printf "%s" '--cui' | mailgun; test X"${?}"                  = X"1"
+test X"$(mailgun 2>&1|head -1)"                              = X"Usage: mailgun [options] to@address.tld message ..."
+test X"$(mailgun -h 2>&1|head -1)"                           = X"Usage: mailgun [options] to@address.tld message ..."
+test X"$(printf "%s" '-h' | mailgun 2>&1|head -1)"           = X"Usage: mailgun [options] to@address.tld message ..."
+test X"$(mailgun --help 2>&1|head -1)"                       = X"Usage: mailgun [options] to@address.tld message ..."
+test X"$(printf "%s" '--help' | mailgun 2>&1|head -1)"       = X"Usage: mailgun [options] to@address.tld message ..."
+test X"$(mailgun --cui 2>&1|head -1)"                        = X"mailgun: unrecognized option \`--cui'"
+test X"$(printf "%s" '--cui' | mailgun 2>&1|head -1)"        = X"mailgun: unrecognized option \`--cui'"
+test X"$(mailgun cui 2>&1|head -1)"                          = X"Usage: mailgun [options] to@address.tld message ..."
+test X"$(printf "%s" 'cui cuak' | mailgun 2>&1|head -1)"     = X"mailgun: Invalid email address: 'cui'"
+test X"$(printf "%s" 'cui@cui cuak' | mailgun 2>&1|head -1)" = X"mailgun: Invalid email address: 'cui@cui'"
+test X"$(mailgun -a 2>&1|head -1)"                           = X"Option \`-a' requires a parameter"
+test X"$(printf "%s" '--api' | mailgun 2>&1|head -1)"        = X"Option \`--api' requires a parameter"
+test X"$(mailgun -f 2>&1|head -1)"                           = X"Option \`-f' requires a parameter"
+test X"$(printf "%s" '--from' | mailgun 2>&1|head -1)"       = X"Option \`--from' requires a parameter"
+test X"$(mailgun -s 2>&1|head -1)"                           = X"Option \`-s' requires a parameter"
+test X"$(printf "%s" '--subject' | mailgun 2>&1|head -1)"    = X"Option \`--subject' requires a parameter"
+test X"$(mailgun -c 2>&1|head -1)"                           = X"Option \`-c' requires a parameter"
+test X"$(printf "%s" '--config' | mailgun 2>&1|head -1)"     = X"Option \`--config' requires a parameter"
 @end
 
 @begin{mkpass}
@@ -473,76 +473,56 @@ pxe && test -d pxe_setup && test -f pxe_setup/menu.c32
 pxe cui && test -d cui && test -f cui/menu.c32
 @end
 
-@begin{rm_}
-rm_;  test X"${?}"                                   = X"1"
-rm_ -h; test X"${?}"                                 = X"1"
-printf "%s" '-h' | rm_; test X"${?}"                 = X"1"
-rm_ --help ; test X"${?}"                            = X"0"
-printf "%s" '--help' | rm_; test X"${?}"             = X"0"
-rm_ --cui; test X"${?}"                              = X"1"
-printf "%s" '--cui' | rm_; test X"${?}"              = X"1"
-test X"$(rm_ 2>&1|head -1)"                          = X"rm: missing operand"
-test X"$(rm_ -h 2>&1|head -1)"                       = X"Usage: rm_ [options] file ..."
-test X"$(printf "%s" '-h' | rm_ 2>&1|head -1)"       = X"Usage: rm_ [options] file ..."
-test X"$(rm_ --help 2>&1|head -1)"                   = X"Usage: rm [OPTION]... FILE..."
-test X"$(printf "%s" '--help' | rm_ 2>&1|head -1)"   = X"Usage: rm [OPTION]... FILE..."
-test X"$(rm_ --cui 2>&1|head -1)"                    = X"rm: unrecognized option '--cui'"
-test X"$(printf "%s" '--cui' | rm_ 2>&1|head -1)"    = X"rm: unrecognized option '--cui'"
+@begin{trash}
+trash;  test X"${?}"                                   = X"1"
+trash -h; test X"${?}"                                 = X"1"
+printf "%s" '-h' | trash; test X"${?}"                 = X"1"
+trash --help ; test X"${?}"                            = X"0"
+printf "%s" '--help' | trash; test X"${?}"             = X"0"
+trash --cui; test X"${?}"                              = X"1"
+printf "%s" '--cui' | trash; test X"${?}"              = X"1"
+test X"$(trash 2>&1|head -1)"                          = X"rm: missing operand"
+test X"$(trash -h 2>&1|head -1)"                       = X"Usage: trash [options] file ..."
+test X"$(printf "%s" '-h' | trash 2>&1|head -1)"       = X"Usage: trash [options] file ..."
+test X"$(trash --help 2>&1|head -1)"                   = X"Usage: rm [OPTION]... FILE..."
+test X"$(printf "%s" '--help' | trash 2>&1|head -1)"   = X"Usage: rm [OPTION]... FILE..."
+test X"$(trash --cui 2>&1|head -1)"                    = X"rm: unrecognized option '--cui'"
+test X"$(printf "%s" '--cui' | trash 2>&1|head -1)"    = X"rm: unrecognized option '--cui'"
 printf "%s" "1" > XaMTWGfu89iQpJk6
-rm_ XaMTWGfu89iQpJk6
-test X"$(basename "$(rm_ -l | grep XaMTWGfu89iQpJk6)")" = X"XaMTWGfu89iQpJk6"
-test X"$(basename "$(rm_ -l XaMTWGfu89iQpJk6)")"        = X"XaMTWGfu89iQpJk6"
+trash XaMTWGfu89iQpJk6
+test X"$(basename "$(trash -l | grep XaMTWGfu89iQpJk6)")" = X"XaMTWGfu89iQpJk6"
+test X"$(basename "$(trash -l XaMTWGfu89iQpJk6)")"        = X"XaMTWGfu89iQpJk6"
 printf "%s" "2" > XaMTWGfu89iQpJk6
-rm_ XaMTWGfu89iQpJk6
-test X"$(rm_ -l XaMTWGfu89iQpJk6|wc -l)" = X"2"
-rm_ -yu XaMTWGfu89iQpJk6
-test X"$(cat XaMTWGfu89iQpJk6)"          = X"2"
-test X"$(cat XaMTWGfu89iQpJk6*.saved)"   = X"1"
-rm_ XaMTWGfu89iQpJk6*
-test X"$(rm_ -l XaMTWGfu89iQpJk6|wc -l)" = X"2"
-rm_ -yc XaMTWGfu89iQpJk6.*saved
-test X"$(rm_ -l XaMTWGfu89iQpJk6|wc -l)" = X"1"
-rm_ -yc XaMTWGfu89iQpJk6
-test X"$(rm_ -l XaMTWGfu89iQpJk6|wc -l)" = X"0"
+trash XaMTWGfu89iQpJk6
+test X"$(trash -l XaMTWGfu89iQpJk6|wc -l)" = X"2"
+trash -yu XaMTWGfu89iQpJk6
+test X"$(cat XaMTWGfu89iQpJk6)"            = X"2"
+test X"$(cat XaMTWGfu89iQpJk6*.saved)"     = X"1"
+trash XaMTWGfu89iQpJk6*
+test X"$(trash -l XaMTWGfu89iQpJk6|wc -l)" = X"2"
+trash -cy XaMTWGfu89iQpJk6.*saved
+test X"$(trash -l XaMTWGfu89iQpJk6|wc -l)" = X"1"
+trash -yc XaMTWGfu89iQpJk6
+test X"$(trash -l XaMTWGfu89iQpJk6|wc -l)" = X"0"
 printf "%s" "1" > XaMTWGfu89iQpJk6
-rm_ -rf XaMTWGfu89iQpJk6
-test X"$(rm_ -l XaMTWGfu89iQpJk6|wc -l)" = X"0"
+trash -rf XaMTWGfu89iQpJk6
+test X"$(trash -l XaMTWGfu89iQpJk6|wc -l)" = X"0"
 mkdir XaMTWGfu89iQpJk6
-rm_ XaMTWGfu89iQpJk6
-test X"$(rm_ -l XaMTWGfu89iQpJk6|wc -l)" = X"1"
-rm_ -yc XaMTWGfu89iQpJk6
-test X"$(rm_ -l XaMTWGfu89iQpJk6|wc -l)" = X"0"
+trash XaMTWGfu89iQpJk6
+test X"$(trash -l XaMTWGfu89iQpJk6|wc -l)" = X"1"
+trash -cy XaMTWGfu89iQpJk6
+test X"$(trash -l XaMTWGfu89iQpJk6|wc -l)" = X"0"
 mkdir foo && mkdir foo/bar && mkdir foo/bar/rar
 printf "%s" "1" > foo/XaMTWGfu89iQpJk6
 printf "%s" "2" > foo/bar/XaMTWGfu89iQpJk6
 printf "%s" "3" > foo/bar/rar/XaMTWGfu89iQpJk6
-rm_ foo/XaMTWGfu89iQpJk6 foo/bar/XaMTWGfu89iQpJk6 foo/bar/rar/XaMTWGfu89iQpJk6
-test X"$(rm_ -l XaMTWGfu89iQpJk6|wc -l)"    = X"3"
-rm_ -yu XaMTWGfu89iQpJk6
+trash foo/XaMTWGfu89iQpJk6 foo/bar/XaMTWGfu89iQpJk6 foo/bar/rar/XaMTWGfu89iQpJk6
+test X"$(trash -l XaMTWGfu89iQpJk6|wc -l)"    = X"3"
+trash -uy XaMTWGfu89iQpJk6
 test X"$(cat foo/XaMTWGfu89iQpJk6)"         = X"1"
 test X"$(cat foo/bar/XaMTWGfu89iQpJk6)"     = X"2"
 test X"$(cat foo/bar/rar/XaMTWGfu89iQpJk6)" = X"3"
 @end
-
-@begin{run}
-run;  test X"${?}"                                   = X"1"
-run -h; test X"${?}"                                 = X"1"
-printf "%s" '-h' | run; test X"${?}"                 = X"1"
-run --help ; test X"${?}"                            = X"1"
-printf "%s" '--help' | run; test X"${?}"             = X"1"
-run --cui; test X"${?}"                              = X"1"
-printf "%s" '--cui' | run; test X"${?}"              = X"1"
-test X"$(run 2>&1|head -1)"                          = X"Usage: run [options] command"
-test X"$(run -h 2>&1|head -1)"                       = X"Usage: run [options] command"
-test X"$(printf "%s" '-h' | run 2>&1|head -1)"       = X"Usage: run [options] command"
-test X"$(run --help 2>&1|head -1)"                   = X"Usage: run [options] command"
-test X"$(printf "%s" '--help' | run 2>&1|head -1)"   = X"Usage: run [options] command"
-test X"$(run --cui 2>&1|head -1)"                    = X"run: unrecognized option \`--cui'"
-test X"$(printf "%s" '--cui' | run 2>&1|head -1)"    = X"run: unrecognized option \`--cui'"
-run ls /root & pid="$(pgrep -f "bin/sh .*run"|head -1)" && sleep 0.5 && xdotool key "Return" && wait "${pid}"; test X"${?}" = X"2"
-run ls & pid="$(pgrep -f "bin/sh .*run"|head -1)" && sleep 0.5 && xdotool key "Return" && wait "${pid}"; test X"${?}" = X"0"
-@end
-#TODO 24-09-2014 22:23 >> true = :; false = ?, google
 
 @begin{setup}
 setup; test X"${?}"                                  = X"1"

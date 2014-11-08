@@ -280,9 +280,9 @@ while getopts ":fluhcry" options; do
     case "${options}" in
         f) exec rm -rf "${@}"                          ;;
         l) verbose="$((${verbose} + 1))"               ;;  # list verbose level 1-3
-        u) shift "$((${OPTIND} - 1))"; _recover "${@}" ;;  # remove the -u
+        u) case "${1}" in -*y*) yflag="yes"; esac; shift 1; _recover "${@}" ;;
         h) _usage                                      ;;
-        c) shift "$((${OPTIND} - 1))"; _clean "${@}"   ;;  # remove the -c
+        c) case "${1}" in -*y*) yflag="yes"; esac; shift 1; _clean "${@}"   ;;
         r)                                             ;;
         y) yflag="yes"                                 ;;
         *) exec rm "${@}"                              ;;  # send the rest to rm

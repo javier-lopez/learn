@@ -104,6 +104,12 @@ done
 to="${1}"; shift
 msg="${*}"
 
+if ! _validmail "${from}"; then
+    _die "$(expr "${0}" : '.*/\([^/]*\)'): Invalid email address: '${from}'"
+elif ! _validmail "${to}"; then
+    _die "$(expr "${0}" : '.*/\([^/]*\)'): Invalid email address: '${to}'"
+fi
+
 #TODO 01-10-2014 12:50 >> no source options when they had already been provided through the cli interface
 if [ -z "${config}" ]; then
     if [ -f ./.mailgun ]; then
@@ -120,12 +126,6 @@ fi
 
 if ! command -v "curl" >/dev/null 2>&1; then
     _die "you need to install 'curl' to run this program"
-fi
-
-if ! _validmail "${from}"; then
-    _die "$(expr "${0}" : '.*/\([^/]*\)'): Invalid email address: '${from}'"
-elif ! _validmail "${to}"; then
-    _die "$(expr "${0}" : '.*/\([^/]*\)'): Invalid email address: '${to}'"
 fi
 
 _mailgun "${api}" "${from}" "${to}" "${subject}" "${msg}"
