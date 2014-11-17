@@ -111,6 +111,7 @@ for arg; do #parse options
 done
 
 exec 9> /tmp/$(_basename ${0}).lock #verify only one instance is running
+[ X"${LOGNAME}" = X"root" ] && chmod 666 /tmp/"$(_basename ${0})".lock
 if ! flock -n 9; then               #http://mywiki.wooledge.org/BashFAQ/045
     printf "%s\\n" "$(_basename ${0}): another instance is running"; >&2
     _usage

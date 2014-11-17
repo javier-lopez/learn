@@ -418,6 +418,7 @@ _lock()
 {   #locks the execution of a program, it should be used at the
     #beggining of it, exit on failure
     exec 9>/tmp/$(expr "${1}" : '.*/\([^/]*\)').lock #verify only one instance is running
+    [ X"${LOGNAME}" = X"root" ] && chmod 666 /tmp/"$(expr "${1}" : '.*/\([^/]*\)')".lock
     if ! flock -n 9  ; then         #http://mywiki.wooledge.org/BashFAQ/045
         printf "%s\\n" "$(expr "${1}" : '.*/\([^/]*\)'): another instance is running";
         exit 1

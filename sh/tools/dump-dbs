@@ -185,6 +185,7 @@ if [ -z "${module}" ] || [ -z "${user}" ] || [ -z "${passwd}" ] || [ -z "${backu
 fi
 
 exec 9>/tmp/$(expr "${0}" : '.*/\([^/]*\)').lock #http://mywiki.wooledge.org/BashFAQ/045
+[ X"${LOGNAME}" = X"root" ] && chmod 666 /tmp/"$(expr "${0}" : '.*/\([^/]*\)')".lock
 if ! flock -n 9  ; then
     printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): another instance is running";
     exit 1

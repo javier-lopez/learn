@@ -26,6 +26,7 @@ _basename()
 }
 
 exec 9>/tmp/"$(_basename ${0})".lock  #http://mywiki.wooledge.org/BashFAQ/045
+[ X"${LOGNAME}" = X"root" ] && chmod 666 /tmp/"$(_basename ${0})".lock
 if ! flock -n 9 ; then
     printf "%s\\n" "$(_basename ${0}): another instance is running"; >&2
     exit 1

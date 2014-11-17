@@ -318,6 +318,7 @@ elif ! command -v "ssh" >/dev/null; then
 fi
 
 exec 9>/tmp/"$(_basename "${0}")".lock #verify that only one instance is running
+[ X"${LOGNAME}" = X"root" ] && chmod 666 /tmp/"$(_basename ${0})".lock
 if ! flock -n 9  ; then              #http://mywiki.wooledge.org/BashFAQ/045
     printf "%s\\n" "$(_basename "${0}"): another instance is running";
     exit 1
@@ -394,7 +395,7 @@ if [ -z "${skip_ssh_tests}" ]; then
             printf "\\n"; _usage
         fi
     fi
-fi 
+fi
 
 _verbose "files        : ${files}"
 _verbose "remote user  : ${remote_user}"
@@ -402,5 +403,6 @@ _verbose "remote server: ${remote_server}"
 _verbose "remote port  : ${remote_port}"
 _verbose "ssh key      : ${sshkey}"
 _verbose "log          : ${logfile}"
+[ X"${LOGNAME}" = X"root" ] && chmod 666 "${logfile}"
 
 _backup "${files}" "${remote_user}" "${remote_server}" "${remote_port}" "${sshkey}" "${logfile}"
