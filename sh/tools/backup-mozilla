@@ -28,6 +28,21 @@ _num()
     printf "%s\\n" "${@}" | grep -v "[^0-9]" >/dev/null
 }
 
+_basename()
+{   #alternative basename portable version, faster! but with possible drawbacks
+    [ -z "${1}" ] && return 1 || _basename_var_name="${1}"
+    [ -z "${2}" ] || _basename_var_suffix="${2}"
+    case "${_basename_var_name}" in
+        /*|*/*) _basename_var_name="${_basename_var_name##*/}"
+    esac
+
+    if [ -n "${_basename_var_suffix}" ] && [ "${#_basename_var_name}" -gt "${#2}" ]; then
+        _basename_var_name="${_basename_var_name%$_basename_var_suffix}"
+    fi
+
+    printf "%s" "${_basename_var_name}"
+}
+
 _bmozilla()
 {
     [ -z "${1}" ] && return 1
@@ -57,10 +72,24 @@ _blimiter()
     fi
 }
 
+_meta_backup_mozilla()
+{
+    for arg; do args="${args} ${arg}"; done
+    for dir in $(find /home -maxdepth 1 -type d -path  "/*/*"); do
+        user="$(_basename "${dir}")"
+        if grep "${user}" /etc/passwd >/dev/null; then
+            su "${user}" -c "backup-mozilla ${args}"
+        fi
+    done
+    exit "${$?}"
+}
+
 if [ ! -t 0 ]; then
     #there is input comming from pipe or file, add to the end of $@
     set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
 fi
+
+[ X"${LOGNAME}" = X"root" ] && _meta_backup_mozilla "${@}"
 
 for arg; do #parse options
     case "${arg}" in
