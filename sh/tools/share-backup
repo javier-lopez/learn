@@ -60,7 +60,7 @@ _usage()
 #so I'll disable reading from pipes till I figure out a solution
 #if [ ! -t 0 ]; then
     ##there is input comming from pipe or file, add to the end of $@
-    #set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
+    #set -- "${@}" $(cat)
 #fi
 
 if [ X"${1}" = X"stop" ]; then

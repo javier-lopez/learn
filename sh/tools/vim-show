@@ -15,7 +15,7 @@ _usage()
 
 if [ ! -t 0 ]; then
     #there is input comming from pipe or file, add to the end of $@
-    set -- $(for arg in "${@}"; do printf "%s\\n" "${arg}"; done) $(cat)
+    set -- "${@}" $(cat)
 fi
 
 [ "${#}" -eq "0" ] && _usage
