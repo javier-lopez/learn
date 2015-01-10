@@ -62,8 +62,10 @@ _howdoi()
     #for some reason the google api doesn't return the same results
     #http://ajax.googleapis.com/ajax/services/search/web?v=1.0
     if [ -z "${_howdoi_var_google_links}" ]; then
+        #_howdoi_var_google_links="$(wget -q -U "Firefox/3.0.5" "http://www.google.com/search?q=site:stackoverflow.com%20${_howdoi_var_question}" -O- |\
+            #awk 'match($0,/http:\/\/stackoverflow.com\/questions\/[0-9]*\/[A-Za-z-]+/) {print substr($0,RSTART,RLENGTH)}')"
         _howdoi_var_google_links="$(wget -q -U "Firefox/3.0.5" "http://www.google.com/search?q=site:stackoverflow.com%20${_howdoi_var_question}" -O- |\
-            awk 'match($0,/http:\/\/stackoverflow.com\/questions\/[0-9]*\/[A-Za-z-]+/) {print substr($0,RSTART,RLENGTH)}')"
+            awk 'match($0,/http:\/\/stackoverflow.com\/questions\/[0-9]*\/[A-Za-z-]+/) {if(NR!=1){print substr($0,RSTART,RLENGTH)}}')"
     fi
 
     if [ -z "${HOWDOI_DISABLE_CACHE}" ]; then
