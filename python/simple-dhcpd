@@ -6,7 +6,8 @@
 import socket,binascii,time,IN
 from sys import exit
 from optparse import OptionParser
-
+if not hasattr(IN,"SO_BINDTODEVICE"):
+	IN.SO_BINDTODEVICE = 25  #http://stackoverflow.com/a/8437870/541038
 def slicendice(msg,slices): #generator for each of the dhcp fields
     for x in slices:
         if str(type(x)) == "<type 'str'>": x=eval(x) #really dirty, deals with variable length options
