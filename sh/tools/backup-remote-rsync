@@ -2,8 +2,8 @@
 #description: backup directories to a remote system
 #usage: backup-remote-rsync -r DOMAIN:PATH [-h|-v|-s|-o|-n|-u USER|-p PORT|-i SSH KEY|-l LOGFILE] [LOCAL_DIR ...]
 
-#example: backup-remote-rsync -r b.javier.io:~/backup/$(hostname) -v -u admin -i /home/user/.ssh/id_rsa /home/user
-#creates backup-remote-rsync.log  root-home-user/  root-home-user.dotfiles/ inside b.javier.io:~/backup/$(hostname)
+#example: backup-remote-rsync -r b.javier.io:~/backup/$(hostname -f) -v -u admin -i /home/user/.ssh/id_rsa /home/user
+#creates backup-remote-rsync.log  root-home-user/  root-home-user.dotfiles/ inside b.javier.io:~/backup/$(hostname -f)
 #==================================
 #Fri May  2 00:27:38 CDT 2013
 #==================================
@@ -170,7 +170,7 @@ _backup()
 
     _backup_var_ssh_mkdir="$(printf "%s %s" "ssh -p ${_backup_var_remote_port} -i ${_backup_var_sshkey}" \
         "${_backup_var_remote_user}@$(printf "%s" "${_backup_var_remote_server}" | \
-        cut -d':' -f1) \"mkdir backup 2>/dev/null; mkdir backup/$(hostname) 2>/dev/null\"")"
+        cut -d':' -f1) \"mkdir backup 2>/dev/null; mkdir backup/$(hostname -f) 2>/dev/null\"")"
     _verbose "exec         : ${_backup_var_ssh_mkdir}"
     [ -z "${ommit_flag}" ] && eval "${_backup_var_ssh_mkdir}" | tee -a "${logfile}"
 
@@ -334,9 +334,9 @@ if [ -z "${remote_server}" ]; then
 else
     if [ -z "$(printf "%s" "${remote_server}" | awk -F":" '{print $2}')" ]; then
         if [ X"${remote_user}" = X"${USER}" ]; then
-            remote_server="${remote_server}:~/backup/$(hostname)"
+            remote_server="${remote_server}:~/backup/$(hostname -f)"
         else
-            remote_server="${remote_server}:/home/${remote_user}/backup/$(hostname)"
+            remote_server="${remote_server}:/home/${remote_user}/backup/$(hostname -f)"
         fi
     fi
 fi
