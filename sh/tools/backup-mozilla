@@ -49,7 +49,7 @@ _bmozilla()
     mkdir -p "${1}" >/dev/null 2>&1
     if [ -d "${HOME}"/.mozilla ]; then
         if command -v "lrzip" 2>/dev/null; then
-            tar cf - "${HOME}"/.mozilla | lrzip -q -L 9 > "${1}"/mozilla-"$(date +%Y-%m-%d:%H:%M)".tar.lrz
+            tar cf - "${HOME}"/.mozilla | lrzip -N 19 -q -L 9 > "${1}"/mozilla-"$(date +%Y-%m-%d:%H:%M)".tar.lrz
         elif command -v "bzip2" 2>/dev/null; then
             tar cf - "${HOME}"/.mozilla | bzip2 > "${1}"/mozilla-"$(date +%Y-%m-%d:%H:%M)".tar.bz2
         else
