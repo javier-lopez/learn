@@ -2,21 +2,21 @@
 
 - Avoid syntax or semantics unique to bash, zsh, or any other specific shell, eg:
     - array contructs
-    - `<()` or `>()`
+    - parameter subtitution; `<()` or `>()`
     - `{a,b,c}` or `{1..10}`
-    - `function` keyword at the beginning of a function
+    - the `function` keyword at the beginning of a function
     - C-like for loops, `for ((i=0; i<3; i++))`
 - Avoid `basename`, use `expr` or substrings (${variable##\*/}) instead
 - Use `=` over `==`
-- Use `[` or `test` over `[[`
 - Use `case` over `test` or `[` for regex
+- Use `[` or `test` over `[[`
 - Use `command -v` over `which`
 - Use `awk` over `sed`, `grep`, `cut`, `sort`, `tr` or `unique`
 - Use `/bin/sh` over `/bin/bash` or `/usr/bin/env sh`
-- Use `$(foo)` over `foo`
+- Use `$(foo)` over `\`foo\``
 - Use `$((${i}+1))` over `$(expr "${i}" + 1)`
 - Use `:` as a sed separator, eg: `sed -e 's:foo:bar:'`
-- Use lowercase over uppercase, except in vars users will interact with, eg: `PROGNAME_ENV`
+- Use lowercase over uppercase, except in vars users will interact with, eg: `LC_ALL`
 - Use spaces over tabs
 - Use braces around variables, eg,
 
@@ -32,6 +32,23 @@
    var="${foo}"
    var="${foo}${bar}"
    var="/path/${foo}.suffix"
+   ```
+- Define functions with an underscore prefix, eg,
+
+  **Bad**
+   ```sh
+   encode64()
+   {
+       steps
+   }
+   ```
+
+  **Good**
+   ```sh
+   _encode64()
+   {
+       steps
+   }
    ```
 - Prefer minimal style, except in functions:
 
@@ -72,7 +89,7 @@
        steps
    }
    ```
-- Local variables should be named after their function name, avoid `local`
+- Local variables should be named after their function name and separated by doble underscore, avoid `local`
 
   **Bad**
    ```sh
@@ -86,7 +103,7 @@
    ```sh
    _foo()
    {
-       _foo_var_first_argument="${1}"
+       _foo__first_argument="${1}"
    }
    ```
 
@@ -128,7 +145,7 @@
    fi
    ```
 
-  **Best**
+  **Better**
    ```sh
    [ -f "$(command -v "mplayer")" ] && $(command -v "mplayer")
    ```
@@ -143,7 +160,7 @@
    ```sh
    ls | grep file >/dev/null && return 0
    ```
-- Do NOT write to the file system, save to a var or use pipes instead
+- Do NOT write to the file system, use vars or pipes instead
 
   **Bad**
    ```sh
@@ -157,7 +174,7 @@
    printf "%s\\n" "${ls_output}"
    ```
 
-  **Best**
+  **Better**
    ```sh
    printf "%s\\n" "$(ls)"
    ```
