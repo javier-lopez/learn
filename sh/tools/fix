@@ -24,9 +24,9 @@ _usage()
 
 _exec()
 {
-    _exec_var_status="${?}"
-    if [ X"${_exec_var_status}" != X"0" ]; then
-        exit "${_exec_var_status}"
+    _exec__status="${?}"
+    if [ X"${_exec__status}" != X"0" ]; then
+        exit "${_exec__status}"
     fi
     printf "%s " "$ ${@}"
     printf "%s\\n"

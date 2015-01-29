@@ -25,20 +25,20 @@ _translate()
 {
     [ -z "${1}" ] && return 1
     #update 14-12-2012 05:06: http://crunchbang.org/forums/viewtopic.php?id=17034
-    _translate_var_phrase="${*}"
-    _translate_var_page="$(curl -s -i --user-agent "" -d "sl=${sl}" -d "tl=${tl}"      \
+    _translate__phrase="${*}"
+    _translate__page="$(curl -s -i --user-agent "" -d "sl=${sl}" -d "tl=${tl}"      \
                            -d "client=t"  -d "ie=UTF-8" -d "oe=UTF-8" --data-urlencode \
-                           "text=${_translate_var_phrase}" http://translate.google.com/translate_a/t)"
-    _translate_var_result="$(printf "%s\\n" "${_translate_var_page}" | tail -1 | cut -d\" -f2)"
+                           "text=${_translate__phrase}" http://translate.google.com/translate_a/t)"
+    _translate__result="$(printf "%s\\n" "${_translate__page}" | tail -1 | cut -d\" -f2)"
 
     if command -v "xclip" >/dev/null 2>&1; then
         if [ ! -t 1 ]; then
-            printf "%s\\n" "${_translate_var_result}"
+            printf "%s\\n" "${_translate__result}"
         else
-            printf "%s" "${_translate_var_result}" | xclip -selection clipboard; xclip -o -selection clipboard; printf "\\n"
+            printf "%s" "${_translate__result}" | xclip -selection clipboard; xclip -o -selection clipboard; printf "\\n"
         fi
     else
-        printf "%s\\n" "${_translate_var_result}"
+        printf "%s\\n" "${_translate__result}"
     fi
 }
 

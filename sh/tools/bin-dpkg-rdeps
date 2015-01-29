@@ -10,10 +10,10 @@
 
 _rdeps()
 {
-    for _rdeps_var_binary; do
-        fpath="$(command -v "${_rdeps_var_binary}")"
+    for _rdeps__binary; do
+        fpath="$(command -v "${_rdeps__binary}")"
         if [ -z "${fpath}" ]; then
-            fpath="${_rdeps_var_binary}"
+            fpath="${_rdeps__binary}"
             [ ! -f "${fpath}" ] && continue
         fi
 

@@ -7,37 +7,37 @@
 
 _basename()
 {
-    [ -z "${1}" ] && return 1 || _bbasename_var_name="${1}"
-    [ -z "${2}" ] || _bbasename_var_suffix="${2}"
-    case "${_bbasename_var_name}" in
-        /*|*/*) _bbasename_var_name="${_bbasename_var_name##*/}"
+    [ -z "${1}" ] && return 1 || _bbasename__name="${1}"
+    [ -z "${2}" ] || _bbasename__suffix="${2}"
+    case "${_bbasename__name}" in
+        /*|*/*) _bbasename__name="${_bbasename__name##*/}"
     esac
 
-    if [ -n "${_bbasename_var_suffix}" ] && [ "${#_bbasename_var_name}" -gt "${#2}" ]; then
-        _bbasename_var_name="${_bbasename_var_name%$_bbasename_var_suffix}"
+    if [ -n "${_bbasename__suffix}" ] && [ "${#_bbasename__name}" -gt "${#2}" ]; then
+        _bbasename__name="${_bbasename__name%$_bbasename__suffix}"
     fi
 
-    printf "%s" "${_bbasename_var_name}"
+    printf "%s" "${_bbasename__name}"
 }
 
 _crypt()
 {
-    for _crypt_var_file; do
-        if [ -f "${_crypt_var_file}" ] ; then
-            _crypt_var_file_output="${_crypt_var_file}".crypt
-            _crypt_var_header='eval "$((dd if=${0} bs=1 skip=XX|gpg -d)2>/dev/null)"; exit;'
-            _crypt_var_header_size="$(printf "%s\\n" "${_crypt_var_header}"|wc -c)"
+    for _crypt__file; do
+        if [ -f "${_crypt__file}" ] ; then
+            _crypt__file_output="${_crypt__file}".crypt
+            _crypt__header='eval "$((dd if=${0} bs=1 skip=XX|gpg -d)2>/dev/null)"; exit;'
+            _crypt__header_size="$(printf "%s\\n" "${_crypt__header}"|wc -c)"
 
-            _crypt_var_header="$(printf "%s\\n" "${_crypt_var_header}" | sed s:XX:"${_crypt_var_header_size}":)"
-            gpg -c < "${_crypt_var_file}" > /tmp/"$(_basename "${_crypt_var_file_output}")"
+            _crypt__header="$(printf "%s\\n" "${_crypt__header}" | sed s:XX:"${_crypt__header_size}":)"
+            gpg -c < "${_crypt__file}" > /tmp/"$(_basename "${_crypt__file_output}")"
             if [ "${?}" -eq 0 ]; then
-                printf "%s\\n" "${_crypt_var_header}" > "${_crypt_var_file_output}"
-                cat /tmp/"$(_basename "${_crypt_var_file_output}")" >> "${_crypt_var_file_output}"
-                chmod +x "${_crypt_var_file_output}"
-                rm -rf /tmp/"$(_basename "${_crypt_var_file_output}")"
+                printf "%s\\n" "${_crypt__header}" > "${_crypt__file_output}"
+                cat /tmp/"$(_basename "${_crypt__file_output}")" >> "${_crypt__file_output}"
+                chmod +x "${_crypt__file_output}"
+                rm -rf /tmp/"$(_basename "${_crypt__file_output}")"
             fi
         else
-            printf "%s\\n" "'${_crypt_var_file}' doesn't exist" && false
+            printf "%s\\n" "'${_crypt__file}' doesn't exist" && false
         fi
     done
 }

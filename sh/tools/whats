@@ -8,12 +8,12 @@
 _whats()
 {
     [ -z "${1}" ] && return 1
-    [ -z "${2}" ] && _whats_var_more_than_one="1"
+    [ -z "${2}" ] && _whats__more_than_one="1"
 
-    for _whats_var_word; do
-        _whats_var_response="$(dig +short txt ${_whats_var_word}.wp.dg.cx)"
-        printf "%s\\n" "${_whats_var_response}"
-        if [ -z "${_whats_var_more_than_one}" ]; then
+    for _whats__word; do
+        _whats__response="$(dig +short txt ${_whats__word}.wp.dg.cx)"
+        printf "%s\\n" "${_whats__response}"
+        if [ -z "${_whats__more_than_one}" ]; then
             printf "\\n%s\\n\\n" ":::::::::::::::::::::::::::::::::::::::::::::::::"
         fi
     done

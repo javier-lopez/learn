@@ -101,18 +101,18 @@ _getroot()
 
             if [ -n "${sudopwd}" ]; then
                 # password check
-                _getroot_var_test="$(printf "%s\\n" "${sudopwd}" | sudo -S ls 2>&1)"
-                _getroot_var_status="${?}"
-                _getroot_var_not_allowed="$(printf "%s" "${_getroot_var_test}" | \
+                _getroot__test="$(printf "%s\\n" "${sudopwd}" | sudo -S ls 2>&1)"
+                _getroot__status="${?}"
+                _getroot__not_allowed="$(printf "%s" "${_getroot__test}" | \
                                          grep -i "sudoers")"
 
-                if [ -n "${_getroot_var_not_allowed}" ]; then
+                if [ -n "${_getroot__not_allowed}" ]; then
                     printf "%s %s\\n" "You're not allowed to use sudo," \
                     "get in contact with your local administrator"
                     exit
                 fi
 
-                if [ X"${_getroot_var_status}" != X"0" ]; then
+                if [ X"${_getroot__status}" != X"0" ]; then
                     sudopwd=""
                     printf "%s\\n" "Incorrect preseed password"
                     exit
@@ -131,19 +131,19 @@ _getroot()
                 stty echo
 
                 # password check
-                _getroot_var_test="$(printf "%s\\n" "${sudopwd}" | sudo -S ls 2>&1)"
-                _getroot_var_status="${?}"
-                _getroot_var_not_allowed="$(printf "%s" "${_getroot_var_test}" | \
+                _getroot__test="$(printf "%s\\n" "${sudopwd}" | sudo -S ls 2>&1)"
+                _getroot__status="${?}"
+                _getroot__not_allowed="$(printf "%s" "${_getroot__test}" | \
                                          grep -i "sudoers")"
 
-                if [ -n "${_getroot_var_not_allowed}" ]; then
+                if [ -n "${_getroot__not_allowed}" ]; then
                     printf "\\n%s %s\\n" "You're not allowed to use sudo," \
                     "get in contact with your local administrator"
                     exit
                 fi
 
                 printf "\\n"
-                if [ X"${_getroot_var_status}" != X"0" ]; then
+                if [ X"${_getroot__status}" != X"0" ]; then
                     sudopwd=""
                 else
                     sudocmd="sudo -S"

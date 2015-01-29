@@ -14,35 +14,35 @@ _usage()
 
 _uimg()
 {
-    for _uimg_var_img; do
-        if [ -f "${_uimg_var_img}" ] ; then
-            case "${_uimg_var_img}" in
+    for _uimg__img; do
+        if [ -f "${_uimg__img}" ] ; then
+            case "${_uimg__img}" in
                 *.jpg|*.JPG|*.jpeg|*.png|*.PNG)
                     if command -v "xclip" >/dev/null 2>&1; then
                         if [ ! -t 1 ]; then
-                            curl -s -F "image=@${_uimg_var_img}"                   \
+                            curl -s -F "image=@${_uimg__img}"                   \
                                 -F "key=486690f872c678126a2c09a9e196ce1b"          \
                                 http://imgur.com/api/upload.xml |                  \
                                 egrep -o "<original_image>(.)*</original_image>" | \
                                 egrep -o "http://i.imgur.com/[^<]*"
                         else
-                            curl -s -F "image=@${_uimg_var_img}"                   \
+                            curl -s -F "image=@${_uimg__img}"                   \
                                 -F "key=486690f872c678126a2c09a9e196ce1b"          \
                                 http://imgur.com/api/upload.xml |                  \
                                 egrep -o "<original_image>(.)*</original_image>" | \
                                 egrep -o "http://i.imgur.com/[^<]*" | xclip -selection clipboard; xclip -o -selection clipboard
                         fi
                     else
-                        curl -s -F "image=@${_uimg_var_img}"                   \
+                        curl -s -F "image=@${_uimg__img}"                   \
                             -F "key=486690f872c678126a2c09a9e196ce1b"          \
                             http://imgur.com/api/upload.xml |                  \
                             egrep -o "<original_image>(.)*</original_image>" | \
                             egrep -o "http://i.imgur.com/[^<]*"
                     fi ;;
-                *)  printf "%s\\n" "'${_uimg_var_img}' is not a valid image file" >&2 ;;
+                *)  printf "%s\\n" "'${_uimg__img}' is not a valid image file" >&2 ;;
             esac
         else
-            printf "%s\\n" "'${_uimg_var_img}' doesn't exist" >&2
+            printf "%s\\n" "'${_uimg__img}' doesn't exist" >&2
         fi
     done
 }

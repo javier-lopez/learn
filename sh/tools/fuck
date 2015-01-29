@@ -21,11 +21,11 @@ _flip()
 
 _fuck()
 {
-    for _fuck_var_process; do
-        if kill -9 $(pgrep "${_fuck_var_process}") >/dev/null 2>&1; then
-            printf "%s %s\\n" 'ヽ(`Д´)ﾉ⌒' "$(_flip "${_fuck_var_process}")"
+    for _fuck__process; do
+        if kill -9 $(pgrep "${_fuck__process}") >/dev/null 2>&1; then
+            printf "%s %s\\n" 'ヽ(`Д´)ﾉ⌒' "$(_flip "${_fuck__process}")"
         else
-            printf "%s\\n" "(；￣Д￣) .oO(not very effective with ${_fuck_var_process} ...)"
+            printf "%s\\n" "(；￣Д￣) .oO(not very effective with ${_fuck__process} ...)"
         fi
     done
 }

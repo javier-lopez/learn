@@ -36,8 +36,8 @@ _dirname()
 
     case "${1}" in
         /*|*/*) #http://www.linuxselfhelp.com/gnu/autoconf/html_chapter/autoconf_10.html
-            _dirname_var_dir=$(expr "x${1}" : 'x\(.*\)/[^/]*' \| '.'      : '.')
-            printf "%s\\n" "${_dirname_var_dir}"
+            _dirname__dir=$(expr "x${1}" : 'x\(.*\)/[^/]*' \| '.'      : '.')
+            printf "%s\\n" "${_dirname__dir}"
             ;;
         *) printf "%s\\n" ".";;
     esac
@@ -1163,12 +1163,12 @@ for arg; do
         -h|--help)    _usage ;;
         -v|--verbose) _verbose_flag="seen"; ;;
         -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" >&2; _usage ;;
-        *)  _pxe_var_default_dir="${arg}"; break;;
+        *)  _pxe__default_dir="${arg}"; break;;
     esac
 done
 
-[ -z "${_pxe_var_default_dir}" ]   && _pxe_var_default_dir="$(pwd)/pxe_setup"
-mkdir -p "${_pxe_var_default_dir}" || _die "cannot write to "$(_dirname "${_pxe_var_default_dir}")""
-[ ! -d "${_pxe_var_default_dir}" ] && _die ""$(_dirname "${_pxe_var_default_dir}")" is not a valid directory"
+[ -z "${_pxe__default_dir}" ]   && _pxe__default_dir="$(pwd)/pxe_setup"
+mkdir -p "${_pxe__default_dir}" || _die "cannot write to "$(_dirname "${_pxe__default_dir}")""
+[ ! -d "${_pxe__default_dir}" ] && _die ""$(_dirname "${_pxe__default_dir}")" is not a valid directory"
 
-_pxe "${_pxe_var_default_dir}"
+_pxe "${_pxe__default_dir}"

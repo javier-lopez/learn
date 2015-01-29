@@ -12,8 +12,8 @@ _cmd()
     printf "\\n"
     eval "${@}"
 
-    _cmd_var_status="${?}"
-    [ X"${_cmd_var_status}" != X"0" ] && exit "${_cmd_var_status}" || return
+    _cmd__status="${?}"
+    [ X"${_cmd__status}" != X"0" ] && exit "${_cmd__status}" || return
 }
 
 _die()
@@ -59,25 +59,25 @@ _notify()
 _arch()
 {   #check for system arch, returns [64|32]
     if [ -z "${MACHTYPE}" ]; then
-        _arch_var_arch="$(uname -m)"
+        _arch__arch="$(uname -m)"
     else
-        _arch_var_arch="$(printf "%s" "${MACHTYPE}" | cut -d- -f1)"
+        _arch__arch="$(printf "%s" "${MACHTYPE}" | cut -d- -f1)"
     fi
 
-    case "${_arch_var_arch}" in
-        x86_64) _arch_var_arch="64" ;;
-        i686)   _arch_var_arch="32" ;;
+    case "${_arch__arch}" in
+        x86_64) _arch__arch="64" ;;
+        i686)   _arch__arch="32" ;;
         *)      return 1 ;;
     esac
 
-    printf "%s" "${_arch_var_arch}"
+    printf "%s" "${_arch__arch}"
 }
 
 _update_firefox()
 {
-    _update_firefox_var_arch="$(_arch)"
-    [ -d "${HOME}/.bin/firefox${_update_firefox_var_arch}" ] && _cmd mkdir -p "${HOME}/.bin/firefox${_update_firefox_var_arch}"
-    case "${_update_firefox_var_arch}" in
+    _update_firefox__arch="$(_arch)"
+    [ -d "${HOME}/.bin/firefox${_update_firefox__arch}" ] && _cmd mkdir -p "${HOME}/.bin/firefox${_update_firefox__arch}"
+    case "${_update_firefox__arch}" in
         32) nightly="$(curl http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-trunk/ 2>&1 \
                 | grep -o -E 'href="([^"#]+)"' | cut -d'"' -f2 | grep "linux-i686.tar.bz2")" ;;
         64) nightly="$(curl http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-trunk/ 2>&1 \
@@ -86,8 +86,8 @@ _update_firefox()
     _cmd wget -c http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-trunk/"${nightly}" -O /tmp/firefox.tar.bz2
     _cmd "bzcat < /tmp/firefox.tar.bz2 | tar xf -C /tmp -"
     _cmd rm -rf /tmp/firefox-* "${HOME}/.bin/firefox.old"
-    _cmd mv "${HOME}/.bin/firefox${_update_firefox_var_arch}" "${HOME}/.bin/firefox.old"
-    _cmd mv /tmp/firefox "${HOME}/.bin/firefox${_update_firefox_var_arch}"
+    _cmd mv "${HOME}/.bin/firefox${_update_firefox__arch}" "${HOME}/.bin/firefox.old"
+    _cmd mv /tmp/firefox "${HOME}/.bin/firefox${_update_firefox__arch}"
     _notify "[+]  Done" "restart firefox to apply the update"
 }
 

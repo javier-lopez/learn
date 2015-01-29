@@ -27,71 +27,71 @@
 
 _basename()
 {
-    [ -z "${1}" ] && return 1 || _basename_var_name="${1}"
-    [ -z "${2}" ] || _basename_var_suffix="${2}"
-    case "${_basename_var_name}" in
-        /*|*/*) _basename_var_name="$(expr "${_basename_var_name}" : '.*/\([^/]*\)')" ;;
+    [ -z "${1}" ] && return 1 || _basename__name="${1}"
+    [ -z "${2}" ] || _basename__suffix="${2}"
+    case "${_basename__name}" in
+        /*|*/*) _basename__name="$(expr "${_basename__name}" : '.*/\([^/]*\)')" ;;
     esac
 
-    if [ -n "${_basename_var_suffix}" ] && [ "${#_basename_var_name}" -gt "${#2}" ]; then
-        if [ X"$(printf "%s" "${_basename_var_name}" | cut -c"$((${#_basename_var_name} - ${#_basename_var_suffix} + 1))"-"${#_basename_var_name}")" \
-           = X"$(printf "%s" "${_basename_var_suffix}")" ]; then
-            _basename_var_name="$(printf "%s" "${_basename_var_name}" | cut -c1-"$((${#_basename_var_name} - ${#_basename_var_suffix}))")"
+    if [ -n "${_basename__suffix}" ] && [ "${#_basename__name}" -gt "${#2}" ]; then
+        if [ X"$(printf "%s" "${_basename__name}" | cut -c"$((${#_basename__name} - ${#_basename__suffix} + 1))"-"${#_basename__name}")" \
+           = X"$(printf "%s" "${_basename__suffix}")" ]; then
+            _basename__name="$(printf "%s" "${_basename__name}" | cut -c1-"$((${#_basename__name} - ${#_basename__suffix}))")"
         fi
     fi
 
-    printf "%s\\n" "${_basename_var_name}"
+    printf "%s\\n" "${_basename__name}"
 }
 
 _realpath()
 {
-    _realpath_var_success="true"
-    _realpath_var_path="${1}"
+    _realpath__success="true"
+    _realpath__path="${1}"
 
     # make sure the string isn't empty as that implies something in further logic
-    if [ -z "${_realpath_var_path}" ]; then
-        _realpath_var_success="false"
+    if [ -z "${_realpath__path}" ]; then
+        _realpath__success="false"
     else
         # start with the file name (sans the trailing slash)
-        _realpath_var_path="${_realpath_var_path%/}"
+        _realpath__path="${_realpath__path%/}"
 
         # if we stripped off the trailing slash and were left with nothing, that means we're in the root directory
-        [ -z "${_realpath_var_path}" ] && _realpath_var_path="/"
+        [ -z "${_realpath__path}" ] && _realpath__path="/"
 
         # get the basename of the file (ignoring '.' & '..', because they're really part of the path)
-        _realpath_var_file_basename="${_realpath_var_path##*/}"
-        if [ X"${_realpath_var_file_basename}" = X"." ] || [ X"${_realpath_var_file_basename}" = X".." ]; then
-            _realpath_var_file_basename=""
+        _realpath__file_basename="${_realpath__path##*/}"
+        if [ X"${_realpath__file_basename}" = X"." ] || [ X"${_realpath__file_basename}" = X".." ]; then
+            _realpath__file_basename=""
         fi
 
         # extracts the directory component of the full path, if it's empty then assume '.' (the current working directory)
-        _realpath_var_directory="${_realpath_var_path%${_realpath_var_file_basename}}"
-        [ -z "${_realpath_var_directory}" ] && _realpath_var_directory="."
+        _realpath__directory="${_realpath__path%${_realpath__file_basename}}"
+        [ -z "${_realpath__directory}" ] && _realpath__directory="."
 
         # attempt to change to the directory
-        if ! \cd "${_realpath_var_directory}" >/dev/null 2>/dev/null; then
-            _realpath_var_success="false"
+        if ! \cd "${_realpath__directory}" >/dev/null 2>/dev/null; then
+            _realpath__success="false"
         fi
 
-        if "${_realpath_var_success}"; then
+        if "${_realpath__success}"; then
             # does the filename exist?
-            if [ -n "${_realpath_var_file_basename}" ] && [ ! -e "${_realpath_var_file_basename}" ]; then
-                _realpath_var_success="false"
+            if [ -n "${_realpath__file_basename}" ] && [ ! -e "${_realpath__file_basename}" ]; then
+                _realpath__success="false"
             fi
 
             # get the absolute path of the current directory & change back to previous directory
-            _realpath_var_abs_path="$(pwd -P)"
+            _realpath__abs_path="$(pwd -P)"
             \cd "-" >/dev/null 2>/dev/null
 
             # Append base filename to absolute path
-            if [ X"${_realpath_var_abs_path}" = X"/" ]; then
-                _realpath_var_abs_path="${_realpath_var_abs_path}${_realpath_var_file_basename}"
+            if [ X"${_realpath__abs_path}" = X"/" ]; then
+                _realpath__abs_path="${_realpath__abs_path}${_realpath__file_basename}"
             else
-                _realpath_var_abs_path="${_realpath_var_abs_path}/${_realpath_var_file_basename}"
+                _realpath__abs_path="${_realpath__abs_path}/${_realpath__file_basename}"
             fi
 
             # output the absolute path
-            printf "%s\\n" "${_realpath_var_abs_path}"
+            printf "%s\\n" "${_realpath__abs_path}"
         fi
     fi
 }
@@ -116,29 +116,29 @@ _printtime()
     [ -z "${1}" ] && return 1
     printf "%s\\n" "${1}" | grep -v "[^0-9]" >/dev/null || return 1;
 
-    _printtime_var_num="${1}"
-    _printtime_var_min="0"
-    _printtime_var_hour="0"
-    _printtime_var_day="0"
-    if [ "${_printtime_var_num}" -gt "59" ]; then
-        _printtime_var_sec="$((${_printtime_var_num} % 60))"
-        _printtime_var_num="$((${_printtime_var_num} / 60))"
-        if [ "${_printtime_var_num}" -gt "59" ]; then
-            _printtime_var_min="$((${_printtime_var_num} % 60))"
-            _printtime_var_num="$((${_printtime_var_num} / 60))"
-            if [ "${_printtime_var_num}" -gt "23" ]; then
-                _printtime_var_hour="$((${_printtime_var_num} % 24))"
-                _printtime_var_day="$((${_printtime_var_num} / 24))"
+    _printtime__num="${1}"
+    _printtime__min="0"
+    _printtime__hour="0"
+    _printtime__day="0"
+    if [ "${_printtime__num}" -gt "59" ]; then
+        _printtime__sec="$((${_printtime__num} % 60))"
+        _printtime__num="$((${_printtime__num} / 60))"
+        if [ "${_printtime__num}" -gt "59" ]; then
+            _printtime__min="$((${_printtime__num} % 60))"
+            _printtime__num="$((${_printtime__num} / 60))"
+            if [ "${_printtime__num}" -gt "23" ]; then
+                _printtime__hour="$((${_printtime__num} % 24))"
+                _printtime__day="$((${_printtime__num} / 24))"
             else
-                _printtime_var_hour="${_printtime_var_num}"
+                _printtime__hour="${_printtime__num}"
             fi
         else
-            _printtime_var_min="${_printtime_var_num}"
+            _printtime__min="${_printtime__num}"
         fi
     else
-        _printtime_var_sec="${_printtime_var_num}"
+        _printtime__sec="${_printtime__num}"
     fi
-    printf "%s\\n" "${_printtime_var_day}d ${_printtime_var_hour}h ${_printtime_var_min}m ${_printtime_var_sec}s"
+    printf "%s\\n" "${_printtime__day}d ${_printtime__hour}h ${_printtime__min}m ${_printtime__sec}s"
 }
 
 _hasdotfiles()
@@ -155,87 +155,87 @@ _internetavailable()
 
 _backup()
 {
-    [ -z "${1}" ] && return 1 || _backup_var_files="${1}"
-    [ -z "${2}" ] && return 1 || _backup_var_remote_user="${2}"
-    [ -z "${3}" ] && return 1 || _backup_var_remote_server="${3}"
-    [ -z "${4}" ] && return 1 || _backup_var_remote_port="${4}"
-    [ -z "${5}" ] && return 1 || _backup_var_sshkey="${5}"
-    [ -n "${dryrun_flag}" ]   && _backup_var_dry_run="--dry-run"
+    [ -z "${1}" ] && return 1 || _backup__files="${1}"
+    [ -z "${2}" ] && return 1 || _backup__remote_user="${2}"
+    [ -z "${3}" ] && return 1 || _backup__remote_server="${3}"
+    [ -z "${4}" ] && return 1 || _backup__remote_port="${4}"
+    [ -z "${5}" ] && return 1 || _backup__sshkey="${5}"
+    [ -n "${dryrun_flag}" ]   && _backup__dry_run="--dry-run"
 
     if rsync -h | grep -- --detect-renamed >/dev/null; then
-        _backup_var_extra_flags="--detect-renamed"
+        _backup__extra_flags="--detect-renamed"
     fi
 
-    _backup_var_start="$(date +%s)"
+    _backup__start="$(date +%s)"
 
-    _backup_var_ssh_mkdir="$(printf "%s %s" "ssh -p ${_backup_var_remote_port} -i ${_backup_var_sshkey}" \
-        "${_backup_var_remote_user}@$(printf "%s" "${_backup_var_remote_server}" | \
+    _backup__ssh_mkdir="$(printf "%s %s" "ssh -p ${_backup__remote_port} -i ${_backup__sshkey}" \
+        "${_backup__remote_user}@$(printf "%s" "${_backup__remote_server}" | \
         cut -d':' -f1) \"mkdir backup 2>/dev/null; mkdir backup/$(hostname -f) 2>/dev/null\"")"
-    _verbose "exec         : ${_backup_var_ssh_mkdir}"
-    [ -z "${ommit_flag}" ] && eval "${_backup_var_ssh_mkdir}" | tee -a "${logfile}"
+    _verbose "exec         : ${_backup__ssh_mkdir}"
+    [ -z "${ommit_flag}" ] && eval "${_backup__ssh_mkdir}" | tee -a "${logfile}"
 
     OLDIFS="${IFS}"
     IFS="|"
 
-    for file in ${_backup_var_files}; do
+    for file in ${_backup__files}; do
         _verbose " "
-        _backup_var_realpath="$(_realpath "${file}")"
-        _backup_var_remotepath="$(printf "%s" "${_backup_var_realpath}" |           \
+        _backup__realpath="$(_realpath "${file}")"
+        _backup__remotepath="$(printf "%s" "${_backup__realpath}" |           \
             awk '{sub(/\//,"root-"); print $0}' | awk '{gsub(/\//,"-"); print $0}')"
-        case "${_backup_var_remotepath}" in
-            *-) _backup_var_remotepath="$(printf "%s" "${_backup_var_remotepath}" | \
-                cut -c1-"$((${#_backup_var_remotepath} - 1))")" ;;
+        case "${_backup__remotepath}" in
+            *-) _backup__remotepath="$(printf "%s" "${_backup__remotepath}" | \
+                cut -c1-"$((${#_backup__remotepath} - 1))")" ;;
         esac
 
-        _verbose "realpath     : ${_backup_var_realpath}"
-        _verbose "remotepath   : ${_backup_var_remotepath}"
+        _verbose "realpath     : ${_backup__realpath}"
+        _verbose "remotepath   : ${_backup__remotepath}"
 
-        if [ -d "${_backup_var_realpath}" ]; then
-            _backup_var_rsync="$(printf "%s %s %s %s %s" "rsync ${_backup_var_dry_run} -avz"  \
-                "-e \"ssh -p ${_backup_var_remote_port} -i ${_backup_var_sshkey}\" --partial" \
-                "--one-file-system --delete --exclude=.gvfs ${_backup_var_realpath}/"         \
-                "${_backup_var_extra_flags}" \
-                "${_backup_var_remote_user}@${_backup_var_remote_server}/${_backup_var_remotepath}")"
-            _verbose "exec         : ${_backup_var_rsync}"
-            [ -z "${ommit_flag}" ] && eval "${_backup_var_rsync}" | tee -a "${logfile}"
+        if [ -d "${_backup__realpath}" ]; then
+            _backup__rsync="$(printf "%s %s %s %s %s" "rsync ${_backup__dry_run} -avz"  \
+                "-e \"ssh -p ${_backup__remote_port} -i ${_backup__sshkey}\" --partial" \
+                "--one-file-system --delete --exclude=.gvfs ${_backup__realpath}/"         \
+                "${_backup__extra_flags}" \
+                "${_backup__remote_user}@${_backup__remote_server}/${_backup__remotepath}")"
+            _verbose "exec         : ${_backup__rsync}"
+            [ -z "${ommit_flag}" ] && eval "${_backup__rsync}" | tee -a "${logfile}"
 
             #TODO 07-08-2014 03:03 >> separe dotfiles
-            #if _hasdotfiles "${_backup_var_realpath}"; then
-                #_backup_var_dotfiles="${_backup_var_remotepath}.dotfiles"
-                #_verbose "dotfiles     : ${_backup_var_dotfiles}"
-                #_backup_var_rsync="$(printf "%s %s %s %s %s %s" "ls ${_backup_var_realpath}"  \
-                    #"| rsync ${_backup_var_dry_run} -avz -e "                                 \
-                    #"\"ssh -p ${_backup_var_remote_port} -i ${_backup_var_sshkey}\""          \
+            #if _hasdotfiles "${_backup__realpath}"; then
+                #_backup__dotfiles="${_backup__remotepath}.dotfiles"
+                #_verbose "dotfiles     : ${_backup__dotfiles}"
+                #_backup__rsync="$(printf "%s %s %s %s %s %s" "ls ${_backup__realpath}"  \
+                    #"| rsync ${_backup__dry_run} -avz -e "                                 \
+                    #"\"ssh -p ${_backup__remote_port} -i ${_backup__sshkey}\""          \
                     #"--one-file-system  --delete --partial --exclude-from=-"                  \
-                    #"--exclude=.gvfs ${_backup_var_extra_flags} ${_backup_var_realpath}/"     \
-                    #"${_backup_var_remote_user}@${_backup_var_remote_server}/${_backup_var_dotfiles}")"
-                    #_verbose "exec         : ${_backup_var_rsync}"
-                    #[ -z "${ommit_flag}" ] && eval "${_backup_var_rsync}" | tee -a "${logfile}"
+                    #"--exclude=.gvfs ${_backup__extra_flags} ${_backup__realpath}/"     \
+                    #"${_backup__remote_user}@${_backup__remote_server}/${_backup__dotfiles}")"
+                    #_verbose "exec         : ${_backup__rsync}"
+                    #[ -z "${ommit_flag}" ] && eval "${_backup__rsync}" | tee -a "${logfile}"
             #else
                 #_verbose "dotfiles     : no"
             #fi
-        elif [ -f "${_backup_var_realpath}" ]; then
-            _backup_var_rsync="$(printf "%s %s %s %s %s" "rsync ${_backup_var_dry_run} -avz"   \
-               "-e \"ssh -p ${_backup_var_remote_port} -i ${_backup_var_sshkey}\" --partial"   \
-               "--one-file-system --delete --partial ${_backup_var_extra_flags}"               \
-               "${_backup_var_realpath}" \
-               "${_backup_var_remote_user}@${_backup_var_remote_server}/${_backup_var_remotepath}")"
-            _verbose "exec         : ${_backup_var_rsync}"
-            [ -z "${ommit_flag}" ] && eval "${_backup_var_rsync}" | tee -a "${logfile}"
+        elif [ -f "${_backup__realpath}" ]; then
+            _backup__rsync="$(printf "%s %s %s %s %s" "rsync ${_backup__dry_run} -avz"   \
+               "-e \"ssh -p ${_backup__remote_port} -i ${_backup__sshkey}\" --partial"   \
+               "--one-file-system --delete --partial ${_backup__extra_flags}"               \
+               "${_backup__realpath}" \
+               "${_backup__remote_user}@${_backup__remote_server}/${_backup__remotepath}")"
+            _verbose "exec         : ${_backup__rsync}"
+            [ -z "${ommit_flag}" ] && eval "${_backup__rsync}" | tee -a "${logfile}"
         fi
     done
 
     IFS="${OLDIFS}"
 
-    _backup_var_end="$(date +%s)"
-    _backup_var_diff="$((${_backup_var_end} - ${_backup_var_start}))"
+    _backup__end="$(date +%s)"
+    _backup__diff="$((${_backup__end} - ${_backup__start}))"
 
     _logger "$(printf "%*s\\n" "34" ''  | tr ' ' =)"
-    _logger "Total time: $(_printtime "${_backup_var_diff}")"
+    _logger "Total time: $(_printtime "${_backup__diff}")"
     _logger "$(printf "%*s\\n" "34" ''  | tr ' ' =)"
 
-    rsync -e "ssh -p ${_backup_var_remote_port} -i ${_backup_var_sshkey}" \
-        "${logfile}" "${_backup_var_remote_user}@${_backup_var_remote_server}"
+    rsync -e "ssh -p ${_backup__remote_port} -i ${_backup__sshkey}" \
+        "${logfile}" "${_backup__remote_user}@${_backup__remote_server}"
 }
 
 _usage()

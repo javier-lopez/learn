@@ -41,36 +41,36 @@ _printtime()
     [ -z "${1}" ] && return 1
     printf "%s\\n" "${1}" | grep -v "[^0-9]" >/dev/null || return 1;
 
-    _printtime_var_num="${1}"
-    _printtime_var_min="0"
-    _printtime_var_hour="0"
-    _printtime_var_day="0"
-    if [ "${_printtime_var_num}" -gt "59" ]; then
-        _printtime_var_sec="$((${_printtime_var_num} % 60))"
-        _printtime_var_num="$((${_printtime_var_num} / 60))"
-        if [ "${_printtime_var_num}" -gt "59" ]; then
-            _printtime_var_min="$((${_printtime_var_num} % 60))"
-            _printtime_var_num="$((${_printtime_var_num} / 60))"
-            if [ "${_printtime_var_num}" -gt "23" ]; then
-                _printtime_var_hour="$((${_printtime_var_num} % 24))"
-                _printtime_var_day="$((${_printtime_var_num} / 24))"
+    _printtime__num="${1}"
+    _printtime__min="0"
+    _printtime__hour="0"
+    _printtime__day="0"
+    if [ "${_printtime__num}" -gt "59" ]; then
+        _printtime__sec="$((${_printtime__num} % 60))"
+        _printtime__num="$((${_printtime__num} / 60))"
+        if [ "${_printtime__num}" -gt "59" ]; then
+            _printtime__min="$((${_printtime__num} % 60))"
+            _printtime__num="$((${_printtime__num} / 60))"
+            if [ "${_printtime__num}" -gt "23" ]; then
+                _printtime__hour="$((${_printtime__num} % 24))"
+                _printtime__day="$((${_printtime__num} / 24))"
             else
-                _printtime_var_hour="${_printtime_var_num}"
+                _printtime__hour="${_printtime__num}"
             fi
         else
-            _printtime_var_min="${_printtime_var_num}"
+            _printtime__min="${_printtime__num}"
         fi
     else
-        _printtime_var_sec="${_printtime_var_num}"
+        _printtime__sec="${_printtime__num}"
     fi
-    printf "%s" "${_printtime_var_day}d ${_printtime_var_hour}h ${_printtime_var_min}m ${_printtime_var_sec}s"
+    printf "%s" "${_printtime__day}d ${_printtime__hour}h ${_printtime__min}m ${_printtime__sec}s"
 }
 
 _loadconf()
 {
     [ ! -f "${1}" ] && return 1
-    _loadconf_var_options=$(awk '! /export/ {if ($0 ~ "^.*=[^;&]*" && $0 !~ "&&" && $1 !~ "^#") print }' "${1}")
-    eval "${_loadconf_var_options}"
+    _loadconf__options=$(awk '! /export/ {if ($0 ~ "^.*=[^;&]*" && $0 !~ "&&" && $1 !~ "^#") print }' "${1}")
+    eval "${_loadconf__options}"
 }
 
 _mysql()
@@ -141,7 +141,7 @@ for arg; do #parse options
                 _die "Option \`${arg}' requires a parameter"
             fi ;;
         -c) if [ "${#}" -gt "1" ]; then
-                _var_config_file="$(printf "%s " "${@}" | awk '{print $2}')"
+                __config_file="$(printf "%s " "${@}" | awk '{print $2}')"
                 shift 2
             else
                 _die "Option \`${arg}' requires a parameter"
@@ -167,7 +167,7 @@ else
     rm -rf -- "${backup_dir}"/.dump-dbs
 fi
 
-if [ -z "${_var_config_file}" ]; then
+if [ -z "${__config_file}" ]; then
     if [ -f ./.dump-dbs ]; then
         _loadconf ./.dump-dbs
     elif [ -f ~/.dump-dbs ]; then
@@ -176,8 +176,8 @@ if [ -z "${_var_config_file}" ]; then
         _loadconf /etc/dump-dbs
     fi
 else
-    [ ! -f "${_var_config_file}" ] && _die "couldn't find \`${_var_config_file}'"
-    _loadconf "${_var_config_file}"
+    [ ! -f "${__config_file}" ] && _die "couldn't find \`${__config_file}'"
+    _loadconf "${__config_file}"
 fi
 
 if [ -z "${module}" ] || [ -z "${user}" ] || [ -z "${passwd}" ] || [ -z "${backup_dir}" ]; then

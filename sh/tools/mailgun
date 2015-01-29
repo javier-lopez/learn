@@ -42,22 +42,22 @@ _validmail()
 _loadconf()
 {
     [ ! -e "${1}" ] && return 1
-    _loadconf_var_options=$(awk '! /export/ {if ($0 ~ "^.*=[^;&]*" && $0 !~ "&&" && $1 !~ "^#") print }' "${1}")
-    eval "${_loadconf_var_options}"
+    _loadconf__options=$(awk '! /export/ {if ($0 ~ "^.*=[^;&]*" && $0 !~ "&&" && $1 !~ "^#") print }' "${1}")
+    eval "${_loadconf__options}"
 }
 
 _mailgun()
 {
     [ -z "${5}" ] && return 1
 
-    _mailgun_var_api="${1}";     shift
-    _mailgun_var_from="${1}";    shift
-    _mailgun_var_to="${1}";      shift
-    _mailgun_var_subject="${1}"; shift
-    _mailgun_var_msg="${*}"
-    curl -s --user "${_mailgun_var_api}" -G https://api.mailgun.net/v2/correo.io/messages \
-         -F from="${_mailgun_var_from}" -F to="${_mailgun_var_to}" \
-         -F subject="${_mailgun_var_subject}" -F text="${_mailgun_var_msg}"
+    _mailgun__api="${1}";     shift
+    _mailgun__from="${1}";    shift
+    _mailgun__to="${1}";      shift
+    _mailgun__subject="${1}"; shift
+    _mailgun__msg="${*}"
+    curl -s --user "${_mailgun__api}" -G https://api.mailgun.net/v2/correo.io/messages \
+         -F from="${_mailgun__from}" -F to="${_mailgun__to}" \
+         -F subject="${_mailgun__subject}" -F text="${_mailgun__msg}"
 }
 
 if [ ! -t 0 ]; then
@@ -118,7 +118,7 @@ if [ -z "${config}" ]; then
         _loadconf /etc/mailgun
     fi
 else
-    [ ! -e "${config}" ] && _die "\`${_var_config_file}' doesn't exist"
+    [ ! -e "${config}" ] && _die "\`${__config_file}' doesn't exist"
     _loadconf "${config}"
 fi
 

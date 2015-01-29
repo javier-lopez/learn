@@ -38,17 +38,17 @@ _aptproxy()
 _arch()
 {   #check system arch, return 64|32 (32 by default)
     if [ -z "${MACHTYPE}" ]; then
-        _arch_var_arch="$(uname -m)"
+        _arch__arch="$(uname -m)"
     else
-        _arch_var_arch="$(printf "%s" "${MACHTYPE}" | cut -d- -f1)"
+        _arch__arch="$(printf "%s" "${MACHTYPE}" | cut -d- -f1)"
     fi
 
-    case "${_arch_var_arch}" in
-        x86_64) _arch_var_arch="64" ;;
-        *)      _arch_var_arch="32" ;;
+    case "${_arch__arch}" in
+        x86_64) _arch__arch="64" ;;
+        *)      _arch__arch="32" ;;
     esac
 
-    printf "%s" "${_arch_var_arch}"
+    printf "%s" "${_arch__arch}"
 }
 #==================================================== Example ====
 #arch="$(_arch)"
@@ -57,20 +57,20 @@ _arch()
 
 _basename()
 {   #basename portable version
-    [ -z "${1}" ] && return 1 || _basename_var_name="${1}"
-    [ -z "${2}" ] || _basename_var_suffix="${2}"
-    case "${_basename_var_name}" in
-        /*|*/*) _basename_var_name="$(expr "${_basename_var_name}" : '.*/\([^/]*\)')" ;;
+    [ -z "${1}" ] && return 1 || _basename__name="${1}"
+    [ -z "${2}" ] || _basename__suffix="${2}"
+    case "${_basename__name}" in
+        /*|*/*) _basename__name="$(expr "${_basename__name}" : '.*/\([^/]*\)')" ;;
     esac
 
-    if [ -n "${_basename_var_suffix}" ] && [ "${#_basename_var_name}" -gt "${#2}" ]; then
-        if [ X"$(printf "%s" "${_basename_var_name}" | cut -c"$((${#_basename_var_name} - ${#_basename_var_suffix} + 1))"-"${#_basename_var_name}")" \
-           = X"$(printf "%s" "${_basename_var_suffix}")" ]; then
-            _basename_var_name="$(printf "%s" "${_basename_var_name}" | cut -c1-"$((${#_basename_var_name} - ${#_basename_var_suffix}))")"
+    if [ -n "${_basename__suffix}" ] && [ "${#_basename__name}" -gt "${#2}" ]; then
+        if [ X"$(printf "%s" "${_basename__name}" | cut -c"$((${#_basename__name} - ${#_basename__suffix} + 1))"-"${#_basename__name}")" \
+           = X"$(printf "%s" "${_basename__suffix}")" ]; then
+            _basename__name="$(printf "%s" "${_basename__name}" | cut -c1-"$((${#_basename__name} - ${#_basename__suffix}))")"
         fi
     fi
 
-    printf "%s" "${_basename_var_name}"
+    printf "%s" "${_basename__name}"
 }
 #==================================================== Example ====
 #_basename /path/file #print file
@@ -78,17 +78,17 @@ _basename()
 
 _bbasename()
 {   #alternative basename portable version, faster! but with possible drawbacks
-    [ -z "${1}" ] && return 1 || _bbasename_var_name="${1}"
-    [ -z "${2}" ] || _bbasename_var_suffix="${2}"
-    case "${_bbasename_var_name}" in
-        /*|*/*) _bbasename_var_name="${_bbasename_var_name##*/}"
+    [ -z "${1}" ] && return 1 || _bbasename__name="${1}"
+    [ -z "${2}" ] || _bbasename__suffix="${2}"
+    case "${_bbasename__name}" in
+        /*|*/*) _bbasename__name="${_bbasename__name##*/}"
     esac
 
-    if [ -n "${_bbasename_var_suffix}" ] && [ "${#_bbasename_var_name}" -gt "${#2}" ]; then
-        _bbasename_var_name="${_bbasename_var_name%$_bbasename_var_suffix}"
+    if [ -n "${_bbasename__suffix}" ] && [ "${#_bbasename__name}" -gt "${#2}" ]; then
+        _bbasename__name="${_bbasename__name%$_bbasename__suffix}"
     fi
 
-    printf "%s" "${_bbasename_var_name}"
+    printf "%s" "${_bbasename__name}"
 }
 #==================================================== Example ====
 #_bbasename /path/file #print file
@@ -120,8 +120,8 @@ _dirname()
 
     case "${1}" in
         /*|*/*) #http://www.linuxselfhelp.com/gnu/autoconf/html_chapter/autoconf_10.html
-            _dirname_var_dir=$(expr "x${1}" : 'x\(.*\)/[^/]*' \| '.'      : '.')
-            printf "%s\\n" "${_dirname_var_dir}"
+            _dirname__dir=$(expr "x${1}" : 'x\(.*\)/[^/]*' \| '.'      : '.')
+            printf "%s\\n" "${_dirname__dir}"
             ;;
         *) printf "%s\\n" ".";;
     esac
@@ -132,52 +132,52 @@ _dirname()
 
 _distro()
 {   #return distro name in lower string
-    _distro_var_DIST_INFO="/etc/lsb-release"
-    if [ -r "${_distro_var_DIST_INFO}" ]; then
-        . "${_distro_var_DIST_INFO}"
+    _distro__DIST_INFO="/etc/lsb-release"
+    if [ -r "${_distro__DIST_INFO}" ]; then
+        . "${_distro__DIST_INFO}"
     fi
 
     if [ -z "${DISTRIB_ID}" ]; then
-        _distro_var_DISTRIB_ID="Unknown";
+        _distro__DISTRIB_ID="Unknown";
         if [ -f /etc/arch-release ]; then
-            _distro_var_DISTRIB_ID="Arch"
+            _distro__DISTRIB_ID="Arch"
         elif [ -r /etc/knoppix-version ]; then
-            _distro_var_DISTRIB_ID="Knoppix"
+            _distro__DISTRIB_ID="Knoppix"
         elif [ -r /etc/sidux-version ]; then
-            _distro_var_DISTRIB_ID="Sidux"
+            _distro__DISTRIB_ID="Sidux"
         elif [ -r /etc/debian_version ]; then
-            _distro_var_DISTRIB_ID="Debian"
+            _distro__DISTRIB_ID="Debian"
         elif [ -r /etc/issue ]; then
-            _distro_var_DISTRIB_ID="$(awk '{print $1}' /etc/issue.net)"
-            if [ X"${_distro_var_DISTRIB_ID}" = X"Ubuntu" ]; then
-                _distro_var_DISTRIB_ID="Ubuntu"
+            _distro__DISTRIB_ID="$(awk '{print $1}' /etc/issue.net)"
+            if [ X"${_distro__DISTRIB_ID}" = X"Ubuntu" ]; then
+                _distro__DISTRIB_ID="Ubuntu"
             fi
         elif [ -r /etc/gentoo-release ]; then
-            _distro_var_DISTRIB_ID="Gentoo"
+            _distro__DISTRIB_ID="Gentoo"
         elif [ -f /etc/lfs-version ]; then
-            _distro_var_DISTRIB_ID="LFS"
+            _distro__DISTRIB_ID="LFS"
         elif [ -r /etc/pclinuxos-release ]; then
-            _distro_var_DISTRIB_ID="PCLinuxOS"
+            _distro__DISTRIB_ID="PCLinuxOS"
         elif [ -f /etc/mandriva-release ] || [ -f /etc/mandrake-release ]; then
-            _distro_var_DISTRIB_ID="Mandriva"
+            _distro__DISTRIB_ID="Mandriva"
         elif [ -f /etc/redhat-release ]; then
-            _distro_var_DISTRIB_ID="RedHat"
+            _distro__DISTRIB_ID="RedHat"
         elif [ -f /etc/fedora-release ]; then
-            _distro_var_DISTRIB_ID="Fedora"
+            _distro__DISTRIB_ID="Fedora"
         elif [ -r /etc/vector-version ]; then
-            _distro_var_DISTRIB_ID="VectorLinux"
+            _distro__DISTRIB_ID="VectorLinux"
         elif [ -r /etc/slackware-version ]; then
-            _distro_var_DISTRIB_ID="$(cat /etc/slackware-version)"
+            _distro__DISTRIB_ID="$(cat /etc/slackware-version)"
         elif [ -f /etc/release ]; then
-            _distro_var_DISTRIB_ID="Solaris"
+            _distro__DISTRIB_ID="Solaris"
         elif [ -r /etc/SuSE-release ]; then
-            _distro_var_DISTRIB_ID="$(grep -i suse /etc/SuSE-release)"
+            _distro__DISTRIB_ID="$(grep -i suse /etc/SuSE-release)"
         elif [ -f /etc/yellowdog-release ]; then
-            _distro_var_DISTRIB_ID="YellowDog Linux"
+            _distro__DISTRIB_ID="YellowDog Linux"
         elif [ -f /etc/zenwalk-version ]; then
-            _distro_var_DISTRIB_ID="Zenwalk"
+            _distro__DISTRIB_ID="Zenwalk"
         fi
-        printf "%s\\n" "${_distro_var_DISTRIB_ID}" | \
+        printf "%s\\n" "${_distro__DISTRIB_ID}" | \
             tr 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 'abcdefghijklmnopqrstuvwxyz'
     else
         printf "%s\\n" "${DISTRIB_ID}" | \
@@ -220,8 +220,8 @@ _encode64()
 _ensurecron()
 {   #adds cron job, returns 1 on error
     [ -z "${1}" ] && return 1
-    _ensurecron_var_exist="$(crontab -l 2>/dev/null | awk -v p="${1}" '{ if ($0 == p) {print p}}')"
-    [ -n "${_ensurecron_var_exist}" ] && return 0
+    _ensurecron__exist="$(crontab -l 2>/dev/null | awk -v p="${1}" '{ if ($0 == p) {print p}}')"
+    [ -n "${_ensurecron__exist}" ] && return 0
     ( crontab -l 2>/dev/null; printf "%s\\n" "${1}" ) | crontab -
 }
 #==================================================== Example ====
@@ -246,9 +246,9 @@ _user()
 
 _getfirstvalue()
 {   #returns first value that is non-empty
-    for _getfirstvalue_var_param; do
-        if [ ! -z "${_getfirstvalue_var_param}" ]; then
-            printf "%s\\n" "${_getfirstvalue_var_param}"
+    for _getfirstvalue__param; do
+        if [ ! -z "${_getfirstvalue__param}" ]; then
+            printf "%s\\n" "${_getfirstvalue__param}"
             return 0
         fi
     done
@@ -270,10 +270,10 @@ _getfs()
 _getpasswd()
 {   #define vars as passwords
     if [ -n "${1}" ]; then
-        _getpasswd_var_option="$(printf "%s\\n" "${1}" | tr '[:upper:]' '[:lower:]')"
-        printf "%s" "Enter your ${_getpasswd_var_option} password: "
+        _getpasswd__option="$(printf "%s\\n" "${1}" | tr '[:upper:]' '[:lower:]')"
+        printf "%s" "Enter your ${_getpasswd__option} password: "
         stty -echo
-        read ${_getpasswd_var_option}passwd
+        read ${_getpasswd__option}passwd
         stty echo
         printf "\\n"
     else
@@ -325,10 +325,10 @@ _alphanum()
 
   # Remove all unacceptable chars
   [ -z "${1}" ] && return 1
-  _alphanum_var_compressed="$(printf "%s" "${1}" | \
+  _alphanum__compressed="$(printf "%s" "${1}" | \
                               sed -e 's:[^[:alnum:]]::g')"
 
-  [ X"${_alphanum_var_compressed}" = X"${1}" ] && return 0 || return 1
+  [ X"${_alphanum__compressed}" = X"${1}" ] && return 0 || return 1
 }
 #==================================================== Example ====
 #printf "%s" "Enter input: "
@@ -466,23 +466,23 @@ _printfc()
 
 _printfl()
 {   #print lines
-    _printfl_var_max_len="80"
+    _printfl__max_len="80"
     if [ -n "${1}" ]; then
-        _printfl_var_word_len="$((${#*} + 2))"
-        _printfl_var_sub="$((${_printfl_var_max_len} - ${_printfl_var_word_len}))"
-        _printfl_var_half="$((${_printfl_var_sub} / 2))"
-        _printfl_var_other_half="$((${_printfl_var_sub} - ${_printfl_var_half}))"
+        _printfl__word_len="$((${#*} + 2))"
+        _printfl__sub="$((${_printfl__max_len} - ${_printfl__word_len}))"
+        _printfl__half="$((${_printfl__sub} / 2))"
+        _printfl__other_half="$((${_printfl__sub} - ${_printfl__half}))"
         printf "%b" "\033[1m" #white strong
-        printf '%*s' "${_printfl_var_half}" '' | tr ' ' -
+        printf '%*s' "${_printfl__half}" '' | tr ' ' -
         printf "%b" "\033[7m" #white background
         printf " %s " "${*}"
         printf "%b" "\033[0m\033[1m" #white strong
-        printf '%*s' "${_printfl_var_other_half}" '' | tr ' ' -
+        printf '%*s' "${_printfl__other_half}" '' | tr ' ' -
         printf "%b" "\033[0m" #back to normal
         printf "\\n"
     else
         printf "%b" "\033[1m" #white strong
-        printf '%*s' "${_printfl_var_max_len}" '' | tr ' ' -
+        printf '%*s' "${_printfl__max_len}" '' | tr ' ' -
         printf "%b" "\033[0m" #back to normal
         printf "\\n"
     fi
@@ -506,30 +506,30 @@ _printtime()
     [ -z "${1}" ] && return 1
     printf "%s\\n" "${1}" | grep -v "[^0-9]" >/dev/null || return 1;
 
-    _printtime_var_num="${1}"
-    _printtime_var_min="0"
-    _printtime_var_hour="0"
-    _printtime_var_day="0"
-    if [ "${_printtime_var_num}" -gt "59" ]; then
-        _printtime_var_sec="$((${_printtime_var_num} % 60))"
-        _printtime_var_num="$((${_printtime_var_num} / 60))"
-        if [ "${_printtime_var_num}" -gt "59" ]; then
-            _printtime_var_min="$((${_printtime_var_num} % 60))"
-            _printtime_var_num="$((${_printtime_var_num} / 60))"
-            if [ "${_printtime_var_num}" -gt "23" ]; then
-                _printtime_var_hour="$((${_printtime_var_num} % 24))"
-                _printtime_var_day="$((${_printtime_var_num} / 24))"
+    _printtime__num="${1}"
+    _printtime__min="0"
+    _printtime__hour="0"
+    _printtime__day="0"
+    if [ "${_printtime__num}" -gt "59" ]; then
+        _printtime__sec="$((${_printtime__num} % 60))"
+        _printtime__num="$((${_printtime__num} / 60))"
+        if [ "${_printtime__num}" -gt "59" ]; then
+            _printtime__min="$((${_printtime__num} % 60))"
+            _printtime__num="$((${_printtime__num} / 60))"
+            if [ "${_printtime__num}" -gt "23" ]; then
+                _printtime__hour="$((${_printtime__num} % 24))"
+                _printtime__day="$((${_printtime__num} / 24))"
             else
-                _printtime_var_hour="${_printtime_var_num}"
+                _printtime__hour="${_printtime__num}"
             fi
         else
-            _printtime_var_min="${_printtime_var_num}"
+            _printtime__min="${_printtime__num}"
         fi
     else
-        _printtime_var_sec="${_printtime_var_num}"
+        _printtime__sec="${_printtime__num}"
     fi
     printf "%s\\n" \
-    ""${_printtime_var_day}"d "${_printtime_var_hour}"h "${_printtime_var_min}"m "${_printtime_var_sec}"s"
+    ""${_printtime__day}"d "${_printtime__hour}"h "${_printtime__min}"m "${_printtime__sec}"s"
 }
 #==================================================== Example ====
 #SECONDS="12345"
@@ -559,56 +559,56 @@ _privport()
 
 _realpath()
 {   # print the absolute path
-    _realpath_var_success="true"
-    _realpath_var_path="${1}"
+    _realpath__success="true"
+    _realpath__path="${1}"
 
     # make sure the string isn't empty as that implies something in further logic
-    if [ -z "${_realpath_var_path}" ]; then
-        _realpath_var_success="false"
+    if [ -z "${_realpath__path}" ]; then
+        _realpath__success="false"
     else
         # start with the file name (sans the trailing slash)
-        _realpath_var_path="${_realpath_var_path%/}"
+        _realpath__path="${_realpath__path%/}"
 
         # if we stripped off the trailing slash and were left with nothing, that means we're in the root directory
-        [ -z "${_realpath_var_path}" ] && _realpath_var_path="/"
+        [ -z "${_realpath__path}" ] && _realpath__path="/"
 
         # get the basename of the file (ignoring '.' & '..', because they're really part of the path)
-        _realpath_var_file_basename="${_realpath_var_path##*/}"
-        if [ X"${_realpath_var_file_basename}" = X"." ] || [ X"${_realpath_var_file_basename}" = X".." ]; then
-            _realpath_var_file_basename=""
+        _realpath__file_basename="${_realpath__path##*/}"
+        if [ X"${_realpath__file_basename}" = X"." ] || [ X"${_realpath__file_basename}" = X".." ]; then
+            _realpath__file_basename=""
         fi
 
         # extracts the directory component of the full path, if it's empty then assume '.' (the current working directory)
-        _realpath_var_directory="${_realpath_var_path%${_realpath_var_file_basename}}"
-        [ -z "${_realpath_var_directory}" ] && _realpath_var_directory="."
+        _realpath__directory="${_realpath__path%${_realpath__file_basename}}"
+        [ -z "${_realpath__directory}" ] && _realpath__directory="."
 
         # attempt to change to the directory
-        if ! \cd "${_realpath_var_directory}" >/dev/null 2>/dev/null; then
-            _realpath_var_success="false"
+        if ! \cd "${_realpath__directory}" >/dev/null 2>/dev/null; then
+            _realpath__success="false"
         fi
 
-        if "${_realpath_var_success}"; then
+        if "${_realpath__success}"; then
             # does the filename exist?
-            if [ -n "${_realpath_var_file_basename}" ] && [ ! -e "${_realpath_var_file_basename}" ]; then
-                _realpath_var_success="false"
+            if [ -n "${_realpath__file_basename}" ] && [ ! -e "${_realpath__file_basename}" ]; then
+                _realpath__success="false"
             fi
 
             # get the absolute path of the current directory & change back to previous directory
-            _realpath_var_abs_path="$(pwd -P)"
+            _realpath__abs_path="$(pwd -P)"
             \cd "-" >/dev/null 2>/dev/null
 
             # Append base filename to absolute path
-            if [ X"${_realpath_var_abs_path}" = X"/" ]; then
-                _realpath_var_abs_path="${_realpath_var_abs_path}${_realpath_var_file_basename}"
+            if [ X"${_realpath__abs_path}" = X"/" ]; then
+                _realpath__abs_path="${_realpath__abs_path}${_realpath__file_basename}"
             else
-                _realpath_var_abs_path="${_realpath_var_abs_path}/${_realpath_var_file_basename}"
+                _realpath__abs_path="${_realpath__abs_path}/${_realpath__file_basename}"
             fi
 
-            printf "%s\\n" "${_realpath_var_abs_path}"
+            printf "%s\\n" "${_realpath__abs_path}"
         fi
     fi
 
-    "${_realpath_var_success}"
+    "${_realpath__success}"
 }
 #==================================================== Example ====
 #relative_path="../Shared/"
@@ -662,13 +662,13 @@ _strdiff()
 
     mkfifo "${$}".fifo1 && mkfifo "${$}".fifo2
     if [ -e "${$}".fifo1 ] && [ -e "${$}".fifo2 ]; then
-        _strdiff_var_1st_string="$(printf "%s" "${1}" | sed 's: :\n:g')"
-        _strdiff_var_2nd_string="$(printf "%s" "${2}" | sed 's: :\n:g')"
-        printf "%s\\n" "${_strdiff_var_1st_string}" > "${$}".fifo1 &
-        printf "%s\\n" "${_strdiff_var_2nd_string}" > "${$}".fifo2 &
-        _strdiff_var_diff="$(awk 'NR == FNR { A[$0]=1; next } !A[$0]' "${$}".fifo1 "${$}".fifo2)"
+        _strdiff__1st_string="$(printf "%s" "${1}" | sed 's: :\n:g')"
+        _strdiff__2nd_string="$(printf "%s" "${2}" | sed 's: :\n:g')"
+        printf "%s\\n" "${_strdiff__1st_string}" > "${$}".fifo1 &
+        printf "%s\\n" "${_strdiff__2nd_string}" > "${$}".fifo2 &
+        _strdiff__diff="$(awk 'NR == FNR { A[$0]=1; next } !A[$0]' "${$}".fifo1 "${$}".fifo2)"
         rm -rf "${$}".fifo1; rm -rf "${$}".fifo2
-        printf "%s\\n" "${_strdiff_var_diff}"
+        printf "%s\\n" "${_strdiff__diff}"
     else
         return 1
     fi
@@ -707,8 +707,8 @@ _strreplace()
     [ -z "${1}" ] && return 1
     [ -z "${2}" ] && return 1
     [ -z "${3}" ] && return 1
-    _strreplace_var_replace=$(printf "%s" "${1}" | sed -e "s:${2}:${3}:g")
-    printf "%s" "${_strreplace_var_replace}"
+    _strreplace__replace=$(printf "%s" "${1}" | sed -e "s:${2}:${3}:g")
+    printf "%s" "${_strreplace__replace}"
 }
 #==================================================== Example ====
 #hello="hello world"
@@ -720,12 +720,12 @@ _strunique()
 {   #print unique strings, return 1 on failure
     [ -z "${1}" ] && return 1
     [ -z "${2}" ] && return 1
-    _strunique_var_unique="$(printf "%s\\n" ${@} | \
+    _strunique__unique="$(printf "%s\\n" ${@} | \
                             awk '!($0 in x) {x[$0];print}')"  #faster
     #printf "%s\\n" $@ | awk '!x[$0]++'
-    _strunique_var_unique="$(printf "%s" "${_strunique_var_unique}" | \
+    _strunique__unique="$(printf "%s" "${_strunique__unique}" | \
                             tr '\n' ' ')"
-    printf "%s\\n" "${_strunique_var_unique}"
+    printf "%s\\n" "${_strunique__unique}"
 }
 #==================================================== Example ====
 #hello="hello world"
@@ -740,27 +740,27 @@ _substr()
     [ -z "${2}" ] && return 1
 
     if [ "${2}" -lt "0" ]; then
-        _substr_var_start="$((${#1} + ${2}))"
+        _substr__start="$((${#1} + ${2}))"
     else
-        _substr_var_start="${2}"
+        _substr__start="${2}"
     fi
 
     if [ -z "${3}" ]; then
-        _substr_var_len="${#1}"
+        _substr__len="${#1}"
     else
         if [ "${3}" -lt "0" ]; then
-            _substr_var_len="$((${#1} + ${3}))"
+            _substr__len="$((${#1} + ${3}))"
         else
-            _substr_var_len="$((${_substr_var_start} + ${3}))"
+            _substr__len="$((${_substr__start} + ${3}))"
         fi
     fi
 
-    _substr_var_start="$((${_substr_var_start} + 1))"
+    _substr__start="$((${_substr__start} + 1))"
 
-    [ "${_substr_var_start}" -lt "0" ] && return 1
-    [ "${_substr_var_start}" -gt "${_substr_var_len}" ] && return 1
+    [ "${_substr__start}" -lt "0" ] && return 1
+    [ "${_substr__start}" -gt "${_substr__len}" ] && return 1
 
-    printf "%s\\n" "${1}" | cut -c"${_substr_var_start}"-"${_substr_var_len}"
+    printf "%s\\n" "${1}" | cut -c"${_substr__start}"-"${_substr__len}"
 }
 #==================================================== Example ====
 #_substr "abcdef" 0 4 #print "abcd"
@@ -771,18 +771,18 @@ _uploadimg()
     #requires curl, and optionally xclip
     [ -z "${1}" ] && return 1
 
-    for img; do
-        if [ -f "${img}" ] ; then
-            case "${img}" in
+    for _upload_img__param; do
+        if [ -f "${_upload_img__param}" ] ; then
+            case "${_upload_img__param}" in
                 *.jpg|*.JPG|*.jpeg|*.png|*.PNG)
                     if command -v "xclip" >/dev/null 2>&1; then
-                        curl -s -F "image=@${img}"                   \
+                        curl -s -F "image=@${_upload_img__param}"                   \
                             -F "key=486690f872c678126a2c09a9e196ce1b"          \
                             http://imgur.com/api/upload.xml |                  \
                             egrep -o "<original_image>(.)*</original_image>" | \
                             egrep -o "http://i.imgur.com/[^<]*" | xclip -selection clipboard; xclip -o -selection clipboard
                     else
-                        curl -s -F "image=@${img}"                   \
+                        curl -s -F "image=@${_upload_img__param}"                   \
                             -F "key=486690f872c678126a2c09a9e196ce1b"          \
                             http://imgur.com/api/upload.xml |                  \
                             egrep -o "<original_image>(.)*</original_image>" | \
@@ -803,10 +803,10 @@ _uploadimg()
 _unprintf()
 {   #unprint sentence
     [ -z "${1}" ] && return 1
-    _unprintf_var_word_len="${#1}"
-    _unprintf_var_i="0"
-    while [ "${_unprintf_var_i}" -lt "${_unprintf_var_word_len}" ]; do
-        _unprintf_var_i="$((${_unprintf_var_i} + 1))"
+    _unprintf__word_len="${#1}"
+    _unprintf__i="0"
+    while [ "${_unprintf__i}" -lt "${_unprintf__word_len}" ]; do
+        _unprintf__i="$((${_unprintf__i} + 1))"
         printf "%b" "\b"
     done
 }

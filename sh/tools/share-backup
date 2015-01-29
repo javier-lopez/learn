@@ -19,20 +19,20 @@
 
 _basename()
 {
-    [ -z "${1}" ] && return 1 || _basename_var_name="${1}"
-    [ -z "${2}" ] || _basename_var_suffix="${2}"
-    case "${_basename_var_name}" in
-        /*|*/*) _basename_var_name="$(expr "${_basename_var_name}" : '.*/\([^/]*\)')" ;;
+    [ -z "${1}" ] && return 1 || _basename__name="${1}"
+    [ -z "${2}" ] || _basename__suffix="${2}"
+    case "${_basename__name}" in
+        /*|*/*) _basename__name="$(expr "${_basename__name}" : '.*/\([^/]*\)')" ;;
     esac
 
-    if [ -n "${_basename_var_suffix}" ] && [ "${#_basename_var_name}" -gt "${#2}" ]; then
-        if [ X"$(printf "%s" "${_basename_var_name}" | cut -c"$((${#_basename_var_name} - ${#_basename_var_suffix} + 1))"-"${#_basename_var_name}")" \
-           = X"$(printf "%s" "${_basename_var_suffix}")" ]; then
-            _basename_var_name="$(printf "%s" "${_basename_var_name}" | cut -c1-"$((${#_basename_var_name} - ${#_basename_var_suffix}))")"
+    if [ -n "${_basename__suffix}" ] && [ "${#_basename__name}" -gt "${#2}" ]; then
+        if [ X"$(printf "%s" "${_basename__name}" | cut -c"$((${#_basename__name} - ${#_basename__suffix} + 1))"-"${#_basename__name}")" \
+           = X"$(printf "%s" "${_basename__suffix}")" ]; then
+            _basename__name="$(printf "%s" "${_basename__name}" | cut -c1-"$((${#_basename__name} - ${#_basename__suffix}))")"
         fi
     fi
 
-    printf "%s\\n" "${_basename_var_name}"
+    printf "%s\\n" "${_basename__name}"
 }
 
 _num()
