@@ -51,7 +51,7 @@ _bmozilla()
         if command -v "lrzip" 2>/dev/null; then
             tar cf - "${HOME}"/.mozilla | nice lrzip -N 19 -q -L 9 > "${1}"/mozilla-"$(date +%Y-%m-%d:%H:%M)".tar.lrz
         elif command -v "lzma" 2>/dev/null; then
-            tar cf - "${HOME}"/.mozilla | nice lzma  > "${1}"/mozilla-"$(date +%Y-%m-%d:%H:%M)".tar.lzma
+            tar cf - "${HOME}"/.mozilla | nice lzma -9 > "${1}"/mozilla-"$(date +%Y-%m-%d:%H:%M)".tar.lzma
         elif command -v "bzip2" 2>/dev/null; then
             tar cf - "${HOME}"/.mozilla | nice bzip2 > "${1}"/mozilla-"$(date +%Y-%m-%d:%H:%M)".tar.bz2
         else
