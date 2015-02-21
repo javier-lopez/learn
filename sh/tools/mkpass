@@ -41,7 +41,7 @@ else
 fi
 
 if command -v "xclip" >/dev/null 2>&1; then
-    if [ ! -t 1 ]; then
+    if [ ! -t 1 ] || [ -z "${DISPLAY}" ]; then
         printf "%b" "$(strings /dev/urandom | grep -o '[[:alnum:]]' | head -n "${mkpasswd_length}" | tr -d '\n')"
     else
     #http://unix.stackexchange.com/questions/28503/how-can-i-send-stdout-to-multiple-commands

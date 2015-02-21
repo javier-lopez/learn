@@ -32,7 +32,7 @@ _translate()
     _translate__result="$(printf "%s\\n" "${_translate__page}" | tail -1 | cut -d\" -f2)"
 
     if command -v "xclip" >/dev/null 2>&1; then
-        if [ ! -t 1 ]; then
+        if [ ! -t 1 ] || [ -z "${DISPLAY}" ] ; then
             printf "%s\\n" "${_translate__result}"
         else
             printf "%s" "${_translate__result}" | xclip -selection clipboard; xclip -o -selection clipboard; printf "\\n"

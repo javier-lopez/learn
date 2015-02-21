@@ -19,7 +19,7 @@ _uimg()
             case "${_uimg__img}" in
                 *.jpg|*.JPG|*.jpeg|*.png|*.PNG)
                     if command -v "xclip" >/dev/null 2>&1; then
-                        if [ ! -t 1 ]; then
+                        if [ ! -t 1 ] || [ -z "${DISPLAY}" ]; then
                             curl -s -F "image=@${_uimg__img}"                   \
                                 -F "key=486690f872c678126a2c09a9e196ce1b"          \
                                 http://imgur.com/api/upload.xml |                  \

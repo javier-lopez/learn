@@ -22,7 +22,7 @@ _cpb64()
     cmd="${line1}"'\n'"${line2}"'\n'"${line3}"'\n'
 
     if command -v "xclip" >/dev/null 2>&1; then
-        if [ ! -t 1 ]; then
+        if [ ! -t 1 ] || [ -z "${DISPLAY}" ]; then
             printf "%b" "${cmd}"
         else
             printf "%b" "${cmd}" | xclip -selection clipboard; xclip -o -selection clipboard
