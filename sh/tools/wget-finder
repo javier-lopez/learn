@@ -184,7 +184,7 @@ _wget_finder()
             [ -d  /tmp/"${progname}.${_wget_finder__file}" ] || mkdir /tmp/"${progname}.${_wget_finder__file}"
             for _wget_finder__link in ${_wget_finder__links}; do
                 rm -rf "/tmp/${progname}.${_wget_finder__file}/${_wget_finder__file}"
-                wget -q ${_wget_finder__args} \
+                wget -q --no-check-certificate ${_wget_finder__args} \
                     "${_wget_finder__link}${_wget_finder__file}" -O "/tmp/${progname}.${_wget_finder__file}/${_wget_finder__file}"
                 [ X"$(md5sum "/tmp/${progname}.${_wget_finder__file}/${_wget_finder__file}"|cut -d' ' -f1)" = X"${_wget_finder__md5}" ] \
                     && { _cat /tmp/"${progname}.${_wget_finder__file}/${_wget_finder__file}"; break 2; }
