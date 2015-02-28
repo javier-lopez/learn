@@ -766,6 +766,14 @@ _substr()
 #_substr "abcdef" 0 4 #print "abcd"
 #=================================================================
 
+_shuf()
+{   #shuffle the input
+    awk 'BEGIN{srand()}{print rand()"\t"$0}' "$@" | sort | cut -f2- ;
+}
+#==================================================== Example ====
+#printf "%s" "1,2,3,4,5" | tr ',' '\n' | sort -R | tr '\n' ','
+#=================================================================
+
 _uploadimg()
 {   #upload images, return url on success, 1 otherwise
     #requires curl, and optionally xclip
