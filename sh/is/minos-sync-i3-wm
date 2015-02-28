@@ -1,0 +1,59 @@
+#/bin/bash
+#depends on: git-core
+
+set -ex
+
+output="/tmp/$(basename ${0}).log"
+exec 1>$output 2>&1
+
+err_handler() {
+    echo $(cat ${output})
+    mail m@javier.io "$(cat ${output})"
+}
+
+trap err_handler ERR
+
+[ -d ~/i3-wm ] || mkdir ~/i3-wm
+[ -d ~/i3-wm/i3-orig ]  && (cd ~/i3-wm/i3-orig; git pull)  || (cd ~/i3-wm/; git clone https://github.com/i3/i3 i3-orig)
+[ -d ~/i3-wm/i3-minos ] && (cd ~/i3-wm/i3-minos; git pull) || (cd ~/i3-wm/; git clone git@github.com:minos-org/i3 i3-minos)
+
+cd ~/i3-wm/i3-minos
+git rm -rf *; :
+cp -rf ~/i3-wm/i3-orig/* ~/i3-wm/i3-minos/
+rm -rf ~/i3-wm/i3-minos/debian
+
+cd ~/i3-wm/i3-orig/
+git describe --tags --abbrev=0 > ~/i3-wm/i3-minos/VERSION
+printf "%s" "$(git describe --tags --always) ($(git log --pretty=format:%cd --date=short -n1), branch \\\"$(git describe --tags --always --all | sed s:heads/::)\\\")" > ~/i3-wm/i3-minos/I3_VERSION
+cd ~/i3-wm/i3-minos
+cat > ~/i3-wm/i3-minos/README.md << "EOF"
+## About
+
+i3 includes a debian/ dir which difficults ppa recipes (LP:1390746).  This is an automatic generated mirror of i3 minus deb/. It's used as base to build the i3 version shipped with minos. See https://github.com/minos-org/i3-deb/tree/master/debian/patches to understand the patches applied on top to generate the final packages.
+
+## Quick start
+
+1. Set up the minos archive:
+
+   ```
+   $ sudo add-apt-repository ppa:minos-archive/main
+   ```
+
+2. Install:
+
+   ```
+   $ sudo apt-get update && sudo apt-get install i3-wm
+   ```
+
+3. Enjoy =)!
+
+## Feedback
+
+Please drop me an [email](mailto:j@minos.io) with your suggestions or open [an issue](https://github.com/minos-org/i3-deb/issues) with your comments.
+EOF
+
+git add *
+if ! git status | grep -q "nothing to commit"; then
+    git commit -m "automatic sync $(date +%d-%m-%Y:%H:%M)"
+    git push
+fi

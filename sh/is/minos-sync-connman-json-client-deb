@@ -1,0 +1,28 @@
+#/bin/bash
+#depends on: git-core
+
+set -ex
+
+output="/tmp/$(basename ${0}).log"
+progname="$(basename ${0})"; progname="${progname#minos-sync-}"
+exec 1>$output 2>&1
+
+err_handler() {
+    echo $(cat ${output})
+    mail m@javier.io "$(cat ${output})"
+}
+
+trap err_handler ERR
+
+[ -d ~/"${progname}" ] || mkdir ~/"${progname}"
+[ -d ~/"${progname}"/orig ]  && (cd  ~/"${progname}"/orig; git pull) || (cd ~/"${progname}";  git clone https://github.com/eurogiciel-oss/connman-json-client orig)
+[ -d ~/"${progname}"/minos ] && (cd ~/"${progname}"/minos; git pull) || (cd ~/"${progname}"/; git clone git@github.com:chilicuil/"${progname}" minos)
+
+cd  ~/"${progname}"/minos
+git rm -rf *; :
+cp -rf ~/"${progname}"/orig/packaging/debian ~/"${progname}"/minos
+git add *
+if ! git status | grep -q "nothing to commit"; then
+    git commit -m "automatic sync $(date +%d-%m-%Y:%H:%M)"
+    git push
+fi

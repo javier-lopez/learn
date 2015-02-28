@@ -1,0 +1,57 @@
+#/bin/bash
+#depends on: git-core, libwww-perl, devscripts
+
+set -ex
+
+output="/tmp/$(basename ${0}).log"
+progname="$(basename ${0})"; progname="${progname#minos-sync-}"
+exec 1>$output 2>&1
+
+err_handler() {
+    echo $(cat ${output})
+    mail m@javier.io "$(cat ${output})"
+}
+
+trap err_handler ERR
+
+[ -d ~/"${progname}" ] || mkdir ~/"${progname}"
+[ -d ~/"${progname}"/"${progname}"-deb ] && (cd ~/"${progname}"/"${progname}"-deb; git pull) || (cd ~/"${progname}"/; git clone git@github.com:minos-org/"${progname}"-deb)
+rm -rf ~/"${progname}"/orig; cd ~/"${progname}"/"${progname}"-deb/
+uscan --watchfile ~/"${progname}"/"${progname}"-deb/debian/watch --upstream-version 0.1 --destdir=../ && cd .. && xzcat < "${progname}"-*.tar.xz | tar xf - && mv "${progname}"-*.*/ orig
+[ -d ~/"${progname}"/minos ] && (cd ~/"${progname}"/minos; git pull) || (cd ~/"${progname}"/; git clone git@github.com:minos-org/"${progname}" minos)
+
+cd ~/"${progname}"/minos
+git rm -rf *; :
+cp -rf ~/"${progname}"/"${progname}"-orig/* ~/"${progname}"/minos/
+
+cat > ~/"${progname}"/minos/README.md << "EOF"
+## About
+
+This is an automatic generated mirror of the latest connman release. It's used as base to build the connman packages for minos. See https://github.com/minos-org/connman-deb/tree/master/debian/patches to understand the changes applied on top to generate the final packages.
+
+## Quick start
+
+1. Set up the minos archive:
+
+   ```
+   $ sudo add-apt-repository ppa:minos-archive/main
+   ```
+
+2. Install:
+
+   ```
+   $ sudo apt-get update && sudo apt-get install connman connman-client
+   ```
+
+3. Enjoy =)!
+
+## Feedback
+
+Please drop me an [email](mailto:j@minos.io) with your suggestions or open [an issue](https://github.com/minos-org/connman-deb/issues) with your comments.
+EOF
+
+git add *
+if ! git status | grep -q "nothing to commit"; then
+    git commit -m "automatic sync $(date +%d-%m-%Y:%H:%M)"
+    git push
+fi
