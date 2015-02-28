@@ -1,0 +1,233 @@
+#!/bin/sh
+#description: search and download files matching a md5sum from internet(http/https/ftp)
+#usage: wget-finder --other-wget-options file:md5sum
+
+#example: wget-finder socat-1.7.2.0.tar.gz:0565dd58800e4c50534c61bbb453b771
+#socat-1.7.2.0.tar.gz
+
+#TODO 27-02-2015 08:23 >> add support for additional checksums (sha256, etc)
+search_engines="google filemare ftplike"
+
+_usage()
+{
+    printf "%b\\n" "Usage: ${progname} [OPTION]... FILE:MD5SUM..."
+    printf "%b\\n" "A wrapper around the wget non-interactive network retriever."
+    printf "\\n"
+    printf "%b\\n" "  -h, --help             show this and wget help message and exit"
+    printf "%b\\n" "  --clean-cache          remove temporal files"
+    printf "%b\\n" "  --search-engine        prefer a search engine"
+    printf "%b\\n" "  --list-search-engine   list supported search engines"
+    printf "%b\\n" "------------------------------------------------------------"
+    exec wget "${@}"
+}
+
+_basename()
+{
+    [ -z "${1}" ] && return 1 || _basename__name="${1}"
+    [ -z "${2}" ] || _basename__suffix="${2}"
+    case "${_basename__name}" in
+        /*|*/*) _basename__name="${_basename__name##*/}"
+    esac
+
+    if [ -n "${_basename__suffix}" ] && [ "${#_basename__name}" -gt "${#2}" ]; then
+        _basename__name="${_basename__name%$_basename__suffix}"
+    fi
+
+    printf "%s" "${_basename__name}"
+}
+
+_dirname()
+{
+    [ -z "${1}" ] && return 1
+    case "${1}" in
+        /*|*/*) #http://www.linuxselfhelp.com/gnu/autoconf/html_chapter/autoconf_10.html
+            _dirname__dir=$(expr "x${1}" : 'x\(.*\)/[^/]*' \| '.'      : '.')
+            printf "%s\\n" "${_dirname__dir}"
+            ;;
+        *) printf "%s\\n" ".";;
+    esac
+}
+
+_status()
+{
+    return "${1}"
+}
+
+_shuf()
+{
+    awk 'BEGIN{srand()}{print rand()"\t"$0}' "$@" | sort | cut -f2- ;
+}
+
+_cat()
+{
+    [ -z "${1}" ] && return 1
+    [ -z "${global_output}" ] && output="$(_basename "${1}")"
+    [ -z "${quiet}" ] && printf "%s\\n" "${output}"
+    if [ -z "${global_output}" ]; then
+        cat "${1}" >  "${output}"
+    else
+        cat "${1}" >> "${output}"
+    fi
+}
+
+_get_links()
+{
+    [ -z "${2}" ] && return 1
+
+    _get_links_google()
+    {
+        _get_links_google__query="Index of \"${1}.\" -filewatcher"
+        wget -q -U "Mozilla/5.0" "http://www.google.com/search?q=${_get_links_google__query}" -O- | \
+            awk 'match($0,/(http|https|ftp):\/\/.*\/&/) {if(NR!=1){$0=substr($0,RSTART,RLENGTH); print substr($0,1,length($0)-1)}}' | \
+            awk 'NF'
+    }
+
+    _get_links_filemare()
+    {
+        #//relevance/10/10 #more pages
+        #//relevance/20/10
+        #//relevance/30/10
+        _get_links_filemare__query="${1}"
+        wget -q -U "Mozilla/5.0" \
+            "http://filemare.com/en/search/${_get_links_filemare__query}" -O- | \
+            awk 'match($0,/>(http|https|ftp):\/\/.*</) {print substr($0,RSTART,RLENGTH)}' | \
+            awk '{gsub(/>/,""); gsub(/</,"/"); print}'
+    }
+
+    _get_links_ftplike()
+    {
+        _get_links_ftplike__query="${1}"
+        wget -q -U "Mozilla/5.0" \
+            "http://ftplike.com/index.aspx?q=${_get_links_ftplike__query}&m=EXACT&s=1385681-1385681&t=Files" -O- | \
+            awk 'match($0,/open (http|https|ftp):\/\/.* /) {print substr($0,RSTART,RLENGTH)}' | \
+            awk "{gsub(/$_get_links_ftplike__query\"/,\"\"); print \$2}"
+    }
+
+    case "${1}" in
+        google)   _get_links_google   "${2}" ;;
+        filemare) _get_links_filemare "${2}" ;;
+        ftplike)  _get_links_ftplike  "${2}" ;;
+        *)        return 1 ;;
+    esac
+}
+
+_wget_finder()
+{
+    for _wget_finder__arg; do
+        if [ X"${_wget_finder__output_status}" = X"1" ]; then
+            output="${_wget_finder__arg}"
+            _wget_finder__output_status="0"
+            continue
+        elif [ X"${_wget_finder__engine_status}" = X"1" ]; then
+             _wget_finder__engine_status="0"
+             continue
+        fi
+        _wget_finder__archive="$(printf "%s" "${_wget_finder__arg}" | \
+            awk '!/\/\// {if ($0 ~ ":" ) print }')"
+        if [ -z "${_wget_finder__archive}" ]; then
+            case "${_wget_finder__arg}" in
+                 -O) _wget_finder__output_status="1" ;;
+                -O*) output="${_wget_finder__arg#-O}" ;;
+                 --search-engine) _wget_finder__engine_status="1" ;;
+                  *) _wget_finder__args="${_wget_finder__arg} ${_wget_finder__args}" ;;
+            esac
+        else
+            _wget_finder__md5=${_wget_finder__archive#*:}
+            if [ ! "${#_wget_finder__md5}" -eq "32" ] || \
+                printf "%s" "${_wget_finder__archive}" | grep "/" >/dev/null; then
+                    printf "%s\\n" "Warning: '${_wget_finder__archive}' is an invalid FILE:MD5SUM pair, skipping..."
+                    _status 1
+            else
+                _wget_finder__archives="${_wget_finder__archives}${_wget_finder__archive}/"
+            fi
+        fi
+    done
+
+    if [ -z "${_wget_finder__archives}" ]; then
+        if [ -z "${output}" ]; then
+            exec wget ${_wget_finder__args}
+        else
+            [ ! -d "$(_dirname "${output}")" ] && \
+                exec wget -O "${output}" ${_wget_finder__args} ${_wget_finder__archive}
+            global_output="1"
+        fi
+    fi
+
+    while [ "${_wget_finder__archives}" ]; do
+        _wget_finder__archive="${_wget_finder__archives%%/*}"
+        _wget_finder__file="${_wget_finder__archive%:*}"
+        _wget_finder__md5=${_wget_finder__archive#*:}
+        if [ -f "/tmp/${progname}.${_wget_finder__file}/${_wget_finder__file}" ]; then
+            if [ X"$(md5sum "/tmp/${progname}.${_wget_finder__file}/${_wget_finder__file}"|cut -d' ' -f1)" = X"${_wget_finder__md5}" ]; then
+                _cat /tmp/"${progname}.${_wget_finder__file}/${_wget_finder__file}"
+                [ X"${_wget_finder__archives}" = X"${_wget_finder__archive}" ] &&\
+                    _wget_finder__archives='' || _wget_finder__archives="${_wget_finder__archives#*/}"
+                continue
+            fi
+        fi
+
+        _wget_finder__engines=$(printf "%s" "${search_engines}" | tr ' ' '\n' | _shuf | tr '\n' '/')
+        if [ ! -z "${search_engine}" ]; then
+            _wget_finder__engines="${search_engine}/$(printf "%s" "${_wget_finder__engines}" \
+                | awk "{gsub(/$search_engine/,\"\"); print \$0}")"
+        fi
+        _wget_finder__engines="$(printf "%s" "${_wget_finder__engines}" | awk '{gsub(/\/\//,"/"); print $0}')"
+
+        while [ "${_wget_finder__engines}" ]; do
+            _wget_finder__engine="${_wget_finder__engines%%/*}"
+            _wget_finder__links="$(_get_links "${_wget_finder__engine}" "${_wget_finder__file}")"
+            if [ -z "${_wget_finder__links}" ]; then
+                [ X"${_wget_finder__engines}" = X"${_wget_finder__engine}" ] &&\
+                    _wget_finder__engines='' || _wget_finder__engines="${_wget_finder__engines#*/}"
+                continue
+            fi
+            [ -d  /tmp/"${progname}.${_wget_finder__file}" ] || mkdir /tmp/"${progname}.${_wget_finder__file}"
+            for _wget_finder__link in ${_wget_finder__links}; do
+                rm -rf "/tmp/${progname}.${_wget_finder__file}/${_wget_finder__file}"
+                wget -q ${_wget_finder__args} \
+                    "${_wget_finder__link}${_wget_finder__file}" -O "/tmp/${progname}.${_wget_finder__file}/${_wget_finder__file}"
+                [ X"$(md5sum "/tmp/${progname}.${_wget_finder__file}/${_wget_finder__file}"|cut -d' ' -f1)" = X"${_wget_finder__md5}" ] \
+                    && { _cat /tmp/"${progname}.${_wget_finder__file}/${_wget_finder__file}"; break 2; }
+            done
+            [ X"${_wget_finder__engines}" = X"${_wget_finder__engine}" ] &&\
+                _wget_finder__engines='' || _wget_finder__engines="${_wget_finder__engines#*/}"
+        done
+        [ X"${_wget_finder__archives}" = X"${_wget_finder__archive}" ] &&\
+            _wget_finder__archives='' || _wget_finder__archives="${_wget_finder__archives#*/}"
+    done
+}
+
+progname="$(_basename "${0}")"
+[ "${#}" -eq "0" ] && _usage
+
+if ! command -v "wget" >/dev/null 2>&1; then
+    printf "%s\\n" "you need to install 'wget' to run this program" >&2
+    if ! command -v "md5sum" >/dev/null 2>&1; then
+        printf "%s\\n" "you need to install 'md5sum' to run this program" >&2
+    fi
+    exit 1
+fi
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- "${@}" $(cat)
+fi
+
+for arg; do #parse options
+    if [ X"${search_engine_status}" = X"1" ]; then
+        search_engine="${arg}"
+        search_engine_status="0"
+        if [ -z "$(printf "%s\\n" "${search_engines}" | tr ' ' '\n' | awk "/^$search_engine\$/")" ]; then
+            printf "%s\\n" "${progname}: '${search_engine}' is not a recognized search engine"; exit 1
+        fi
+    fi
+    case "${arg}" in
+        -h|--help) _usage "${arg}" ;;
+        -q|--quiet) quiet="1" ;;
+        --clean-cache)   rm -rf "/tmp/${progname}".* ;;
+        --search-engine) search_engine_status="1" ;;
+        --list-search-engine) printf "%s\\n" "${search_engines}" | tr ' ' '\n'; exit 0;
+    esac
+done
+
+_wget_finder "${@}"
