@@ -1,10 +1,10 @@
 #!/bin/sh
-#description: send emails using mailgun api
+#description: send emails using the mailgun api
 #usage: mailgun [options] to@domain.tld "message"
 
 #these vars can be specified at ./.mailgun, ~/.mailgun or /etc/mailgun
-from="No reply <noreply@correo.io>"
-subject="Automated mail from $(hostname)"
+from="No reply <noreply@$(hostname -f)>"
+subject="Automated mail from $(hostname -f)"
 to=""
 message=""
 api="" #mailgun api, required
@@ -35,7 +35,7 @@ _validmail()
 
     case "${1}" in
         *@*.*) return 0 ;;
-        *)   return 1 ;;
+        *)     return 1 ;;
     esac
 }
 
@@ -114,6 +114,8 @@ fi
 if [ -z "${config}" ]; then
     if [ -f ./.mailgun ]; then
         _loadconf ./.mailgun
+    elif [ -f ~/.mailgun ]; then
+        _loadconf ~/.mailgun
     elif [ -f /etc/mailgun ]; then
         _loadconf /etc/mailgun
     fi
