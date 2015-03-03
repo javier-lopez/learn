@@ -71,26 +71,22 @@ for arg; do #parse options
     case "${arg}" in
         --) shift; break  ;;
         -a|--api) if [ "${#}" -gt "1" ]; then
-                     api="$(printf "%s " "${@}" | awk '{print $2}')"
-                     shift 2
+                     shift; api="${1}"; shift
                   else
                      _die "Option \`${arg}' requires a parameter"
                   fi ;;
         -f|--from)if [ "${#}" -gt "1" ]; then
-                     from="$(printf "%s " "${@}" | awk '{print $2}')"
-                     shift 2
+                     shift; from="${1}"; shift
                   else
                      _die "Option \`${arg}' requires a parameter"
                   fi ;;
         -s|--subject)if [ "${#}" -gt "1" ]; then
-                        subject="$(printf "%s " "${@}" | awk '{print $2}')"
-                        shift 2
+                        shift; subject="${1}"; shift
                      else
                         _die "Option \`${arg}' requires a parameter"
                      fi ;;
         -c|--config) if [ "${#}" -gt "1" ]; then
-                        config="$(printf "%s " "${@}" | awk '{print $2}')"
-                        shift 2
+                        shift; config="${1}"; shift
                      else
                         _die "Option \`${arg}' requires a parameter"
                      fi ;;
