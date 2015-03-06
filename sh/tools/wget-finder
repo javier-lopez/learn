@@ -143,13 +143,13 @@ _wget_finder()
         fi
     done
 
+    [ -z "${output}" ] || global_output="1"
+
     if [ -z "${_wget_finder__archives}" ]; then
-        if [ -z "${output}" ]; then
-            exec wget ${_wget_finder__args}
+        if [ -d "$(_dirname "${output}")" ]; then
+            exec wget -O "${output}" ${_wget_finder__args} ${_wget_finder__archive}
         else
-            [ ! -d "$(_dirname "${output}")" ] && \
-                exec wget -O "${output}" ${_wget_finder__args} ${_wget_finder__archive}
-            global_output="1"
+            exec wget ${_wget_finder__args} ${_wget_finder__archive}
         fi
     fi
 
@@ -184,7 +184,11 @@ _wget_finder()
             [ -d  /tmp/"${progname}.${_wget_finder__file}" ] || mkdir /tmp/"${progname}.${_wget_finder__file}"
             for _wget_finder__link in ${_wget_finder__links}; do
                 rm -rf "/tmp/${progname}.${_wget_finder__file}/${_wget_finder__file}"
-                wget -q --no-check-certificate ${_wget_finder__args} \
+                case "${_wget_finder__link}" in
+                    https:*) cert_option="--no-check-certificate" ;;
+                        *)   cert_option="" ;;
+                esac
+                wget -q ${cert_option} ${_wget_finder__args} \
                     "${_wget_finder__link}${_wget_finder__file}" -O "/tmp/${progname}.${_wget_finder__file}/${_wget_finder__file}"
                 [ X"$(md5sum "/tmp/${progname}.${_wget_finder__file}/${_wget_finder__file}"|cut -d' ' -f1)" = X"${_wget_finder__md5}" ] \
                     && { _cat /tmp/"${progname}.${_wget_finder__file}/${_wget_finder__file}"; break 2; }
