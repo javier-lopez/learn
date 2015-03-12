@@ -121,7 +121,9 @@ _pianocat(){
                 -) sleep $(printf "${delay} * 2\\n" | bc -l) ;;
                 *) sleep "${delay}" ;;
             esac
-    fi
+        fi
+
+        [ -z "${note}" ] && continue
         printf "%s\\n" "key: '${retval}' note: ${note}"
         #play -qn synth 1 pluck "${note}" >/dev/null 2>&1
         play -qn synth 2 pluck $note >/dev/null 2>&1 &
