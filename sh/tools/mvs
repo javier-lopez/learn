@@ -60,15 +60,15 @@ if ${editor} ${targets}; then
         [ ! -t 0 ] && reset
         count="$(wc -l "${targets}" | grep -o -E '^[0-9]+')"
 
-	# Exit with error message if number of arguments and line count of
-	# targets file differ.
+        # Exit with error message if number of arguments and line count of
+        # targets file differ.
         if [ "${count}" -ne "${#}" ]; then
             rm -- "${targets}"
             _die 'Numbers of files mismatch.'
         fi
 
-	# Read targets file line by line and rename the source
-	# files from ARGV appropriately.
+        # Read targets file line by line and rename the source
+        # files from ARGV appropriately.
         while read target; do
             source="${1}"
             shift

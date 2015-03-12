@@ -1,0 +1,154 @@
+#!/bin/sh
+#description: piano emulator, based on https://raw.githubusercontent.com/ssshake/console4kids/master/piano
+#usage: pianocat
+
+#example:
+#echo "G4 E4 E4 - F4 D4 D4 - C4 D4 E4 F4 G4 G4 G4 - G4 E4 E4 - F4 D4 D4 - C4 D4 G4 G4 C4 C4 C4 C4" | pianocat
+#echo "D4 F4 - G4 A4 - A#4 A4 G4 - E4 C4 - D4 E4 F4 - D4 D4 - C#4 D4 E4 - C#4 C#4 - D4 F4 - G4 A4 - A#4 A4 G4 - E4 C4 - D4 E4 F4 - E4 D4 C#4 - C#4 D4 | pianocat
+
+title="$(printf "%s" \
+"         __                                __
+ .-----.|__|.---.-.-----.-----.----.---.-.|  |_
+ |  _  ||  ||  _  |     |  _  |  __|  _  ||   _|
+ |   __||__||___._|__|__|_____|____|___._||____|
+ |__|
+ _______________________________________________
+|  | | | |  |  | | | | | |  |  | | | |  |  | |  |
+|  | | | |  |  | | | | | |  |  | | | |  |  | |  |
+|  |w| |r|  |  |t| |y| |u|  |  |o| |p|  |  |+|  |
+|  |_| |_|  |  |_| |_| |_|  |  |_| |_|  |  |_|  |
+|   |   |   |   |   |   |   |   |   |   |   |   |
+| a | s | d | f | g | h | j | k | l | ñ | { | } |
+|___|___|___|___|___|___|___|___|___|___|___|___|
+
+Press any key to play, 1..7 to select an octave
+      (by default 4) or Esc to exit")"
+
+_usage()
+{
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options]" >&2
+    printf "%s\\n" "A piano emulator." >&2
+    printf "\\n" >&2
+    printf "%s\\n" "  -h, --help   show this help message and exit" >&2
+    printf "%s\\n" "  -d, --delay  delay between notes in seconds (default 0.5)" >&2
+    exit 1
+}
+
+
+_command()
+{
+    if ! command -v "${1}" >/dev/null 2>&1; then
+        printf "%s\\n" "you need to install '${1}' to run this program" >&2
+        exit 1
+    fi
+}
+
+_ascii2int()
+{
+    printf '%d' "'${*}"
+}
+
+_readc()
+{
+    stty -echo
+    stty raw
+    retval="$(_ascii2int "$(dd bs=1 count=1 2> /dev/null)")"
+    stty -raw
+    stty echo
+}
+
+_cleanup()
+{
+    clear        # clear the screen
+    stty echo    # show input
+    tput rmcup   # restore terminal view
+}
+
+_pianocat(){
+    tput smcup && saved_term=true # save current terminal view
+
+    printf "%s\\n\\n" "${title}"
+    printf "%s" "> "
+    octave="4"; while :; do
+        [ -z "${note}" ] || printf "%s" "> "
+        if [ -z "${input}" ]; then
+            _readc
+            case "${retval}" in
+                #change octave
+                49|1)    note=""; octave="1";;
+                50|2)    note=""; octave="2";;
+                51|3)    note=""; octave="3";;
+                52|4)    note=""; octave="4";;
+                53|5)    note=""; octave="5";;
+                54|6)    note=""; octave="6";;
+                55|7)    note=""; octave="7";;
+
+                #major keys
+                119|w)    note="C#${octave}";; #C
+                114|r)    note="D#${octave}";; #D
+                116|t)    note="F#${octave}";; #F
+                121|y)    note="G#${octave}";; #G
+                117|u)    note="A#${octave}";; #A
+                111|o)    note="C#${octave}";; #C
+                112|p)    note="D#${octave}";; #D
+                43|+)     note="F#${octave}";; #F
+
+                #normal keys
+                97|a)     note="C${octave}";; #C
+                115|s)    note="D${octave}";; #D
+                100|d)    note="E${octave}";; #E
+                102|f)    note="F${octave}";; #F
+                103|g)    note="G${octave}";; #G
+                104|h)    note="A${octave}";; #A
+                106|j)    note="B${octave}";; #B
+                107|k)    note="C$((${octave}+1))";; #C
+                108|l)    note="D$((${octave}+1))";; #D
+                195*|'ñ') note="E$((${octave}+1))";; #E
+                123|'}')  note="F$((${octave}+1))";; #F
+                125|'{')  note="G$((${octave}+1))";; #G
+
+                27|) _cleanup; exit ;; #esc
+                *)  note=""; continue;;
+            esac
+        else
+            if [ X"${note}" = X"${input}" ]; then
+                printf "\\b\\b" && exit 0
+            else
+                note="${input%% *}"
+                input="${input#* }"
+            fi
+            case "${note}" in
+                -) sleep $(printf "${delay} * 2\\n" | bc -l) ;;
+                *) sleep "${delay}" ;;
+            esac
+    fi
+        printf "%s\\n" "key: '${retval}' note: ${note}"
+        #play -qn synth 1 pluck "${note}" >/dev/null 2>&1
+        play -qn synth 2 pluck $note >/dev/null 2>&1 &
+    done
+}
+
+trap _cleanup 1 15
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    input="$(cat)"
+fi
+
+for arg; do #parse options
+    case "${arg}" in
+        --) shift;  break       ;;
+        -h|--help)  _usage      ;;
+        -d|--delay)
+            if [ "${#}" -gt "1" ]; then
+                shift; delay="${1}"; shift
+            else
+                printf "%s\\n" "Option '${arg}' requires a parameter"; _usage
+            fi ;;
+    esac
+done
+
+_command "play"
+[ -z "${delay}" ] && delay="0.5"
+
+_pianocat
