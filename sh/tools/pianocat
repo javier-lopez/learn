@@ -3,8 +3,7 @@
 #usage: pianocat
 
 #example:
-#echo "G4 E4 E4 - F4 D4 D4 - C4 D4 E4 F4 G4 G4 G4 - G4 E4 E4 - F4 D4 D4 - C4 D4 G4 G4 C4 C4 C4 C4" | pianocat
-#echo "D4 F4 - G4 A4 - A#4 A4 G4 - E4 C4 - D4 E4 F4 - D4 D4 - C#4 D4 E4 - C#4 C#4 - D4 F4 - G4 A4 - A#4 A4 G4 - E4 C4 - D4 E4 F4 - E4 D4 C#4 - C#4 D4 | pianocat
+#echo "D4 F4 - G4 A4 - A#4 A4 G4 - E4 C4 - D4 E4 F4 - D4 D4 - C#4 D4 E4 - C#4 C#4 - D4 F4 - G4 A4 - A#4 A4 G4 - E4 C4 - D4 E4 F4 - E4 D4 C#4 - C#4 D4" | pianocat
 
 title="$(printf "%s" \
 "         __                                __
