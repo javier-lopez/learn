@@ -66,7 +66,7 @@ _checksum_type()
     esac
 }
 
-_checksum_bin()
+_checksum()
 {
     [ -z "${1}" ] && return 1
     if [ -z "${2}" ]; then
@@ -101,7 +101,7 @@ _checksum_bin()
     else
         case "${1}" in
             md5)
-                [ -z "${md5bin}" ] && _checksum_bin "${1}"
+                [ -z "${md5bin}" ] && _checksum "${1}"
                 case "${md5bin}" in
                     md5sum)  md5sum "${2}" | awk '{print $1}' ;;
                     md5)     md5 -r "${2}" | awk '{print $1}' ;;
@@ -110,7 +110,7 @@ _checksum_bin()
                 esac
                 ;;
             sha1|sha256|sha512)
-                [ -z "${shabin}" ] && _checksum_bin "${1}"
+                [ -z "${shabin}" ] && _checksum "${1}"
                 case "${shabin}" in
                     shasum)  shasum -a "${1#sha}" "${2}" | awk '{print $1}' ;;
                     openssl) openssl dgst -"${1}" "${2}" | awk '{print $2}' ;;
@@ -168,10 +168,8 @@ _get_links()
     }
 
     case "${1}" in
-        google)   _get_links_google   "${2}" ;;
-        filemare) _get_links_filemare "${2}" ;;
-        ftplike)  _get_links_ftplike  "${2}" ;;
-        *)        return 1 ;;
+        google|filemare|ftplike) _get_links_"${1}" "${2}" ;;
+        *) return 1 ;;
     esac
 }
 
@@ -189,7 +187,7 @@ _wget_finder()
             [ X"${_wget_finder__archives}" = X"${_wget_finder__archive}" ] &&\
                 _wget_finder__archives='' || _wget_finder__archives="${_wget_finder__archives#*/}"
              _wget_finder__status="1"; continue
-        elif ! _checksum_bin "${_wget_finder__checktype}"; then
+        elif ! _checksum "${_wget_finder__checktype}"; then
             printf "%s\\n" "Warning: there is no way to calculate a '${_wget_finder__checktype}' checksum in your system, skipping..."
             [ X"${_wget_finder__archives}" = X"${_wget_finder__archive}" ] &&\
                 _wget_finder__archives='' || _wget_finder__archives="${_wget_finder__archives#*/}"
@@ -197,7 +195,7 @@ _wget_finder()
         fi
 
         if [ -f "/tmp/${progname}.${_wget_finder__file}/${_wget_finder__file}" ]; then
-            if [ X"$(_checksum_bin "${_wget_finder__checktype}" "/tmp/${progname}.${_wget_finder__file}/${_wget_finder__file}")" = X"${_wget_finder__checksum}" ]; then
+            if [ X"$(_checksum "${_wget_finder__checktype}" "/tmp/${progname}.${_wget_finder__file}/${_wget_finder__file}")" = X"${_wget_finder__checksum}" ]; then
                 _cat /tmp/"${progname}.${_wget_finder__file}/${_wget_finder__file}"
                 [ X"${_wget_finder__archives}" = X"${_wget_finder__archive}" ] &&\
                     _wget_finder__archives='' || _wget_finder__archives="${_wget_finder__archives#*/}"
@@ -220,7 +218,7 @@ _wget_finder()
                     _wget_finder__engines='' || _wget_finder__engines="${_wget_finder__engines#*/}"
                 continue
             fi
-            [ -d  /tmp/"${progname}.${_wget_finder__file}" ] || mkdir /tmp/"${progname}.${_wget_finder__file}"
+            [ -d /tmp/"${progname}.${_wget_finder__file}" ] || mkdir /tmp/"${progname}.${_wget_finder__file}"
             for _wget_finder__link in ${_wget_finder__links}; do
                 rm -rf "/tmp/${progname}.${_wget_finder__file}/${_wget_finder__file}"
                 case "${_wget_finder__link}" in
@@ -229,7 +227,7 @@ _wget_finder()
                 esac
                 wget -q ${cert_option} ${_wget_finder__args} \
                     "${_wget_finder__link}${_wget_finder__file}" -O "/tmp/${progname}.${_wget_finder__file}/${_wget_finder__file}"
-                [ X"$(_checksum_bin "${_wget_finder__checktype}" "/tmp/${progname}.${_wget_finder__file}/${_wget_finder__file}")" = X"${_wget_finder__checksum}" ] \
+                [ X"$(_checksum "${_wget_finder__checktype}" "/tmp/${progname}.${_wget_finder__file}/${_wget_finder__file}")" = X"${_wget_finder__checksum}" ] \
                     && { _cat /tmp/"${progname}.${_wget_finder__file}/${_wget_finder__file}"; break 2; }
             done
             [ X"${_wget_finder__engines}" = X"${_wget_finder__engine}" ] &&\
@@ -244,7 +242,7 @@ _wget_finder()
 progname="$(_basename "${0}")"
 
 if [ ! -t 0 ]; then
-    #there is input comming from pipe or file, add to the end of $@
+    #there is input comming from pipe or file, add it to the end of $@
     set -- "${@}" $(cat)
 fi
 
