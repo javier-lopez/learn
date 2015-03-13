@@ -670,4 +670,41 @@ test X"$(whats --cui 2>&1|head -1)"                  = X"whats: unrecognized opt
 test X"$(printf "%s" '--cui' | whats 2>&1|head -1)"  = X"whats: unrecognized option \`--cui'"
 @end
 
+@begin{wget-finder}
+wget-finder; test X"${?}"                     = X"1"
+wget-finder -h; test X"${?}"                  = X"0"
+printf "%s" '-h' | wget-finder; test X"${?}"  = X"0"
+wget-finder --help; test X"${?}"              = X"0"
+test X"$(wget-finder -h 2>&1|head -1)"        = X"Usage: wget-finder [OPTION]... FILE:CHECKSUM..."
+test X"$(printf "%s" '--help' | wget-finder 2>&1|head -1)" = X"Usage: wget-finder [OPTION]... FILE:CHECKSUM..."
+wget-finder --cui; test X"${?}"               = X"2"
+test X"$(wget-finder --cui 2>&1|head -1)"     = X"wget: unrecognized option '--cui'"
+wget-finder --search-engine cui; test X"${?}" = X"1"
+test X"$(wget-finder --search-engine cui 2>&1|head -1)" = X"wget-finder: 'cui' is not a recognized search engine"
+wget-finder cui; test X"${?}"                 = X"4"
+wget-finder google.com && test -f "index.html"
+wget-finder http://google.com -Otest2  && test -f "test2"
+wget-finder http://google.com -O test3 && test -f "test3"
+wget-finder socat-1.7.2.0.tar.gz:cui; test X"${?}" = X"1"
+test X"$(wget-finder socat-1.7.2.0.tar.gz:cui 2>&1|head -1)" = X"Warning: 'socat-1.7.2.0.tar.gz:cui' is an invalid FILE:CHECKSUM pair, skipping..."
+wget-finder socat-1.7.2.0.tar.gz:0565dd58800e4c50534c61bbb453b771 && test -f "socat-1.7.2.0.tar.gz"
+test X"$(openssl dgst -md5 socat-1.7.2.0.tar.gz | awk '{print $2}')" = X"0565dd58800e4c50534c61bbb453b771"
+rm -rf socat-1.7.2.0.tar.gz
+wget-finder socat-1.7.2.0.tar.gz:32181b08aa91309ee368e1e36a2cb337eedc425a && test -f "socat-1.7.2.0.tar.gz"
+test X"$(openssl dgst -md5 socat-1.7.2.0.tar.gz | awk '{print $2}')" = X"0565dd58800e4c50534c61bbb453b771"
+rm -rf socat-1.7.2.0.tar.gz
+wget-finder socat-1.7.2.0.tar.gz:e5214ad56b43fef00761e391417b5020d07f973113b398b6ddcc47bde771ffae && test -f "socat-1.7.2.0.tar.gz"
+test X"$(openssl dgst -md5 socat-1.7.2.0.tar.gz | awk '{print $2}')" = X"0565dd58800e4c50534c61bbb453b771"
+rm -rf socat-1.7.2.0.tar.gz
+wget-finder socat-1.7.2.0.tar.gz:80727255f5a83ab2be449bed66e65d1c2acd9d880a8672f52ab4cc48950d49a73fac13219a2ad7b30bafe3f04c82288735877a55ae1f008c19470ccd3b8f2806 && test -f "socat-1.7.2.0.tar.gz"
+test X"$(openssl dgst -md5 socat-1.7.2.0.tar.gz | awk '{print $2}')" = X"0565dd58800e4c50534c61bbb453b771"
+wget-finder -O libssh.tar.gz libssh2-1.3.0.tar.gz:6425331899ccf1015f1ed79448cb4709; test -f libssh.tar.gz
+test X"$(openssl dgst -md5 libssh.tar.gz | awk '{print $2}')" = X"6425331899ccf1015f1ed79448cb4709"
+rm -rf *.tar.gz
+wget-finder libssh2-1.3.0.tar.gz:6425331899ccf1015f1ed79448cb4709 socat-1.7.2.0.tar.gz:0565dd58800e4c50534c61bbb453b771
+test -f libssh2-1.3.0.tar.gz && test -f socat-1.7.2.0.tar.gz
+rm -rf *.tar.gz
+wget-finder -O file libssh2-1.3.0.tar.gz:6425331899ccf1015f1ed79448cb4709 socat-1.7.2.0.tar.gz:0565dd58800e4c50534c61bbb453b771
+test -f file && test ! -f libssh2-1.3.0.tar.gz && test ! -f socat-1.7.2.0.tar.gz
+@end
 # vim: set ts=8 sw=4 tw=0 ft=sh :
