@@ -1,22 +1,24 @@
 #!/bin/sh
-#description: search and download files matching a md5sum from internet(http/https/ftp)
-#usage: wget-finder --other-wget-options file:md5sum
+#description: search and download files matching a checksum from internet(http/https/ftp)
+#usage: wget-finder --other-wget-options file:checksum
 
 #example: wget-finder socat-1.7.2.0.tar.gz:0565dd58800e4c50534c61bbb453b771
 #socat-1.7.2.0.tar.gz
 
-#TODO 27-02-2015 08:23 >> add support for additional checksums (sha256, etc)
+#TODO 27-02-2015 08:23 >> try to match checksums without downloading files (Content-MD5, md5sum.txt, etc)
 search_engines="google filemare ftplike"
+checksums="md5 sha1 sha256 sha512"
 
 _usage()
 {
-    printf "%b\\n" "Usage: ${progname} [OPTION]... FILE:MD5SUM..."
+    printf "%b\\n" "Usage: ${progname} [OPTION]... FILE:CHECKSUM..."
     printf "%b\\n" "A wrapper around the wget non-interactive network retriever."
     printf "\\n"
     printf "%b\\n" "  -h, --help             show this and wget help message and exit"
     printf "%b\\n" "  --clean-cache          remove temporal files"
     printf "%b\\n" "  --search-engine        prefer a search engine"
     printf "%b\\n" "  --list-search-engine   list supported search engines"
+    printf "%b\\n" "  --list-checksum        list supported checksums functions"
     printf "%b\\n" "------------------------------------------------------------"
     exec wget "${@}"
 }
@@ -48,14 +50,76 @@ _dirname()
     esac
 }
 
-_status()
-{
-    return "${1}"
-}
-
 _shuf()
 {
     awk 'BEGIN{srand()}{print rand()"\t"$0}' "$@" | sort | cut -f2- ;
+}
+
+_checksum_type()
+{
+    case "${#1}" in
+        32)  printf "md5"    ;;
+        40)  printf "sha1"   ;;
+        64)  printf "sha256" ;;
+        128) printf "sha512" ;;
+        *) return 1 ;;
+    esac
+}
+
+_checksum_bin()
+{
+    [ -z "${1}" ] && return 1
+    if [ -z "${2}" ]; then
+        case "${1}" in
+            md5)
+                [ -z "${md5bin}" ] || return 0
+                if echo | md5sum >/dev/null 2>&1; then
+                    md5bin="md5sum"
+                    return 0
+                elif echo | md5 -r >/dev/null 2>&1; then
+                    md5bin="md5"
+                    return 0
+                elif echo | openssl dgst -md5 >/dev/null 2>&1; then
+                    md5bin="openssl"
+                    return 0
+                fi
+                return 1
+                ;;
+            sha1|sha256|sha512)
+                [ -z "${shabin}" ] || return 0
+                if echo | shasum -a "${1#sha}" >/dev/null 2>&1; then
+                    shabin="shasum"
+                    return 0
+                elif echo | openssl dgst -"${1}" >/dev/null 2>&1; then
+                    shabin="openssl"
+                    return 0
+                fi
+                return 1
+                ;;
+            *) return 1 ;;
+        esac
+    else
+        case "${1}" in
+            md5)
+                [ -z "${md5bin}" ] && _checksum_bin "${1}"
+                case "${md5bin}" in
+                    md5sum)  md5sum "${2}" | awk '{print $1}' ;;
+                    md5)     md5 -r "${2}" | awk '{print $1}' ;;
+                    openssl) openssl  dgst -"${1}" "${2}" | awk '{print $2}' ;;
+                    *) return 1 ;;
+                esac
+                ;;
+            sha1|sha256|sha512)
+                [ -z "${shabin}" ] && _checksum_bin "${1}"
+                case "${shabin}" in
+                    shasum)  shasum -a "${1#sha}" "${2}" | awk '{print $1}' ;;
+                    openssl) openssl dgst -"${1}" "${2}" | awk '{print $2}' ;;
+                    *) return 1 ;;
+                esac
+                ;;
+            *) return 1 ;;
+        esac
+    fi
 }
 
 _cat()
@@ -113,52 +177,27 @@ _get_links()
 
 _wget_finder()
 {
-    for _wget_finder__arg; do
-        if [ X"${_wget_finder__output_status}" = X"1" ]; then
-            output="${_wget_finder__arg}"
-            _wget_finder__output_status="0"
-            continue
-        elif [ X"${_wget_finder__engine_status}" = X"1" ]; then
-             _wget_finder__engine_status="0"
-             continue
-        fi
-        _wget_finder__archive="$(printf "%s" "${_wget_finder__arg}" | \
-            awk '!/\/\// {if ($0 ~ ":" ) print }')"
-        if [ -z "${_wget_finder__archive}" ]; then
-            case "${_wget_finder__arg}" in
-                 -O) _wget_finder__output_status="1" ;;
-                -O*) output="${_wget_finder__arg#-O}" ;;
-                 --search-engine) _wget_finder__engine_status="1" ;;
-                  *) _wget_finder__args="${_wget_finder__arg} ${_wget_finder__args}" ;;
-            esac
-        else
-            _wget_finder__md5=${_wget_finder__archive#*:}
-            if [ ! "${#_wget_finder__md5}" -eq "32" ] || \
-                printf "%s" "${_wget_finder__archive}" | grep "/" >/dev/null; then
-                    printf "%s\\n" "Warning: '${_wget_finder__archive}' is an invalid FILE:MD5SUM pair, skipping..."
-                    _status 1
-            else
-                _wget_finder__archives="${_wget_finder__archives}${_wget_finder__archive}/"
-            fi
-        fi
-    done
-
-    [ -z "${output}" ] || global_output="1"
-
-    if [ -z "${_wget_finder__archives}" ]; then
-        if [ -d "$(_dirname "${output}")" ]; then
-            exec wget -O "${output}" ${_wget_finder__args} ${_wget_finder__archive}
-        else
-            exec wget ${_wget_finder__args} ${_wget_finder__archive}
-        fi
-    fi
-
+    _wget_finder__archives="${@}"
     while [ "${_wget_finder__archives}" ]; do
         _wget_finder__archive="${_wget_finder__archives%%/*}"
         _wget_finder__file="${_wget_finder__archive%:*}"
-        _wget_finder__md5=${_wget_finder__archive#*:}
+        _wget_finder__checksum="${_wget_finder__archive#*:}"
+        _wget_finder__checktype="$(_checksum_type "${_wget_finder__checksum}")"
+
+        if [ -z "${_wget_finder__checktype}" ]; then
+            printf "%s\\n" "Warning: '${_wget_finder__archive}' is an invalid FILE:CHECKSUM pair, skipping..."
+            [ X"${_wget_finder__archives}" = X"${_wget_finder__archive}" ] &&\
+                _wget_finder__archives='' || _wget_finder__archives="${_wget_finder__archives#*/}"
+             _wget_finder__status="1"; continue
+        elif ! _checksum_bin "${_wget_finder__checktype}"; then
+            printf "%s\\n" "Warning: there is no way to calculate a '${_wget_finder__checktype}' checksum in your system, skipping..."
+            [ X"${_wget_finder__archives}" = X"${_wget_finder__archive}" ] &&\
+                _wget_finder__archives='' || _wget_finder__archives="${_wget_finder__archives#*/}"
+             _wget_finder__status="1"; continue
+        fi
+
         if [ -f "/tmp/${progname}.${_wget_finder__file}/${_wget_finder__file}" ]; then
-            if [ X"$(md5sum "/tmp/${progname}.${_wget_finder__file}/${_wget_finder__file}"|cut -d' ' -f1)" = X"${_wget_finder__md5}" ]; then
+            if [ X"$(_checksum_bin "${_wget_finder__checktype}" "/tmp/${progname}.${_wget_finder__file}/${_wget_finder__file}")" = X"${_wget_finder__checksum}" ]; then
                 _cat /tmp/"${progname}.${_wget_finder__file}/${_wget_finder__file}"
                 [ X"${_wget_finder__archives}" = X"${_wget_finder__archive}" ] &&\
                     _wget_finder__archives='' || _wget_finder__archives="${_wget_finder__archives#*/}"
@@ -190,7 +229,7 @@ _wget_finder()
                 esac
                 wget -q ${cert_option} ${_wget_finder__args} \
                     "${_wget_finder__link}${_wget_finder__file}" -O "/tmp/${progname}.${_wget_finder__file}/${_wget_finder__file}"
-                [ X"$(md5sum "/tmp/${progname}.${_wget_finder__file}/${_wget_finder__file}"|cut -d' ' -f1)" = X"${_wget_finder__md5}" ] \
+                [ X"$(_checksum_bin "${_wget_finder__checktype}" "/tmp/${progname}.${_wget_finder__file}/${_wget_finder__file}")" = X"${_wget_finder__checksum}" ] \
                     && { _cat /tmp/"${progname}.${_wget_finder__file}/${_wget_finder__file}"; break 2; }
             done
             [ X"${_wget_finder__engines}" = X"${_wget_finder__engine}" ] &&\
@@ -199,9 +238,16 @@ _wget_finder()
         [ X"${_wget_finder__archives}" = X"${_wget_finder__archive}" ] &&\
             _wget_finder__archives='' || _wget_finder__archives="${_wget_finder__archives#*/}"
     done
+    [ -z "${_wget_finder__status}" ] || return "${_wget_finder__status}"
 }
 
 progname="$(_basename "${0}")"
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- "${@}" $(cat)
+fi
+
 [ "${#}" -eq "0" ] && _usage
 
 if ! command -v "wget" >/dev/null 2>&1; then
@@ -209,31 +255,42 @@ if ! command -v "wget" >/dev/null 2>&1; then
     exit 1
 fi
 
-if ! command -v "md5sum" >/dev/null 2>&1; then
-    printf "%s\\n" "you need to install 'md5sum' to run this program" >&2
-    exit 1
-fi
-
-if [ ! -t 0 ]; then
-    #there is input comming from pipe or file, add to the end of $@
-    set -- "${@}" $(cat)
-fi
-
 for arg; do #parse options
-    if [ X"${search_engine_status}" = X"1" ]; then
-        search_engine="${arg}"
-        search_engine_status="0"
-        if [ -z "$(printf "%s\\n" "${search_engines}" | tr ' ' '\n' | awk "/^$search_engine\$/")" ]; then
-            printf "%s\\n" "${progname}: '${search_engine}' is not a recognized search engine"; exit 1
-        fi
-    fi
     case "${arg}" in
-        -h|--help) _usage "${arg}" ;;
-        -q|--quiet) quiet="1" ;;
-        --clean-cache)   rm -rf "/tmp/${progname}".* ;;
-        --search-engine) search_engine_status="1" ;;
-        --list-search-engine) printf "%s\\n" "${search_engines}" | tr ' ' '\n'; exit 0;
+        -h|--help) _usage "${arg}"   ;;
+        -q|--quiet) quiet="1"; shift ;;
+        --clean-cache) rm -rf "/tmp/${progname}".* && \
+                       [ -z "${quiet}" ] && printf "%s\\n" "Cache cleared successfully" || :
+                       exit ;;
+        --search-engine) shift; search_engine="${1}"; [ -z "${1}" ] || shift
+                         if [ -z "${search_engine}" ]; then
+                             printf "%s\\n" "${progname}: available search engines are"
+                             exec "${0}" --list-search-engine
+                         fi
+                         if [ -z "$(printf "%s\\n" "${search_engines}" | tr ' ' '\n' | awk "/^$search_engine\$/")" ]; then
+                            printf "%s\\n" "${progname}: '${search_engine}' is not a recognized search engine"; exit 1
+                         fi ;;
+        --list-search-engine) printf "%s\\n" "${search_engines}" | tr ' ' '\n'; exit 0; ;;
+        --list-checksum) printf "%s\\n" "${checksums}" | tr ' ' '\n'; exit 0; ;;
+        -O)  shift; output="${1}"; shift; global_output="1" ;;
+        -O*) output="${1#-O}"; shift; global_output="1"     ;;
+        *) archive="$(printf "%s" "${1}" | awk '!/\/\// {if ($0 ~ ":" ) print }')"
+           if [ -z "${archive}" ]; then
+               extra_args="${extra_args} ${1}"
+           else
+               archives="${archives}${1}/"
+           fi
+           [ "${1}" ] && shift ;;
     esac
+
 done
 
-_wget_finder "${@}"
+if [ -z "${archives}" ]; then
+    if [ -d "$(_dirname "${output}")" ]; then
+        exec wget -O "${output}" ${extra_args}
+    else
+        exec wget ${extra_args}
+    fi
+fi
+
+_wget_finder "${archives}"
