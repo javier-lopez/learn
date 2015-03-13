@@ -2,7 +2,7 @@ CC=gcc
 CFLAGS=-g -Wall
 LD_FLAGS=`pkg-config --cflags --libs`
 
-all: cat count_spaces endian getchar input opts pointers pwd sSs steps_compilation sudoku sync time_waiting_baton time_waiting_percentaje touch types valid_chars allocating_memory promedios_cruzados
+all: cat count_spaces endian getchar input opts pointers pwd sSs steps_compilation sudoku time_waiting_baton time_waiting_percentaje touch types valid_chars allocating_memory promedios_cruzados
 
 cat: cat.c
 	$(CC) $(CFLAGS) $(LD_FLAGS) cat.c -o cat
@@ -37,9 +37,6 @@ steps_compilation: steps_compilation.c
 sudoku: sudoku.c
 	$(CC) $(CFLAGS) $(LD_FLAGS) sudoku.c -o sudoku
 
-sync: sync.c
-	$(CC) $(CFLAGS) $(LD_FLAGS) sync.c -o sync
-
 time_waiting_baton: time_waiting_baton.c
 	$(CC) $(CFLAGS) $(LD_FLAGS) time_waiting_baton.c -o time_waiting_baton
 
@@ -65,4 +62,4 @@ clean:
 	find . -type f -a -not -iname "*.c" -a -not -iname "make*" -exec rm -rf '{}' \; -exec echo rm -rf '{}' \;
 
 zipit:
-	zip -r files.zip Makefile cat.c count_spaces.c endian.c getchar.c input.c opts.c pointers.c pwd.c sSs.c steps_compilation.c sudoku.c sync.c time_waiting_baton.c time_waiting_percentaje.c touch.c types.c valid_chars.c allocating_memory.c promedios_cruzados.c
+	zip -r files.zip Makefile cat.c count_spaces.c endian.c getchar.c input.c opts.c pointers.c pwd.c sSs.c steps_compilation.c sudoku.c time_waiting_baton.c time_waiting_percentaje.c touch.c types.c valid_chars.c allocating_memory.c promedios_cruzados.c
