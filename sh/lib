@@ -23,6 +23,27 @@ _abs()
 #_abs 2  #print 2
 #=================================================================
 
+_alphanum()
+{ #check for alphanum strings
+  # return 0 if all upper+lower+digits, 1 otherwise
+
+  # Remove all unacceptable chars
+  [ -z "${1}" ] && return 1
+  _alphanum__compressed="$(printf "%s" "${1}" | sed -e 's:[^[:alnum:]]::g')"
+  [ X"${_alphanum__compressed}" = X"${1}" ] && return 0 || return 1
+}
+#==================================================== Example ====
+#printf "%s" "Enter input: "
+#read input
+#if ! _alphanum "${input}" ; then
+    #printf "%s\\n" "Your input must consist of only letters and numbers." >&2
+    #exit 1
+#else
+    #printf "%s\\n" "Input is valid."
+#fi
+#exit 0
+#=================================================================
+
 _aptproxy()
 {   #test if an apt proxy exist on the local network
     #return 0 on sucess, 1 otherwise
@@ -53,6 +74,15 @@ _arch()
 #==================================================== Example ====
 #arch="$(_arch)"
 #[ "${arch}" -eq "32" ] && command32 || command64
+#=================================================================
+
+_ascii2int()
+{
+    printf '%d' "'${*}"
+}
+#==================================================== Example ====
+#num="$(_ascii2int a)"
+#printf "%s\\n" "${num}" #prints 97
 #=================================================================
 
 _basename()
@@ -208,6 +238,23 @@ _echo()
 #_echo 'Hello World!' #print Hello World!
 #=================================================================
 
+_empty()
+{  #detect if arg is an empty file, returns 0 on sucess, 1 otherwise
+    [ -z "${1}" ] && return 1
+    if [ -f "${1}" ] && [ X"$(wc -c "${1}" | cut -d" " -f1)" = X"0" ]; then
+        return 0
+    else
+        return 1
+    fi
+}
+#==================================================== Example ====
+#if _empty /path/file; then
+    #printf "%s\\n" "/path/file is empty"
+#else
+    #printf "%s\\n" "/path/file is not empty"
+#fi
+#=================================================================
+
 _encode64()
 {   #encode a string in base64
     [ -z "${1}" ] && return 1
@@ -228,20 +275,39 @@ _ensurecron()
 #_ensurecron "* * * * * /path/task"
 #=================================================================
 
-_user()
-{   #test if an user exists on the system
-    #return 0 on sucess, 1 otherwise
+_float2fraction()
+{
     [ -z "${1}" ] && return 1
-    if id -u "${1}" >/dev/null 2>&1; then
-        return 0
+    _float2fraction__num="${1%%.*}"
+    _float2fraction__den="${1##*.}"
+    [ "${_float2fraction__num}" ] && [ "${_float2fraction__num}" -eq "0" ] && _float2fraction__num=""
+    _float2fraction__num="${_float2fraction__num}${_float2fraction__den}"
+    _float2fraction__zero="${#_float2fraction__den}"
+    _float2fraction__den="1"
+    #checking if denominator or numerator is greater
+    while [ "${_float2fraction__zero}" -gt "0" ]; do
+        _float2fraction__den="${_float2fraction__den}0"
+        _float2fraction__zero="$((${_float2fraction__zero}-1))"
+    done
+    if [ "${_float2fraction__num}" -gt "${_float2fraction__den}" ];then
+       _float2fraction__greater="${_float2fraction__num}"
+       _float2fraction__lower="${_float2fraction__den}"
     else
-        return 1
-    fi
+       _float2fraction__greater="${_float2fraction__den}"
+       _float2fraction__lower="${_float2fraction__num}"
+    fi #finding hcf
+    while [ "${_float2fraction__lower}" -ne "0" ];do
+        _float2fraction__hcf="${_float2fraction__lower}"
+        _float2fraction__lower=$((${_float2fraction__greater}%${_float2fraction__lower}))
+        _float2fraction__greater="${_float2fraction__hcf}"
+    done #dividing numerator and denominator by hcf
+    _float2fraction__num="$((${_float2fraction__num}/${_float2fraction__hcf}))"
+    _float2fraction__den="$((${_float2fraction__den}/${_float2fraction__hcf}))" #answer
+    printf "%s\\n" "${_float2fraction__num}/${_float2fraction__den}"
 }
 #==================================================== Example ====
-#if _user user; then
-    #printf "%s\\n" "user exists"
-#fi
+#_float2fraction "0.5"  #prints "1/2"
+#_float2fraction "0.75" #prints "3/4"
 #=================================================================
 
 _getfirstvalue()
@@ -319,46 +385,6 @@ _internet()
 #fi
 #=================================================================
 
-_alphanum()
-{ #check for alphanum strings
-  # return 0 if all upper+lower+digits, 1 otherwise
-
-  # Remove all unacceptable chars
-  [ -z "${1}" ] && return 1
-  _alphanum__compressed="$(printf "%s" "${1}" | \
-                              sed -e 's:[^[:alnum:]]::g')"
-
-  [ X"${_alphanum__compressed}" = X"${1}" ] && return 0 || return 1
-}
-#==================================================== Example ====
-#printf "%s" "Enter input: "
-#read input
-#if ! _alphanum "${input}" ; then
-    #printf "%s\\n" "Your input must consist of only letters and numbers." >&2
-    #exit 1
-#else
-    #printf "%s\\n" "Input is valid."
-#fi
-#exit 0
-#=================================================================
-
-_empty()
-{  #detect if arg is an empty file, returns 0 on sucess, 1 otherwise
-    [ -z "${1}" ] && return 1
-    if [ -f "${1}" ] && [ X"$(wc -c "${1}" | cut -d" " -f1)" = X"0" ]; then
-        return 0
-    else
-        return 1
-    fi
-}
-#==================================================== Example ====
-#if _empty /path/file; then
-    #printf "%s\\n" "/path/file is empty"
-#else
-    #printf "%s\\n" "/path/file is not empty"
-#fi
-#=================================================================
-
 _livecd()
 {   #detect a livecd system, return 0 on success, 1 otherwise
     grep boot=live /proc/cmdline >/dev/null && return 0
@@ -371,6 +397,20 @@ _livecd()
 #else
     #printf "%s\\n" "Non LiveCd detected"
 #fi
+#=================================================================
+
+_lock()
+{   #locks the execution of a program, it should be used at the
+    #beggining of it, exit on failure
+    exec 9>/tmp/$(expr "${1}" : '.*/\([^/]*\)').lock #verify only one instance is running
+    [ X"${LOGNAME}" = X"root" ] && chmod 666 /tmp/"$(expr "${1}" : '.*/\([^/]*\)')".lock
+    if ! flock -n 9  ; then         #http://mywiki.wooledge.org/BashFAQ/045
+        printf "%s\\n" "$(expr "${1}" : '.*/\([^/]*\)'): another instance is running";
+        exit 1
+    fi
+}
+#==================================================== Example ====
+#_lock "${0}" #locks script till finish
 #=================================================================
 
 _newer()
@@ -395,37 +435,6 @@ _newer()
 #else
     #printf "%s\\n" "2ndfile is newer"
 #fi
-#=================================================================
-
-_num()
-{   #look for a number, returns 0 on success, 1 otherwise
-    [ -z "${1}" ] && return 1
-    printf "%s\\n" "${@}" | grep -v "[^0-9]" >/dev/null
-}
-#==================================================== Example ====
-#printf "%s" "Enter input: "
-#read input
-#if ! _num "${input}" ; then
-    #printf "%s\\n" "Your input must consist of only numbers." >&2
-    #exit 1
-#else
-    #printf "%s\\n" "Input is valid."
-#fi
-#exit 0
-#=================================================================
-
-_lock()
-{   #locks the execution of a program, it should be used at the
-    #beggining of it, exit on failure
-    exec 9>/tmp/$(expr "${1}" : '.*/\([^/]*\)').lock #verify only one instance is running
-    [ X"${LOGNAME}" = X"root" ] && chmod 666 /tmp/"$(expr "${1}" : '.*/\([^/]*\)')".lock
-    if ! flock -n 9  ; then         #http://mywiki.wooledge.org/BashFAQ/045
-        printf "%s\\n" "$(expr "${1}" : '.*/\([^/]*\)'): another instance is running";
-        exit 1
-    fi
-}
-#==================================================== Example ====
-#_lock "${0}" #locks script till finish
 #=================================================================
 
 _notify()
@@ -453,6 +462,23 @@ _notify()
 }
 #==================================================== Example ====
 #_notify "You need html2text" "$ sudo apt-get install html2text"
+#=================================================================
+
+_num()
+{   #look for a number, returns 0 on success, 1 otherwise
+    [ -z "${1}" ] && return 1
+    printf "%s\\n" "${@}" | grep -v "[^0-9]" >/dev/null
+}
+#==================================================== Example ====
+#printf "%s" "Enter input: "
+#read input
+#if ! _num "${input}" ; then
+    #printf "%s\\n" "Your input must consist of only numbers." >&2
+    #exit 1
+#else
+    #printf "%s\\n" "Input is valid."
+#fi
+#exit 0
 #=================================================================
 
 _printfc()
@@ -557,6 +583,23 @@ _privport()
 #fi
 #=================================================================
 
+_readc()
+{
+    stty -echo
+    stty raw
+    dd bs=1 count=1 2> /dev/null
+    stty -raw
+    stty echo
+}
+#==================================================== Example ====
+#while :; do
+    #case "$(_readc)" in
+        #q) break ;;
+        #1) printf "%s\\n" "1 pressed" ;;
+    #esac
+#done
+#=================================================================
+
 _realpath()
 {   # print the absolute path
     _realpath__success="true"
@@ -629,6 +672,14 @@ _rmcron()
 #_rmcron "pattern"
 #=================================================================
 
+_shuf()
+{   #shuffle the input
+    awk 'BEGIN{srand()}{print rand()"\t"$0}' "$@" | sort | cut -f2- ;
+}
+#==================================================== Example ====
+#printf "%s" "1,2,3,4,5" | tr ',' '\n' | _shuf | tr '\n' ','
+#=================================================================
+
 _str2lower()
 {   #convert a string to lower string
     [ -z "${1}" ] && return 1
@@ -680,16 +731,7 @@ _strdiff()
 #printf "%s\\n"  "${diff}"   #prints "hello"
 #=================================================================
 
-_strlen()
-{   #print the length of a string, return 1 on failure
-    [ -z "${1}" ] && return 0
-    printf "%s\\n" "${#1}"
-}
-#==================================================== Example ====
-#_strlen "hello world!" #returns "12"
-#=================================================================
-
-_stronlyduplicates()
+_strduplicates()
 {   #print duplicated strings, return 1 on failure
     [ -z "${1}" ] && return 1
     [ -z "${2}" ] && return 1
@@ -698,8 +740,17 @@ _stronlyduplicates()
 #==================================================== Example ====
 #hello="hello world"
 #bye="bye world"
-#world=$(_stronlyduplicates "${hello}" "${bye}")
+#world=$(_strduplicates "${hello}" "${bye}")
 #printf "%s\\n"  "${world}"   #prints "world"
+#=================================================================
+
+_strlen()
+{   #print the length of a string, return 1 on failure
+    [ -z "${1}" ] && return 1
+    printf "%s\\n" "${#1}"
+}
+#==================================================== Example ====
+#_strlen "hello world!" #returns "12"
 #=================================================================
 
 _strreplace()
@@ -766,12 +817,21 @@ _substr()
 #_substr "abcdef" 0 4 #print "abcd"
 #=================================================================
 
-_shuf()
-{   #shuffle the input
-    awk 'BEGIN{srand()}{print rand()"\t"$0}' "$@" | sort | cut -f2- ;
+_unprintf()
+{   #unprint sentence
+    [ -z "${1}" ] && return 1
+    _unprintf__word_len="${#1}"
+    _unprintf__i="0"
+    while [ "${_unprintf__i}" -lt "${_unprintf__word_len}" ]; do
+        _unprintf__i="$((${_unprintf__i} + 1))"
+        printf "%b" "\b"
+    done
 }
 #==================================================== Example ====
-#printf "%s" "1,2,3,4,5" | tr ',' '\n' | _shuf | tr '\n' ','
+#printf "hello world"
+#sleep 1s
+#_unprintf "hello world"
+#prinf "bye world"
 #=================================================================
 
 _uploadimg()
@@ -808,32 +868,19 @@ _uploadimg()
 #[ -z "${url}" ] && printf "%s\\n" "Error"
 #=================================================================
 
-_unprintf()
-{   #unprint sentence
+_user()
+{   #test if an user exists on the system
+    #return 0 on sucess, 1 otherwise
     [ -z "${1}" ] && return 1
-    _unprintf__word_len="${#1}"
-    _unprintf__i="0"
-    while [ "${_unprintf__i}" -lt "${_unprintf__word_len}" ]; do
-        _unprintf__i="$((${_unprintf__i} + 1))"
-        printf "%b" "\b"
-    done
+    if id -u "${1}" >/dev/null 2>&1; then
+        return 0
+    else
+        return 1
+    fi
 }
 #==================================================== Example ====
-#printf "hello world"
-#sleep 1s
-#_unprintf "hello world"
-#prinf "bye world"
-#=================================================================
-
-_validnetinterface()
-{   #return 0 if parameter is a valid network interface, 1 otherwise
-    [ -z "${1}" ] && return 1
-    ip addr show | grep "${1}": >/dev/null && return 0
-    return 1
-}
-#===================================================== Example ====
-#if ! _validnetinterface "${interface}"; then
-    #printf "%s\\n" "not valid interface ${interface}"
+#if _user user; then
+    #printf "%s\\n" "user exists"
 #fi
 #=================================================================
 
@@ -873,6 +920,18 @@ _validmail()
 #===================================================== Example ====
 #if ! _validmail "${address}"; then
     #printf "%s\\n" "not valid email address: ${address}"
+#fi
+#=================================================================
+
+_validnetinterface()
+{   #return 0 if parameter is a valid network interface, 1 otherwise
+    [ -z "${1}" ] && return 1
+    ip addr show | grep "${1}": >/dev/null && return 0
+    return 1
+}
+#===================================================== Example ====
+#if ! _validnetinterface "${interface}"; then
+    #printf "%s\\n" "not valid interface ${interface}"
 #fi
 #=================================================================
 

@@ -323,12 +323,12 @@ _strlen; test X"${?}"             = X"1"
 test X"$(_strlen "hello world!")" = X"12"
 @end
 
-@begin{_stronlyduplicates}
-_stronlyduplicates; test X"${?}"                    = X"1"
+@begin{_strduplicates}
+_strduplicates; test X"${?}"                    = X"1"
 _strdiff string; test X"${?}"                       = X"1"
 hello="hello world"; world="world"
-test X"$(_stronlyduplicates "${hello}" "${world}")" = X"world"
-test X"$(_stronlyduplicates "${world}" "${hello}")" = X"world"
+test X"$(_strduplicates "${hello}" "${world}")" = X"world"
+test X"$(_strduplicates "${world}" "${hello}")" = X"world"
 @end
 
 @begin{_strreplace}
