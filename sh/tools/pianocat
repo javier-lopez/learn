@@ -3,7 +3,8 @@
 #usage: pianocat
 
 #example:
-#echo "D4 F4 - G4 A4 - A#4 A4 G4 - E4 C4 - D4 E4 F4 - D4 D4 - C#4 D4 E4 - C#4 C#4 - D4 F4 - G4 A4 - A#4 A4 G4 - E4 C4 - D4 E4 F4 - E4 D4 C#4 - C#4 D4" | pianocat
+#echo "D4 F4 - G4 A4 - A#4 A4 G4 - E4 C4 - D4 E4 F4 - D4 D4 - C#4 D4 E4 - C#4 C#4 - D4 F4 - G4 A4 - A#4 A4 G4 - E4 C4 - D4 E4 F4 - E4 D4 C#4 - C#4 D4 - - D4" | pianocat
+#echo "T:4/4 L:1/4 D4 F4:2 ! G4 A4:2 ! A#4:.5 A4:.5 G4:2 ! E4 C4:2 ! D4:.5 E4:.5 F4:2 ! D4 D4:2 ! C#4:.5 D4:.5 E4:2 ! C#4 C#4:2 ! D4 F4:2 ! G4 A4:2 ! A#4:.5 A4:.5 G4:2 ! E4 C4:2 ! D4:.5 E4:.5 F4:2 ! E4:.5 D4:.5 C#4:2 ! C#4 D4:2 - D4:4" | pianocat
 
 title="$(printf "%s" \
 "         __                                __
@@ -33,13 +34,51 @@ _usage()
     exit 1
 }
 
-
 _command()
 {
     if ! command -v "${1}" >/dev/null 2>&1; then
         printf "%s\\n" "you need to install '${1}' to run this program" >&2
         exit 1
     fi
+}
+
+_str2upper()
+{   #convert a string to lower string
+    [ -z "${1}" ] && return 1
+    printf "%s\\n" "${@}" | \
+    tr 'abcdefghijklmnopqrstuvwxyz' 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    # tr '[:upper:]' '[:lower:]'
+}
+
+_float2fraction()
+{
+    [ -z "${1}" ] && return 1
+    _float2fraction__num="${1%%.*}"
+    _float2fraction__den="${1##*.}"
+    [ "${_float2fraction__num}" ] && [ "${_float2fraction__num}" -eq "0" ] && _float2fraction__num=""
+    _float2fraction__num="${_float2fraction__num}${_float2fraction__den}"
+    _float2fraction__zero="${#_float2fraction__den}"
+    _float2fraction__den="1"
+    #checking if denominator or numerator is greater
+    while [ "${_float2fraction__zero}" -gt "0" ]; do
+        _float2fraction__den="${_float2fraction__den}0"
+        _float2fraction__zero="$((${_float2fraction__zero}-1))"
+    done
+    if [ "${_float2fraction__num}" -gt "${_float2fraction__den}" ];then
+       _float2fraction__greater="${_float2fraction__num}"
+       _float2fraction__lower="${_float2fraction__den}"
+    else
+       _float2fraction__greater="${_float2fraction__den}"
+       _float2fraction__lower="${_float2fraction__num}"
+    fi #finding hcf
+    while [ "${_float2fraction__lower}" -ne "0" ];do
+        _float2fraction__hcf="${_float2fraction__lower}"
+        _float2fraction__lower=$((${_float2fraction__greater}%${_float2fraction__lower}))
+        _float2fraction__greater="${_float2fraction__hcf}"
+    done #dividing numerator and denominator by hcf
+    _float2fraction__num="$((${_float2fraction__num}/${_float2fraction__hcf}))"
+    _float2fraction__den="$((${_float2fraction__den}/${_float2fraction__hcf}))" #answer
+    printf "%s\\n" "${_float2fraction__num}/${_float2fraction__den}"
 }
 
 _ascii2int()
@@ -58,17 +97,17 @@ _readc()
 
 _cleanup()
 {
-    clear        # clear the screen
-    stty echo    # show input
-    tput rmcup   # restore terminal view
+    clear      # clear the screen
+    stty echo  # show input
+    tput rmcup # restore terminal view
 }
 
 _pianocat(){
-    tput smcup && saved_term=true # save current terminal view
+    tput smcup # save current terminal view
 
     printf "%s\\n\\n" "${title}"
     printf "%s" "> "
-    octave="4"; while :; do
+    octave="4"; tempo="4/4"; length="1/4"; while :; do
         [ -z "${note}" ] || printf "%s" "> "
         if [ -z "${input}" ]; then
             _readc
@@ -110,30 +149,42 @@ _pianocat(){
                 *)  note=""; continue;;
             esac
         else
-            if [ X"${note}" = X"${input}" ]; then
-                printf "\\b\\b" && exit 0
-            else
-                note="${input%% *}"
-                input="${input#* }"
-            fi
-            case "${note}" in
-                -) sleep $(printf "${delay} * 2\\n" | bc -l) ;;
-                *) sleep "${delay}" ;;
+            case "${input}" in
+                *' '*)     note="${input%% *}"; input="${input#* }" ;;
+                "${note}") printf "\\b\\b" && exit 0 ;;
+                *)         note="${input%% *}"; input="${note%%:*}" ;;
             esac
+            case "${note}" in
+                T*) tempo="${note##*:}";  note=""; continue ;;
+                L*) length="${note##*:}"; note=""; continue ;;
+                =)  cur_len="${tempo}"   ;;
+                -)  cur_len="$(awk "BEGIN {printf \"%.4f\", "${tempo}"/2; exit(0)}")";;
+                *:*) cur_len="${note##*:}/${tempo##*/}"; note="${note%%:*}" ;;
+                !|*) cur_len="${length}" ;;
+            esac
+            case "${cur_len}" in
+                */*) ;;
+                *)   cur_len="$(_float2fraction "${cur_len}")" ;;
+            esac
+            printf "tempo: %s, "  "${tempo}"
+            printf "length: %s, " "${cur_len}"
         fi
 
-        [ -z "${note}" ] && continue
-        printf "%s\\n" "key: '${retval}' note: ${note}"
+        [ "${retval}" ]  && printf "%s" "key: '${retval}', "
+        printf "%s\\n" "note: ${note}"
         #play -qn synth 1 pluck "${note}" >/dev/null 2>&1
-        play -qn synth 2 pluck $note >/dev/null 2>&1 &
+        play -qn synth 2 pluck "${note}" >/dev/null 2>&1 &
+        [ "${input}" ] && sleep $(awk "BEGIN {printf \"%.4f\", "${cur_len}" * "${delay}" / (1/${tempo##*/}); exit(0)}")
     done
 }
 
 trap _cleanup 1 15
 
 if [ ! -t 0 ]; then
-    #there is input comming from pipe or file, add to the end of $@
+    #there is input comming from pipe or file, save it
     input="$(cat)"
+    input="$(_str2upper "${input}")"
+    input="$(printf "%s" "${input}" | awk '{ sub(/[ \t]+$/, ""); sub(/^[ \t]+/, ""); print }')"
 fi
 
 for arg; do #parse options
