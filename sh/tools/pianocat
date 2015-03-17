@@ -223,7 +223,7 @@ _pianocat(){
                 60|'<') notes="$(_substr "${notes}" 1 6)$(_substr "${notes}" 0 1)"; _key '+'; note=""; continue;;
 
                 27|) _cleanup; exit ;; #esc
-                *)     continue;;
+                *)     note=""; continue;;
             esac
         else
             case "${input}" in
