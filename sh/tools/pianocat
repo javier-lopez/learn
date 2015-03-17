@@ -170,6 +170,7 @@ _pianocat(){
             printf "length: %s, " "${cur_len}"
         fi
 
+        [ ! "${note}" ]  && continue
         [ "${retval}" ]  && printf "%s" "key: '${retval}', "
         printf "%s\\n" "note: ${note}"
         #play -qn synth 1 pluck "${note}" >/dev/null 2>&1
