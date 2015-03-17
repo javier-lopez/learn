@@ -134,10 +134,10 @@ _cleanup()
     tput rmcup # restore terminal view
 }
 
-_octave()
+_key()
 {
     #auxiliar to calculate the current octave
-    #it maintains an internal counter, and set either 1/-1 to retval_octave
+    #it maintains an internal counter, and set either 1/-1 to retval_key
     #depending the spaces the keyboard has moved
     #notes="CDEFGAB" => "C4D4E4F4G4A4B4" => 0
     #notes="BCDEFGA" => "B3C4D4E4F4G4A4" => -1
@@ -145,29 +145,29 @@ _octave()
     #notes="DEFGABC" => "D4E4F4G4A4B4C5" => 1
     #notes="EFGABCD" => "E4F4G4A4B4C5D5" => 2
     #notes="FGABCDE" => "F4G4A4B4C5D5E5" => 3
-    [ -z "${_octave__i}" ] && _octave__i="0"
+    [ -z "${_key__i}" ] && _key__i="0"
     case "${1}" in
         '')  ;;
-        '-') _octave__i="$((${_octave__i}-1))" ;;
-        '+') _octave__i="$((${_octave__i}+1))" ;;
-        *) case "${_octave__i}" in
+        '-') _key__i="$((${_key__i}-1))" ;;
+        '+') _key__i="$((${_key__i}+1))" ;;
+        *) case "${_key__i}" in
            -*)
-               if [ "${1}" -le "$((6 - ${_octave__i}))" ]; then
-                   [ "-${1}" -gt "${_octave__i}" ] && retval_octave="-1" || retval_octave="0"
+               if [ "${1}" -le "$((6 - ${_key__i}))" ]; then
+                   [ "-${1}" -gt "${_key__i}" ] && retval_key="-1" || retval_key="0"
                else
-                   [ "${1}" -lt "${_octave__i}" ]  && retval_octave="2"  || retval_octave="1"
+                   [ "${1}" -lt "${_key__i}" ]  && retval_key="2"  || retval_key="1"
                fi ;;
            0)
-               if [ "${1}" -le "$((6 - ${_octave__i}))" ]; then
-                   [ "${1}" -lt "${_octave__i}" ]  && retval_octave="1"  || retval_octave="0"
+               if [ "${1}" -le "$((6 - ${_key__i}))" ]; then
+                   [ "${1}" -lt "${_key__i}" ]  && retval_key="1"  || retval_key="0"
                else
-                   [ "-${1}" -gt "${_octave__i}" ] && retval_octave="-2" || retval_octave="1"
+                   [ "-${1}" -gt "${_key__i}" ] && retval_key="-2" || retval_key="1"
                fi ;;
            *)
-               if [ "${1}" -le "$((6 - ${_octave__i}))" ]; then
-                   retval_octave="0"
+               if [ "${1}" -le "$((6 - ${_key__i}))" ]; then
+                   retval_key="0"
                else
-                   [ "$((${1}+${_octave__i}-1))" -gt "12" ]  && retval_octave="2"  || retval_octave="1"
+                   [ "$((${1}+${_key__i}-1))" -gt "12" ]  && retval_key="2"  || retval_key="1"
                fi ;;
            esac ;;
     esac
@@ -185,29 +185,29 @@ _pianocat(){
             _readc
             case "${retval}" in
                 #major keys
-                119|w) _octave 0;  note="$(_substr "${notes}" 0 1)#$((${octave}+${retval_octave}))";; #C
-                101|e) _octave 1;  note="$(_substr "${notes}" 1 1)#$((${octave}+${retval_octave}))";; #D
-                116|t) _octave 3;  note="$(_substr "${notes}" 3 1)#$((${octave}+${retval_octave}))";; #F
-                121|y) _octave 4;  note="$(_substr "${notes}" 4 1)#$((${octave}+${retval_octave}))";; #G
-                117|u) _octave 5;  note="$(_substr "${notes}" 5 1)#$((${octave}+${retval_octave}))";; #A
-                111|o) _octave 7;  note="$(_substr "${notes}" 0 1)#$((${octave}+${retval_octave}))";; #C
-                112|p) _octave 8;  note="$(_substr "${notes}" 1 1)#$((${octave}+${retval_octave}))";; #D
-                43|+)  _octave 10; note="$(_substr "${notes}" 3 1)#$((${octave}+${retval_octave}))";; #F
+                119|w) _key 0;  note="$(_substr "${notes}" 0 1)#$((${octave}+${retval_key}))";; #C
+                101|e) _key 1;  note="$(_substr "${notes}" 1 1)#$((${octave}+${retval_key}))";; #D
+                116|t) _key 3;  note="$(_substr "${notes}" 3 1)#$((${octave}+${retval_key}))";; #F
+                121|y) _key 4;  note="$(_substr "${notes}" 4 1)#$((${octave}+${retval_key}))";; #G
+                117|u) _key 5;  note="$(_substr "${notes}" 5 1)#$((${octave}+${retval_key}))";; #A
+                111|o) _key 7;  note="$(_substr "${notes}" 0 1)#$((${octave}+${retval_key}))";; #C
+                112|p) _key 8;  note="$(_substr "${notes}" 1 1)#$((${octave}+${retval_key}))";; #D
+                43|+)  _key 10; note="$(_substr "${notes}" 3 1)#$((${octave}+${retval_key}))";; #F
 
                 #normal keys
-                97|a)  _octave 0;  note="$(_substr "${notes}" 0 1)$((${octave}+${retval_octave}))";; #C
-                115|s) _octave 1;  note="$(_substr "${notes}" 1 1)$((${octave}+${retval_octave}))";; #D
-                100|d) _octave 2;  note="$(_substr "${notes}" 2 1)$((${octave}+${retval_octave}))";; #E
-                102|f) _octave 3;  note="$(_substr "${notes}" 3 1)$((${octave}+${retval_octave}))";; #F
-                103|g) _octave 4;  note="$(_substr "${notes}" 4 1)$((${octave}+${retval_octave}))";; #G
-                104|h) _octave 5;  note="$(_substr "${notes}" 5 1)$((${octave}+${retval_octave}))";; #A
-                106|j) _octave 6;  note="$(_substr "${notes}" 6 1)$((${octave}+${retval_octave}))";; #B
-                107|k) _octave 7;  note="$(_substr "${notes}" 0 1)$((${octave}+${retval_octave}))";; #C
-                108|l) _octave 8;  note="$(_substr "${notes}" 1 1)$((${octave}+${retval_octave}))";; #D
-                195*|'ñ') _octave 9; note="$(_substr "${notes}" 2 1)$((${octave}+${retval_octave}))";; #E
-                327*|325*|326*|'ñ') _readc; _octave 9; note="$(_substr "${notes}" 2 1)$((${octave}+${retval_octave}))";; #E
-                123|'}')  _octave 10; note="$(_substr "${notes}" 3 1)$((${octave}+${retval_octave}))";; #F
-                125|'{')  _octave 11; note="$(_substr "${notes}" 4 1)$((${octave}+${retval_octave}))";; #G
+                97|a)  _key 0;  note="$(_substr "${notes}" 0 1)$((${octave}+${retval_key}))";; #C
+                115|s) _key 1;  note="$(_substr "${notes}" 1 1)$((${octave}+${retval_key}))";; #D
+                100|d) _key 2;  note="$(_substr "${notes}" 2 1)$((${octave}+${retval_key}))";; #E
+                102|f) _key 3;  note="$(_substr "${notes}" 3 1)$((${octave}+${retval_key}))";; #F
+                103|g) _key 4;  note="$(_substr "${notes}" 4 1)$((${octave}+${retval_key}))";; #G
+                104|h) _key 5;  note="$(_substr "${notes}" 5 1)$((${octave}+${retval_key}))";; #A
+                106|j) _key 6;  note="$(_substr "${notes}" 6 1)$((${octave}+${retval_key}))";; #B
+                107|k) _key 7;  note="$(_substr "${notes}" 0 1)$((${octave}+${retval_key}))";; #C
+                108|l) _key 8;  note="$(_substr "${notes}" 1 1)$((${octave}+${retval_key}))";; #D
+                195*|'ñ') _key 9; note="$(_substr "${notes}" 2 1)$((${octave}+${retval_key}))";; #E
+                327*|325*|326*|'ñ') _readc; _key 9; note="$(_substr "${notes}" 2 1)$((${octave}+${retval_key}))";; #E
+                123|'}')  _key 10; note="$(_substr "${notes}" 3 1)$((${octave}+${retval_key}))";; #F
+                125|'{')  _key 11; note="$(_substr "${notes}" 4 1)$((${octave}+${retval_key}))";; #G
 
                 #change octave
                 49|1) octave="1"; note=""; continue;;
@@ -219,8 +219,8 @@ _pianocat(){
                 55|7) octave="7"; note=""; continue;;
 
                 #move piano keys
-                62|'>') notes="$(_substr "${notes}" 6 1)$(_substr "${notes}" 0 6)"; _octave '-'; note=""; continue;;
-                60|'<') notes="$(_substr "${notes}" 1 6)$(_substr "${notes}" 0 1)"; _octave '+'; note=""; continue;;
+                62|'>') notes="$(_substr "${notes}" 6 1)$(_substr "${notes}" 0 6)"; _key '-'; note=""; continue;;
+                60|'<') notes="$(_substr "${notes}" 1 6)$(_substr "${notes}" 0 1)"; _key '+'; note=""; continue;;
 
                 27|) _cleanup; exit ;; #esc
                 *)     continue;;
