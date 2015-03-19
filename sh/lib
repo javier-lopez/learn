@@ -1,9 +1,7 @@
 #!/bin/sh
 #functions, copy and paste them in your own scripts
 
-#https://github.com/chilicuil/learn/blob/master/sh/lib
 #if you have more or can improve the current ones please send your push request!
-
 #new functions:
 #[+] must be self contained, with no dependencies in other functions
 #[+] can depend on exotic cli commands
@@ -106,22 +104,22 @@ _basename()
 #_basename /path/file #print file
 #=================================================================
 
-_bbasename()
+_basename2()
 {   #alternative basename portable version, faster! but with possible drawbacks
-    [ -z "${1}" ] && return 1 || _bbasename__name="${1}"
-    [ -z "${2}" ] || _bbasename__suffix="${2}"
-    case "${_bbasename__name}" in
-        /*|*/*) _bbasename__name="${_bbasename__name##*/}"
+    [ -z "${1}" ] && return 1 || _basename2__name="${1}"
+    [ -z "${2}" ] || _basename2__suffix="${2}"
+    case "${_basename2__name}" in
+        /*|*/*) _basename2__name="${_basename2__name##*/}"
     esac
 
-    if [ -n "${_bbasename__suffix}" ] && [ "${#_bbasename__name}" -gt "${#2}" ]; then
-        _bbasename__name="${_bbasename__name%$_bbasename__suffix}"
+    if [ -n "${_basename2__suffix}" ] && [ "${#_basename2__name}" -gt "${#2}" ]; then
+        _basename2__name="${_basename2__name%$_basename2__suffix}"
     fi
 
-    printf "%s" "${_bbasename__name}"
+    printf "%s" "${_basename2__name}"
 }
 #==================================================== Example ====
-#_bbasename /path/file #print file
+#_basename2 /path/file #print file
 #=================================================================
 
 _decode64()
@@ -385,6 +383,25 @@ _internet()
 #fi
 #=================================================================
 
+_is_int()
+{   #look for an integer, returns 0 on success, 1 otherwise
+    #http://www.unix.com/shell-programming-and-scripting/172070-help-scripting-command.html
+    case $1 in
+        *[!0-9]*|"") return 1 ;;
+    esac
+}
+#==================================================== Example ====
+#printf "%s" "Enter input: "
+#read input
+#if ! _is_int "${input}" ; then
+    #printf "%s\\n" "Your input must consist of only numbers." >&2
+    #exit 1
+#else
+    #printf "%s\\n" "Input is valid."
+#fi
+#exit 0
+#=================================================================
+
 _livecd()
 {   #detect a livecd system, return 0 on success, 1 otherwise
     grep boot=live /proc/cmdline >/dev/null && return 0
@@ -462,23 +479,6 @@ _notify()
 }
 #==================================================== Example ====
 #_notify "You need html2text" "$ sudo apt-get install html2text"
-#=================================================================
-
-_num()
-{   #look for a number, returns 0 on success, 1 otherwise
-    [ -z "${1}" ] && return 1
-    printf "%s\\n" "${@}" | grep -v "[^0-9]" >/dev/null
-}
-#==================================================== Example ====
-#printf "%s" "Enter input: "
-#read input
-#if ! _num "${input}" ; then
-    #printf "%s\\n" "Your input must consist of only numbers." >&2
-    #exit 1
-#else
-    #printf "%s\\n" "Input is valid."
-#fi
-#exit 0
 #=================================================================
 
 _printfc()
@@ -754,16 +754,34 @@ _strlen()
 #=================================================================
 
 _strreplace()
+{  #replace param in string, return 1 on failure
+   #http://www.unix.com/shell-programming-and-scripting/124160-replace-word-string.html
+  _strreplace__orig="${1}"
+  [ -n "${2}" ] || return 1 #nothing to search for: error
+  _strreplace__srch="${2}"  #pattern to replace
+  _strreplace__rep="${3}"   #replacement string
+  case "${_strreplace__orig}" in
+    *"${_strreplace__srch}"*) #if pattern exists in the string
+       _strreplace__sr1="${_strreplace__orig%%$_strreplace__srch*}" #take the string preceding the first match
+       _strreplace__sr2="${_strreplace__orig#*$_strreplace__srch}"  #and the string following the first match
+       _strreplace__orig="${_strreplace__sr1}${_strreplace__rep}${_strreplace__sr2}" #and sandwich the replacement string between them
+       ;;
+    *) return 1 ;; #if the pattern does not exist, return an error code
+  esac
+  printf "%s" "${_strreplace__orig}"
+}
+
+_strreplace2()
 {   #replace param in string, return 1 on failure
     [ -z "${1}" ] && return 1
     [ -z "${2}" ] && return 1
     [ -z "${3}" ] && return 1
-    _strreplace__replace=$(printf "%s" "${1}" | sed -e "s:${2}:${3}:g")
-    printf "%s" "${_strreplace__replace}"
+    _strreplace2__replace=$(printf "%s" "${1}" | sed -e "s:${2}:${3}:g")
+    printf "%s" "${_strreplace2__replace}"
 }
 #==================================================== Example ====
 #hello="hello world"
-#bye="$(_strreplace "${hello}" "hello" "bye")"
+#bye="$(_strreplace2 "${hello}" "hello" "bye")"
 #printf "%s\\n" "${bye}"   #prints "bye world"
 #=================================================================
 
