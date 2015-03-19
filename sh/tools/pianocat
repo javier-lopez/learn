@@ -29,12 +29,32 @@ Press any key to play, 1..7 to select an octave
 
 _usage()
 {
-    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options]" >&2
+    printf "%s\\n" "Usage: ${progname} [options]" >&2
     printf "%s\\n" "A piano emulator." >&2
     printf "\\n" >&2
-    printf "%s\\n" "  -h, --help   show this help message and exit" >&2
-    printf "%s\\n" "  -b, --beat   beat time (default 0.5)" >&2
+    printf "%s\\n" "  -h, --help          show this help message and exit" >&2
+    printf "%s\\n" "  -b, --beat          beat time in seconds (0.5)" >&2
+    printf "%s\\n" "  -s, --sound [s|d]   set method to generate sound (static with fallback to dynamic)"  >&2
+    printf "%s\\n" "                      by default, ${progname} will look for wav files or other static" >&2
+    printf "%s\\n" "                      files matching the notes played, eg: A4.wav, if no static files" >&2
+    printf "%s\\n" "                      are found then it'll use sox to generate the sounds dinamically" >&2
+    printf "%s\\n" "  -d, --directory     base directory   (~/.pianocat)" >&2
+    printf "%s\\n" "  -c, --collection    collection sound (iowa-steinway-b)" >&2
+    printf "%s\\n" "  -f, --format        audio format     (wav)" >&2
     exit 1
+}
+
+_basename()
+{   #alternative basename portable version, faster! but with possible drawbacks
+    [ -z "${1}" ] && return 1 || _basename__name="${1}" && _basename__retval=""
+    [ -z "${2}" ] || _basename__suffix="${2}"
+    case "${_basename__name}" in
+        /*|*/*) _basename__name="${_basename__name##*/}"
+    esac
+    [ -n "${_basename__suffix}" ] && [ "${#_basename__name}" -gt "${#2}" ] && \
+        _basename__name="${_basename__name%$_basename__suffix}"
+    _basename__retval="${_basename__name}"
+    #printf "%s" "${_basename__name}"
 }
 
 _command()
@@ -46,10 +66,9 @@ _command()
 }
 
 _str2upper()
-{   #convert a string to lower string
+{
     [ -z "${1}" ] && return 1
-    printf "%s\\n" "${@}" | \
-    tr 'abcdefghijklmnopqrstuvwxyz' 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    printf "%s\\n" "${@}" | tr 'abcdefghijklmnopqrstuvwxyz' 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
     # tr '[:upper:]' '[:lower:]'
 }
 
@@ -82,9 +101,28 @@ _substr()
     printf "%s\\n" "${1}" | cut -c"${_substr__start}"-"${_substr__len}"
 }
 
+_strreplace()
+{  #replace param in string, return 1 on failure
+   #http://www.unix.com/shell-programming-and-scripting/124160-replace-word-string.html
+  _strreplace__orig="${1}" && _strreplace__retval=""
+  [ -n "${2}" ] || return 1
+  _strreplace__srch="${2}"
+  _strreplace__rep="${3}"
+  case "${_strreplace__orig}" in
+    *"${_strreplace__srch}"*)
+       _strreplace__sr1="${_strreplace__orig%%$_strreplace__srch*}"
+       _strreplace__sr2="${_strreplace__orig#*$_strreplace__srch}"
+       _strreplace__orig="${_strreplace__sr1}${_strreplace__rep}${_strreplace__sr2}"
+       ;;
+    *) return 1 ;;
+  esac
+  _strreplace__retval="${_strreplace__orig}"
+  #printf "%s" "${_strreplace__orig}"
+}
+
 _float2fraction()
 {
-    [ -z "${1}" ] && return 1
+    [ -z "${1}" ] && return 1 || _float2fraction__retval=""
     _float2fraction__num="${1%%.*}"
     _float2fraction__den="${1##*.}"
     [ "${_float2fraction__num}" ] && [ "${_float2fraction__num}" -eq "0" ] && _float2fraction__num=""
@@ -109,8 +147,9 @@ _float2fraction()
         _float2fraction__greater="${_float2fraction__hcf}"
     done #dividing numerator and denominator by hcf
     _float2fraction__num="$((${_float2fraction__num}/${_float2fraction__hcf}))"
-    _float2fraction__den="$((${_float2fraction__den}/${_float2fraction__hcf}))" #answer
-    printf "%s\\n" "${_float2fraction__num}/${_float2fraction__den}"
+    _float2fraction__den="$((${_float2fraction__den}/${_float2fraction__hcf}))"
+    _float2fraction__retval="${_float2fraction__num}/${_float2fraction__den}" #answer
+    #printf "%s\\n" "${_float2fraction__num}/${_float2fraction__den}"
 }
 
 _ascii2int()
@@ -120,9 +159,10 @@ _ascii2int()
 
 _readc()
 {
+    [ ! -t 0 ] && _readc__retval="27" && return || _readc__retval=""
     stty -echo
     stty raw
-    retval="$(_ascii2int "$(dd bs=1 count=1 2> /dev/null)")"
+    _readc__retval="$(_ascii2int "$(dd bs=1 count=1 2> /dev/null)")"
     stty -raw
     stty echo
 }
@@ -137,7 +177,7 @@ _cleanup()
 _key()
 {
     #auxiliar to calculate the current octave
-    #it maintains an internal counter, and set either 1/-1 to retval_key
+    #it maintains an internal counter, and set either 1/-1 to _key__retval
     #depending the spaces the keyboard has moved
     #notes="CDEFGAB" => "C4D4E4F4G4A4B4" => 0
     #notes="BCDEFGA" => "B3C4D4E4F4G4A4" => -1
@@ -145,7 +185,7 @@ _key()
     #notes="DEFGABC" => "D4E4F4G4A4B4C5" => 1
     #notes="EFGABCD" => "E4F4G4A4B4C5D5" => 2
     #notes="FGABCDE" => "F4G4A4B4C5D5E5" => 3
-    [ -z "${_key__i}" ] && _key__i="0"
+    [ -z "${_key__i}" ] && _key__i="0" && _key__retval=""
     case "${1}" in
         '')  ;;
         '-') _key__i="$((${_key__i}-1))" ;;
@@ -153,29 +193,42 @@ _key()
         *) case "${_key__i}" in
            -*)
                if [ "${1}" -le "$((6 - ${_key__i}))" ]; then
-                   [ "-${1}" -gt "${_key__i}" ] && retval_key="-1" || retval_key="0"
+                   [ "-${1}" -gt "${_key__i}" ] && _key__retval="-1" || _key__retval="0"
                else
-                   [ "${1}" -lt "${_key__i}" ]  && retval_key="2"  || retval_key="1"
+                   [ "${1}" -lt "${_key__i}" ]  && _key__retval="2"  || _key__retval="1"
                fi ;;
            0)
                if [ "${1}" -le "$((6 - ${_key__i}))" ]; then
-                   [ "${1}" -lt "${_key__i}" ]  && retval_key="1"  || retval_key="0"
+                   [ "${1}" -lt "${_key__i}" ]  && _key__retval="1"  || _key__retval="0"
                else
-                   [ "-${1}" -gt "${_key__i}" ] && retval_key="-2" || retval_key="1"
+                   [ "-${1}" -gt "${_key__i}" ] && _key__retval="-2" || _key__retval="1"
                fi ;;
            *)
                if [ "${1}" -le "$((6 - ${_key__i}))" ]; then
-                   retval_key="0"
+                   _key__retval="0"
                else
-                   [ "$((${1}+${_key__i}-1))" -gt "12" ]  && retval_key="2"  || retval_key="1"
+                   [ "$((${1}+${_key__i}-1))" -gt "12" ]  && _key__retval="2"  || _key__retval="1"
                fi ;;
            esac ;;
     esac
 }
 
-_pianocat(){
-    tput smcup # save current terminal view
+_pianocat()
+{
+    case "${sound}" in
+        s*) #look for local sounds and use them if available
+            if [ -f "${directory}/${collection}/A4.${format}" ]; then
+                _pianocat__args="${directory}/${collection}/NOTE.${format}"
+            elif [ -f "A4.${format}" ]; then
+                _pianocat__args="NOTE.${format}"
+            else
+                _pianocat__args="-qn synth 2 pluck NOTE"
+            fi
+            ;;
+        d*) _pianocat__args="-qn synth 2 pluck NOTE" ;;
+    esac
 
+    tput smcup # save current terminal view
     printf "%s\\n\\n" "${title}"
     printf "%s" "> "
 
@@ -183,31 +236,31 @@ _pianocat(){
         [ -z "${note}" ] || printf "%s" "> "
         if [ -z "${input}" ]; then
             _readc
-            case "${retval}" in
+            case "${_readc__retval}" in
                 #major keys
-                119|w) _key 0;  note="$(_substr "${notes}" 0 1)#$((${octave}+${retval_key}))";; #C
-                101|e) _key 1;  note="$(_substr "${notes}" 1 1)#$((${octave}+${retval_key}))";; #D
-                116|t) _key 3;  note="$(_substr "${notes}" 3 1)#$((${octave}+${retval_key}))";; #F
-                121|y) _key 4;  note="$(_substr "${notes}" 4 1)#$((${octave}+${retval_key}))";; #G
-                117|u) _key 5;  note="$(_substr "${notes}" 5 1)#$((${octave}+${retval_key}))";; #A
-                111|o) _key 7;  note="$(_substr "${notes}" 0 1)#$((${octave}+${retval_key}))";; #C
-                112|p) _key 8;  note="$(_substr "${notes}" 1 1)#$((${octave}+${retval_key}))";; #D
-                43|+)  _key 10; note="$(_substr "${notes}" 3 1)#$((${octave}+${retval_key}))";; #F
+                119|w) _key 0;  note="$(_substr "${notes}" 0 1)#$((${octave}+${_key__retval}))";; #C
+                101|e) _key 1;  note="$(_substr "${notes}" 1 1)#$((${octave}+${_key__retval}))";; #D
+                116|t) _key 3;  note="$(_substr "${notes}" 3 1)#$((${octave}+${_key__retval}))";; #F
+                121|y) _key 4;  note="$(_substr "${notes}" 4 1)#$((${octave}+${_key__retval}))";; #G
+                117|u) _key 5;  note="$(_substr "${notes}" 5 1)#$((${octave}+${_key__retval}))";; #A
+                111|o) _key 7;  note="$(_substr "${notes}" 0 1)#$((${octave}+${_key__retval}))";; #C
+                112|p) _key 8;  note="$(_substr "${notes}" 1 1)#$((${octave}+${_key__retval}))";; #D
+                43|+)  _key 10; note="$(_substr "${notes}" 3 1)#$((${octave}+${_key__retval}))";; #F
 
                 #normal keys
-                97|a)  _key 0;  note="$(_substr "${notes}" 0 1)$((${octave}+${retval_key}))";; #C
-                115|s) _key 1;  note="$(_substr "${notes}" 1 1)$((${octave}+${retval_key}))";; #D
-                100|d) _key 2;  note="$(_substr "${notes}" 2 1)$((${octave}+${retval_key}))";; #E
-                102|f) _key 3;  note="$(_substr "${notes}" 3 1)$((${octave}+${retval_key}))";; #F
-                103|g) _key 4;  note="$(_substr "${notes}" 4 1)$((${octave}+${retval_key}))";; #G
-                104|h) _key 5;  note="$(_substr "${notes}" 5 1)$((${octave}+${retval_key}))";; #A
-                106|j) _key 6;  note="$(_substr "${notes}" 6 1)$((${octave}+${retval_key}))";; #B
-                107|k) _key 7;  note="$(_substr "${notes}" 0 1)$((${octave}+${retval_key}))";; #C
-                108|l) _key 8;  note="$(_substr "${notes}" 1 1)$((${octave}+${retval_key}))";; #D
-                195*|'ñ') _key 9; note="$(_substr "${notes}" 2 1)$((${octave}+${retval_key}))";; #E
-                327*|325*|326*|'ñ') _readc; _key 9; note="$(_substr "${notes}" 2 1)$((${octave}+${retval_key}))";; #E
-                123|'}')  _key 10; note="$(_substr "${notes}" 3 1)$((${octave}+${retval_key}))";; #F
-                125|'{')  _key 11; note="$(_substr "${notes}" 4 1)$((${octave}+${retval_key}))";; #G
+                97|a)  _key 0;  note="$(_substr "${notes}" 0 1)$((${octave}+${_key__retval}))";; #C
+                115|s) _key 1;  note="$(_substr "${notes}" 1 1)$((${octave}+${_key__retval}))";; #D
+                100|d) _key 2;  note="$(_substr "${notes}" 2 1)$((${octave}+${_key__retval}))";; #E
+                102|f) _key 3;  note="$(_substr "${notes}" 3 1)$((${octave}+${_key__retval}))";; #F
+                103|g) _key 4;  note="$(_substr "${notes}" 4 1)$((${octave}+${_key__retval}))";; #G
+                104|h) _key 5;  note="$(_substr "${notes}" 5 1)$((${octave}+${_key__retval}))";; #A
+                106|j) _key 6;  note="$(_substr "${notes}" 6 1)$((${octave}+${_key__retval}))";; #B
+                107|k) _key 7;  note="$(_substr "${notes}" 0 1)$((${octave}+${_key__retval}))";; #C
+                108|l) _key 8;  note="$(_substr "${notes}" 1 1)$((${octave}+${_key__retval}))";; #D
+                195*|'ñ') _key 9; note="$(_substr "${notes}" 2 1)$((${octave}+${_key__retval}))";; #E
+                327*|325*|326*|'ñ') _readc; _key 9; note="$(_substr "${notes}" 2 1)$((${octave}+${_key__retval}))";; #E
+                123|'}')  _key 10; note="$(_substr "${notes}" 3 1)$((${octave}+${_key__retval}))";; #F
+                125|'{')  _key 11; note="$(_substr "${notes}" 4 1)$((${octave}+${_key__retval}))";; #G
 
                 #change octave
                 49|1) octave="1"; note=""; continue;;
@@ -242,30 +295,32 @@ _pianocat(){
             esac
             case "${cur_len}" in
                 */*) ;;
-                *)   cur_len="$(_float2fraction "${cur_len}")" ;;
+                *)   _float2fraction "${cur_len}"; cur_len="${_float2fraction__retval}" ;;
             esac
             printf "tempo: %s, "  "${tempo}"
             printf "length: %s, " "${cur_len}"
         fi
 
         [ ! "${note}" ]  && continue
-        [ "${retval}" ]  && printf "%s" "key: '${retval}', "
+        [ "${_readc__retval}" ]  && printf "%s" "key: '${_readc__retval}', "
         printf "%s\\n" "note: ${note}"
         case "${note}" in
             *+*) chord="${note}"; while [ "${chord}" ]; do
                      notec="${chord%%+*}"
-                     play -qn synth 2 pluck "${notec}" >/dev/null 2>&1 &
+                     _strreplace "${_pianocat__args}" NOTE "${notec}"
+                     play "${_strreplace__retval}" >/dev/null 2>&1 &
                      [ X"${chord}" = X"${notec}" ] && chord='' || chord="${chord#*+}"
                  done ;;
             *~*) ;;
-                 #play -qn synth 1 pluck "${note}" >/dev/null 2>&1
-            *)   play -qn synth 2 pluck "${note}" >/dev/null 2>&1 & ;;
+            *)   _strreplace "${_pianocat__args}" NOTE "${note}"
+                 play ${_strreplace__retval} >/dev/null 2>&1 & ;;
         esac
         [ "${input}" ] && sleep $(awk "BEGIN {printf \"%.4f\", "${cur_len}" * "${beat}" / (1/${tempo##*/}); exit(0)}")
     done
 }
 
 trap _cleanup 1 15
+_basename "${0}"; progname="${_basename__retval}"
 
 if [ ! -t 0 ]; then
     #there is input comming from pipe or file, save it
@@ -276,18 +331,49 @@ fi
 
 for arg; do #parse options
     case "${arg}" in
-        --) shift;  break       ;;
-        -h|--help)  _usage      ;;
+        --) shift;  break  ;;
+        -h|--help)  _usage ;;
         -b|--beat)
             if [ "${#}" -gt "1" ]; then
-                shift; beat="${1}"; shift
+                shift; beat="${1}"; [ "${1}" ] && shift
             else
                 printf "%s\\n" "Option '${arg}' requires a parameter"; _usage
             fi ;;
+        -s|--sound)
+            if [ "${#}" -gt "1" ]; then
+                shift; sound="${1}"; [ "${1}" ] && shift
+            else
+                printf "%s\\n" "Option '${arg}' requires a parameter"; _usage
+            fi ;;
+        -sd) sound="dynamic" ;;
+        -ss) sound="static"  ;;
+        -d|--directory)
+            if [ "${#}" -gt "1" ]; then
+                shift; directory="${1}"; [ "${1}" ] && shift
+            else
+                printf "%s\\n" "Option '${arg}' requires a parameter"; _usage
+            fi ;;
+        -c|--collection)
+            if [ "${#}" -gt "1" ]; then
+                shift; collection="${1}"; [ "${1}" ] && shift
+            else
+                printf "%s\\n" "Option '${arg}' requires a parameter"; _usage
+            fi ;;
+        -f|--format)
+            if [ "${#}" -gt "1" ]; then
+                shift; format="${1}"; [ "${1}" ] && shift
+            else
+                printf "%s\\n" "Option '${arg}' requires a parameter"; _usage
+            fi ;;
+        -?*) printf "%s\\n" "${progname}: unrecognized option \`${arg}'" >&2; _usage ;;
     esac
 done
 
 _command "play"
-[ -z "${beat}" ] && beat="0.5"
+[ -z "${beat}" ]  && beat="0.5"
+[ -z "${sound}" ] && sound="static"
+[ -z "${directory}" ]  || [ ! -d "${directory}" ] && directory="${HOME}/.pianocat"
+[ -z "${collection}" ] || [ ! -d "${directory}/${collection}" ] && collection="iowa-steinway-b"
+[ -z "${format}" ] && format="wav"
 
 _pianocat
