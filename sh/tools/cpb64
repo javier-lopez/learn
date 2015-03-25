@@ -8,6 +8,59 @@
 #to-a-remote-shell
 #...
 
+decodestr="$(
+cat - <<'EOF'
+_decode64()
+{   #decode a string in base64
+    [ ! -t 0 ] && set -- "${@}" $(cat)
+    [ -z "${1}" ] && return 1
+    if command -v "base64" >/dev/null 2>&1; then
+        printf "%s\\n" "${@}" | base64 -d
+    elif command -v "openssl" >/dev/null 2>&1; then
+        printf "%s\\n" "${@}" | openssl enc -base64 -d
+    else
+        _decode64_fallback() #slow but quite portable
+        {
+            [ ! -t 0 ] && set -- "${@}" $(cat)
+            _decode64_fallback__set='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+            _decode64_fallback__N="0"
+            _decode64_fallback__V="0"
+
+            _decode64_fallback__args="${@}"
+            while [ "${_decode64_fallback__args}" ]; do
+                _decode64_fallback__char="${_decode64_fallback__args%${_decode64_fallback__args#?}}" #first char
+                case "${_decode64_fallback__char}" in
+                    '\n') continue ;;
+                    '=' ) _decode64_fallback__V="$(($_decode64_fallback__V << 6))" ;;
+                    *)    _decode64_fallback__char="${_decode64_fallback__set#*$_decode64_fallback__char}"
+                          _decode64_fallback__char="$((${#_decode64_fallback__set}-${#_decode64_fallback__char}))"
+                          if [ "${_decode64_fallback__char}" -eq "0" ]; then
+                            [ X"${_decode64_fallback__args}" = X"${_decode64_fallback__char}" ] &&\
+                                _decode64_fallback__args='' || _decode64_fallback__args="${_decode64_fallback__args#?}"
+                            continue
+                          fi
+                          _decode64_fallback__V="$(( $_decode64_fallback__V << 6 | $_decode64_fallback__char - 1))"
+                esac
+                _decode64_fallback__N="$(($_decode64_fallback__N+1))"
+                if [ "${_decode64_fallback__N}" -eq "4" ]; then
+                    _decode64_fallback__S="16"; while [ "${_decode64_fallback__S}" -gt "-1" ]; do
+                        _decode64_fallback__char="$(( $_decode64_fallback__V >> $_decode64_fallback__S & 255 ))"
+                        printf \\$(( $_decode64_fallback__char/64*100+$_decode64_fallback__char%64/8*10+$_decode64_fallback__char%8 ))
+                        _decode64_fallback__S="$(($_decode64_fallback__S-8))"
+                    done
+                    _decode64_fallback__V="0"
+                    _decode64_fallback__N="0"
+                fi
+                [ X"${_decode64_fallback__args}" = X"${_decode64_fallback__char}" ] &&\
+                    _decode64_fallback__args='' || _decode64_fallback__args="${_decode64_fallback__args#?}"
+            done
+        }
+        printf "%s\\n" "${@}" | _decode64_fallback
+    fi
+}
+EOF
+)"
+
 _cpb64()
 {
     for file; do
@@ -15,7 +68,8 @@ _cpb64()
     done
 
     str="$(tar cf - "${@}" | gzip | openssl enc -base64)"
-    line1="cat<<E=O=F | openssl enc -base64 -d | zcat | tar xvf -"
+    #line1="cat<<E=O=F | openssl enc -base64 -d | zcat | tar xvf -"
+    line1="cat<<E=O=F | _decode64 | zcat | tar xvf -"
     line2="${str}"
     line3="E=O=F"
 
@@ -23,12 +77,12 @@ _cpb64()
 
     if command -v "xclip" >/dev/null 2>&1; then
         if [ ! -t 1 ] || [ -z "${DISPLAY}" ]; then
-            printf "%b" "${cmd}"
+            printf "%s\\n%b" "${decodestr}" "${cmd}"
         else
-            printf "%b" "${cmd}" | xclip -selection clipboard; xclip -o -selection clipboard
+            printf "%s\\n%b" "${decodestr}" "${cmd}" | xclip -selection clipboard; xclip -o -selection clipboard
         fi
     else
-        printf "%b" "${cmd}"
+        printf "%s\\n%b" "${decodestr}" "${cmd}"
     fi
 }
 
