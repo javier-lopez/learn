@@ -77,7 +77,7 @@ test X"$(_basename2 /usr/local/bin/test st)" = X"te"
 @begin{_decode64}
 _decode64; test X"${?}"                    = X"1"
 test X"$(_decode64 "aGVsbG8K")"            = X"hello"
-test X"$(_decode64 "aGVsbG8K" "aGVsbG8K")" = X"hello"
+test X"$(_decode64 "aGVsbG8K" "aGVsbG8K")" = X"$(printf "%b" "hello\\nhello")"
 @end
 
 @begin{_die}

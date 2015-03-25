@@ -14,7 +14,7 @@ _abs()
 {   #return the absolute value of the argument, or 1 on failure
     [ -z "${1}" ] && return 1
     printf "%s\\n" "${1}" | grep -v "[^0-9-]" >/dev/null || return 1
-    printf "%s" "${1}" | awk '{ print ($1 >= 0) ? $1 : 0 - $1}'
+    printf "%s"    "${1}" | awk '{ print ($1 >= 0) ? $1 : 0 - $1}'
 }
 #==================================================== Example ====
 #_abs -2 #print 2
@@ -64,7 +64,7 @@ _arch()
 
     case "${_arch__arch}" in
         x86_64) _arch__arch="64" ;;
-        *)      _arch__arch="32" ;;
+             *) _arch__arch="32" ;;
     esac
 
     printf "%s" "${_arch__arch}"
@@ -124,8 +124,46 @@ _basename2()
 
 _decode64()
 {   #decode a string in base64
+    [ ! -t 0 ] && set -- "${@}" $(cat)
     [ -z "${1}" ] && return 1
-    printf "%s\\n" "${1}" | openssl enc -base64 -d
+    if command -v "bbase64" >/dev/null 2>&1; then
+        printf "%s\\n" "${@}" | base64 -d
+    elif command -v "oppenssl" >/dev/null 2>&1; then
+        printf "%s\\n" "${@}" | openssl enc -base64 -d
+    else
+        _decode64_fallback() { #slow but quite portable
+            [ ! -t 0 ] && set -- "${@}" $(cat)
+            _decode64_fallback__set='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+            _decode64_fallback__N="0"; _decode64_fallback__V="0"; _decode64_fallback__args="${@}"
+            while [ "${_decode64_fallback__args}" ]; do
+                _decode64_fallback__char="${_decode64_fallback__args%${_decode64_fallback__args#?}}" #first char
+                case "${_decode64_fallback__char}" in
+                    '\n') continue ;;
+                    '=' ) _decode64_fallback__V="$(($_decode64_fallback__V << 6))" ;;
+                       *) _decode64_fallback__char="${_decode64_fallback__set#*$_decode64_fallback__char}"
+                          _decode64_fallback__char="$((${#_decode64_fallback__set}-${#_decode64_fallback__char}))"
+                          if [ "${_decode64_fallback__char}" -eq "0" ]; then
+                            [ X"${_decode64_fallback__args}" = X"${_decode64_fallback__char}" ] &&\
+                                _decode64_fallback__args='' || _decode64_fallback__args="${_decode64_fallback__args#?}"
+                            continue
+                          fi
+                          _decode64_fallback__V="$(($_decode64_fallback__V << 6 | $_decode64_fallback__char-1))"
+                esac
+                _decode64_fallback__N="$(($_decode64_fallback__N+1))"
+                if [ "${_decode64_fallback__N}" -eq "4" ]; then
+                    _decode64_fallback__S="16"; while [ "${_decode64_fallback__S}" -gt "-1" ]; do
+                        _decode64_fallback__char="$(($_decode64_fallback__V >> $_decode64_fallback__S & 255))"
+                        printf \\$(($_decode64_fallback__char/64*100+$_decode64_fallback__char%64/8*10+$_decode64_fallback__char%8))
+                        _decode64_fallback__S="$(($_decode64_fallback__S-8))"
+                    done
+                    _decode64_fallback__V="0"; _decode64_fallback__N="0"
+                fi
+                [ X"${_decode64_fallback__args}" = X"${_decode64_fallback__char}" ] &&\
+                    _decode64_fallback__args='' || _decode64_fallback__args="${_decode64_fallback__args#?}"
+            done
+        }
+        printf "%s\\n" "${@}" | _decode64_fallback
+    fi
 }
 #==================================================== Example ====
 #string="$(_decode64 "${string}")"
@@ -146,12 +184,11 @@ _dirname()
 {   #return string containing dirname on success, 1 on failure
     [ -z "${1}" ] && return 1
 
+    #http://www.linuxselfhelp.com/gnu/autoconf/html_chapter/autoconf_10.html
     case "${1}" in
-        /*|*/*) #http://www.linuxselfhelp.com/gnu/autoconf/html_chapter/autoconf_10.html
-            _dirname__dir=$(expr "x${1}" : 'x\(.*\)/[^/]*' \| '.'      : '.')
-            printf "%s\\n" "${_dirname__dir}"
-            ;;
-        *) printf "%s\\n" ".";;
+        /*|*/*) _dirname__dir=$(expr "x${1}" : 'x\(.*\)/[^/]*' \| '.' : '.')
+                printf "%s\\n" "${_dirname__dir}" ;;
+             *) printf "%s\\n" ".";;
     esac
 }
 #==================================================== Example ====
@@ -222,9 +259,9 @@ _echo()
 
     while [ "${#}" -gt "1" ] ; do
         case "${1}" in
-            [!-]*|-*[!ne]*) break ;;
+            [!-]*|-*[!ne]*) break  ;;
             *ne*|*en*) fmt=%b end= ;;
-            *n*) end= ;;
+            *n*) end=   ;;
             *e*) fmt=%b ;;
         esac
         shift
@@ -386,7 +423,7 @@ _internet()
 _is_int()
 {   #look for an integer, returns 0 on success, 1 otherwise
     #http://www.unix.com/shell-programming-and-scripting/172070-help-scripting-command.html
-    case $1 in
+    case "${1}" in
         *[!0-9]*|"") return 1 ;;
     esac
 }
@@ -404,7 +441,7 @@ _is_int()
 
 _livecd()
 {   #detect a livecd system, return 0 on success, 1 otherwise
-    grep boot=live /proc/cmdline >/dev/null && return 0
+    grep boot=live   /proc/cmdline >/dev/null && return 0
     grep boot=casper /proc/cmdline >/dev/null && return 0
     return 1
 }
@@ -674,7 +711,7 @@ _rmcron()
 
 _shuf()
 {   #shuffle the input
-    awk 'BEGIN{srand()}{print rand()"\t"$0}' "$@" | sort | cut -f2- ;
+    awk 'BEGIN{srand()}{print rand()"\t"$0}' "${@}" | sort | cut -f2- ;
 }
 #==================================================== Example ====
 #printf "%s" "1,2,3,4,5" | tr ',' '\n' | _shuf | tr '\n' ','
@@ -770,6 +807,11 @@ _strreplace()
   esac
   printf "%s" "${_strreplace__orig}"
 }
+#==================================================== Example ====
+#hello="hello world"
+#bye="$(_strreplace "${hello}" "hello" "bye")"
+#printf "%s\\n" "${bye}"   #prints "bye world"
+#=================================================================
 
 _strreplace2()
 {   #replace param in string, return 1 on failure
@@ -789,12 +831,12 @@ _strunique()
 {   #print unique strings, return 1 on failure
     [ -z "${1}" ] && return 1
     [ -z "${2}" ] && return 1
-    _strunique__unique="$(printf "%s\\n" ${@} | \
-                            awk '!($0 in x) {x[$0];print}')"  #faster
-    #printf "%s\\n" $@ | awk '!x[$0]++'
-    _strunique__unique="$(printf "%s" "${_strunique__unique}" | \
-                            tr '\n' ' ')"
-    printf "%s\\n" "${_strunique__unique}"
+    _strunique__retval="$(printf "%s\\n" ${@} | \
+        awk '!($0 in x) {x[$0];print}')" #faster
+        #printf "%s\\n" $@ | awk '!x[$0]++'
+    _strunique__retval="$(printf "%s" "${_strunique__retval}" | \
+        tr '\n' ' ')"
+    printf "%s\\n" "${_strunique__retval}"
 }
 #==================================================== Example ====
 #hello="hello world"
@@ -928,11 +970,9 @@ _validip4()
 
 _validmail()
 {   #verify if an email is valid, return 1 on failure
-    [ -z "${1}" ] && return 1
-
     case "${1}" in
         *@*.*) return 0 ;;
-        *)   return 1 ;;
+         *|"") return 1 ;;
     esac
 }
 #===================================================== Example ====
@@ -945,7 +985,6 @@ _validnetinterface()
 {   #return 0 if parameter is a valid network interface, 1 otherwise
     [ -z "${1}" ] && return 1
     ip addr show | grep "${1}": >/dev/null && return 0
-    return 1
 }
 #===================================================== Example ====
 #if ! _validnetinterface "${interface}"; then
@@ -965,10 +1004,7 @@ _verbose()
 
 _whereis()
 {   #whereis portable version
-    [ -z "${1}" ] && return 1
-    if ! command -v "${1}" 2>/dev/null; then
-        return 1
-    fi
+    command -v "${1}" 2>/dev/null || return 1
 }
 #==================================================== Example ====
 #if _whereis command >/dev/null; then
@@ -979,11 +1015,14 @@ _whereis()
 _xmessage()
 {   #prints a message using xmessage || gxmessage
     [ -z "${1}" ] && return 1
-    XMESSAGE="$(command -v gxmessage 2>/dev/null)" || XMESSAGE="$(command -v xmessage 2>/dev/null)"
-    MESSAGE="$(expr "${0}" : '.*/\([^/]*\)'): ${*}"
-    printf "%s\\n" "${MESSAGE}" | fold -s -w ${COLUMNS:-80}
-    if [ -n "${DISPLAY}" ] && [ -n "${XMESSAGE}" ]; then
-        printf "%s\\n" "${MESSAGE}" | fold -s -w ${COLUMNS:-80} | "${XMESSAGE}" -center -file -
+    _xmessage__bin="$(command -v gxmessage 2>/dev/null)" \
+        || _xmessage__bin="$(command -v xmessage 2>/dev/null)"
+    _xmessage__str="$(expr "${0}" : '.*/\([^/]*\)'): ${*}"
+    printf "%s\\n" "${_xmessage__str}" | fold -s -w ${COLUMNS:-80}
+    if [ -n "${DISPLAY}" ] && [ -n "${_xmessage__str}" ]; then
+        printf "%s\\n" "${_xmessage__str}" | \
+            fold -s -w ${COLUMNS:-80}      | \
+            "${_xmessage__bin}" -center -file -
     fi
 }
 #==================================================== Example ====
