@@ -111,7 +111,7 @@ test X"$(_echo "$hello")"     = X"$(printf "hellow\borld")"
 @begin{_encode64}
 _encode64; test X"${?}"              = X"1"
 test X"$(_encode64 "hello")"         = X"aGVsbG8K"
-test X"$(_encode64 "hello" "world")" = X"aGVsbG8K"
+test X"$(_encode64 "hello" "world")" = X"aGVsbG8Kd29ybGQK"
 @end
 
 @begin{_ensurecron}

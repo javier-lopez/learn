@@ -124,45 +124,45 @@ _basename2()
 
 _decode64()
 {   #decode a string in base64
-    [ ! -t 0 ] && set -- "${@}" $(cat)
+    [ ! -t 0 ] && set -- "${@}" "$(cat)"
     [ -z "${1}" ] && return 1
-    if command -v "bbase64" >/dev/null 2>&1; then
+    if command -v "base64" >/dev/null 2>&1; then
         printf "%s\\n" "${@}" | base64 -d
-    elif command -v "oppenssl" >/dev/null 2>&1; then
+    elif command -v "openssl" >/dev/null 2>&1; then
         printf "%s\\n" "${@}" | openssl enc -base64 -d
     else
-        _decode64_fallback() { #slow but quite portable
-            [ ! -t 0 ] && set -- "${@}" $(cat)
-            _decode64_fallback__set='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
-            _decode64_fallback__N="0"; _decode64_fallback__V="0"; _decode64_fallback__args="${@}"
-            while [ "${_decode64_fallback__args}" ]; do
-                _decode64_fallback__char="${_decode64_fallback__args%${_decode64_fallback__args#?}}" #first char
-                case "${_decode64_fallback__char}" in
+        _decode64_sh() { #slow but quite portable
+            [ ! -t 0 ] && set -- "${@}" "$(cat)"
+            _decode64_sh__b64='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+            _decode64_sh__n="0"; _decode64_sh__v="0"; _decode64_sh__args="${@}"
+            while [ "${_decode64_sh__args}" ]; do #process char by char
+                _decode64_sh__char="${_decode64_sh__args%${_decode64_sh__args#?}}"
+                case "${_decode64_sh__char}" in
                     '\n') continue ;;
-                    '=' ) _decode64_fallback__V="$(($_decode64_fallback__V << 6))" ;;
-                       *) _decode64_fallback__char="${_decode64_fallback__set#*$_decode64_fallback__char}"
-                          _decode64_fallback__char="$((${#_decode64_fallback__set}-${#_decode64_fallback__char}))"
-                          if [ "${_decode64_fallback__char}" -eq "0" ]; then
-                            [ X"${_decode64_fallback__args}" = X"${_decode64_fallback__char}" ] &&\
-                                _decode64_fallback__args='' || _decode64_fallback__args="${_decode64_fallback__args#?}"
+                     '=') _decode64_sh__v="$(($_decode64_sh__v << 6))" ;;
+                       *) _decode64_sh__char="${_decode64_sh__b64#*$_decode64_sh__char}"
+                          _decode64_sh__char="$((${#_decode64_sh__b64}-${#_decode64_sh__char}))"
+                          if [ "${_decode64_sh__char}" -eq "0" ]; then
+                            [ X"${_decode64_sh__args}" = X"${_decode64_sh__char}" ] &&\
+                                _decode64_sh__args='' || _decode64_sh__args="${_decode64_sh__args#?}"
                             continue
                           fi
-                          _decode64_fallback__V="$(($_decode64_fallback__V << 6 | $_decode64_fallback__char-1))"
+                          _decode64_sh__v="$(($_decode64_sh__v << 6 | $_decode64_sh__char-1))"
                 esac
-                _decode64_fallback__N="$(($_decode64_fallback__N+1))"
-                if [ "${_decode64_fallback__N}" -eq "4" ]; then
-                    _decode64_fallback__S="16"; while [ "${_decode64_fallback__S}" -gt "-1" ]; do
-                        _decode64_fallback__char="$(($_decode64_fallback__V >> $_decode64_fallback__S & 255))"
-                        printf \\$(($_decode64_fallback__char/64*100+$_decode64_fallback__char%64/8*10+$_decode64_fallback__char%8))
-                        _decode64_fallback__S="$(($_decode64_fallback__S-8))"
+                _decode64_sh__n="$(($_decode64_sh__n+1))"
+                if [ "${_decode64_sh__n}" -eq "4" ]; then
+                    _decode64_sh__s="16"; while [ "${_decode64_sh__s}" -gt "-1" ]; do
+                        _decode64_sh__char="$(($_decode64_sh__v >> $_decode64_sh__s & 255))"
+                        printf \\$(($_decode64_sh__char/64*100+$_decode64_sh__char%64/8*10+$_decode64_sh__char%8))
+                        _decode64_sh__s="$(($_decode64_sh__s-8))"
                     done
-                    _decode64_fallback__V="0"; _decode64_fallback__N="0"
+                    _decode64_sh__v="0"; _decode64_sh__n="0"
                 fi
-                [ X"${_decode64_fallback__args}" = X"${_decode64_fallback__char}" ] &&\
-                    _decode64_fallback__args='' || _decode64_fallback__args="${_decode64_fallback__args#?}"
+                [ X"${_decode64_sh__args}" = X"${_decode64_sh__char}" ] &&\
+                    _decode64_sh__args='' || _decode64_sh__args="${_decode64_sh__args#?}"
             done
         }
-        printf "%s\\n" "${@}" | _decode64_fallback
+        printf "%s\\n" "${@}" | _decode64_sh
     fi
 }
 #==================================================== Example ====
@@ -292,8 +292,127 @@ _empty()
 
 _encode64()
 {   #encode a string in base64
+    [ ! -t 0 ] && set -- "${@}" "$(cat)"
     [ -z "${1}" ] && return 1
-    printf "%s\\n" "${1}" | openssl enc -base64
+    if command -v "base64" >/dev/null 2>&1; then
+        printf "%s\\n" "${@}" | base64
+    elif command -v "openssl" >/dev/null 2>&1; then
+        printf "%s\\n" "${@}" | openssl enc -base64
+    else
+        _encode64_sh() { #slow but quite portable
+            [ ! -t 0 ] && set -- "${@}" "$(cat)"
+            _od() {
+                if command -v "od" >/dev/null 2>&1; then
+                    od -v -t x1
+                else
+                    [ ! -t 0 ] && set -- "${@}" "$(cat)"
+                    _od__O="0"; _od__W="16"; _od__args="${@}"
+                    while [ "${_od__args}" ]; do #process char by char
+                        _od__char="${_od__args%${_od__args#?}}"
+                        [ "$(($_od__O%$_od__W))" -eq "0" ] && printf '%07o' "${_od__O}"
+                        printf ' %02x' "'${_od__char}"
+                        _od__O="$(($_od__O+1))"
+                        [ "$(($_od__O%$_od__W))" -eq "0" ] && printf "\\n"
+                        [ X"${_od__args}" = X"${_od__char}" ] &&\
+                            _od__args='' || _od__args="${_od__args#?}"
+                    done
+                    printf " 0a\\n"
+                fi
+            }
+             __0='A';  __1='B';  __2='C';  __3='D';  __4='E';  __5='F';  __6='G';  __7='H';  __8='I';  __9='J';
+            __10='K'; __11='L'; __12='M'; __13='N'; __14='O'; __15='P'; __16='Q'; __17='R'; __18='S'; __19='T';
+            __20='U'; __21='V'; __22='W'; __23='X'; __24='Y'; __25='Z'; __26='a'; __27='b'; __28='c'; __29='d';
+            __30='e'; __31='f'; __32='g'; __33='h'; __34='i'; __35='j'; __36='k'; __37='l'; __38='m'; __39='n';
+            __40='o'; __41='p'; __42='q'; __43='r'; __44='s'; __45='t'; __46='u'; __47='v'; __48='w'; __49='x';
+            __50='y'; __51='z'; __52='0'; __53='1'; __54='2'; __55='3'; __56='4'; __57='5'; __58='6'; __59='7';
+            __60='8'; __61='9'; __62='+'; __63='/';
+            printf "%s\\n" "${@}" | _od | {
+                _encode64_sh__v="0"; _encode64_sh__w="0"; _encode64_sh__s="16"
+                while read _encode64_sh__line; do
+                    for _encode64_sh__word in ${_encode64_sh__line}; do
+                        [ X"${#_encode64_sh__word}" = X"7" ] && continue
+                        _encode64_sh__v="$((16#${_encode64_sh__word} << ${_encode64_sh__s} | ${_encode64_sh__v}))"
+                        _encode64_sh__s="$((${_encode64_sh__s}-8))"
+                        [ "${_encode64_sh__s}" -lt "0" ] || continue
+                        _encode64_sh__s="18"; while [ "${_encode64_sh__s}" -ge "0" ]; do
+                            case "$((${_encode64_sh__v} >> ${_encode64_sh__s} & 63))" in
+                             0) printf "%s"  "${__0}" ;;  1) printf "%s"  "${__1}" ;;  2) printf "%s"  "${__2}" ;;
+                             3) printf "%s"  "${__3}" ;;  4) printf "%s"  "${__4}" ;;  5) printf "%s"  "${__5}" ;;
+                             6) printf "%s"  "${__6}" ;;  7) printf "%s"  "${__7}" ;;  8) printf "%s"  "${__8}" ;;
+                             9) printf "%s"  "${__9}" ;; 10) printf "%s" "${__10}" ;; 11) printf "%s" "${__11}" ;;
+                            12) printf "%s" "${__12}" ;; 13) printf "%s" "${__13}" ;; 14) printf "%s" "${__14}" ;;
+                            15) printf "%s" "${__15}" ;; 16) printf "%s" "${__16}" ;; 17) printf "%s" "${__17}" ;;
+                            18) printf "%s" "${__18}" ;; 19) printf "%s" "${__19}" ;; 20) printf "%s" "${__20}" ;;
+                            21) printf "%s" "${__21}" ;; 22) printf "%s" "${__22}" ;; 23) printf "%s" "${__23}" ;;
+                            24) printf "%s" "${__24}" ;; 25) printf "%s" "${__25}" ;; 26) printf "%s" "${__26}" ;;
+                            27) printf "%s" "${__27}" ;; 28) printf "%s" "${__28}" ;; 29) printf "%s" "${__29}" ;;
+                            30) printf "%s" "${__30}" ;; 31) printf "%s" "${__31}" ;; 32) printf "%s" "${__32}" ;;
+                            33) printf "%s" "${__33}" ;; 34) printf "%s" "${__34}" ;; 35) printf "%s" "${__35}" ;;
+                            36) printf "%s" "${__36}" ;; 37) printf "%s" "${__37}" ;; 38) printf "%s" "${__38}" ;;
+                            39) printf "%s" "${__39}" ;; 40) printf "%s" "${__40}" ;; 41) printf "%s" "${__41}" ;;
+                            42) printf "%s" "${__42}" ;; 43) printf "%s" "${__43}" ;; 44) printf "%s" "${__44}" ;;
+                            45) printf "%s" "${__45}" ;; 46) printf "%s" "${__46}" ;; 47) printf "%s" "${__47}" ;;
+                            48) printf "%s" "${__48}" ;; 49) printf "%s" "${__49}" ;; 50) printf "%s" "${__50}" ;;
+                            51) printf "%s" "${__51}" ;; 52) printf "%s" "${__52}" ;; 53) printf "%s" "${__53}" ;;
+                            54) printf "%s" "${__54}" ;; 55) printf "%s" "${__55}" ;; 56) printf "%s" "${__56}" ;;
+                            57) printf "%s" "${__57}" ;; 58) printf "%s" "${__58}" ;; 59) printf "%s" "${__59}" ;;
+                            60) printf "%s" "${__60}" ;; 61) printf "%s" "${__61}" ;; 62) printf "%s" "${__62}" ;;
+                            63) printf "%s" "${__63}" ;; esac
+                            #printf "%s" "${_encode64_sh__64:$((${_encode64_sh__v} >> ${_encode64_sh__s} & 63)):1}"
+                            #printf "%s" "${_encode64_sh__64}" | cut -c$(($waa+1)) | tr -d '\n'
+                            _encode64_sh__s="$((${_encode64_sh__s}-6))"; _encode64_sh__w="$((${_encode64_sh__w}+1))"
+                            [ "${_encode64_sh__w}" -gt "75" ] && { printf "\\n"; _encode64_sh__w="0"; }
+                        done
+                    _encode64_sh__v="0"; _encode64_sh__s="16"
+                    done
+                done
+
+                case "${_encode64_sh__s}" in
+                    8) _encode64_sh__n="11" ;;
+                    0) _encode64_sh__n="5"  ;;
+                    *) _encode64_sh__n="0"  ;;
+                esac
+
+                [ X"${_encode64_sh__n}" = X"0" ] || {
+                    _encode64_sh__s="18"; while [ "${_encode64_sh__s}" -gt "${_encode64_sh__n}" ]; do
+                        case "$((${_encode64_sh__v} >> ${_encode64_sh__s} & 63))" in
+                         0) printf "%s"  "${__0}" ;;  1) printf "%s"  "${__1}" ;;  2) printf "%s"  "${__2}" ;;
+                         3) printf "%s"  "${__3}" ;;  4) printf "%s"  "${__4}" ;;  5) printf "%s"  "${__5}" ;;
+                         6) printf "%s"  "${__6}" ;;  7) printf "%s"  "${__7}" ;;  8) printf "%s"  "${__8}" ;;
+                         9) printf "%s"  "${__9}" ;; 10) printf "%s" "${__10}" ;; 11) printf "%s" "${__11}" ;;
+                        12) printf "%s" "${__12}" ;; 13) printf "%s" "${__13}" ;; 14) printf "%s" "${__14}" ;;
+                        15) printf "%s" "${__15}" ;; 16) printf "%s" "${__16}" ;; 17) printf "%s" "${__17}" ;;
+                        18) printf "%s" "${__18}" ;; 19) printf "%s" "${__19}" ;; 20) printf "%s" "${__20}" ;;
+                        21) printf "%s" "${__21}" ;; 22) printf "%s" "${__22}" ;; 23) printf "%s" "${__23}" ;;
+                        24) printf "%s" "${__24}" ;; 25) printf "%s" "${__25}" ;; 26) printf "%s" "${__26}" ;;
+                        27) printf "%s" "${__27}" ;; 28) printf "%s" "${__28}" ;; 29) printf "%s" "${__29}" ;;
+                        30) printf "%s" "${__30}" ;; 31) printf "%s" "${__31}" ;; 32) printf "%s" "${__32}" ;;
+                        33) printf "%s" "${__33}" ;; 34) printf "%s" "${__34}" ;; 35) printf "%s" "${__35}" ;;
+                        36) printf "%s" "${__36}" ;; 37) printf "%s" "${__37}" ;; 38) printf "%s" "${__38}" ;;
+                        39) printf "%s" "${__39}" ;; 40) printf "%s" "${__40}" ;; 41) printf "%s" "${__41}" ;;
+                        42) printf "%s" "${__42}" ;; 43) printf "%s" "${__43}" ;; 44) printf "%s" "${__44}" ;;
+                        45) printf "%s" "${__45}" ;; 46) printf "%s" "${__46}" ;; 47) printf "%s" "${__47}" ;;
+                        48) printf "%s" "${__48}" ;; 49) printf "%s" "${__49}" ;; 50) printf "%s" "${__50}" ;;
+                        51) printf "%s" "${__51}" ;; 52) printf "%s" "${__52}" ;; 53) printf "%s" "${__53}" ;;
+                        54) printf "%s" "${__54}" ;; 55) printf "%s" "${__55}" ;; 56) printf "%s" "${__56}" ;;
+                        57) printf "%s" "${__57}" ;; 58) printf "%s" "${__58}" ;; 59) printf "%s" "${__59}" ;;
+                        60) printf "%s" "${__60}" ;; 61) printf "%s" "${__61}" ;; 62) printf "%s" "${__62}" ;;
+                        63) printf "%s" "${__63}" ;; esac
+                        #printf "%s" "${_encode64_sh__64:$((${_encode64_sh__v} >> ${_encode64_sh__s} & 63)):1}"
+                        #printf "%s" "${_encode64_sh__64}" | cut -c$(($waa+1)) | tr -d '\n'
+                        _encode64_sh__s="$((${_encode64_sh__s}-6))"; _encode64_sh__w="$((${_encode64_sh__w}+1))"
+                        [ "${_encode64_sh__w}" -gt "75" ] && { printf "\\n"; _encode64_sh__w="0"; }
+                    done
+
+                    _encode64_sh__s="$((${_encode64_sh__n}/5))"; while [ "${_encode64_sh__s}" -gt "0" ]; do
+                        _encode64_sh__s="$((${_encode64_sh__s}-1))"; printf "="
+                    done
+                }
+                printf "\\n"
+            }
+        }
+        printf "%s\\n" "${@}" | _encode64_sh
+    fi
 }
 #==================================================== Example ====
 #string="$(_encode64 "${string}")"
