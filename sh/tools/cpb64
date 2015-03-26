@@ -56,28 +56,53 @@ _decode64()
 EOF
 )"
 
+_usage()
+{
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] file ..." >&2
+    printf "%s\\n" "Copy files using base64." >&2
+    printf "\\n" >&2
+    printf "%s\\n" "  -p, --portable   produce extra portable output, useful"  >&2
+    printf "%s\\n" "                   when base64|openssl are not installed"  >&2
+    printf "%s\\n" "                   in the target system" >&2
+    printf "%s\\n" "  -h, --help       show this help message and exit" >&2
+    exit 1
+}
+
 _cpb64()
 {
     for file; do
         [ ! -r "${file}" ] && { printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): '${file}' does not exist or is not readable" >&2; exit 1; }
     done
 
-    str="$(tar cf - "${@}" | gzip | openssl enc -base64)"
-    #line1="cat<<E=O=F | openssl enc -base64 -d | zcat | tar xvf -"
-    line1="cat<<E=O=F | _decode64 | zcat | tar xvf -"
+    if command -v "base64" >/dev/null 2>&1; then
+        str="$(tar cf - "${@}" | gzip | base64)"
+    elif command -v "openssl" >/dev/null 2>&1; then
+        str="$(tar cf - "${@}" | gzip | openssl enc -base64)"
+    else
+        printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unable to encode files, install either base64 or openssl to continue" >&2
+        exit 1
+    fi
+
+    line1="cat<<E=O=F | openssl enc -base64 -d | zcat | tar xvf -"
+    line1p="cat<<E=O=F | _decode64 | zcat | tar xvf -"
     line2="${str}"
     line3="E=O=F"
 
-    cmd="${line1}"'\n'"${line2}"'\n'"${line3}"'\n'
+    if [ -z "${portable}" ]; then
+        cmd="${line1}"'\n'"${line2}"'\n'"${line3}"'\n'
+        decodestr=""
+    else
+        cmd='\n'"${line1p}"'\n'"${line2}"'\n'"${line3}"'\n'
+    fi
 
     if command -v "xclip" >/dev/null 2>&1; then
         if [ ! -t 1 ] || [ -z "${DISPLAY}" ]; then
-            printf "%s\\n%b" "${decodestr}" "${cmd}"
+            printf "%s%b" "${decodestr}" "${cmd}"
         else
-            printf "%s\\n%b" "${decodestr}" "${cmd}" | xclip -selection clipboard; xclip -o -selection clipboard
+            printf "%s%b" "${decodestr}" "${cmd}" | xclip -selection clipboard; xclip -o -selection clipboard
         fi
     else
-        printf "%s\\n%b" "${decodestr}" "${cmd}"
+        printf "%s%b" "${decodestr}" "${cmd}"
     fi
 }
 
@@ -90,12 +115,11 @@ fi
 
 for arg; do #parse options
     case "${arg}" in
-        --) shift; break ;;
-        -h|--help) { printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') file ..." >&2; exit 1; } ;;
+        --) shift;  break ;;
+        -h|--help) _usage ;;
+        -p|--portable) portable="true"; shift ;;
         -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" >&2
-            printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') file ..." >&2
-            exit 1
-            ;;
+            _usage ;;
     esac
 done
 
