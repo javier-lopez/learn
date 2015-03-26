@@ -12,50 +12,45 @@ decodestr="$(
 cat - <<'EOF'
 _decode64()
 {   #decode a string in base64
-    [ ! -t 0 ] && set -- "${@}" $(cat)
+    [ ! -t 0 ] && set -- "${@}" "$(cat)"
     [ -z "${1}" ] && return 1
     if command -v "base64" >/dev/null 2>&1; then
         printf "%s\\n" "${@}" | base64 -d
     elif command -v "openssl" >/dev/null 2>&1; then
         printf "%s\\n" "${@}" | openssl enc -base64 -d
     else
-        _decode64_fallback() #slow but quite portable
-        {
-            [ ! -t 0 ] && set -- "${@}" $(cat)
-            _decode64_fallback__set='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
-            _decode64_fallback__N="0"
-            _decode64_fallback__V="0"
-
-            _decode64_fallback__args="${@}"
-            while [ "${_decode64_fallback__args}" ]; do
-                _decode64_fallback__char="${_decode64_fallback__args%${_decode64_fallback__args#?}}" #first char
-                case "${_decode64_fallback__char}" in
+        _decode64_sh() { #slow but quite portable
+            [ ! -t 0 ] && set -- "${@}" "$(cat)"
+            _decode64_sh__b64='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+            _decode64_sh__n="0"; _decode64_sh__v="0"; _decode64_sh__args="${@}"
+            while [ "${_decode64_sh__args}" ]; do #process char by char
+                _decode64_sh__char="${_decode64_sh__args%${_decode64_sh__args#?}}"
+                case "${_decode64_sh__char}" in
                     '\n') continue ;;
-                    '=' ) _decode64_fallback__V="$(($_decode64_fallback__V << 6))" ;;
-                    *)    _decode64_fallback__char="${_decode64_fallback__set#*$_decode64_fallback__char}"
-                          _decode64_fallback__char="$((${#_decode64_fallback__set}-${#_decode64_fallback__char}))"
-                          if [ "${_decode64_fallback__char}" -eq "0" ]; then
-                            [ X"${_decode64_fallback__args}" = X"${_decode64_fallback__char}" ] &&\
-                                _decode64_fallback__args='' || _decode64_fallback__args="${_decode64_fallback__args#?}"
+                     '=') _decode64_sh__v="$(($_decode64_sh__v << 6))" ;;
+                       *) _decode64_sh__char="${_decode64_sh__b64#*$_decode64_sh__char}"
+                          _decode64_sh__char="$((${#_decode64_sh__b64}-${#_decode64_sh__char}))"
+                          if [ "${_decode64_sh__char}" -eq "0" ]; then
+                            [ X"${_decode64_sh__args}" = X"${_decode64_sh__char}" ] &&\
+                                _decode64_sh__args='' || _decode64_sh__args="${_decode64_sh__args#?}"
                             continue
                           fi
-                          _decode64_fallback__V="$(( $_decode64_fallback__V << 6 | $_decode64_fallback__char - 1))"
+                          _decode64_sh__v="$(($_decode64_sh__v << 6 | $_decode64_sh__char-1))"
                 esac
-                _decode64_fallback__N="$(($_decode64_fallback__N+1))"
-                if [ "${_decode64_fallback__N}" -eq "4" ]; then
-                    _decode64_fallback__S="16"; while [ "${_decode64_fallback__S}" -gt "-1" ]; do
-                        _decode64_fallback__char="$(( $_decode64_fallback__V >> $_decode64_fallback__S & 255 ))"
-                        printf \\$(( $_decode64_fallback__char/64*100+$_decode64_fallback__char%64/8*10+$_decode64_fallback__char%8 ))
-                        _decode64_fallback__S="$(($_decode64_fallback__S-8))"
+                _decode64_sh__n="$(($_decode64_sh__n+1))"
+                if [ "${_decode64_sh__n}" -eq "4" ]; then
+                    _decode64_sh__s="16"; while [ "${_decode64_sh__s}" -gt "-1" ]; do
+                        _decode64_sh__char="$(($_decode64_sh__v >> $_decode64_sh__s & 255))"
+                        printf \\$(($_decode64_sh__char/64*100+$_decode64_sh__char%64/8*10+$_decode64_sh__char%8))
+                        _decode64_sh__s="$(($_decode64_sh__s-8))"
                     done
-                    _decode64_fallback__V="0"
-                    _decode64_fallback__N="0"
+                    _decode64_sh__v="0"; _decode64_sh__n="0"
                 fi
-                [ X"${_decode64_fallback__args}" = X"${_decode64_fallback__char}" ] &&\
-                    _decode64_fallback__args='' || _decode64_fallback__args="${_decode64_fallback__args#?}"
+                [ X"${_decode64_sh__args}" = X"${_decode64_sh__char}" ] &&\
+                    _decode64_sh__args='' || _decode64_sh__args="${_decode64_sh__args#?}"
             done
         }
-        printf "%s\\n" "${@}" | _decode64_fallback
+        printf "%s\\n" "${@}" | _decode64_sh
     fi
 }
 EOF
