@@ -291,4 +291,6 @@ if [ -z "${archives}" ]; then
     fi
 fi
 
+[ -f "${output}" ] && rm -rf "${output}"
+
 _wget_finder "${archives}"
