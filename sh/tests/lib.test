@@ -337,6 +337,8 @@ _strreplace string; test X"${?}"                = X"1"
 _strreplace string otherstring; test X"${?}"    = X"1"
 hello="hello world"
 test X"$(_strreplace "${hello}" "hello" "bye")" = X"bye world"
+hello="hello world"
+test X"$(_strreplace "${hello}" "noexists" "bye")" = X"hello world"
 @end
 
 @begin{_strunique}

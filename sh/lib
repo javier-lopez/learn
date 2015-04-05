@@ -929,7 +929,7 @@ _strreplace()
 {  #replace param in string, return 1 on failure
    #http://www.unix.com/shell-programming-and-scripting/124160-replace-word-string.html
   _strreplace__orig="${1}"
-  [ -n "${2}" ] || return 1 #nothing to search for: error
+  [ -n "${3}" ] || return 1 #nothing to search for: error
   _strreplace__srch="${2}"  #pattern to replace
   _strreplace__rep="${3}"   #replacement string
   case "${_strreplace__orig}" in
@@ -938,7 +938,6 @@ _strreplace()
        _strreplace__sr2="${_strreplace__orig#*$_strreplace__srch}"  #and the string following the first match
        _strreplace__orig="${_strreplace__sr1}${_strreplace__rep}${_strreplace__sr2}" #and sandwich the replacement string between them
        ;;
-    *) return 1 ;; #if the pattern does not exist, return an error code
   esac
   printf "%s" "${_strreplace__orig}"
 }
