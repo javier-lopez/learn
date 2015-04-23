@@ -31,6 +31,7 @@ _meta_update_cd()
 
 if [ -f "$(command -v "wcd")" ] && [ -f "$(command -v "wcd.exec")" ]; then
     [ X"${LOGNAME}" = X"root" ] && _meta_update_cd
-    mkdir "${HOME}"/.wcd; wcd.exec -GN -j -xf "${HOME}"/.ban.wcd -S "${HOME}"
+    mkdir "${HOME}"/.wcd  2>/dev/null
+    wcd.exec -GN -j -xf "${HOME}"/.ban.wcd -S "${HOME}"
     [ -f "${HOME}"/.treedata.wcd ] && mv "${HOME}"/.treedata.wcd "${HOME}"/.wcd/
 fi
