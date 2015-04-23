@@ -1,0 +1,36 @@
+#!/bin/sh
+#description: update wcd db if available
+#usage: update-cd
+
+#add as a cronjob for your user or root
+#0 23 * * * /path/update-cd
+
+_basename()
+{   #alternative basename portable version, faster! but with possible drawbacks
+    [ -z "${1}" ] && return 1 || _basename__name="${1}"
+    [ -z "${2}" ] || _basename__suffix="${2}"
+    case "${_basename__name}" in
+        /*|*/*) _basename__name="${_basename__name##*/}"
+    esac
+
+    if [ -n "${_basename__suffix}" ] && [ "${#_basename__name}" -gt "${#2}" ]; then
+        _basename__name="${_basename__name%$_basename__suffix}"
+    fi
+
+    printf "%s" "${_basename__name}"
+}
+
+_meta_update_cd()
+{
+    _meta_update_cd__users="$(getent passwd | awk -F: '{if ($3 >= 1000 && $3 < 60000) print $1}')"
+    for _meta_update_cd__user in ${_meta_update_cd__users}; do
+        su "${_meta_update_cd__user}" -c "update-cd"
+    done
+    exit "${$?}"
+}
+
+if [ -f "$(command -v "wcd")" ] && [ -f "$(command -v "wcd.exec")" ]; then
+    [ X"${LOGNAME}" = X"root" ] && _meta_update_cd
+    mkdir "${HOME}"/.wcd; wcd.exec -GN -j -xf "${HOME}"/.ban.wcd -S "${HOME}"
+    [ -f "${HOME}"/.treedata.wcd ] && mv "${HOME}"/.treedata.wcd "${HOME}"/.wcd/
+fi
