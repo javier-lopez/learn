@@ -345,8 +345,8 @@ for arg; do #parse options
             else
                 printf "%s\\n" "Option '${arg}' requires a parameter"; _usage
             fi ;;
-        -sd) sound="dynamic" ;;
-        -ss) sound="static"  ;;
+        -sd) sound="dynamic"; shift ;;
+        -ss) sound="static" ; shift ;;
         -d|--directory)
             if [ "${#}" -gt "1" ]; then
                 shift; directory="${1}"; [ "${1}" ] && shift
