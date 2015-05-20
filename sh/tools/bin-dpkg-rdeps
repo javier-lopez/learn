@@ -19,7 +19,11 @@ _rdeps()
 
         if [ -n "${fpath}" ]; then
             if ldd "${fpath}" >/dev/null 2>/dev/null; then
-                ldd "${fpath}" | sort -n | uniq | awk '{print $1}' | xargs -i apt-file search {} | cut -d':' -f1 | sort | uniq
+                for _rdeps__library in $(ldd "${fpath}" | sort -n | uniq | awk '{print $1}'); do
+                    _rdeps__pkgs="${_rdeps__pkgs}
+                    $(apt-file search "${_rdeps__library}")"
+                done
+                printf "%s\\n" "${_rdeps__pkgs}" | cut -d':' -f1 | sort | uniq | awk 'NF { sub(/^[ \t]+/, ""); print }'
             else
                 printf "$(expr "${0}" : '.*/\([^/]*\)'): %s\\n" "not a dynamic executable '${fpath}'" >&2 && false
             fi
@@ -36,7 +40,6 @@ fi
 
 for arg; do #parse options
     case "${arg}" in
-        --) shift; break ;;
         -h|--help) { printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') binary ..." >&2; exit 1; } ;;
         -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" >&2
             printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') binary ..." >&2

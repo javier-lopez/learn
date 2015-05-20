@@ -41,13 +41,12 @@ fi
 
 [ "${#}" -eq "0" ] && _usage
 
-PATTERN="${@}"
+PATTERN="${*}"
 
 for arg; do #parse options
     case "${arg}" in
-        --) shift; break  ;;
         -h|--help) _usage ;;
-        -c) CFLAG="true"; shift; PATTERN="${@}";;
+        -c) CFLAG="true"; shift; PATTERN="${*}";;
         -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" >&2; _usage ;;
     esac
 done

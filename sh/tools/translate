@@ -50,7 +50,6 @@ fi
 [ "${#}" -eq "0" ] && _usage
 
 case "${1}" in
-    --) shift; break  ;;
     -h|--help) _usage ;;
     -*) sl="$(printf "%s" "${1}" | cut -d'-' -f2)"
         tl="$(printf "%s" "${1}" | cut -d'-' -f3)"

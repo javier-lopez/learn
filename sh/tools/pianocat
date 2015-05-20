@@ -331,7 +331,6 @@ fi
 
 for arg; do #parse options
     case "${arg}" in
-        --) shift;  break  ;;
         -h|--help)  _usage ;;
         -b|--beat)
             if [ "${#}" -gt "1" ]; then

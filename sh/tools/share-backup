@@ -76,7 +76,6 @@ fi
 
 for arg; do #parse options
     case "${arg}" in
-        --) shift; break  ;;
         -h|--help) _usage ;;
         -u) if [ "${#}" -gt "1" ]; then
                 user="$(printf "%s " "${@}" | awk '{print $2}')"
@@ -110,22 +109,22 @@ for arg; do #parse options
     esac
 done
 
-exec 9> /tmp/$(_basename ${0}).lock #verify only one instance is running
-[ X"${LOGNAME}" = X"root" ] && chmod 666 /tmp/"$(_basename ${0})".lock
+exec 9> /tmp/"$(_basename "${0}")".lock #verify only one instance is running
+[ X"${LOGNAME}" = X"root" ] && chmod 666 /tmp/"$(_basename "${0}")".lock
 if ! flock -n 9; then               #http://mywiki.wooledge.org/BashFAQ/045
-    printf "%s\\n" "$(_basename ${0}): another instance is running"; >&2
+    printf "%s\\n" "$(_basename "${0}"): another instance is running"; >&2
     _usage
 fi
 
 [ -z "${user}" ]   && user="guest"
 [ -z "${port}" ]   && port="$(($(od -An -N2 -i /dev/random|awk '{print $1}'|head -c 4) + 1025))"
 [ -z "${passwd}" ] && passwd="$(date +%s | sha256sum | base64 | head -c 8)"
-[ -f "${cert}" ]   && ssl_opts="--ssl --certificate=${CERT}"
+[ -f "${cert}" ]   && ssl_opts="--ssl --certificate=${cert}"
 
 if [ -z "${@}" ]; then
     [ -d recovery ] && files="recovery" || files="$(pwd)"
 else
-    files="${@}"
+    files="${*}"
 fi
 
 ips="$(ifconfig | grep "inet " | cut -d: -f2 | cut -d " " -f1)"
@@ -145,7 +144,7 @@ fi
 printf "%s\\n"
 printf "%s\\n" "  serving:  ${files}"
 printf "%s\\n"
-printf "%s\\n" "Run: $(_basename ${0}) stop, to stop sharing"
+printf "%s\\n" "Run: $(_basename "${0}") stop, to stop sharing"
 
 if [ -d "${files}" ]; then
     eval simple-httpd -p "${port}" --username="${user}" --password="${passwd}" "${ssl_opts}" "${files}"/* >/dev/null 2>&1 &

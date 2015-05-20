@@ -28,7 +28,7 @@ _exec()
     if [ X"${_exec__status}" != X"0" ]; then
         exit "${_exec__status}"
     fi
-    printf "%s " "$ ${@}"
+    printf "%s " "$ ${*}"
     printf "%s\\n"
     ${@}
 }
@@ -83,7 +83,6 @@ fi
 
 for arg; do
     case "${arg}" in
-        --) shift; break    ;;
         -h|--help) _usage   ;;
         apache)    _apache  ;;
         ipw2200)   _ipw2200 ;;

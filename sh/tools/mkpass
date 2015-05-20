@@ -23,7 +23,6 @@ fi
 
 for arg; do #parse options
     case "${arg}" in
-        --) shift;   break  ;;
         -h|--help)   _usage ;;
         -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" ;;
     esac

@@ -36,7 +36,6 @@ fi
 
 for arg; do #parse options
     case "${arg}" in
-        --) shift; break;;
         -h|--help) _usage ;;
         -e|--editor)if [ "${#}" -gt "1" ]; then
                         editor="$(printf "%s " "${@}" | awk '{print $2}')"

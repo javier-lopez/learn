@@ -6,7 +6,6 @@
 from="No reply <noreply@$(hostname -f)>"
 subject="Automated mail from $(hostname -f)"
 to=""
-message=""
 api="" #mailgun api, required
 
 _usage()
@@ -69,7 +68,6 @@ fi
 
 for arg; do #parse options
     case "${arg}" in
-        --) shift; break  ;;
         -a|--api) if [ "${#}" -gt "1" ]; then
                      shift; api="${1}"; shift
                   else
@@ -116,7 +114,7 @@ if [ -z "${config}" ]; then
         _loadconf /etc/mailgun
     fi
 else
-    [ ! -e "${config}" ] && _die "\`${__config_file}' doesn't exist"
+    [ ! -e "${config}" ] && _die "\`${config}' doesn't exist"
     _loadconf "${config}"
 fi
 

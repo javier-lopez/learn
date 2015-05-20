@@ -52,7 +52,7 @@ _dirname()
 
 _shuf()
 {
-    awk 'BEGIN{srand()}{print rand()"\t"$0}' "$@" | sort | cut -f2- ;
+    awk 'BEGIN{srand()}{print rand()"\t"$0}' | sort | cut -f2- ;
 }
 
 _checksum_type()
@@ -175,7 +175,7 @@ _get_links()
 
 _wget_finder()
 {
-    _wget_finder__archives="${@}"
+    _wget_finder__archives="${*}"
     while [ "${_wget_finder__archives}" ]; do
         _wget_finder__archive="${_wget_finder__archives%%/*}"
         _wget_finder__file="${_wget_finder__archive%:*}"
@@ -225,7 +225,7 @@ _wget_finder()
                     https:*) cert_option="--no-check-certificate" ;;
                         *)   cert_option="" ;;
                 esac
-                wget -q ${cert_option} ${_wget_finder__args} \
+                wget -q "${cert_option}" ${extra_args} \
                     "${_wget_finder__link}${_wget_finder__file}" -O "/tmp/${progname}.${_wget_finder__file}/${_wget_finder__file}"
                 [ X"$(_checksum "${_wget_finder__checktype}" "/tmp/${progname}.${_wget_finder__file}/${_wget_finder__file}")" = X"${_wget_finder__checksum}" ] \
                     && { _cat /tmp/"${progname}.${_wget_finder__file}/${_wget_finder__file}"; break 2; }

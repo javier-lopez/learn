@@ -26,7 +26,7 @@ _meta_update_cd()
     for _meta_update_cd__user in ${_meta_update_cd__users}; do
         su "${_meta_update_cd__user}" -c "update-cd"
     done
-    exit "${$?}"
+    exit "${?}"
 }
 
 if [ -f "$(command -v "wcd")" ] && [ -f "$(command -v "wcd.exec")" ]; then

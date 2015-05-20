@@ -66,7 +66,7 @@ fi
 #Avoid writing user/password every time
 MNron="disco299@gmail.com"
 MNpwd="vimuswal"
-MNtask="${@}"
+MNtask="${*}"
 # ===================================
 
 if [ -z "${MNron}" ]; then

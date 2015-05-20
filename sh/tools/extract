@@ -40,7 +40,7 @@ _exec()
     _exec__status="${?}"
     [ X"${_exec__status}" != X"0" ] && exit "${_exec__status}"
     if [ ! -z "${VFLAG}" ]; then
-        printf "%s " "[+] ${@}"
+        printf "%s " "[+] ${*}"
         printf "\\n"
     fi
     eval "${@}"
@@ -102,7 +102,6 @@ fi
 
 for arg; do #parse options
     case "${arg}" in
-        --) shift; break   ;;
         -h|--help) _usage  ;;
         -v|--verbose)
             VFLAG="true" && shift

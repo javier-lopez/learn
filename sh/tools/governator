@@ -19,7 +19,7 @@ _exec()
     if [ X"${_exec__status}" != X"0" ]; then
         exit "${_exec__status}"
     fi
-    printf "%s" "${@}: "
+    printf "%s" "${*}: "
     ${@}
 }
 
@@ -29,7 +29,6 @@ if [ ! -t 0 ]; then
 fi
 
 case "${1}" in
-    --) shift; break  ;;
     -h|--help) _usage ;;
     g*) _exec "cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor" ;;
     s*)

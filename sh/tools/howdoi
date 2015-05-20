@@ -132,7 +132,6 @@ fi
 
 for arg; do #parse options
     case "${arg}" in
-        --) shift; break  ;;
         -h|--help) _usage ;;
         -a) aflag="true"; shift;;
         -l) lflag="true"; shift;;

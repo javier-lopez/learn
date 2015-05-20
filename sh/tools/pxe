@@ -56,7 +56,7 @@ _writeconf()
 {
     [ ! -d "${1}" ] && _die "No valid directory ${1}"
 
-    _verbose "  - creating "${1}"/pxelinux.cfg/default ..."
+    _verbose "  - creating ${1}/pxelinux.cfg/default ..."
     mkdir "${1}"/pxelinux.cfg 2>/dev/null
     cat > "${1}"/pxelinux.cfg/default << EOF
 DEFAULT menu.c32
@@ -189,7 +189,7 @@ _deps()
     #https://github.com/chilicuil/learn/tree/master/python
 
     #menu.c32
-    _verbose "  - creating "${1}"/menu.c32 ..."
+    _verbose "  - creating ${1}/menu.c32 ..."
     cat<<E=O=F | openssl enc -base64 -d | zcat | tar xvf - >/dev/null
 H4sIAA7KhVIAA+29C1xU1do4vIfZwCCje9TBMDHH3BYoFZNUkpjDTUipUNBIrbTU
 UElNZ4QKBdxMsdjOyU52jp1j52Ta+1r5nuxkhtcYMPCSCpiJWnmtM+No4SUFL8z3
@@ -801,7 +801,7 @@ E=O=F
     [ -f menu.c32 ] && mv menu.c32 "${1}" || _die "menu.c32 couldn't be created"
 
     #pxelinux.0
-    _verbose "  - creating "${1}"/pxelinux.0 ..."
+    _verbose "  - creating ${1}/pxelinux.0 ..."
     cat<<E=O=F | openssl enc -base64 -d | zcat | tar xvf - >/dev/null
 H4sIAKPKhVIAA+17e1RTV/bwuSHcBAQSFfEN11ZTmSolavEVqFqL2lEErTx8kETh
 CC2CE26g7a/TgUadXILUX2tbp/UBYq3Do2I+x0LpJMFrQadV0T7GjNMW0dqTxvoo
@@ -1054,7 +1054,7 @@ E=O=F
     [ -f pxelinux.0 ] && mv pxelinux.0 "${1}" || _die "pxelinux.0 couldn't be created"
 
     #simple-dhcpd
-    _verbose "  - creating "${1}"/simple-dhcpd ..."
+    _verbose "  - creating ${1}/simple-dhcpd ..."
     cat<<E=O=F | openssl enc -base64 -d | zcat | tar xvf - >/dev/null
 H4sIAPryhVIAA+0Za3PbOK5fz7+Ca8+OpLUiS3419aw6k03S20z3mk7S2y+uRyNL
 tK2NLGlFOrH//QEk9bCtuO3NPuZuIo9tEgQBEAQIgGLROovpWbgKsvDVn/TY8IzH
@@ -1117,7 +1117,7 @@ E=O=F
     chmod +x "${1}"/simple-dhcpd
 
     #simple-tftpd
-    _verbose "  - creating "${1}"/simple-tftpd ..."
+    _verbose "  - creating ${1}/simple-tftpd ..."
     cat<<E=O=F | openssl enc -base64 -d | zcat | tar xvf - >/dev/null
 H4sIADj3hlIAA+2VYW/TMBCG+zm/4tiEkmghTbJ2g0hBGmwgNGBiA/GhVFOauI1p
 akf2ZWv59dht0rXrBuIDQkh+pMp18vrynu+cSDqrSvIMx1jlnb9EoDg+7usxPO4H
@@ -1159,7 +1159,6 @@ fi
 
 for arg; do
     case "${arg}" in
-        --) shift; break;;
         -h|--help)    _usage ;;
         -v|--verbose) _verbose_flag="seen"; ;;
         -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" >&2; _usage ;;
@@ -1168,7 +1167,7 @@ for arg; do
 done
 
 [ -z "${_pxe__default_dir}" ]   && _pxe__default_dir="$(pwd)/pxe_setup"
-mkdir -p "${_pxe__default_dir}" || _die "cannot write to "$(_dirname "${_pxe__default_dir}")""
-[ ! -d "${_pxe__default_dir}" ] && _die ""$(_dirname "${_pxe__default_dir}")" is not a valid directory"
+mkdir -p "${_pxe__default_dir}" || _die "cannot write to $(_dirname "${_pxe__default_dir}")"
+[ ! -d "${_pxe__default_dir}" ] && _die "$(_dirname "${_pxe__default_dir}") is not a valid directory"
 
 _pxe "${_pxe__default_dir}"

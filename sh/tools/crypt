@@ -51,7 +51,6 @@ fi
 
 for arg; do #parse options
     case "${arg}" in
-        --) shift; break ;;
         -h|--help) { printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') file ..." >&2; exit 1; } ;;
         -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" >&2;
             printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') file ..." >&2

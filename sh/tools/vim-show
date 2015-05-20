@@ -22,7 +22,6 @@ fi
 
 for arg in "${@}"; do #parse options
     case "${arg}" in
-        --) shift; break  ;;
         -h|--help) _usage ;;
         -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" >&2
             _usage ;;

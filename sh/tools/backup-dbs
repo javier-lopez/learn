@@ -167,7 +167,6 @@ fi
 
 for arg; do #parse options
     case "${arg}" in
-        --) shift; break   ;;
         -h|--help) _usage  ;;
         -l) list="true"; shift ;;
         -v) verbose="true"; shift ;;
@@ -248,7 +247,7 @@ if [ -z "${database}" ] || [ -z "${user}" ] || [ -z "${passwd}" ] || [ -z "${bac
     _usage
 fi
 
-exec 9>/tmp/${progname}.lock #http://mywiki.wooledge.org/BashFAQ/045
+exec 9>/tmp/"${progname}".lock #http://mywiki.wooledge.org/BashFAQ/045
 [ X"${LOGNAME}" = X"root" ] && chmod 666 /tmp/"${progname}".lock
 if ! flock -n 9  ; then
     printf "%s\\n" "${progname}: another instance is running";

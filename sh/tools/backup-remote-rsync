@@ -271,7 +271,6 @@ fi
 
 for arg; do #parse options
     case "${arg}" in
-        --) shift; break   ;;
         -h|--help) _usage  ;;
         -v) verbose_flag="true";   shift ;;
         -n) dryrun_flag="true";    shift ;;
@@ -318,7 +317,7 @@ elif ! command -v "ssh" >/dev/null; then
 fi
 
 exec 9>/tmp/"$(_basename "${0}")".lock #verify that only one instance is running
-[ X"${LOGNAME}" = X"root" ] && chmod 666 /tmp/"$(_basename ${0})".lock
+[ X"${LOGNAME}" = X"root" ] && chmod 666 /tmp/"$(_basename "${0}")".lock
 if ! flock -n 9  ; then              #http://mywiki.wooledge.org/BashFAQ/045
     printf "%s\\n" "$(_basename "${0}"): another instance is running";
     exit 1

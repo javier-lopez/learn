@@ -150,7 +150,7 @@ _decode64()
     else
         _decode64_sh() { [ ! -t 0 ] && set -- "${@}" "$(cat)"
             _decode64_sh__b64='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
-            _decode64_sh__n="0"; _decode64_sh__v="0"; _decode64_sh__args="${@}"
+            _decode64_sh__n="0"; _decode64_sh__v="0"; _decode64_sh__args="$@"
             while [ "${_decode64_sh__args}" ]; do #process char by char
                 _decode64_sh__char="${_decode64_sh__args%${_decode64_sh__args#?}}"
                 case "${_decode64_sh__char}" in
@@ -275,9 +275,9 @@ _echo()
 
     while [ "${#}" -gt "1" ] ; do
         case "${1}" in
-            [!-]*|-*[!ne]*) break  ;;
-            *ne*|*en*) fmt=%b end= ;;
-            *n*) end=   ;;
+            [!-]*|-*[!ne]*) break    ;;
+            *ne*|*en*) fmt=%b end="" ;;
+            *n*) end="" ;;
             *e*) fmt=%b ;;
         esac
         shift
@@ -322,7 +322,7 @@ _encode64()
                     od -v -t x1
                 else
                     [ ! -t 0 ] && set -- "${@}" "$(cat)"
-                    _od__O="0"; _od__W="16"; _od__args="${@}"
+                    _od__O="0"; _od__W="16"; _od__args="$@"
                     while [ "${_od__args}" ]; do #process char by char
                         _od__char="${_od__args%${_od__args#?}}"
                         [ "$(($_od__O%$_od__W))" -eq "0" ] && printf '%07o' "${_od__O}"
@@ -509,7 +509,7 @@ _getpasswd()
         _getpasswd__option="$(printf "%s\\n" "${1}" | tr '[:upper:]' '[:lower:]')"
         printf "%s" "Enter your ${_getpasswd__option} password: "
         stty -echo
-        read ${_getpasswd__option}passwd
+        read "${_getpasswd__option}"passwd
         stty echo
         printf "\\n"
     else
@@ -591,7 +591,7 @@ _livecd()
 _lock()
 {   #locks the execution of a program, it should be used at the
     #beggining of it, exit on failure
-    exec 9>/tmp/$(expr "${1}" : '.*/\([^/]*\)').lock #verify only one instance is running
+    exec 9>/tmp/"$(expr "${1}" : '.*/\([^/]*\)')".lock #verify only one instance is running
     [ X"${LOGNAME}" = X"root" ] && chmod 666 /tmp/"$(expr "${1}" : '.*/\([^/]*\)')".lock
     if ! flock -n 9  ; then         #http://mywiki.wooledge.org/BashFAQ/045
         printf "%s\\n" "$(expr "${1}" : '.*/\([^/]*\)'): another instance is running";
@@ -600,6 +600,38 @@ _lock()
 }
 #==================================================== Example ====
 #_lock "${0}" #locks script till finish
+#=================================================================
+
+_mkdir_p()
+{   #portable mkdir -p function
+    for _mkdir_p__dir; do
+        _mkdir_p__IFS="$IFS"
+        IFS="/"
+        set -- $_mkdir_p__dir
+        IFS="$_mkdir_p__IFS"
+        (
+        case "$_mkdir_p__dir" in
+            /*) cd /; shift ;;
+        esac
+        for _mkdir_p__subdir; do
+            [ -z "${_mkdir_p__subdir}" ] && continue
+            if [ -d "${_mkdir_p__subdir}" ] || mkdir "${_mkdir_p__subdir}"; then
+                if cd "${_mkdir_p__subdir}"; then
+                    :
+                else
+                    printf "%s\\n" "_mkdir_p: Can't enter ${_mkdir_p__subdir} while creating ${_mkdir_p__dir}"
+                    exit 1
+                fi
+            else
+                exit 1
+            fi
+        done
+        )
+    done
+    unset _mkdir_p__dir
+}
+#==================================================== Example ====
+#_mkdir_p "foo/bar/daa" #creates the directory hier
 #=================================================================
 
 _newer()
@@ -727,7 +759,7 @@ _printtime()
         _printtime__sec="${_printtime__num}"
     fi
     printf "%s\\n" \
-    ""${_printtime__day}"d "${_printtime__hour}"h "${_printtime__min}"m "${_printtime__sec}"s"
+    "${_printtime__day}d ${_printtime__hour}h ${_printtime__min}m ${_printtime__sec}s"
 }
 #==================================================== Example ====
 #SECONDS="12345"
@@ -907,7 +939,7 @@ _strduplicates()
 {   #print duplicated strings, return 1 on failure
     [ -z "${1}" ] && return 1
     [ -z "${2}" ] && return 1
-    printf "%s\\n" ${@} | awk 'x[$0]++'
+    printf "%s\\n" $@ | awk 'x[$0]++'
 }
 #==================================================== Example ====
 #hello="hello world"
@@ -965,7 +997,7 @@ _strunique()
 {   #print unique strings, return 1 on failure
     [ -z "${1}" ] && return 1
     [ -z "${2}" ] && return 1
-    _strunique__retval="$(printf "%s\\n" ${@} | \
+    _strunique__retval="$(printf "%s\\n" $@ | \
         awk '!($0 in x) {x[$0];print}')" #faster
         #printf "%s\\n" $@ | awk '!x[$0]++'
     _strunique__retval="$(printf "%s" "${_strunique__retval}" | \
@@ -1089,7 +1121,7 @@ _validip4()
 
     OLDIFS="${IFS}"
     IFS="."
-    set -- ${*}
+    set -- $@
     IFS="${OLDIFS}"
 
     [ "${#}" -eq "4" ] &&

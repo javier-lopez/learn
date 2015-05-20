@@ -61,7 +61,6 @@ fi
 
 if [ X"${#}" != X"0" ]; then
     case "${1}" in
-        --) shift; break  ;;
         -h|--help) _usage ;;
         script)    shift; _script "${@}" ;;
         autocp)    shift; _autocp "${@}" ;;
