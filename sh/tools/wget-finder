@@ -225,7 +225,7 @@ _wget_finder()
                     https:*) cert_option="--no-check-certificate" ;;
                         *)   cert_option="" ;;
                 esac
-                wget -q "${cert_option}" ${extra_args} \
+                wget -q ${cert_option} ${extra_args} \
                     "${_wget_finder__link}${_wget_finder__file}" -O "/tmp/${progname}.${_wget_finder__file}/${_wget_finder__file}"
                 [ X"$(_checksum "${_wget_finder__checktype}" "/tmp/${progname}.${_wget_finder__file}/${_wget_finder__file}")" = X"${_wget_finder__checksum}" ] \
                     && { _cat /tmp/"${progname}.${_wget_finder__file}/${_wget_finder__file}"; break 2; }
