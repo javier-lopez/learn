@@ -44,9 +44,9 @@ if command -v "xclip" >/dev/null 2>&1; then
         printf "%b" "$(strings /dev/urandom | grep -o '[[:alnum:]]' | head -n "${mkpasswd_length}" | tr -d '\n')"
     else
     #http://unix.stackexchange.com/questions/28503/how-can-i-send-stdout-to-multiple-commands
-        strings /dev/urandom | grep -o '[[:alnum:]]' | head -n "${mkpasswd_length}" \
+        strings /dev/urandom | grep -o '[0-9a-Z_./~:,;()!?%*#$%&+=@-]' | head -n "${mkpasswd_length}" \
             | tr -d '\n' | xclip -selection clipboard; xclip -o -selection clipboard; printf "\\n"
     fi
 else
-    strings /dev/urandom | grep -o '[[:alnum:]]' | head -n "${mkpasswd_length}" | tr -d '\n'; printf "\\n"
+    strings /dev/urandom | grep -o '[0-9a-Z_./~:,;()!?%*#$%&+=@-]' | head -n "${mkpasswd_length}" | tr -d '\n'; printf "\\n"
 fi
