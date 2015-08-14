@@ -28,6 +28,8 @@
 #
 ################################################################################
 
+CC="${CC:-cc}" #default compiler
+
 DEST="."
 MODE="4750"   # -rwsr-x---
 MODE_A="4755" # -rwsr-xr-x
@@ -117,7 +119,8 @@ _seq()
 _str2octal_escaped()
 {
     [ -z "${1}" ] && return 1
-    printf "%s" "${1}" | od -v -A n -t o1 | sed "s/ *\([0-9]*\) */\\\\\1/g" | tr -d "\n"
+    printf "%s" "${1}" | od -v -A n -t o1 | tr -d "\n" | \
+        sed "s/ *\([0-9]*\) */\\\\\1/g" | tr -d "\n"
 }
 
 #Generate wrapper source code.
@@ -225,7 +228,7 @@ _check_utils()
 }
 
 #check utils and abort if dependencies are not available
-_check_utils rm od sed tr chmod install id cc
+_check_utils rm od sed tr chmod install id "${CC}"
 
 #default owner and group.
 OWNER="$(id -un)"
@@ -302,7 +305,7 @@ _verbose "Owner: \"${OWNER}\", group: \"${GROUP}\", mode: \"${MODE}\""
 WRAPPER_SRC="${tmp}/wrapper.c"
 WRAPPER_BIN="${tmp}/wrapper"
 _generate_source "${REAL}" >"${WRAPPER_SRC}"
-cc -o "${WRAPPER_BIN}" "${WRAPPER_SRC}" || _die "Can't compile wrapper"
+${CC} -o "${WRAPPER_BIN}" "${WRAPPER_SRC}" || _die "Can't compile wrapper"
 
 #install wrapper
 install -o "${OWNER}" -g "${GROUP}" -m "${MODE}" -s \
