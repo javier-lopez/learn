@@ -10,9 +10,9 @@ _fix()
 
     #general options
     case "${cur}" in
-        --*) long_opts="$(extract  -h 2>&1 | awk 'match($0,/--[0-9A-Za-z]* /) {print substr($0,RSTART,RLENGTH)}')"
+        --*) long_opts="$(fix -h 2>&1 | awk 'match($0,/--[0-9A-Za-z]* /) {print substr($0,RSTART,RLENGTH)}')"
              COMPREPLY=($(compgen -W "${long_opts}" -- ${cur}));  return ;;
-        -*)  short_opts="$(extract -h 2>&1 | awk '/^ *-.+ / {sub(/,/, ""); print $1}')"
+        -*)  short_opts="$(fix -h 2>&1 | awk '/^ *-.+ / {sub(/,/, ""); print $1}')"
              COMPREPLY=($(compgen -W "${short_opts}" -- ${cur})); return ;;
         *)   commands="$(fix -h 2>&1 | awk '/ . / {if ($0 !~ "-") print $1}')"
              COMPREPLY=($(compgen -W "${commands}" -- ${cur}));   return ;;
