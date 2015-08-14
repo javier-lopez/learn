@@ -94,17 +94,17 @@ def printhelp():
   """
   print """APT search engine with colors and a little more.
 Usage: eix [OPTIONS] EXPRESSION
- --deep                  Print package dependencies, recommended and suggested packages.
- --exact                 Print the exact match for EXPRESSION.
- --clean                 Erase the downloaded archive files.
- --update                Update APT repository.
- --upgrade               Upgrade APT repository.
- -i                      Install the selected packages.
- -u                      Uninstall the selected packages.
- -a                      Search the manual page names and descriptions (apropos)
- -s                      Install source code for the selected packages.
- -V, -v, --version       Print version information and exit.
- -h, --help              Print this help and exit.
+ --deep              Print package dependencies, recommended and suggested packages.
+ --exact             Print the exact match for EXPRESSION.
+ --clean             Erase the downloaded archive files.
+ --update            Update APT repository.
+ --upgrade           Upgrade APT repository.
+ -i                  Install the selected packages.
+ -u                  Uninstall the selected packages.
+ -a                  Search the manual page names and descriptions (apropos)
+ -s                  Install source code for the selected packages.
+ -V, -v, --version   Print version information and exit.
+ -h, --help          Print this help and exit.
 
 Report bugs to <marcos@gnu.org.ar>."""
   return
