@@ -1,0 +1,20 @@
+_exec_wrapper()
+{
+    if ! command -v "exec-wrapper" >/dev/null 2>&1; then
+        return
+    fi
+
+    #defining local vars
+    local cur prev words cword
+    _init_completion || return
+
+    #general options
+    case "${cur}" in
+        -*)  short_opts="$(exec-wrapper -h 2>&1 | awk '/^ *-.+ / {sub(/,/, ""); print $1}')"
+             COMPREPLY=($(compgen -W "${short_opts}" -- ${cur})); return ;;
+        *)   _filedir; return ;;
+    esac
+} &&
+complete -F _exec_wrapper exec-wrapper
+
+# vim: set ts=8 sw=4 tw=0 ft=sh :
