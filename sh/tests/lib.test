@@ -74,6 +74,12 @@ test X"$(_basename2 /usr/local/bin/test t)"  = X"tes"
 test X"$(_basename2 /usr/local/bin/test st)" = X"te"
 @end
 
+@begin{_char2int}
+_char2int; test X"${?}"  = X"1"
+test X"$(_char2int "a")" = X"97"
+test X"$(_char2int "A")" = X"65"
+@end
+
 @begin{_decode64}
 _decode64; test X"${?}"                    = X"1"
 test X"$(_decode64 "aGVsbG8K")"            = X"hello"
@@ -291,6 +297,38 @@ _rmcron; test X"${?}" = X"1"
 test X"$(crontab -l | grep test_lib.db)" = X"0 21 * * * /test_lib.db"
 _rmcron "test_lib.db"
 (crontab -l | grep test_lib.db); test X"${?}" = X"1"
+@end
+
+@begin{_seq}
+_seq; test X"${?}"         = X"1"
+_seq string; test X"${?}"  = X"1"
+_seq -string; test X"${?}" = X"1"
+_seq .; test X"${?}"       = X"1"
+_seq 0; test X"${?}"       = X"0"
+_seq -1; test X"${?}"      = X"0"
+_seq -99; test X"${?}"     = X"0"
+test X"$(_seq 1)"          = X"1"
+test X"$(_seq 1 1 1)"      = X"1"
+test X"$(_seq 3)"          = X"$(printf "1\\n2\\n3\\n")"
+test X"$(_seq 3 6 )"       = X"$(printf "3\\n4\\n5\\n6\\n")"
+test X"$(_seq 3 3 9 )"     = X"$(printf "3\\n6\\n9\\n")"
+test X"$(_seq -3 3 3 )"    = X"$(printf "%b" "-3\\n0\\n3\\n")"
+@end
+
+@begin{_str2octal}
+_str2octal; test X"${?}"    = X"1"
+test X"$(_str2octal .)"     = X"056"
+test X"$(_str2octal hello)" = X"150 145 154 154 157"
+test X"$(_str2octal Hello)" = X"110 145 154 154 157"
+test X"$(_str2octal h e l l o)" = X"150 145 154 154 157"
+@end
+
+@begin{_str2octal_escaped}
+_str2octal_escaped; test X"${?}"    = X"1"
+test X"$(_str2octal_escaped .)"     = X"\056"
+test X"$(_str2octal_escaped hello)" = X"\150\145\154\154\157"
+test X"$(_str2octal_escaped Hello)" = X"\110\145\154\154\157"
+test X"$(_str2octal_escaped h e l l o)" = X"\150\145\154\154\157"
 @end
 
 @begin{_str2lower}

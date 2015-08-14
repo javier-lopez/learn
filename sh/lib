@@ -12,9 +12,11 @@
 
 _abs()
 {   #return the absolute value of the argument, or 1 on failure
-    [ -z "${1}" ] && return 1
-    printf "%s\\n" "${1}" | grep -v "[^0-9-]" >/dev/null || return 1
-    printf "%s"    "${1}" | awk '{ print ($1 >= 0) ? $1 : 0 - $1}'
+    case "${1}" in
+        *[!0-9-]*|"") return 1 ;;
+    esac
+
+    printf "%s" "${1}" | awk '{ print ($1 >= 0) ? $1 : 0 - $1}'
 }
 #==================================================== Example ====
 #_abs -2 #print 2
@@ -23,12 +25,12 @@ _abs()
 
 _alphanum()
 { #check for alphanum strings
-  # return 0 if all upper+lower+digits, 1 otherwise
-
-  # Remove all unacceptable chars
+  #return 0 if all upper+lower+digits, 1 otherwise
   [ -z "${1}" ] && return 1
+
+  #remove unacceptable chars
   _alphanum__compressed="$(printf "%s" "${1}" | sed -e 's:[^[:alnum:]]::g')"
-  [ X"${_alphanum__compressed}" = X"${1}" ] && return 0 || return 1
+  [ X"${_alphanum__compressed}" = X"${1}" ]
 }
 #==================================================== Example ====
 #printf "%s" "Enter input: "
@@ -74,15 +76,6 @@ _arch()
 #[ "${arch}" -eq "32" ] && command32 || command64
 #=================================================================
 
-_ascii2int()
-{
-    printf '%d' "'${*}"
-}
-#==================================================== Example ====
-#num="$(_ascii2int a)"
-#printf "%s\\n" "${num}" #prints 97
-#=================================================================
-
 _basename()
 {   #basename portable version
     [ -z "${1}" ] && return 1 || _basename__name="${1}"
@@ -120,6 +113,16 @@ _basename2()
 }
 #==================================================== Example ====
 #_basename2 /path/file #print file
+#=================================================================
+
+_char2int()
+{
+    [ -z "${1}" ] && return 1
+    printf '%d' "'${*}"
+}
+#==================================================== Example ====
+#num="$(_char2int a)"
+#printf "%s\\n" "${num}" #prints 97
 #=================================================================
 
 _decode64()
@@ -876,12 +879,70 @@ _rmcron()
 #_rmcron "pattern"
 #=================================================================
 
-_shuf()
-{   #shuffle the input
+_seq()
+{
+    for _seq__arg; do
+        case "${_seq__arg}" in
+            *[!0-9-]*|"") return 1 ;;
+        esac
+    done
+
+    [ -z "${1}" ] && return 1
+
+    _seq__first="1"; _seq__increment="1"; _seq__last="${1}"
+
+    if [ "${#2}" -gt "0" ]; then
+        _seq__first="${1}"
+        _seq__last="${2}"
+    fi
+
+    if [ "${#3}" -gt "0" ]; then
+        _seq__first="${1}"
+        _seq__increment="${2}"
+        _seq__last="${3}"
+    fi
+
+    while [ "$_seq__first" -le "${_seq__last}" ]; do
+        printf "%s\\n" "${_seq__first}"
+        _seq__first="$((_seq__first + _seq__increment))"
+    done
+}
+#==================================================== Example ====
+#_seq 3
+#1
+#2
+#3
+#=================================================================
+
+_shuf() {   #shuffle the input
     awk 'BEGIN{srand()}{print rand()"\t"$0}' "${@}" | sort | cut -f2- ;
 }
 #==================================================== Example ====
 #printf "%s" "1,2,3,4,5" | tr ',' '\n' | _shuf | tr '\n' ','
+#=================================================================
+
+_str2octal()
+{   #convert a string to octal
+    [ -z "${1}" ] && return 1
+    printf "%s" "${@}" | od -v -A n -t o1 | \
+        sed "s:^ ::" | tr -d "\n"
+}
+#==================================================== Example ====
+#hello="hello"
+#hello="$(_str2octal "${hello}")"
+#printf "%s\\n" "${hello}"   #prints "150 145 154 154 157"
+#=================================================================
+
+_str2octal_escaped()
+{   #convert a string to escaped octal
+    [ -z "${1}" ] && return 1
+    printf "%s" "${@}" | od -v -A n -t o1 | \
+        sed "s/ *\([0-9]*\) */\\\\\1/g" | tr -d "\n"
+}
+#==================================================== Example ====
+#hello="hello"
+#hello="$(_str2octal "${hello}")"
+#printf "%s\\n" "${hello}"   #prints "\150\145\154\154\157"
 #=================================================================
 
 _str2lower()
