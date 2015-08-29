@@ -1,7 +1,8 @@
 #!/bin/sh
-#functions, copy and paste them in your own scripts
+#functions, copy and paste in your own scripts
 
 #if you have more or can improve the current ones please send your push request!
+
 #new functions:
 #[+] must be self contained, with no dependencies in other functions
 #[+] can depend on exotic cli commands
@@ -77,7 +78,7 @@ _arch()
 #=================================================================
 
 _basename()
-{   #basename portable version
+{   #portable basename
     [ -z "${1}" ] && return 1 || _basename__name="${1}"
     [ -z "${2}" ] || _basename__suffix="${2}"
     case "${_basename__name}" in
@@ -98,7 +99,8 @@ _basename()
 #=================================================================
 
 _basename2()
-{   #alternative basename portable version, faster! but with possible drawbacks
+{   #alternative portable basename, faster but with possible drawbacks
+    #require more testing
     [ -z "${1}" ] && return 1 || _basename2__name="${1}"
     [ -z "${2}" ] || _basename2__suffix="${2}"
     case "${_basename2__name}" in
@@ -126,14 +128,19 @@ _char2int()
 #=================================================================
 
 _decode64()
-{   #decode a string in base64
+{   #decode a base64 string
     [ ! -t 0 ] && set -- "${@}" "$(cat)"
     [ -z "${1}" ] && return 1
     if command -v "base64" >/dev/null 2>&1; then
         printf "%s\\n" "${@}" | base64 -d
     elif command -v "openssl" >/dev/null 2>&1; then
         printf "%s\\n" "${@}" | openssl enc -base64 -d
-    elif command -v "awk" >/dev/null 2>&1 && command -v "uudecode" >/dev/null 2>&1; then
+    elif command -v "awk" >/dev/null 2>&1 && (command -v "uudecode" || command -v "busybox") >/dev/null 2>&1; then
+        if command -v "uudecode" >/dev/null 2>&1; then
+            uudecode__bin="uudecode"
+        elif command -v "busybox"  >/dev/null 2>&1; then
+            uudecode__bin="busybox uudecode"
+        fi
         _decode64_awk() { [ ! -t 0 ] && set -- "${@}" "$(cat)"
           [ -z "${1}" ] && return 1
           printf "%s\\n" "${@}" | sed 's/=//g' | (
@@ -147,7 +154,7 @@ _decode64()
               uu="`!\"#$%&'\''()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_"
               _decode64_awk(); exit; }'
             printf "%s\\n%s\\n" '`' 'end' #'
-          ) | uudecode
+          ) | $uudecode__bin
         }
         printf "%s\\n" "${@}" | _decode64_awk
     else
@@ -183,7 +190,7 @@ _decode64()
         }
         printf "%s\\n" "${@}" | _decode64_sh
     fi
-}
+} # too hardcore for vim syntax`"
 #==================================================== Example ====
 #string="$(_decode64 "${string}")"
 #[ -z "${string}" ] && printf "%s\\n" "fail, empty string"
@@ -310,7 +317,7 @@ _empty()
 #=================================================================
 
 _encode64()
-{   #encode a string in base64
+{   #encode a base64 string
     [ ! -t 0 ] && set -- "${@}" "$(cat)"
     [ -z "${1}" ] && return 1
     if command -v "base64" >/dev/null 2>&1; then
@@ -864,9 +871,9 @@ _realpath()
 #relative_path="../Shared/"
 #absolute_path="$(_realpath "$relative_path")"
 #if [ "${?}" -eq "0" ]; then
-	#printf "%s\\n" "absolute_path = ${absolute_path}"
+    #printf "%s\\n" "absolute_path = ${absolute_path}"
 #else
-	#printf "%s\\n" "'${relative_path}' does not exist!"
+    #printf "%s\\n" "'${relative_path}' does not exist!"
 #fi
 #=================================================================
 
@@ -880,7 +887,7 @@ _rmcron()
 #=================================================================
 
 _seq()
-{
+{   #portable seq
     for _seq__arg; do
         case "${_seq__arg}" in
             *[!0-9-]*|"") return 1 ;;
@@ -914,7 +921,8 @@ _seq()
 #3
 #=================================================================
 
-_shuf() {   #shuffle the input
+_shuf()
+{   #shuffle input
     awk 'BEGIN{srand()}{print rand()"\t"$0}' "${@}" | sort | cut -f2- ;
 }
 #==================================================== Example ====

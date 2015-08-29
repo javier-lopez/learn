@@ -18,7 +18,12 @@ _decode64()
         printf "%s\\n" "${@}" | base64 -d
     elif command -v "openssl" >/dev/null 2>&1; then
         printf "%s\\n" "${@}" | openssl enc -base64 -d
-    elif command -v "awk" >/dev/null 2>&1 && command -v "uudecode" >/dev/null 2>&1; then
+    elif command -v "awk" >/dev/null 2>&1 && (command -v "uudecode" || command -v "busybox") >/dev/null 2>&1; then
+        if command -v "uudecode" >/dev/null 2>&1; then
+            uudecode__bin="uudecode"
+        elif command -v "busybox"  >/dev/null 2>&1; then
+            uudecode__bin="busybox uudecode"
+        fi
         _decode64_awk() { [ ! -t 0 ] && set -- "${@}" "$(cat)"
           [ -z "${1}" ] && return 1
           printf "%s\\n" "${@}" | sed 's/=//g' | (
@@ -32,7 +37,7 @@ _decode64()
               uu="`!\"#$%&'\''()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_"
               _decode64_awk(); exit; }'
             printf "%s\\n%s\\n" '`' 'end'
-          ) | uudecode
+          ) | $uudecode__bin
         }
         printf "%s\\n" "${@}" | _decode64_awk
     else
