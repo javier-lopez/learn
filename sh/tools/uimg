@@ -62,7 +62,7 @@ for arg in "${@}"; do #parse options
 done
 
 if ! command -v "curl" >/dev/null 2>&1; then
-    printf "%s\\n" "you need to install 'curl' to run this program" >&2
+    printf "%s\\n" "install 'curl' to run this program" >&2
     exit 1
 fi
 

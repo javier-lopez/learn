@@ -42,7 +42,7 @@ for arg; do #parse options
 done
 
 if ! command -v "dig" >/dev/null 2>&1; then
-    printf "%s\\n" "you need to install 'dig' to run this program" >&2
+    printf "%s\\n" "install 'dig' to run this program" >&2
     exit 1
 fi
 

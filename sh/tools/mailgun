@@ -121,7 +121,7 @@ fi
 [ "${#api}" -ne "40" ] && _die "Specify a valid mailgun api and try again (the api is 40 characters long)"
 
 if ! command -v "curl" >/dev/null 2>&1; then
-    _die "you need to install 'curl' to run this program"
+    _die "install 'curl' to run this program"
 fi
 
 _mailgun "${api}" "${from}" "${to}" "${subject}" "${msg}"

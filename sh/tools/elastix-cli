@@ -485,7 +485,7 @@ done
 if ! command -v "sshpass" >/dev/null 2>&1; then
     #it may be slow but it doesn't requires anything on the server side besides plain password protected ssh access
     #addional remote control mediums are welcome
-    _die "you need to install 'sshpass' to run this program"
+    _die "install 'sshpass' to run this program"
 fi
 
 if ! _networkup; then

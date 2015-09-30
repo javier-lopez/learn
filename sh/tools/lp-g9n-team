@@ -64,15 +64,15 @@ done
 
 [ ! -z "${1}" ] && team="${1}" || team="ubuntumembers"
 
-_whereis python || _die "you need to install 'python' to run this program, $ sudo apt-get install python"
-_whereis wget   || _die "you need to install 'wget' to run this program, $ sudo apt-get install wget"
+_whereis python || _die "install 'python' to run this program, $ sudo apt-get install python"
+_whereis wget   || _die "install 'wget' to run this program, $ sudo apt-get install wget"
 
 if ! $(printf "%s" "from launchpadlib.launchpad import Launchpad" | python >/dev/null 2>&1); then
-    _die "you need to install 'launchpadlib' to run this program, $ sudo apt-get install python-launchpadlib"
+    _die "install 'launchpadlib' to run this program, $ sudo apt-get install python-launchpadlib"
 fi
 
 if ! $(printf "%s" "from geopy import geocoders" | python >/dev/null 2>&1); then
-    _die "you need to install 'geopy' to run this program, $ sudo apt-get install python-pip && sudo pip install geopy"
+    _die "install 'geopy' to run this program, $ sudo apt-get install python-pip && sudo pip install geopy"
 fi
 
 if ! _internetavailable; then

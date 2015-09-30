@@ -311,9 +311,9 @@ for arg; do #parse options
 done
 
 if ! command -v "rsync" >/dev/null; then
-    printf "%s\\n" "you need to install 'rsync' to run this program" >&2; exit 1
+    printf "%s\\n" "install 'rsync' to run this program" >&2; exit 1
 elif ! command -v "ssh" >/dev/null; then
-    printf "%s\\n" "you need to install 'ssh' to run this program" >&2; exit 1
+    printf "%s\\n" "install 'ssh' to run this program" >&2; exit 1
 fi
 
 exec 9>/tmp/"$(_basename "${0}")".lock #verify that only one instance is running

@@ -1,3 +1,2 @@
 Put this files in /usr/share/bash-completion/completions/
-or in /etc/bash_completion.d/ (the former will load
-10x faster)
+or /etc/bash_completion.d/ (the former will load 10x faster)

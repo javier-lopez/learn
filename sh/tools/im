@@ -39,11 +39,11 @@ _notify()
     fi
 }
 
-if [ ! -f "$(command -v "html2text")" ]; then
-    _notify "you need to install 'html2text' to run this program"
+if command -v "html2text" >/dev/null 2>&1; then
+    _notify "install 'html2text' to run this program"
     exit 1
-elif [ ! -f "$(command -v "curl")" ]; then
-    _notify "you need to install 'curl' to run this program"
+elif command -v "curl" >/dev/null 2>&1; then
+    _notify "install 'curl' to run this program"
     exit 1
 fi
 

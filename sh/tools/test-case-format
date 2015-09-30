@@ -335,8 +335,8 @@ for arg in "${@}"; do #parse options
     esac
 done
 
-[ -f "$(command -v "vim")" ]  || { printf "%b\\n" "$(_basename "${0}"): You need to install 'vim' & 'tidy' to run this program\n$ sudo apt-get install vim tidy" >&2; exit 1; }
-[ -f "$(command -v "tidy")" ] || { printf "%b\\n" "$(_basename "${0}"): You need to install 'tidy' to run this program\n$ sudo apt-get install tidy" >&2; exit 1; }
+[ -f "$(command -v "vim")" ]  || { printf "%b\\n" "$(_basename "${0}"): install 'vim' & 'tidy' to run this program\n$ sudo apt-get install vim tidy" >&2; exit 1; }
+[ -f "$(command -v "tidy")" ] || { printf "%b\\n" "$(_basename "${0}"): install 'tidy' to run this program\n$ sudo apt-get install tidy" >&2; exit 1; }
 
 _tmp_files
 _format "${@}"

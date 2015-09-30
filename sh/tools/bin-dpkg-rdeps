@@ -49,7 +49,7 @@ for arg; do #parse options
 done
 
 if ! command -v "apt-file" >/dev/null 2>&1; then
-    printf "%s\\n" "you need to install 'apt-file' to run this program" >&2
+    printf "%s\\n" "install 'apt-file' to run this program" >&2
     exit 1
 fi
 
