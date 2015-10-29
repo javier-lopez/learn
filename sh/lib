@@ -11,6 +11,16 @@
 #[+] must provide an example after the definition of the function
 #[+] must provide at least 1 unit test (tests/lib.db)
 
+_1stchar()
+{   #return first char of a string
+    [ -z "${1}" ] && return 1
+    _1stchar__substr="${1#?}"
+    printf "%s\\n" "${1%$_1stchar__substr}"
+}
+#==================================================== Example ====
+#_1stchar test #print 't'
+#=================================================================
+
 _abs()
 {   #return the absolute value of the argument, or 1 on failure
     case "${1}" in
@@ -125,6 +135,65 @@ _char2int()
 #==================================================== Example ====
 #num="$(_char2int a)"
 #printf "%s\\n" "${num}" #prints 97
+#=================================================================
+
+_daemonize()
+{   #daemonize an external command
+    #http://blog.n01se.net/blog-n01se-net-p-145.html
+    [ -z "${1}" ] && return 1
+    (   # 1. fork, to guarantee the child is not a process
+        # group leader, necessary for setsid) and have the
+        # parent exit (to allow control to return to the shell)
+
+        # 2. redirect stdin/stdout/stderr before running child
+        [ -t 0 ] && exec  </dev/null
+        [ -t 1 ] && exec  >/dev/null
+        [ -t 2 ] && exec 2>/dev/null
+        if ! command -v "setsid" >/dev/null 2>&1; then
+            # 2.1 guard against HUP and INT (in child)
+            trap '' 1 2
+        fi
+
+        # 3. ensure cwd isn't a mounted fs so it does't block
+        # umount invocations
+        cd /
+
+        # 4. umask (leave this to caller)
+        # umask 0
+
+        # 5. close unneeded fds
+        #XCU 2.7 Redirection says: open files are represented by
+        #decimal numbers starting with zero. The largest possible
+        #value is implementation-defined; however, all
+        #implementations shall support at least 0 to 9, inclusive,
+        #for use by the application.
+        i=3; while [ "${i}" -le "9" ]; do
+            eval "exec ${i}>&-"
+            i="$(($i + 1))"
+        done
+
+        # 6. create new session, so the child has no
+        # controlling terminal, this prevents the child from
+        # accesing a terminal (using /dev/tty) and getting
+        # signals from the controlling terminal (e.g. HUP, INT)
+        if command -v "setsid" >/dev/null 2>&1; then
+            exec setsid "$@"
+        else
+            if [ ! -f "${1}" ]; then
+                "$@"
+            else
+                exec "$@"
+            fi
+        fi
+    ) &
+    # 2.2 guard against HUP (in parent)
+    if ! command -v "setsid" >/dev/null 2>&1; then
+        disown -h "${!}"
+    fi
+}
+#==================================================== Example ====
+#_daemonize /bin/sh /path/script #daemonize script
+#kill -15 $(cat /var/run/script.pid #finish daemon
 #=================================================================
 
 _decode64()
@@ -677,10 +746,10 @@ _notify()
         if ! DISPLAY=:0 notify-send -t 1000 "${1}"  "${2}"; then
             if command -v "gxmessage" 2>/dev/null; then
                 font="Monaco 9"
-                gxmessage "${font:+-fn "$font"}" "${1} ${2}" "ok"
+                DISPLAY=:0 gxmessage "${font:+-fn "$font"}" "${1} ${2}" "ok"
             else
                 font="fixed"
-                xmessage "${font:+-fn "$font"}" "${1} ${2}" "ok"
+                DISPLAY=:0 xmessage "${font:+-fn "$font"}" "${1} ${2}" "ok"
             fi
         fi
     else

@@ -2,6 +2,15 @@
 #Copyright (c) 1999-2008 Ralf S. Engelschall <rse@engelschall.com>
 #Copyright (c) 2014      Javier Lopez        <m@javier.io>
 
+@begin{_1stchar}
+_1stchar;    test X"${?}" = X"1"
+test X"$(_1stchar 0)"     = X"0"
+test X"$(_1stchar 99)"    = X"9"
+test X"$(_1stchar -1)"    = X"-"
+test X"$(_1stchar -99)"   = X"-"
+test X"$(_1stchar -99 2)" = X"-"
+@end
+
 @begin{_abs}
 _abs;         test X"${?}" = X"1"
 _abs string;  test X"${?}" = X"1"
