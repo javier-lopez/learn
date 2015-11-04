@@ -5,4 +5,4 @@ _ussh() {
         ssh -o UserKnownHostsFile=/dev/null -o CheckHostIP=no -o StrictHostKeyChecking=no $@
 }
 
-_ussh
+_ussh "${@}"
