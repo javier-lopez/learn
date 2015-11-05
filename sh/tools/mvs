@@ -1,6 +1,6 @@
 #!/bin/sh
 # Copyright (C) 2007-2010 by Jonas Kramer. All rights reserved.
-# Copyright (C) 2013-2014 by Javier Lopez. All rights reserved.
+# Copyright (C) 2013-2015 by Javier Lopez. All rights reserved.
 # Published under the terms of the GNU General Public License (GPL).
 
 # Rename lots of files using your favorite text editor.
@@ -27,6 +27,47 @@ _die()
     exit 1
 }
 
+_mkdir_p()
+{   #portable mkdir -p function
+    for _mkdir_p__dir; do
+        _mkdir_p__IFS="$IFS"
+        IFS="/"
+        set -- $_mkdir_p__dir
+        IFS="$_mkdir_p__IFS"
+        (
+        case "$_mkdir_p__dir" in
+            /*) cd /; shift ;;
+        esac
+        for _mkdir_p__subdir; do
+            [ -z "${_mkdir_p__subdir}" ] && continue
+            if [ -d "${_mkdir_p__subdir}" ] || mkdir "${_mkdir_p__subdir}"; then
+                if cd "${_mkdir_p__subdir}"; then
+                    :
+                else
+                    printf "%s\\n" "_mkdir_p: Can't enter ${_mkdir_p__subdir} while creating ${_mkdir_p__dir}"
+                    exit 1
+                fi
+            else
+                exit 1
+            fi
+        done
+        )
+    done
+    unset _mkdir_p__dir
+}
+
+_dirname()
+{   #return string containing dirname on success, 1 on failure
+    [ -z "${1}" ] && return 1
+
+    #http://www.linuxselfhelp.com/gnu/autoconf/html_chapter/autoconf_10.html
+    case "${1}" in
+        /*|*/*) _dirname__dir=$(expr "x${1}" : 'x\(.*\)/[^/]*' \| '.' : '.')
+                printf "%s\\n" "${_dirname__dir}" ;;
+             *) printf "%s\\n" ".";;
+    esac
+}
+
 if [ ! -t 0 ]; then
     #there is input comming from pipe or file, add to the end of $@
     set -- "${@}" $(cat)
@@ -37,12 +78,13 @@ fi
 for arg; do #parse options
     case "${arg}" in
         -h|--help) _usage ;;
-        -e|--editor)if [ "${#}" -gt "1" ]; then
-                        editor="$(printf "%s " "${@}" | awk '{print $2}')"
-                        shift 2
-                    else
-                        _die "Option \`${arg}' requires a parameter"
-                    fi ;;
+        -e|--editor)
+            if [ "${#}" -gt "1" ]; then
+                editor="$(printf "%s " "${@}" | awk '{print $2}')"
+                shift && shift
+            else
+                _die "Option \`${arg}' requires a parameter"
+            fi ;;
         -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" >&2; _usage ;;
     esac
 done
@@ -52,16 +94,25 @@ done
 
 # Create targets file.
 targets="/tmp/mvs-${$}"
-for FILE; do printf "%s\\n" "${FILE}" >> "${targets}"; done
+i=0; for FILE; do
+    [ -e "${FILE}" ] || {
+        i="$((i+1))";
+        printf "%s\\n" "Warning: '${FILE}' doesn't exist, skipping ..." >&2 ;
+        continue; }
+    printf "%s\\n" "${FILE}" >> "${targets}"
+done
+
+[ ! -f "${targets}" ] && exit
 
 # Start $EDITOR
 if ${editor} ${targets}; then
         [ ! -t 0 ] && reset
-        count="$(wc -l "${targets}" | grep -o -E '^[0-9]+')"
+        count="$(awk 'END {print NR}' "${targets}" 2>/dev/null)"
+        param_len="${#}"; param_len="$((param_len - i))"
 
         # Exit with error message if number of arguments and line count of
         # targets file differ.
-        if [ "${count}" -ne "${#}" ]; then
+        if [ "${count}" -ne "${param_len}" ]; then
             rm -- "${targets}"
             _die 'Numbers of files mismatch.'
         fi
@@ -69,11 +120,23 @@ if ${editor} ${targets}; then
         # Read targets file line by line and rename the source
         # files from ARGV appropriately.
         while read target; do
-            source="${1}"
-            shift
+            while [ ! -e "${source}" ]; do
+                source="${1}"
+                shift
+            done
             if [ X"${source}" != X"${target}" ]; then
+                case "${target}" in
+                    /*|*/*)
+                        target="$(printf "%s" "${target}" | \
+                            sed "s:\$HOME:$HOME:g;s:~/:$HOME/:;")"
+                        _mkdir_p "$(_dirname "${target}")" ;;
+                esac
                 mv -v -f -- "${source}" "${target}"
+                case "${source}" in
+                    /*|*/*) rmdir -p "$(_dirname "${source}")" 2>/dev/null ;;
+                esac
             fi
+            source=""
         done < "${targets}"
 fi
 
