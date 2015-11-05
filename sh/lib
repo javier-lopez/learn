@@ -764,6 +764,37 @@ _notify()
 #_notify "You need html2text" "$ sudo apt-get install html2text"
 #=================================================================
 
+_notify2()
+{
+    #output messages through the notification system, prints to
+    #stdout in the worst escenario
+    [ -z "${1}" ] && return 1
+    if [ X"${TERM}" = X"linux" ] || [ -z "${TERM}" ]; then
+        kill -9 $(pgrep notify-osd) >/dev/null 2>&1
+        if ! DISPLAY=:0 notify-send -t 1000 "${1}" "${3}"; then
+            if command -v "gxmessage" 2>/dev/null; then
+                font="Monaco 9"
+                DISPLAY=:0 gxmessage "${font:+-fn "$font"}" "${1}" "ok"
+            else
+                font="fixed"
+                DISPLAY=:0 xmessage "${font:+-fn "$font"}" "${1}" "ok"
+            fi
+        fi
+        case "${3}" in
+            *clipboard*)
+                printf "%s\\n" "${2}" | xclip -selection clipboard 2>/dev/null
+                printf "%s\\n" "${2}" | xsel -bi 2>/dev/null
+                printf "%s\\n" "${2}" | pbcopy 2>/dev/null
+                ;;
+        esac
+    else
+        printf "%s\\n" "${2}"
+    fi
+}
+#==================================================== Example ====
+#_notify2 "5+3 = 8" "8" "Copied to the clipboard!"
+#=================================================================
+
 _printfc()
 {   #print command
     [ -z "${1}" ] && return 1

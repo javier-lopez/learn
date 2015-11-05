@@ -246,6 +246,14 @@ test X"$(_notify "error")"                = X"error"
 test X"$(_notify "error" "subsystem")"    = X"error: subsystem"
 @end
 
+@begin{_notify2}
+_notify2; test X"${?}"                     = X"1"
+_notify2 "error"; test X"${?}"             = X"0"
+_notify2 "error" "subsystem"; test X"${?}" = X"0"
+test X"$(_notify2 "error" "error")"        = X"error"
+test X"$(_notify2 "error" "subsystem")"    = X"subsystem"
+@end
+
 @begin{_printfc}
 _printfc; test X"${?}"            = X"1"
 test X"$(_printfc ls)"            = X"    $ ls"
