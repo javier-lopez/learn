@@ -30,16 +30,19 @@ _notify() {
                 DISPLAY=:0 xmessage "${font:+-fn "$font"}" "${1}" "ok"
             fi
         fi
-        case "${3}" in
-            *clipboard*)
-                printf "%s\\n" "${2}" | xclip -selection clipboard 2>/dev/null
-                printf "%s\\n" "${2}" | xsel -bi 2>/dev/null
-                printf "%s\\n" "${2}" | pbcopy 2>/dev/null
-                ;;
-        esac
     else
         printf "%s\\n" "${2}"
     fi
+    case "${3}" in
+        *clipboard*)
+            #dumping xclip's stdout to the bitbucket works around xclip's
+            #failure to properly daemonize
+            #https://sourceforge.net/p/xclip/patches/9/
+            printf "%s" "${2}" | xclip -selection clipboard -i >/dev/null 2>&1 || \
+            printf "%s" "${2}" | xsel -bi 2>/dev/null || \
+            printf "%s" "${2}" | pbcopy 2>/dev/null   || :
+            ;;
+    esac
 }
 
 _weather() {

@@ -120,7 +120,8 @@ _cpb64()
         if [ ! -t 1 ] || [ -z "${DISPLAY}" ]; then
             printf "%s%b" "${decodestr}" "${cmd}"
         else
-            printf "%s%b" "${decodestr}" "${cmd}" | xclip -selection clipboard; xclip -o -selection clipboard
+            printf "%s%b" "${decodestr}" "${cmd}" | xclip -selection clipboard; xclip -o -selection clipboard 2>/dev/null || \
+            printf "%s%b" "${decodestr}" "${cmd}"
         fi
     else
         printf "%s%b" "${decodestr}" "${cmd}"

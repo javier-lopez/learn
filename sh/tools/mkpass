@@ -2,6 +2,8 @@
 #description: create a secure password with 8 chars by default
 #usage: mkpass [LENGTH]
 
+#exec >/home/chilicuil/log 2>&1
+#set -x
 _usage()
 {
     printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [length]" >&2
@@ -14,6 +16,36 @@ _die()
     [ -z "${1}" ] && return 1
     printf "%s\\n" "${*}" >&2
     _usage
+}
+
+_notify() {
+    #output messages through the notification system, prints to
+    #stdout in the worst escenario
+    [ -z "${1}" ] && return 1
+    if [ X"${TERM}" = X"linux" ] || [ -z "${TERM}" ]; then
+        kill -9 $(pgrep notify-osd) >/dev/null 2>&1
+        if ! DISPLAY=:0 notify-send -t 1000 "${1}" "${3}"; then
+            if command -v "gxmessage" 2>/dev/null; then
+                font="Monaco 9"
+                DISPLAY=:0 gxmessage "${font:+-fn "$font"}" "${1}" "ok"
+            else
+                font="fixed"
+                DISPLAY=:0 xmessage "${font:+-fn "$font"}" "${1}" "ok"
+            fi
+        fi
+    else
+        printf "%s\\n" "${2}"
+    fi
+    case "${3}" in
+        *clipboard*)
+            #dumping xclip's stdout to the bitbucket works around xclip's
+            #failure to properly daemonize
+            #https://sourceforge.net/p/xclip/patches/9/
+            printf "%s" "${2}" | xclip -selection clipboard -i >/dev/null 2>&1 || \
+            printf "%s" "${2}" | xsel -bi 2>/dev/null || \
+            printf "%s" "${2}" | pbcopy 2>/dev/null   || :
+            ;;
+    esac
 }
 
 if [ ! -t 0 ]; then
@@ -39,14 +71,14 @@ else
     esac
 fi
 
-if command -v "xclip" >/dev/null 2>&1; then
-    if [ ! -t 1 ] || [ -z "${DISPLAY}" ]; then
-        printf "%b" "$(strings /dev/urandom | grep -o '[[:alnum:]]' | head -n "${mkpasswd_length}" | tr -d '\n')"
-    else
-    #http://unix.stackexchange.com/questions/28503/how-can-i-send-stdout-to-multiple-commands
-        strings /dev/urandom | grep -o '[0-9a-Z_./~:,;()!?%*#$%&+=@-]' | head -n "${mkpasswd_length}" \
-            | tr -d '\n' | xclip -selection clipboard; xclip -o -selection clipboard; printf "\\n"
-    fi
+#http://unix.stackexchange.com/questions/28503/how-can-i-send-stdout-to-multiple-commands
+passwd="$(strings /dev/urandom | grep -o '[0-9a-Z_./~:,;()!?%*#$%&+=@-]' | \
+          head -n "${mkpasswd_length}" | tr -d '\n' 2>/dev/null)"
+
+if [ -z "${passwd}" ];then
+    _die "$(expr "${0}" : '.*/\([^/]*\)'): couldn't generate password"
 else
-    strings /dev/urandom | grep -o '[0-9a-Z_./~:,;()!?%*#$%&+=@-]' | head -n "${mkpasswd_length}" | tr -d '\n'; printf "\\n"
+    clipboard_text="Copied to clipboard!"
 fi
+
+_notify "${passwd}" "${passwd}" "${clipboard_text}"
