@@ -653,6 +653,17 @@ _is_int()
 #exit 0
 #=================================================================
 
+_lastchar()
+{   #return last char of a string
+    [ -z "${1}" ] && return 1
+    for i; do :; done
+    _1stchar__substr="${i%?}"
+    printf "%s\\n" "${i#$_1stchar__substr}"
+}
+#==================================================== Example ====
+#_1stchar test #print 't'
+#=================================================================
+
 _livecd()
 {   #detect a livecd system, return 0 on success, 1 otherwise
     grep boot=live   /proc/cmdline >/dev/null && return 0

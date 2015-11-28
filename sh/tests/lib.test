@@ -200,6 +200,15 @@ _empty file; test X"${?}" = X"1"
 rm -f file
 @end
 
+@begin{_lastchar}
+_lastchar;    test X"${?}" = X"1"
+test X"$(_lastchar 0)"     = X"0"
+test X"$(_lastchar 99)"    = X"9"
+test X"$(_lastchar -1)"    = X"1"
+test X"$(_lastchar -99)"   = X"9"
+test X"$(_lastchar -99 2)" = X"2"
+@end
+
 @begin{_livecd}
 _livecd; test X"${?}" = X"1"
 @end
