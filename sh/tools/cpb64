@@ -79,14 +79,19 @@ EOF
 
 _usage()
 {
-    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] file ..." >&2
-    printf "%s\\n" "Copy files using base64." >&2
-    printf "\\n" >&2
-    printf "%s\\n" "  -p, --portable   produce extra portable output, useful"  >&2
-    printf "%s\\n" "                   when base64|openssl are not installed"  >&2
-    printf "%s\\n" "                   in the target system" >&2
-    printf "%s\\n" "  -h, --help       show this help message and exit" >&2
-    exit 1
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] file ..."
+    printf "%s\\n" "Copy files using base64."
+    printf "\\n"
+    printf "%s\\n" "  -p, --portable   produce extra portable output, useful"
+    printf "%s\\n" "                   when base64|openssl are not installed"
+    printf "%s\\n" "                   in the target system"
+    printf "%s\\n" "  -h, --help       show this help message and exit"
+}
+
+_die()
+{
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
 }
 
 _cpb64()
@@ -133,14 +138,14 @@ if [ ! -t 0 ]; then
     set -- "${@}" $(cat)
 fi
 
-[ "${#}" -eq "0" ] && { printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') file ..." >&2; exit 1; }
+[ "${#}" -eq "0" ] && _die
 
 for arg; do #parse options
     case "${arg}" in
-        -h|--help) _usage ;;
-        -p|--portable) portable="true"; shift ;;
-        -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" >&2
-            _usage ;;
+        -h|--help) _usage && exit ;;
+        -p|--portable) portable="true"; shift
+            [ -z "${1}" ] && _die "$(expr "${0}" : '.*/\([^/]*\)'): missing parameters" ;;
+        -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${arg}'" ;;
     esac
 done
 

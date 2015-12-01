@@ -13,12 +13,17 @@
 
 _usage()
 {
-    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [-sl-tl] string ..." >&2
-    printf "%s\\n" "Translate strings using google online translator." >&2
-    printf "\\n" >&2
-    printf "%s\\n" "  sl   source language (auto by default)" >&2
-    printf "%s\\n" "  tl   target language (english by default)" >&2
-    exit 1
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [-sl-tl] string ..."
+    printf "%s\\n" "Translate strings using google online translator."
+    printf "\\n"
+    printf "%s\\n" "  sl   source language (auto by default)"
+    printf "%s\\n" "  tl   target language (english by default)"
+}
+
+_die()
+{
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
 }
 
 _notify() {
@@ -76,10 +81,11 @@ if [ ! -t 0 ]; then
     set -- "${@}" $(cat)
 fi
 
-[ "${#}" -eq "0" ] && _usage
+[ "${#}" -eq "0" ] && _die
 
 case "${1}" in
-    -h|--help) _usage ;;
+    -h|--help) _usage && exit ;;
+    --*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${1}'" ;;
     -*) sl="$(printf "%s" "${1}" | cut -d'-' -f2)"
         tl="$(printf "%s" "${1}" | cut -d'-' -f3)"
         if [ -z "${sl}" ] && [ -z "${tl}" ]; then

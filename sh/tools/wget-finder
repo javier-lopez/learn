@@ -183,12 +183,12 @@ _wget_finder()
         _wget_finder__checktype="$(_checksum_type "${_wget_finder__checksum}")"
 
         if [ -z "${_wget_finder__checktype}" ]; then
-            printf "%s\\n" "Warning: '${_wget_finder__archive}' is an invalid FILE:CHECKSUM pair, skipping..."
+            printf "%s\\n" "Warning: '${_wget_finder__archive}' is an invalid FILE:CHECKSUM pair, skipping..." >&2
             [ X"${_wget_finder__archives}" = X"${_wget_finder__archive}" ] &&\
                 _wget_finder__archives='' || _wget_finder__archives="${_wget_finder__archives#*/}"
              _wget_finder__status="1"; continue
         elif ! _checksum "${_wget_finder__checktype}"; then
-            printf "%s\\n" "Warning: there is no way to calculate a '${_wget_finder__checktype}' checksum in your system, skipping..."
+            printf "%s\\n" "Warning: there is no way to calculate a '${_wget_finder__checktype}' checksum in your system, skipping..." >&2
             [ X"${_wget_finder__archives}" = X"${_wget_finder__archive}" ] &&\
                 _wget_finder__archives='' || _wget_finder__archives="${_wget_finder__archives#*/}"
              _wget_finder__status="1"; continue
@@ -246,7 +246,7 @@ if [ ! -t 0 ]; then
     set -- "${@}" $(cat)
 fi
 
-[ "${#}" -eq "0" ] && _usage
+[ "${#}" -eq "0" ] && _usage >&2
 
 if ! command -v "wget" >/dev/null 2>&1; then
     printf "%s\\n" "install 'wget' to run this program" >&2
@@ -266,7 +266,8 @@ for arg; do #parse options
                              exec "${0}" --list-search-engine
                          fi
                          if [ -z "$(printf "%s\\n" "${search_engines}" | tr ' ' '\n' | awk "/^$search_engine\$/")" ]; then
-                            printf "%s\\n" "${progname}: '${search_engine}' is not a recognized search engine"; exit 1
+                            printf "%s\\n" "${progname}: '${search_engine}' is not a recognized search engine" >&2
+                            exit 1
                          fi ;;
         --list-search-engine) printf "%s\\n" "${search_engines}" | tr ' ' '\n'; exit 0; ;;
         --list-checksum) printf "%s\\n" "${checksums}" | tr ' ' '\n'; exit 0; ;;

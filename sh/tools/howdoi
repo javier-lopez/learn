@@ -7,21 +7,20 @@
 
 _usage()
 {
-    printf "%b\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] query ..." >&2
-    printf "%b\\n" "Instant coding answers via the command line." >&2
-    printf "\\n" >&2
-    printf "%b\\n" "Positional arguments:" >&2
-    printf "%b\\n" "  query       the question to answer" >&2
-    printf "\\n" >&2
-    printf "%b\\n" "Optional arguments:" >&2
-    printf "%b\\n" "  -p pos       select answer in specified position (default: 1)" >&2
-    printf "%b\\n" "  -a           display all the answers in full text" >&2
-    printf "%b\\n" "  -l           display only the answer link" >&2
-    printf "%b\\n" "  -c           enable colorized output" >&2
-    printf "%b\\n" "  -C           clear cache" >&2
-    printf "%b\\n" "  -n num       number of answers to return" >&2
-    printf "%b\\n" "  -h, --help   show this help message and exit" >&2
-    exit 1
+    printf "%b\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] query ..."
+    printf "%b\\n" "Instant coding answers via the command line."
+    printf "\\n"
+    printf "%b\\n" "Positional arguments:"
+    printf "%b\\n" "  query       the question to answer"
+    printf "\\n"
+    printf "%b\\n" "Optional arguments:"
+    printf "%b\\n" "  -p pos       select answer in specified position (default: 1)"
+    printf "%b\\n" "  -a           display all the answers in full text"
+    printf "%b\\n" "  -l           display only the answer link"
+    printf "%b\\n" "  -c           enable colorized output"
+    printf "%b\\n" "  -C           clear cache"
+    printf "%b\\n" "  -n num       number of answers to return"
+    printf "%b\\n" "  -h, --help   show this help message and exit"
 }
 
 _num()
@@ -32,9 +31,8 @@ _num()
 
 _die()
 {
-    [ -z "${1}" ] && return 1
-    printf "%b\\n" "${*}" >&2
-    _usage
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
 }
 
 _howdoi()
@@ -123,7 +121,7 @@ if [ ! -t 0 ]; then
     set -- "${@}" $(cat)
 fi
 
-[ "${#}" -eq "0" ] && _usage
+[ "${#}" -eq "0" ] && _die
 
 if ! command -v "wget" >/dev/null 2>&1; then
     printf "%s\\n" "install 'wget' to run this program" >&2
@@ -132,7 +130,7 @@ fi
 
 for arg; do #parse options
     case "${arg}" in
-        -h|--help) _usage ;;
+        -h|--help) _usage && exit ;;
         -a) aflag="true"; shift;;
         -l) lflag="true"; shift;;
         -c) cflag="true"; shift;;
@@ -141,23 +139,21 @@ for arg; do #parse options
                 pflag="$(printf "%s " "${@}" | awk '{print $2}')"
                 shift 2
                 if ! _num "${pflag}" ; then
-                    printf "%s\\n" "Option \`${arg}' requires a number: '${pflag}'" >&2
-                    _usage
+                    _die "Option '${arg}' requires a number: '${pflag}'"
                 fi
             else
-                _die "Option \`${arg}' requires a parameter"
+                _die "Option '${arg}' requires a parameter"
             fi ;;
         -n) if [ "${#}" -gt "1" ]; then
                 nflag="$(printf "%s " "${@}" | awk '{print $2}')"
                 shift 2
                 if ! _num "${nflag}" ; then
-                    printf "%s\\n" "Option \`${arg}' requires a number: '${nflag}'" >&2
-                    _usage
+                    _die "Option '${arg}' requires a number: '${nflag}'"
                 fi
             else
-                _die "Option \`${arg}' requires a parameter"
+                _die "Option '${arg}' requires a parameter"
             fi ;;
-        -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" >&2; _usage ;;
+        -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${arg}'" ;;
     esac
 done
 

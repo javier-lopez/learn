@@ -40,11 +40,10 @@ fi
 
 for arg; do #parse options
     case "${arg}" in
-        -h|--help) { printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') binary ..." >&2; exit 1; } ;;
-        -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" >&2
+        -h|--help) { printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') binary ..."; exit; } ;;
+        -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${arg}'" >&2
             printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') binary ..." >&2
-            exit 1
-            ;;
+            exit 1 ;;
     esac
 done
 

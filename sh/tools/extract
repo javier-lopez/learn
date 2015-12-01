@@ -27,12 +27,17 @@ _basename()
 
 _usage()
 {
-    printf "%s\\n" "Usage: $(_basename "${0}") [options] files ..." >&2
-    printf "%s\\n" "Extract files." >&2
-    printf "\\n" >&2
-    printf "%s\\n" "  -v, --verbose   verbose mode" >&2
-    printf "%s\\n" "  -h, --help      show this help message and exit" >&2
-    exit 1
+    printf "%s\\n" "Usage: $(_basename "${0}") [options] files ..."
+    printf "%s\\n" "Extract files."
+    printf "\\n"
+    printf "%s\\n" "  -v, --verbose   verbose mode"
+    printf "%s\\n" "  -h, --help      show this help message and exit"
+}
+
+_die()
+{
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
 }
 
 _exec()
@@ -98,20 +103,20 @@ if [ ! -t 0 ]; then
     set -- "${@}" $(cat)
 fi
 
-[ "${#}" -eq "0" ] && _usage
+[ "${#}" -eq "0" ] && _die
 
 for arg; do #parse options
     case "${arg}" in
-        -h|--help) _usage  ;;
+        -h|--help) _usage && exit ;;
         -v|--verbose)
             VFLAG="true" && shift
             if [ -z "${1}" ]; then
-                _usage
+                _die
             else
                 _extract "${@}"
                 exit "${?}"
             fi ;;
-        -*) printf "%s\\n" "$(_basename "${0}"): unrecognized option \`${arg}'" >&2; _usage ;;
+        -*) _die "$(_basename "${0}"): unrecognized option '${arg}'" ;;
     esac
 done
 

@@ -7,19 +7,24 @@
 
 _usage()
 {
-    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] module" >&2
-    printf "%s\\n" "Fix common problems." >&2
-    printf "%s\\n" >&2
-    printf "%s\\n" "  -h, --help   show this help message and exit" >&2
-    printf "%s\\n" >&2
-    printf "%s\\n" "Modules" >&2
-    printf "%s\\n" "  apache       moves /etc/init.d/apache2.1 to apache2" >&2
-    printf "%s\\n" "  ipw2200      restart ipw2200 module" >&2
-    printf "%s\\n" "  wl           restart wl module" >&2
-    printf "%s\\n" "  iwlagn       restart iwlagn module" >&2
-    printf "%s\\n" "  mpd          restart mpd" >&2
-    printf "%s\\n" "  webcam       fix webcam, thinkpad" >&2
-    exit 1
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] module"
+    printf "%s\\n" "Fix common problems."
+    printf "%s\\n"
+    printf "%s\\n" "  -h, --help   show this help message and exit"
+    printf "%s\\n"
+    printf "%s\\n" "Modules"
+    printf "%s\\n" "  apache       moves /etc/init.d/apache2.1 to apache2"
+    printf "%s\\n" "  ipw2200      restart ipw2200 module"
+    printf "%s\\n" "  wl           restart wl module"
+    printf "%s\\n" "  iwlagn       restart iwlagn module"
+    printf "%s\\n" "  mpd          restart mpd"
+    printf "%s\\n" "  webcam       fix webcam, thinkpad"
+}
+
+_die()
+{
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
 }
 
 _exec()
@@ -79,17 +84,17 @@ if [ ! -t 0 ]; then
     set -- "${@}" $(cat)
 fi
 
-[ "${#}" -eq "0" ] && _usage
+[ "${#}" -eq "0" ] && _die
 
 for arg; do
     case "${arg}" in
-        -h|--help) _usage   ;;
+        -h|--help) _usage && exit ;;
         apache)    _apache  ;;
         ipw2200)   _ipw2200 ;;
         wl)        _wl      ;;
         iwlagn)    _iwlagn  ;;
         mpd)       _mpd     ;;
         webcam)    _webcam  ;;
-        *)         printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${1}'" >&2; _usage ;;
+        *)         _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${1}'" ;;
     esac
 done

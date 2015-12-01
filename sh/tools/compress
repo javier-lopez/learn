@@ -27,12 +27,17 @@ _basename()
 
 _usage()
 {
-    printf "%s\\n" "Usage: $(_basename "${0}") [options] files ... file.[tar.gz,tar.bz2,zip...]" >&2
-    printf "%s\\n" "Compress files." >&2
-    printf "\\n" >&2
-    printf "%s\\n" "  -v, --verbose   verbose mode" >&2
-    printf "%s\\n" "  -h, --help      show this help message and exit" >&2
-    exit 1
+    printf "%s\\n" "Usage: $(_basename "${0}") [options] files ... file.[tar.gz,tar.bz2,zip...]"
+    printf "%s\\n" "Compress files."
+    printf "\\n"
+    printf "%s\\n" "  -v, --verbose   verbose mode"
+    printf "%s\\n" "  -h, --help      show this help message and exit"
+}
+
+_die()
+{
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
 }
 
 _compress()
@@ -180,21 +185,20 @@ if [ ! -t 0 ]; then
     set -- "${@}" $(cat)
 fi
 
-[ "${#}" -lt "2" ] && _usage
-
 for arg; do #parse options
     case "${arg}" in
-        -h|--help) _usage  ;;
+        -h|--help) _usage && exit ;;
         -v|--verbose)
             VFLAG="true" && shift
             if [ -z "${2}" ]; then
-                _usage
+                _die "$(_basename "${0}"): missing parameters"
             else
-                _compress "${@}"
-                exit "${?}"
+                _compress "${@}"; exit "${?}"
             fi ;;
-        -*) printf "%s\\n" "$(_basename "${0}"): unrecognized option \`${arg}'" >&2; _usage ;;
+        -*) _die "$(_basename "${0}"): unrecognized option '${arg}'" ;;
     esac
 done
+
+[ "${#}" -lt "2" ] && _die
 
 _compress "${@}"

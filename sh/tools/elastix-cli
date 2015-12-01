@@ -34,34 +34,33 @@ fi
 
 _usage()
 {
-    printf "%s\\n" "Usage: $(_basename "${0}") [options] type args..." >&2
-    printf "%s\\n" "Control Elastix through a cli interface." >&2
-    printf "\\n" >&2
-    printf "%s\\n" "  -c         credentials, requires a FILE string as a parameter" >&2
-    printf "%s\\n" "  -h         host, user@hostname.domain:port (localhost and port 22 by default)" >&2
-    printf "%s\\n" "  -p         ssh password (secret by default)" >&2
-    printf "%s\\n" "  -m         mysql passwd (secret by default)" >&2
-    printf "%s\\n" "  --help     prints this message and exit" >&2
-    printf "\\n" >&2
-    printf "%s\\n" "  trunk      edit trunk options" >&2
-    printf "%s\\n" "    add      add a trunk, requires FILE string as parameter" >&2
-    printf "%s\\n" "    remove   removes a trunk on ip basis, requires IP|domain string" >&2
-    printf "%s\\n" "    edit     edit on ip basis, requires FILE string as parameter" >&2
-    printf "\\n" >&2
-    printf "%s\\n" "=examples=" >&2
-    printf "\\n" >&2
-    printf "%s\\n" "#adds a new trunk in domain.com based on definition FILE[0]" >&2
-    printf "%s\\n" "  $(_basename "${0}") -h admin@domain.com trunk add definition" >&2
-    printf "\\n" >&2
-    printf "%s\\n" "#removes a trunk based on [IP|domain], uses credential FILE [1] to apply changes in several machines" >&2
-    printf "%s\\n" "  $(_basename "${0}") -r credentials trunk remove domain.com" >&2
-    printf "\\n" >&2
-    printf "%s\\n" "#edit the IP field of an existing trunk in localhost, uses <secret> as the mysql password for the root account" >&2
-    printf "%s\\n" "  $(_basename "${0}") -m secret trunk edit x.x.x.x y.y.y.y" >&2
-    printf "\\n" >&2
-    printf "%s\\n" "[0] http://www.voip-info.org/wiki/view/Asterisk+config+sip.conf" >&2
-    printf "%s\\n" "[1] remote access is defined as: user@remotehost:port,ssh_passwd,mysql_passwd, and can be defined as many lines as desired" >&2
-    exit 1
+    printf "%s\\n" "Usage: $(_basename "${0}") [options] type args..."
+    printf "%s\\n" "Control Elastix through a cli interface."
+    printf "\\n"
+    printf "%s\\n" "  -c         credentials, requires a FILE string as a parameter"
+    printf "%s\\n" "  -h         host, user@hostname.domain:port (localhost and port 22 by default)"
+    printf "%s\\n" "  -p         ssh password (secret by default)"
+    printf "%s\\n" "  -m         mysql passwd (secret by default)"
+    printf "%s\\n" "  --help     prints this message and exit"
+    printf "\\n"
+    printf "%s\\n" "  trunk      edit trunk options"
+    printf "%s\\n" "    add      add a trunk, requires FILE string as parameter"
+    printf "%s\\n" "    remove   removes a trunk on ip basis, requires IP|domain string"
+    printf "%s\\n" "    edit     edit on ip basis, requires FILE string as parameter"
+    printf "\\n"
+    printf "%s\\n" "=examples="
+    printf "\\n"
+    printf "%s\\n" "#adds a new trunk in domain.com based on definition FILE[0]"
+    printf "%s\\n" "  $(_basename "${0}") -h admin@domain.com trunk add definition"
+    printf "\\n"
+    printf "%s\\n" "#removes a trunk based on [IP|domain], uses credential FILE [1] to apply changes in several machines"
+    printf "%s\\n" "  $(_basename "${0}") -r credentials trunk remove domain.com"
+    printf "\\n"
+    printf "%s\\n" "#edit the IP field of an existing trunk in localhost, uses <secret> as the mysql password for the root account"
+    printf "%s\\n" "  $(_basename "${0}") -m secret trunk edit x.x.x.x y.y.y.y"
+    printf "\\n"
+    printf "%s\\n" "[0] http://www.voip-info.org/wiki/view/Asterisk+config+sip.conf"
+    printf "%s\\n" "[1] remote access is defined as: user@remotehost:port,ssh_passwd,mysql_passwd, and can be defined as many lines as desired"
 }
 
 _die()
@@ -440,18 +439,18 @@ if [ ! -t 0 ]; then
     set -- "${@}" $(cat)
 fi
 
-[ "${#}" -eq "0" ] && _usage # no options
+[ "${#}" -eq "0" ] && _usage >&2 && exit 1 # no options
 
 for arg; do #parse options
     case "${arg}" in
-        --help) _usage     ;;
+        --help) _usage && exit ;;
         -c)
             if [ "${#}" -gt "1" ]; then
                 elastix_credentials="${@:2:1}"
                 [ ! -f "${elastix_credentials}" ] && _die "'${elastix_credentials}' doesn't exist"
                 shift 2
             else
-                _die "Option \`${arg}' requires a FILE parameter"
+                _die "Option '${arg}' requires a FILE parameter"
             fi
             ;;
         -h)
@@ -459,7 +458,7 @@ for arg; do #parse options
                 elastix_ssh_host="${@:2:1}"
                 shift 2
             else
-                _die "Option \`${arg}' requires a Host string"
+                _die "Option '${arg}' requires a Host string"
             fi
             ;;
         -p)
@@ -467,7 +466,7 @@ for arg; do #parse options
                 elastix_ssh_passwd="${@:2:1}"
                 shift 2
             else
-                _die "Option \`${arg}' requires a Password string"
+                _die "Option '${arg}' requires a Password string"
             fi
             ;;
         -m)
@@ -475,10 +474,10 @@ for arg; do #parse options
                 elastix_mysql_passwd="${@:2:1}"
                 shift 2
             else
-                _die "Option \`${arg}' requires a Password string"
+                _die "Option '${arg}' requires a Password string"
             fi
             ;;
-        -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" ;;
+        -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${arg}'" ;;
     esac
 done
 
@@ -497,9 +496,9 @@ case "${1}" in #parse services
     trunk)
         case "${2}" in
             add|remove|edit) shift; _trunk "$@" ;;
-            *)  [ -z "${2}" ] && _die "Missing param for: ${1}" || _die "Unrecognized arg: ${2}" ;;
+            *)  [ -z "${2}" ] && _die "Missing param for: ${1}" || _die "Unrecognized arg: '${2}'" ;;
         esac
         ;;
     *)
-        [ -z "${1}" ] && _die "Parameters missing" || _die  "Unrecognized arg: ${1}"
+        [ -z "${1}" ] && _die "Parameters missing" || _die  "Unrecognized arg: '${1}'"
 esac

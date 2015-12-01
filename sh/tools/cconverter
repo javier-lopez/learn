@@ -6,13 +6,24 @@
 #15 USD = 247.9785 MXN
 
 _usage() {
-    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] int|float currency [to] currency" >&2
-    printf "%s\\n" "Currency converter." >&2
-    printf "\\n" >&2
-    printf "%s\\n" "  -h, --help      show this help message and exit" >&2
-    printf "%s\\n" "  -q, --quiet     quiet mode, the default is verbose mode" >&2
-    exit 1
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] int|float currency [to] currency"
+    printf "%s\\n" "Currency converter."
+    printf "\\n"
+    printf "%s\\n" "  -h, --help      show this help message and exit"
+    printf "%s\\n" "  -q, --quiet     quiet mode, the default is verbose mode"
+}
 
+_die()
+{
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
+}
+
+_is_number() {
+    #http://www.unix.com/shell-programming-and-scripting/172070-help-scripting-command.html
+    case "${1}" in
+        ""|"."|*[!0-9.]*) return 1 ;;
+    esac
 }
 
 _notify() {
@@ -106,17 +117,19 @@ fi
 
 for arg; do #parse options
     case "${arg}" in
-        -h|--help)  _usage  ;;
+        -h|--help)  _usage && exit ;;
         -q|--quiet) QFLAG="true" && shift ;;
-        -*) printf "%s\\n" "$(_basename "${0}"): unrecognized option \`${arg}'" >&2; _usage ;;
+        -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${arg}'" ;;
     esac
 done
 
-[ -z "${1}" ] && _usage
+[ -z "${1}" ] && _die
+[ -z "${3}" ] && _die "$(expr "${0}" : '.*/\([^/]*\)'): missing parameters"
+_is_number "${1}" || _die "$(expr "${0}" : '.*/\([^/]*\)'): invalid syntax '${@}'"
 
 if ! command -v "wget" >/dev/null 2>&1; then
     _notify "%s\\n" "install 'wget' to run this program" >&2
     exit 1
 fi
 
-_cconverter ${@}
+_cconverter "${@}"

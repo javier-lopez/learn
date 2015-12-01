@@ -6,13 +6,17 @@
 #79 °F °C Partly sunny Precipitation 0% Wind 4 MPH Humidity 71% Wed 4
 
 _usage() {
-    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options]" >&2
-    printf "%s\\n" "Notify weather status." >&2
-    printf "\\n" >&2
-    printf "%s\\n" "  -h, --help      show this help message and exit" >&2
-    printf "%s\\n" "  -q, --quiet     quiet mode, the default is verbose mode" >&2
-    exit 1
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options]"
+    printf "%s\\n" "Notify weather status."
+    printf "\\n"
+    printf "%s\\n" "  -h, --help    show this help message and exit"
+    printf "%s\\n" "  -q, --quiet   quiet mode, the default is verbose mode"
+}
 
+_die()
+{
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
 }
 
 _notify() {
@@ -91,9 +95,9 @@ fi
 
 for arg; do #parse options
     case "${arg}" in
-        -h|--help)  _usage  ;;
+        -h|--help)  _usage && exit ;;
         -q|--quiet) QFLAG="true" && shift ;;
-        -*) printf "%s\\n" "$(_basename "${0}"): unrecognized option \`${arg}'" >&2; _usage ;;
+        -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${arg}'" ;;
     esac
 done
 

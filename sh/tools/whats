@@ -21,9 +21,14 @@ _whats()
 
 _usage()
 {
-    printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') word ..." >&2
-    printf "%s\\n" "Define words using wikipedia over dns, https://dgl.cx/wikipedia-dns." >&2
-    exit 1
+    printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') word ..."
+    printf "%s\\n" "Define words using wikipedia over dns, https://dgl.cx/wikipedia-dns."
+}
+
+_die()
+{
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
 }
 
 if [ ! -t 0 ]; then
@@ -31,13 +36,12 @@ if [ ! -t 0 ]; then
     set -- "${@}" $(cat)
 fi
 
-[ "${#}" -eq "0" ] && _usage
+[ "${#}" -eq "0" ] && _die
 
 for arg; do #parse options
     case "${arg}" in
-        -h|--help) _usage ;;
-        -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" >&2
-            _usage ;;
+        -h|--help) _usage && exit ;;
+        -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${arg}'" ;;
     esac
 done
 

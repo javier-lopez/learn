@@ -1,7 +1,5 @@
 #!/bin/sh
-#Based on GNU shtool test suite
-#Copyright (c) 1999-2008 Ralf S. Engelschall <rse@engelschall.com>
-#Copyright (c) 2014      Javier Lopez        <m@javier.io>
+#Based on the GNU shtool test suite
 
 lib="../lib"
 lib_db="./lib.test"

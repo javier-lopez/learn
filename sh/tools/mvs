@@ -12,19 +12,17 @@
 
 _usage()
 {
-    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] file ..." >&2
-    printf "%s\\n" "Rename lots of files using your favorite text editor." >&2
-    printf "\\n" >&2
-    printf "%b\\n" "  -e, --editor   use this editor instead of the default \$EDITOR" >&2
-    printf "%b\\n" "  -h, --help     show this help message and exit" >&2
-    exit 1
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] file ..."
+    printf "%s\\n" "Rename lots of files using your favorite text editor."
+    printf "\\n"
+    printf "%b\\n" "  -e, --editor   use this editor instead of the default \$EDITOR"
+    printf "%b\\n" "  -h, --help     show this help message and exit"
 }
 
 _die()
 {
-    [ -z "${1}" ] && return 1
-    printf "%b\\n" "$(expr "${0}" : '.*/\([^/]*\)'): ${*}" >&2
-    exit 1
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
 }
 
 _mkdir_p()
@@ -73,19 +71,19 @@ if [ ! -t 0 ]; then
     set -- "${@}" $(cat)
 fi
 
-[ "${#}" -eq "0" ] && _usage
+[ "${#}" -eq "0" ] && _die
 
 for arg; do #parse options
     case "${arg}" in
-        -h|--help) _usage ;;
+        -h|--help) _usage && exit ;;
         -e|--editor)
             if [ "${#}" -gt "1" ]; then
                 editor="$(printf "%s " "${@}" | awk '{print $2}')"
                 shift && shift
             else
-                _die "Option \`${arg}' requires a parameter"
+                _die "Option '${arg}' requires a parameter"
             fi ;;
-        -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" >&2; _usage ;;
+        -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${arg}'" ;;
     esac
 done
 

@@ -13,15 +13,20 @@
 
 _usage()
 {
-    printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') [options] image-file ..." >&2
-    printf "%s\\n" "Find dominant colors in images." >&2
-    printf "\\n" >&2
-    printf "%s\\n" "  -d, --deviation   deviation, higher value, faster computation, default 1" >&2
-    printf "%s\\n" "  -k, --kmeans      output colors, default 3" >&2
-    printf "%s\\n" "  -r, --resize      resize before procedure, lower value, faster computation, default 25x25" >&2
-    printf "%s\\n" "  -f, --format      output format [rgb|hex], default rgb" >&2
-    printf "%s\\n" "  -h, --help        show this help message and exit" >&2
-    exit 1
+    printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') [options] image-file ..."
+    printf "%s\\n" "Find dominant colors in images."
+    printf "\\n"
+    printf "%s\\n" "  -d, --deviation   deviation, higher value, faster computation, default 1"
+    printf "%s\\n" "  -k, --kmeans      output colors, default 3"
+    printf "%s\\n" "  -r, --resize      resize before procedure, lower value, faster computation, default 25x25"
+    printf "%s\\n" "  -f, --format      output format [rgb|hex], default rgb"
+    printf "%s\\n" "  -h, --help        show this help message and exit"
+}
+
+_die()
+{
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
 }
 
 _is_int()
@@ -30,6 +35,11 @@ _is_int()
     case "${1}" in
         *[!0-9]*|"") return 1 ;;
     esac
+}
+
+_false()
+{
+    return 1
 }
 
 _kmeans_awk() {
@@ -141,17 +151,19 @@ _kmeans_awk() {
     }'
 
     for image; do
-        [ -f "${image}" ] || {
+        if [ -f "${image}" ]; then
+            image_points_times="$(convert "${image}" -resize "${resize}" \
+                -colorspace RGB -depth 8 -format %c histogram:info:- |   \
+                ${awk_bin} \
+                'NF {sub(/\).*/,"");sub(/\(/,"");gsub(/ /,"");print $0}')"
+
+            printf "%s" "${image_points_times}" | ${awk_bin}      \
+                -v kmeans="${kmeans}" -v deviation="${deviation}" \
+                -v format="${format}" "${awk_prog}"
+        else
             printf "%s\\n" "Warning: '${image}' doesn't exist, skipping..." >&2
-            continue; }
-
-        image_points_times="$(convert "${image}" -resize "${resize}" -colorspace RGB \
-            -depth 8 -format %c histogram:info:- | \
-            ${awk_bin} 'NF {sub(/\).*/,"");sub(/\(/,"");gsub(/ /,"");print $0}')"
-
-        printf "%s" "${image_points_times}" | ${awk_bin}      \
-            -v kmeans="${kmeans}" -v deviation="${deviation}" \
-            -v format="${format}" "${awk_prog}"
+            _false
+        fi
     done
 }
 
@@ -160,57 +172,54 @@ if [ ! -t 0 ]; then
     set -- "${@}" $(cat)
 fi
 
-[ "${#}" -eq "0" ] && _usage
-
 for arg; do #parse options
     case "${arg}" in
-        -h|--help) _usage ;;
+        -h|--help) _usage && exit ;;
         '-d'|'--deviation')
             if [ "${#}" -gt "1" ]; then
                 case "${2}" in
-                    -*) printf "%s\\n" "Option '${arg}' requires a parameter"; _usage ;;
+                    -*) _die "Option '${arg}' requires a parameter" ;;
                 esac
                 shift; deviation="${1}"; [ "${1}" ] && shift
             else
-                printf "%s\\n" "Option '${arg}' requires a parameter"; _usage
+                _die "Option '${arg}' requires a parameter"
             fi ;;
         -d*) deviation="${1#-d}"; shift ;;
         --deviation*) deviation="${1#--deviation}"; shift ;;
         '-k'|'--kmeans')
             if [ "${#}" -gt "1" ]; then
                 case "${2}" in
-                    -*) printf "%s\\n" "Option '${arg}' requires a parameter"; _usage ;;
+                    -*) _die "Option '${arg}' requires a parameter" ;;
                 esac
                 shift; kmeans="${1}"; [ "${1}" ] && shift
             else
-                printf "%s\\n" "Option '${arg}' requires a parameter"; _usage
+                _die "Option '${arg}' requires a parameter"
             fi ;;
         -k*) kmeans="${1#-k}"; shift ;;
         --kmeans*) kmeans="${1#--kmeans}"; shift ;;
         '-r'|'--resize')
             if [ "${#}" -gt "1" ]; then
                 case "${2}" in
-                    -*) printf "%s\\n" "Option '${arg}' requires a parameter"; _usage ;;
+                    -*) _die "Option '${arg}' requires a parameter"
                 esac
                 shift; resize="${1}"; [ "${1}" ] && shift
             else
-                printf "%s\\n" "Option '${arg}' requires a parameter"; _usage
+                _die "Option '${arg}' requires a parameter"
             fi ;;
         -r*) resize="${1#-r}"; shift ;;
         --resize*) resize="${1#--resize}"; shift ;;
         '-f'|'--format')
             if [ "${#}" -gt "1" ]; then
                 case "${2}" in
-                    -*) printf "%s\\n" "Option '${arg}' requires a parameter"; _usage ;;
+                    -*) _die "Option '${arg}' requires a parameter"
                 esac
                 shift; format="${1}"; [ "${1}" ] && shift
             else
-                printf "%s\\n" "Option '${arg}' requires a parameter"; _usage
+                _die "Option '${arg}' requires a parameter"
             fi ;;
         -f*) format="${1#-f}"; shift ;;
         --format*) format="${1#--format}"; shift ;;
-        -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" >&2
-            _usage ;;
+        -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${arg}'" ;;
     esac
 done
 
@@ -231,17 +240,13 @@ fi
 if [ -z "${kmeans}" ]; then
     kmeans="3"
 else
-    _is_int "${kmeans}" || {
-    printf "%s\\n" "Option -k|--kmeans requires a number parameter '${kmeans}'"
-    _usage; }
+    _is_int "${kmeans}" || _die "Option -k|--kmeans requires a number parameter '${kmeans}'"
 fi
 
 if [ -z "${deviation}" ]; then
     deviation="1"
 else
-    _is_int "${deviation}" || {
-    printf "%s\\n" "Option -d|--deviation requires a number parameter '${deviation}'"
-    _usage; }
+    _is_int "${deviation}" || _die "Option -d|--deviation requires a number parameter '${deviation}'"
 fi
 
 if [ -z "${format}" ]; then
@@ -249,10 +254,11 @@ if [ -z "${format}" ]; then
 else
     case "${format}" in
         rgb|hex) : ;;
-        *) printf "%s\\n" "Output valid formats are rgb|hex: '${format}'"; _usage
+        *) _die "Output valid formats are rgb|hex: '${format}'" ;;
     esac
 fi
 
 [ -z "${resize}" ] && resize="25x25"
+[ "${#}" -eq "0" ] && _die
 
 _kmeans_awk "${@}"

@@ -12,13 +12,18 @@
 
 _usage()
 {
-    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] [lp-group]" >&2
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] [lp-group]"
     printf "%s\\n" "Create CVS files with geolocalization data of launchpad groups."
     printf "\\n"
-    printf "%s\\n" "  -h,--help   show this message and exits" >&2
+    printf "%s\\n" "  -h,--help   show this message and exits"
     printf "\\n"
-    printf "%s\\n" "  lp-group    launchpad group to query, 'ubuntumembers' by default" >&2
-    exit 1
+    printf "%s\\n" "  lp-group    launchpad group to query, 'ubuntumembers' by default"
+}
+
+_die()
+{
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
 }
 
 _whereis()
@@ -28,13 +33,6 @@ _whereis()
     if ! command -v "${1}" >/dev/null 2>&1; then
         return 1
     fi
-}
-
-_die()
-{
-    [ -z "${1}" ] && return 1
-    printf "%b\\n" "$(expr "${0}" : '.*/\([^/]*\)'): ${*}" >&2
-    exit 1
 }
 
 _internetavailable()
@@ -57,8 +55,8 @@ fi
 
 for arg; do #parse options
     case "${arg}" in
-        -h|--help) _usage ;;
-        -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" >&2; _usage ;;
+        -h|--help) _usage && exit ;;
+        -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${arg}'" ;;
     esac
 done
 

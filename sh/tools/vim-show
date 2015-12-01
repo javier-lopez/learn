@@ -9,8 +9,13 @@
 
 _usage()
 {
-    printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') script" >&2
-    exit 1
+    printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') script"
+}
+
+_die()
+{
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
 }
 
 if [ ! -t 0 ]; then
@@ -18,22 +23,20 @@ if [ ! -t 0 ]; then
     set -- "${@}" $(cat)
 fi
 
-[ "${#}" -eq "0" ] && _usage
+[ "${#}" -eq "0" ] && _die
 
 for arg in "${@}"; do #parse options
     case "${arg}" in
-        -h|--help) _usage ;;
-        -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" >&2
-            _usage ;;
+        -h|--help) _usage && exit ;;
+        -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${arg}'" ;;
     esac
 done
 
 script="${1}"
 
 if command -v "${script}" >/dev/null 2>&1; then
-    [ -z "${EDITOR}" ] && { printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): variable EDITOR was not found" >&2; exit 1; } 
+    [ -z "${EDITOR}" ] && { printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): variable EDITOR was not found" >&2; exit 1; }
     ${EDITOR} "$(command -v "${script}" 2>/dev/null)"
 else
-    printf "$(expr "${0}" : '.*/\([^/]*\)'): %s\\n" "'${script}' was not found in \$PATH" >&2
-    exit 1
+    printf "$(expr "${0}" : '.*/\([^/]*\)'): %s\\n" "'${script}' was not found in \$PATH" >&2; exit 1
 fi

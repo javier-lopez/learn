@@ -7,9 +7,21 @@
 
 _usage()
 {
-    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') image.[png|jpg] ..." >&2
-    printf "%s\\n" "Upload images to http://imgur.com." >&2
-    exit 1
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') image.[png|jpg] ..."
+    printf "%s\\n" "Upload images to http://imgur.com."
+    printf "\\n"
+    printf "%b\\n" "  -h, --help   show this help message and exit"
+}
+
+_die()
+{
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
+}
+
+_false()
+{
+    return 1
 }
 
 _notify() {
@@ -64,6 +76,7 @@ _uimg()
             esac
         else
             printf "%s\\n" "'${_uimg__img}' doesn't exist" >&2
+            _false
         fi
     done
 }
@@ -73,12 +86,12 @@ if [ ! -t 0 ]; then
     set -- "${@}" $(cat)
 fi
 
-[ "${#}" -eq "0" ] && _usage
+[ "${#}" -eq "0" ] && _die
 
 for arg in "${@}"; do #parse options
     case "${arg}" in
-        -h|--help) _usage ;;
-        -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" >&2; _usage ;;
+        -h|--help) _usage && exit ;;
+        -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${arg}'" ;;
     esac
 done
 

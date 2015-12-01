@@ -29,19 +29,24 @@ Press any key to play, 1..7 to select an octave
 
 _usage()
 {
-    printf "%s\\n" "Usage: ${progname} [options]" >&2
-    printf "%s\\n" "A piano emulator." >&2
-    printf "\\n" >&2
-    printf "%s\\n" "  -h, --help          show this help message and exit" >&2
-    printf "%s\\n" "  -b, --beat          beat time in seconds (0.5)" >&2
-    printf "%s\\n" "  -s, --sound [s|d]   set method to generate sound (static with fallback to dynamic)"  >&2
-    printf "%s\\n" "                      by default, ${progname} will look for wav files or other static" >&2
-    printf "%s\\n" "                      files matching the notes played, eg: A4.wav, if no static files" >&2
-    printf "%s\\n" "                      are found then it'll use sox to generate the sounds dinamically" >&2
-    printf "%s\\n" "  -d, --directory     base directory   (~/.pianocat)" >&2
-    printf "%s\\n" "  -c, --collection    collection sound (iowa-steinway-b)" >&2
-    printf "%s\\n" "  -f, --format        audio format     (wav)" >&2
-    exit 1
+    printf "%s\\n" "Usage: ${progname} [options]"
+    printf "%s\\n" "A piano emulator."
+    printf "\\n"
+    printf "%s\\n" "  -h, --help          show this help message and exit"
+    printf "%s\\n" "  -b, --beat          beat time in seconds (0.5)"
+    printf "%s\\n" "  -s, --sound [s|d]   set method to generate sound (static with fallback to dynamic)" 
+    printf "%s\\n" "                      by default, ${progname} will look for wav files or other static"
+    printf "%s\\n" "                      files matching the notes played, eg: A4.wav, if no static files"
+    printf "%s\\n" "                      are found then it'll use sox to generate the sounds dinamically"
+    printf "%s\\n" "  -d, --directory     base directory   (~/.pianocat)"
+    printf "%s\\n" "  -c, --collection    collection sound (iowa-steinway-b)"
+    printf "%s\\n" "  -f, --format        audio format     (wav)"
+}
+
+_die()
+{
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
 }
 
 _basename()
@@ -331,18 +336,18 @@ fi
 
 for arg; do #parse options
     case "${arg}" in
-        -h|--help)  _usage ;;
+        -h|--help) _usage && exit ;;
         -b|--beat)
             if [ "${#}" -gt "1" ]; then
                 shift; beat="${1}"; [ "${1}" ] && shift
             else
-                printf "%s\\n" "Option '${arg}' requires a parameter"; _usage
+                _die "Option '${arg}' requires a parameter"
             fi ;;
         -s|--sound)
             if [ "${#}" -gt "1" ]; then
                 shift; sound="${1}"; [ "${1}" ] && shift
             else
-                printf "%s\\n" "Option '${arg}' requires a parameter"; _usage
+                _die "Option '${arg}' requires a parameter"
             fi ;;
         -sd) sound="dynamic"; shift ;;
         -ss) sound="static" ; shift ;;
@@ -350,21 +355,21 @@ for arg; do #parse options
             if [ "${#}" -gt "1" ]; then
                 shift; directory="${1}"; [ "${1}" ] && shift
             else
-                printf "%s\\n" "Option '${arg}' requires a parameter"; _usage
+                _die "Option '${arg}' requires a parameter"
             fi ;;
         -c|--collection)
             if [ "${#}" -gt "1" ]; then
                 shift; collection="${1}"; [ "${1}" ] && shift
             else
-                printf "%s\\n" "Option '${arg}' requires a parameter"; _usage
+                _die "Option '${arg}' requires a parameter"
             fi ;;
         -f|--format)
             if [ "${#}" -gt "1" ]; then
                 shift; format="${1}"; [ "${1}" ] && shift
             else
-                printf "%s\\n" "Option '${arg}' requires a parameter"; _usage
+                _die "Option '${arg}' requires a parameter"
             fi ;;
-        -?*) printf "%s\\n" "${progname}: unrecognized option \`${arg}'" >&2; _usage ;;
+        -?*) _die "${progname}: unrecognized option '${arg}'" ;;
     esac
 done
 

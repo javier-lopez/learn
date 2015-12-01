@@ -35,6 +35,12 @@ _basename()
     printf "%s\\n" "${_basename__name}"
 }
 
+_die()
+{
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
+}
+
 _num()
 {   #look for a number, returns 0 on success, 1 otherwise
     [ -z "${1}" ] && return 1
@@ -43,17 +49,16 @@ _num()
 
 _usage()
 {
-    printf "%b\\n" "Usage: $(_basename "${0}") [options] [stop] [directory|file]" >&2
-    printf "%s\\n" "Share a directory over http." >&2
-    printf "\\n" >&2
-    printf "%b\\n" "  stop             stop sharing" >&2
-    printf "\\n" >&2
-    printf "%b\\n" "  -u [user]        set user (guest by default)" >&2
-    printf "%b\\n" "  -p [port]        set port (random above 1025 by default)" >&2
-    printf "%b\\n" "  -P [password]    set password (random by default)" >&2
-    printf "%b\\n" "  -c [cert_file]   set certificate.pem" >&2
-    printf "%b\\n" "  -h, --help       show this help message and exit" >&2
-    exit 1
+    printf "%b\\n" "Usage: $(_basename "${0}") [options] [stop] [directory|file]"
+    printf "%s\\n" "Share a directory over http."
+    printf "\\n"
+    printf "%b\\n" "  stop             stop sharing"
+    printf "\\n"
+    printf "%b\\n" "  -u [user]        set user (guest by default)"
+    printf "%b\\n" "  -p [port]        set port (random above 1025 by default)"
+    printf "%b\\n" "  -P [password]    set password (random by default)"
+    printf "%b\\n" "  -c [cert_file]   set certificate.pem"
+    printf "%b\\n" "  -h, --help       show this help message and exit"
 }
 
 #because of being used over ssh stdin gets blocked
@@ -76,44 +81,42 @@ fi
 
 for arg; do #parse options
     case "${arg}" in
-        -h|--help) _usage ;;
+        -h|--help) _usage && exit ;;
         -u) if [ "${#}" -gt "1" ]; then
                 user="$(printf "%s " "${@}" | awk '{print $2}')"
                 shift 2
             else
-               printf "%s\\n" "Option \`${arg}' requires a parameter" >&2; _usage
+               _die "Option '${arg}' requires a parameter"
             fi ;;
         -p) if [ "${#}" -gt "1" ]; then
                 port="$(printf "%s " "${@}" | awk '{print $2}')"
                 shift 2
                 if ! _num "${port}"; then
-                    printf "%s\\n" "Option \`${arg}' requires a number: '${port}'" >&2
-                    _usage
+                    _die "Option '${arg}' requires a number: '${port}'"
                 fi
             else
-               printf "%s\\n" "Option \`${arg}' requires a parameter" >&2; _usage
+                _die "Option '${arg}' requires a parameter"
             fi ;;
         -P) if [ "${#}" -gt "1" ]; then
                 passwd="$(printf "%s " "${@}" | awk '{print $2}')"
                 shift 2
             else
-               printf "%s\\n" "Option \`${arg}' requires a parameter" >&2; _usage
+                _die "Option '${arg}' requires a parameter"
             fi ;;
         -c) if [ "${#}" -gt "1" ]; then
                 cert="$(printf "%s " "${@}" | awk '{print $2}')"
                 shift 2
             else
-               printf "%s\\n" "Option \`${arg}' requires a parameter" >&2; _usage
+                _die "Option '${arg}' requires a parameter"
             fi ;;
-        -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" >&2; _usage ;;
+        -*) _die "$(_basename "${0}"): unrecognized option '${arg}'" ;;
     esac
 done
 
 exec 9> /tmp/"$(_basename "${0}")".lock #verify only one instance is running
 [ X"${LOGNAME}" = X"root" ] && chmod 666 /tmp/"$(_basename "${0}")".lock
-if ! flock -n 9; then               #http://mywiki.wooledge.org/BashFAQ/045
-    printf "%s\\n" "$(_basename "${0}"): another instance is running"; >&2
-    _usage
+if ! flock -n 9; then
+    _die "$(_basename "${0}"): another instance is running"
 fi
 
 [ -z "${user}" ]   && user="guest"

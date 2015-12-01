@@ -26,12 +26,17 @@ YELLOW="$(printf "\\033[0;33m")"
 
 _usage()
 {
-    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] pattern ..." >&2
-    printf "%s\\n" "Look for related commands in commandlinefu.com." >&2
-    printf "\\n" >&2
-    printf "%s\\n" "  -c           colorize output" >&2
-    printf "%s\\n" "  -h, --help   show this help message and exit" >&2
-    exit 1
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] pattern ..."
+    printf "%s\\n" "Look for related commands in commandlinefu.com."
+    printf "\\n"
+    printf "%s\\n" "  -c           colorize output"
+    printf "%s\\n" "  -h, --help   show this help message and exit"
+}
+
+_die()
+{
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
 }
 
 if [ ! -t 0 ]; then
@@ -39,19 +44,19 @@ if [ ! -t 0 ]; then
     set -- "${@}" $(cat)
 fi
 
-[ "${#}" -eq "0" ] && _usage
+[ "${#}" -eq "0" ] && _die
 
 PATTERN="${*}"
 
 for arg; do #parse options
     case "${arg}" in
-        -h|--help) _usage ;;
+        -h|--help) _usage && exit ;;
         -c) CFLAG="true"; shift; PATTERN="${*}";;
-        -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" >&2; _usage ;;
+        -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${arg}'" ;;
     esac
 done
 
-[ -z "${PATTERN}" ] && _usage
+[ -z "${PATTERN}" ] && _die
 
 if ! command -v "curl" >/dev/null 2>&1; then
     printf "%s\\n" "install 'curl' to run this program" >&2

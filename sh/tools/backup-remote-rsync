@@ -96,6 +96,35 @@ _realpath()
     fi
 }
 
+_usage()
+{
+    printf "%s\\n" "Usage: $(_basename "${0}") -r domain:/path [options] [local_dir ...]"
+    printf "%s\\n" "Backup directories to a remote system."
+    printf "\\n"
+    printf "%s\\n" "Required arguments:"
+    printf "%s\\n" "  -r domain|ip:/path     remote server"
+    printf "\\n"
+    printf "%s\\n" "Optional arguments:"
+    printf "%s\\n" "  local_dir|local_file   dirs|files to backup [${HOME}]"
+    printf "%s\\n" "  -v                     verbose"
+    printf "%s\\n" "  -s                     skip ssh auth pre-tests"
+    printf "%s\\n" "  -o                     omit executing commmands, useful with -v"
+    printf "%s\\n" "  -n                     dry run, list files to be modified"
+    printf "%s\\n" "  -u user                remote user    [${USER}]"
+    printf "%s\\n" "  -p port                remote port    [22]"
+    printf "%s\\n" "  -i ssh key             ssh public key [${HOME}/.ssh/id_rsa]"
+    printf "%s\\n" "  -l file                log file       [/tmp/$(_basename "${0}").log ]"
+    printf "%s\\n" "  -h, --help             show this help message and exit"
+    printf "\\n"
+    printf "%s\\n" "NOTE: ssh key authentication must be configured for this script to work"
+}
+
+_die()
+{
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
+}
+
 _logger()
 {
     if [ -n "${logfile}" ]; then
@@ -238,40 +267,16 @@ _backup()
         "${logfile}" "${_backup__remote_user}@${_backup__remote_server}"
 }
 
-_usage()
-{
-    printf "%s\\n" "Usage: $(_basename "${0}") -r domain:/path [options] [local_dir ...]" >&2
-    printf "%s\\n" "Backup directories to a remote system." >&2
-    printf "\\n" >&2
-    printf "%s\\n" "Required arguments:" >&2
-    printf "%s\\n" "  -r domain|ip:/path     remote server" >&2
-    printf "\\n" >&2
-    printf "%s\\n" "Optional arguments:" >&2
-    printf "%s\\n" "  local_dir|local_file   dirs|files to backup [${HOME}]" >&2
-    printf "%s\\n" "  -v                     verbose" >&2
-    printf "%s\\n" "  -s                     skip ssh auth pre-tests" >&2
-    printf "%s\\n" "  -o                     omit executing commmands, useful with -v" >&2
-    printf "%s\\n" "  -n                     dry run, list files to be modified" >&2
-    printf "%s\\n" "  -u user                remote user    [${USER}]" >&2
-    printf "%s\\n" "  -p port                remote port    [22]" >&2
-    printf "%s\\n" "  -i ssh key             ssh public key [${HOME}/.ssh/id_rsa]" >&2
-    printf "%s\\n" "  -l file                log file       [/tmp/$(_basename "${0}").log ]" >&2
-    printf "%s\\n" "  -h, --help             show this help message and exit" >&2
-    printf "\\n" >&2
-    printf "%s\\n" "NOTE: ssh key authentication must be configured for this script to work" >&2
-    exit 1
-}
-
 if [ ! -t 0 ]; then
     #there is input comming from pipe or file, add to the end of $@
     set -- "${@}" $(cat)
 fi
 
-[ "${#}" -eq "0" ] && _usage
+[ "${#}" -eq "0" ] && _die
 
 for arg; do #parse options
     case "${arg}" in
-        -h|--help) _usage  ;;
+        -h|--help) _usage && exit ;;
         -v) verbose_flag="true";   shift ;;
         -n) dryrun_flag="true";    shift ;;
         -o) ommit_flag="true";     shift ;;
@@ -280,33 +285,33 @@ for arg; do #parse options
                 remote_user="$(printf "%s " "${@}" | awk '{print $2}')"
                 shift 2
             else
-               printf "%s\\n" "Option \`${arg}' requires a parameter" >&2; _usage
+               _die "Option '${arg}' requires a parameter"
             fi ;;
         -p) if [ "${#}" -gt "1" ]; then
                 remote_port="$(printf "%s " "${@}" | awk '{print $2}')"
                 shift 2
             else
-               printf "%s\\n" "Option \`${arg}' requires a parameter" >&2; _usage
+                _die "Option '${arg}' requires a parameter"
             fi ;;
         -r) if [ "${#}" -gt "1" ]; then
                 remote_server="$(printf "%s " "${@}" | awk '{print $2}')"
                 shift 2
             else
-               printf "%s\\n" "Option \`${arg}' requires a parameter" >&2; _usage
+                _die "Option '${arg}' requires a parameter"
             fi ;;
         -i) if [ "${#}" -gt "1" ]; then
                 sshkey="$(printf "%s " "${@}" | awk '{print $2}')"
                 shift 2
             else
-               printf "%s\\n" "Option \`${arg}' requires a parameter" >&2; _usage
+                _die "Option '${arg}' requires a parameter"
             fi ;;
         -l) if [ "${#}" -gt "1" ]; then
                 logfile="$(printf "%s " "${@}" | awk '{print $2}')"
                 shift 2
             else
-               printf "%s\\n" "Option \`${arg}' requires a parameter" >&2; _usage
+                _die "Option '${arg}' requires a parameter"
             fi ;;
-        -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" >&2; _usage ;;
+        -*) _die "$(_basename "${0}"): unrecognized option '${arg}'" ;;
     esac
 done
 
@@ -318,7 +323,7 @@ fi
 
 exec 9>/tmp/"$(_basename "${0}")".lock #verify that only one instance is running
 [ X"${LOGNAME}" = X"root" ] && chmod 666 /tmp/"$(_basename "${0}")".lock
-if ! flock -n 9  ; then              #http://mywiki.wooledge.org/BashFAQ/045
+if ! flock -n 9; then #http://mywiki.wooledge.org/BashFAQ/045
     printf "%s\\n" "$(_basename "${0}"): another instance is running";
     exit 1
 fi
@@ -328,8 +333,7 @@ fi
 [ -z "${remote_port}" ] && remote_port="22"
 
 if [ -z "${remote_server}" ]; then
-    printf "%s\\n" "$(_basename "${0}"): no remote server specified" >&2
-    _usage
+    _die "$(_basename "${0}"): no remote server specified"
 else
     if [ -z "$(printf "%s" "${remote_server}" | awk -F":" '{print $2}')" ]; then
         if [ X"${remote_user}" = X"${USER}" ]; then
@@ -379,7 +383,9 @@ if [ -z "${sshkey}" ]; then
 fi
 
 if [ -z "${skip_ssh_tests}" ]; then
-    [ -z "${sshkey}" ] && { _logger "[E]: no ssh key found!, you may try options -i or -s"; printf "\\n" >&2; _usage; }
+    [ -z "${sshkey}" ] && {
+        _logger "[E]: no ssh key found!, you may try options -i or -s"
+        printf "\\n" >&2; _usage >&2; exit 1; }
 
     remote_ip="$(printf "%s" "${remote_server}"|cut -d':' -f1)"
     ssh_auth_test="$(printf "%s %s %s %s" "ssh -o PasswordAuthentication=no"      \
@@ -391,7 +397,7 @@ if [ -z "${skip_ssh_tests}" ]; then
     if [ -z "${ommit_flag}" ]; then
         if ! eval "${ssh_auth_test}" >/dev/null 2>&1; then
             _logger "[E]: couldn't connect to remote server, wrong username/ssh key, try options -u or -s"
-            printf "\\n"; _usage
+            printf "\\n" >&2; _usage >&2; exit 1
         fi
     fi
 fi

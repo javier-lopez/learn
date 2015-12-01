@@ -8,18 +8,17 @@ trash_dir="${HOME}"/.local/share/Trash
 
 _usage()
 {
-    printf "%b\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] file ..." >&2
-    printf "%b\\n" "rm wrapper compatible with nautilus|pcmanfm file managers." >&2
-    printf "\\n" >&2
-    printf "%b\\n" "  -l [pattern]   list archived files, use -ll or -lll to increase verbosity" >&2
-    printf "%b\\n" "  -c [pattern]   remove permanently archived files" >&2
-    printf "%b\\n" "  -u [pattern]   recover archived files" >&2
-    printf "%b\\n" "  -y             say yes to all questions" >&2
-    printf "%b\\n" "  -f             force to remove files, \`rm' is executed directly" >&2
-    printf "%b\\n" "  -h             shows this message, use --help to see \`rm' help" >&2
-    printf "\\n" >&2
-    printf "%b\\n" "$(expr "${0}" : '.*/\([^/]*\)') deletes directories and files without distintion, an -r option is not provided" >&2
-    exit 1
+    printf "%b\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] file ..."
+    printf "%b\\n" "rm wrapper compatible with nautilus|pcmanfm file managers."
+    printf "\\n"
+    printf "%b\\n" "  -l [pattern]   list archived files, use -ll or -lll to increase verbosity"
+    printf "%b\\n" "  -c [pattern]   remove permanently archived files"
+    printf "%b\\n" "  -u [pattern]   recover archived files"
+    printf "%b\\n" "  -y             say yes to all questions"
+    printf "%b\\n" "  -f             force to remove files, \`rm' is executed directly"
+    printf "%b\\n" "  -h             shows this message, use --help to see \`rm' help"
+    printf "\\n"
+    printf "%b\\n" "$(expr "${0}" : '.*/\([^/]*\)') deletes directories and files without distintion, an -r option is not provided"
 }
 
 _str2lower()
@@ -276,12 +275,12 @@ if [ "${#}" -eq "0" ] ; then # let 'rm' ouptut the usage error
 fi
 
 verbose="0"
-while getopts ":fluhcry" options; do
+while getopts ":fluhcry" options >&2; do
     case "${options}" in
         f) exec rm -rf "${@}"                          ;;
         l) verbose="$((${verbose} + 1))"               ;;  # list verbose level 1-3
         u) case "${1}" in -*y*) yflag="yes"; esac; shift 1; _recover "${@}" ;;
-        h) _usage                                      ;;
+        h) _usage && exit                              ;;
         c) case "${1}" in -*y*) yflag="yes"; esac; shift 1; _clean "${@}"   ;;
         r)                                             ;;
         y) yflag="yes"                                 ;;

@@ -10,22 +10,20 @@ api="" #mailgun api, required
 
 _usage()
 {
-    printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') [options] to@address.tld message ..." >&2
-    printf "%s\\n" "Send emails using the mailgun service." >&2
-    printf "%s\\n" >&2
-    printf "%s\\n" "  -a, --api       mailgun api" >&2
-    printf "%s\\n" "  -f, --from      from header" >&2
-    printf "%s\\n" "  -s, --subject   subject header" >&2
-    printf "%s\\n" "  -c, --config    use FILE instead of ~/.mailgun" >&2
-    printf "%s\\n" "  -h, --help      show this help message and exit" >&2
-    exit 1
+    printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') [options] to@address.tld message ..."
+    printf "%s\\n" "Send emails using the mailgun service."
+    printf "%s\\n"
+    printf "%s\\n" "  -a, --api       mailgun api"
+    printf "%s\\n" "  -f, --from      from header"
+    printf "%s\\n" "  -s, --subject   subject header"
+    printf "%s\\n" "  -c, --config    use FILE instead of ~/.mailgun"
+    printf "%s\\n" "  -h, --help      show this help message and exit"
 }
 
 _die()
 {
-    [ -z "${1}" ] && return 1
-    printf "%b\\n" "${*}" >&2
-    _usage
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
 }
 
 _validmail()
@@ -64,36 +62,36 @@ if [ ! -t 0 ]; then
     set -- "${@}" $(cat)
 fi
 
-[ "${#}" -eq "0" ] && _usage
+[ "${#}" -eq "0" ] && _die
 
 for arg; do #parse options
     case "${arg}" in
         -a|--api) if [ "${#}" -gt "1" ]; then
                      shift; api="${1}"; shift
                   else
-                     _die "Option \`${arg}' requires a parameter"
+                     _die "Option '${arg}' requires a parameter"
                   fi ;;
         -f|--from)if [ "${#}" -gt "1" ]; then
                      shift; from="${1}"; shift
                   else
-                     _die "Option \`${arg}' requires a parameter"
+                     _die "Option '${arg}' requires a parameter"
                   fi ;;
         -s|--subject)if [ "${#}" -gt "1" ]; then
                         shift; subject="${1}"; shift
                      else
-                        _die "Option \`${arg}' requires a parameter"
+                        _die "Option '${arg}' requires a parameter"
                      fi ;;
         -c|--config) if [ "${#}" -gt "1" ]; then
                         shift; config="${1}"; shift
                      else
-                        _die "Option \`${arg}' requires a parameter"
+                        _die "Option '${arg}' requires a parameter"
                      fi ;;
-        -h|--help) _usage ;;
-        -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" ;;
+        -h|--help) _usage && exit ;;
+        -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${arg}'" ;;
     esac
 done
 
-[ "${#}" -lt "2" ] && _usage
+[ "${#}" -lt "2" ] && _die
 
 to="${1}"; shift
 msg="${*}"
@@ -114,7 +112,7 @@ if [ -z "${config}" ]; then
         _loadconf /etc/mailgun
     fi
 else
-    [ ! -e "${config}" ] && _die "\`${config}' doesn't exist"
+    [ ! -e "${config}" ] && _die "'${config}' doesn't exist"
     _loadconf "${config}"
 fi
 

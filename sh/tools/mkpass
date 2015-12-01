@@ -6,16 +6,14 @@
 #set -x
 _usage()
 {
-    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [length]" >&2
-    printf "%s\\n" "Create secure passwords." >&2
-    exit 1
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [length]"
+    printf "%s\\n" "Create secure passwords."
 }
 
 _die()
 {
-    [ -z "${1}" ] && return 1
-    printf "%s\\n" "${*}" >&2
-    _usage
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
 }
 
 _notify() {
@@ -55,18 +53,17 @@ fi
 
 for arg; do #parse options
     case "${arg}" in
-        -h|--help)   _usage ;;
-        -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${arg}'" ;;
+        -h|--help) _usage && exit ;;
+        -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${arg}'" ;;
     esac
 done
 
 if [ ! "${1}" ]; then
     mkpasswd_length="8"
 else
-    #isnum?
     #http://stackoverflow.com/questions/806906/how-do-i-test-if-a-variable-is-a-number-in-bash
     case "${1}" in
-        ''|*[!0-9]*) printf "%s\\n" "Argument requires a number: '${1}'" >&2; _usage;;
+        ''|*[!0-9]*) _die "Argument requires a number: '${1}'" ;;
         *) mkpasswd_length="${1}";;
     esac
 fi

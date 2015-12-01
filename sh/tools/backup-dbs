@@ -16,22 +16,21 @@ backup_dir=""
 
 _usage()
 {
-    printf "%s\\n" "Usage: ${progname} [options] -u USER -p PASSWD [database]..." >&2
-    printf "%s\\n" "Dump available databases." >&2
-    printf "\\n" >&2
-    printf "%s\\n" "Required arguments:" >&2
-    printf "%s\\n" "  -u user          db user"   >&2
-    printf "%s\\n" "  -p passwd        db passwd" >&2
-    printf "\\n" >&2
-    printf "%s\\n" "Optional arguments:" >&2
-    printf "%s\\n" "  -d [mysql]       database          [mysql]" >&2
-    printf "%s\\n" "  -o dir           dir to save dumps [./]" >&2
-    printf "%s\\n" "  -z [gz,bz2,xz]   compress          [gzip]" >&2
-    printf "%s\\n" "  -c config file   read options from a configuration file" >&2
-    printf "%s\\n" "  -l               list available databases" >&2
-    printf "%s\\n" "  -v               verbose mode" >&2
-    printf "%s\\n" "  -h, --help       show this help message and exit" >&2
-    exit 1
+    printf "%s\\n" "Usage: ${progname} [options] -u USER -p PASSWD [database]..."
+    printf "%s\\n" "Dump available databases."
+    printf "\\n"
+    printf "%s\\n" "Required arguments:"
+    printf "%s\\n" "  -u user          db user"
+    printf "%s\\n" "  -p passwd        db passwd"
+    printf "\\n"
+    printf "%s\\n" "Optional arguments:"
+    printf "%s\\n" "  -d [mysql]       database          [mysql]"
+    printf "%s\\n" "  -o dir           dir to save dumps [./]"
+    printf "%s\\n" "  -z [gz,bz2,xz]   compress          [gzip]"
+    printf "%s\\n" "  -c config file   read options from a configuration file"
+    printf "%s\\n" "  -l               list available databases"
+    printf "%s\\n" "  -v               verbose mode"
+    printf "%s\\n" "  -h, --help       show this help message and exit"
 }
 
 _basename()
@@ -49,9 +48,8 @@ _basename()
 
 _die()
 {
-    [ -z "${1}" ] && return 1
-    printf "%b\\n" "${*}" >&2
-    _usage
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
 }
 
 _printtime()
@@ -167,7 +165,7 @@ fi
 
 for arg; do #parse options
     case "${arg}" in
-        -h|--help) _usage  ;;
+        -h|--help) _usage && exit ;;
         -l) list="true"; shift ;;
         -v) verbose="true"; shift ;;
         '-z')
@@ -188,32 +186,30 @@ for arg; do #parse options
             if [ "${#}" -gt "1" ]; then
                 shift; user="${1}"; [ "${1}" ] && shift
             else
-                _die "Option \`${arg}' requires a parameter"
+                _die "Option '${arg}' requires a parameter"
             fi ;;
         -u*) arg=${arg#?}; arg=${arg#?}; user="${arg}"; shift ;;
         '-p')
             if [ "${#}" -gt "1" ]; then
                 shift; passwd="${1}"; [ "${1}" ] && shift
             else
-                _die "Option \`${arg}' requires a parameter"
+                _die "Option '${arg}' requires a parameter"
             fi ;;
         -p*) arg=${arg#?}; arg=${arg#?}; passwd="${arg}"; shift ;;
         -o)
             if [ "${#}" -gt "1" ]; then
                 shift; backup_dir="${1}"; [ "${1}" ] && shift
             else
-                _die "Option \`${arg}' requires a parameter"
+                _die "Option '${arg}' requires a parameter"
             fi ;;
         -c)
             if [ "${#}" -gt "1" ]; then
                 config_file="$(printf "%s " "${@}" | awk '{print $2}')"
                 shift 2
             else
-                _die "Option \`${arg}' requires a parameter"
+                _die "Option '${arg}' requires a parameter"
             fi ;;
-        -*) printf "%s\\n"
-            "${progname}: unrecognized option \`${arg}'" >&2;
-            _usage ;;
+        -*) _die "${progname}: unrecognized option '${arg}'" ;;
     esac
 done
 
@@ -226,14 +222,14 @@ if [ -z "${config_file}" ]; then
         _loadconf /etc/backup-dbs
     fi
 else
-    [ ! -f "${config_file}" ] && _die "couldn't find \`${config_file}'"
+    [ ! -f "${config_file}" ] && _die "Configuration file '${config_file}' doesn't exists"
     _loadconf "${config_file}"
 fi
 
-[ -z "${passwd}" ] && [ -z "${user}" ] && _usage
+[ -z "${passwd}" ] && [ -z "${user}" ] && _die
 case "${database}" in
     ''|mysql) database="mysql" ;;
-    *) _die "database \`${database}' unsupported" ;;
+    *) _die "database '${database}' unsupported" ;;
 esac
 [ -z "${backup_dir}" ] && backup_dir="$(pwd)"
 if ! mkdir -p "${backup_dir}"/.backup-dbs >/dev/null 2>&1; then
@@ -244,7 +240,7 @@ else
 fi
 
 if [ -z "${database}" ] || [ -z "${user}" ] || [ -z "${passwd}" ] || [ -z "${backup_dir}" ]; then
-    _usage
+    _die
 fi
 
 exec 9>/tmp/"${progname}".lock #http://mywiki.wooledge.org/BashFAQ/045

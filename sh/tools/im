@@ -4,16 +4,21 @@
 
 _usage()
 {
-    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] string ..." >&2
-    printf "%s\\n" "Send and watch messages in your \"ke estas haciendo?\" in mononeurona.org." >&2
-    printf "\\n" >&2
-    printf "%s\\n" "Positional arguments:" >&2
-    printf "%s\\n" "  string        message" >&2
-    printf "\\n" >&2
-    printf "%s\\n" "Optional arguments:" >&2
-    printf "%s\\n" "  -u           display last messages" >&2
-    printf "%s\\n" "  -h, --help   show this help message and exit" >&2
-    exit 1
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] string ..."
+    printf "%s\\n" "Send and watch messages in your \"ke estas haciendo?\" in mononeurona.org."
+    printf "\\n"
+    printf "%s\\n" "Positional arguments:"
+    printf "%s\\n" "  string        message"
+    printf "\\n"
+    printf "%s\\n" "Optional arguments:"
+    printf "%s\\n" "  -u           display last messages"
+    printf "%s\\n" "  -h, --help   show this help message and exit"
+}
+
+_die()
+{
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
 }
 
 _notify()
@@ -39,10 +44,10 @@ _notify()
     fi
 }
 
-if command -v "html2text" >/dev/null 2>&1; then
+if ! command -v "html2text" >/dev/null 2>&1; then
     _notify "install 'html2text' to run this program"
     exit 1
-elif command -v "curl" >/dev/null 2>&1; then
+elif ! command -v "curl" >/dev/null 2>&1; then
     _notify "install 'curl' to run this program"
     exit 1
 fi
@@ -56,9 +61,9 @@ if [ ! -z "${1}" ]; then
     case "${1}" in
         u|up|update|-u|-up|-update|--update)
             curl -s http://mononeurona.org/waydings/addwayd | html2text
-            exit 0 ;;
-        -h|--help) _usage;;
-        -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${1}'" >&2; _usage ;;
+            exit ;;
+        -h|--help) _usage && exit ;;
+        -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${1}'" ;;
     esac
 fi
 

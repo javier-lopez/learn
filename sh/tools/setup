@@ -9,13 +9,18 @@
 #Don't forget to update _usage when adding new functions
 _usage()
 {
-    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') module" >&2
-    printf "%s\\n" "Setup my common tasks." >&2
-    printf "\\n" >&2
-    printf "%s\\n" "Modules:" >&2
-    printf "%s\\n" "  autocp   cp custom autocomplete file" >&2
-    printf "%s\\n" "  script   cp custom script to the path system" >&2
-    exit 1
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') module"
+    printf "%s\\n" "Setup my common tasks."
+    printf "\\n"
+    printf "%s\\n" "Modules:"
+    printf "%s\\n" "  autocp   cp custom autocomplete file"
+    printf "%s\\n" "  script   cp custom script to the path system"
+}
+
+_die()
+{
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
 }
 
 _exec()
@@ -33,7 +38,7 @@ _exec()
 _script()
 {
 
-    [ -z "${1}" ] && (printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): Missing argument, looking for a .sh|.py|.rb|etc script"; exit 1)
+    [ -z "${1}" ] && _die "$(expr "${0}" : '.*/\([^/]*\)'): Missing argument, looking for a .sh|.py|.rb|etc script"
 
     for file; do
         _exec chmod +x "${file}"
@@ -43,7 +48,7 @@ _script()
 
 _autocp()
 {
-    [ -n "${1}" ] || (printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): Missing parameter, looking for an .autocp file"; exit 1)
+    [ -n "${1}" ] || _die "$(expr "${0}" : '.*/\([^/]*\)'): Missing parameter, looking for an .autocp file"
 
     for file; do
         if [ -d /usr/share/bash-completion/completions/ ]; then
@@ -61,11 +66,11 @@ fi
 
 if [ X"${#}" != X"0" ]; then
     case "${1}" in
-        -h|--help) _usage ;;
+        -h|--help) _usage && exit ;;
         script)    shift; _script "${@}" ;;
         autocp)    shift; _autocp "${@}" ;;
-        *)         printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option \`${1}'" >&2; _usage ;;
+        *)         _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${1}'" ;;
     esac
 else
-    _usage
+    _die
 fi
