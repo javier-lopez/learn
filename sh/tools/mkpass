@@ -2,8 +2,6 @@
 #description: create a secure password with 8 chars by default
 #usage: mkpass [LENGTH]
 
-#exec >/home/chilicuil/log 2>&1
-#set -x
 _usage() {
     printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [length]"
     printf "%s\\n" "Create secure passwords."

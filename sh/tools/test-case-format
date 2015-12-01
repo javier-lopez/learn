@@ -315,9 +315,11 @@ EOF
 _format() {
     for _format__testcase; do
         printf "%s\\n" "${_format__testcase}"
-        tidy -f /tmp/"$(_basename "${0}")"/testcase -xml -i "${_format__testcase}" > /dev/null
+        tidy -f /tmp/"$(_basename "${0}")"/testcase -xml \
+            -i "${_format__testcase}" > /dev/null
         [ "${?}" -eq "2" ] && { cat /tmp/"$(_basename "${0}")"/testcase; exit 1; }
-        vim -es -u /tmp/"$(_basename "${0}")"/vimrc -c "set ft=html" -c "normal gg=G" -c wq "${_format__testcase}"
+        vim -es -u /tmp/"$(_basename "${0}")"/vimrc \
+            -c "set ft=html" -c "normal gg=G" -c wq "${_format__testcase}"
     done
 }
 
@@ -335,11 +337,11 @@ for arg in "${@}"; do #parse options
     esac
 done
 
-[ -f "$(command -v "vim")" ]  || {
-    printf "%b\\n" "$(_basename "${0}"): install 'vim' & 'tidy' to run this program\n$ sudo apt-get install vim tidy" >&2
+[ -f "$(command -v "vim")" ]  || { printf "%b\\n" \
+    "$(_basename "${0}"): install 'vim' & 'tidy' to run this program\n$ sudo apt-get install vim tidy" >&2
     exit 1; }
-[ -f "$(command -v "tidy")" ] || {
-    printf "%b\\n" "$(_basename "${0}"): install 'tidy' to run this program\n$ sudo apt-get install tidy" >&2
+[ -f "$(command -v "tidy")" ] || { printf "%b\\n" \
+    "$(_basename "${0}"): install 'tidy' to run this program\n$ sudo apt-get install tidy" >&2
     exit 1; }
 
 _tmp_files

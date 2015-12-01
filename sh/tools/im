@@ -66,8 +66,8 @@ fi
 
 # ============ Settings =============
 #Avoid writing user/password every time
-MNron="disco299@gmail.com"
-MNpwd="vimuswal"
+MNron=""
+MNpwd=""
 MNtask="${*}"
 # ===================================
 
@@ -86,7 +86,9 @@ if [ -z "${MNtask}" ]; then
     read MNtask
 fi
 
-curl -s -c /tmp/MNc -d "_method=POST&data[User][email]=${MNron}&data[User][pwd]=${MNpwd}" http://mononeurona.org/users/login > /tmp/MN.log
+curl -s -c /tmp/MNc \
+    -d "_method=POST&data[User][email]=${MNron}&data[User][pwd]=${MNpwd}" \
+    http://mononeurona.org/users/login > /tmp/MN.log
 
 SIZE_log="$(du /tmp/MN.log| awk '{print $1}')"
 
@@ -95,6 +97,8 @@ if [ "${SIZE_log}" -gt "0" ]; then
     exit 0
 fi
 
-curl -s -b /tmp/MNc  -d "_method=POST&data[Wayding][task]=${MNtask}" http://mononeurona.org/waydings/addwayd | html2text
+curl -s -b /tmp/MNc  \
+    -d "_method=POST&data[Wayding][task]=${MNtask}" \
+    http://mononeurona.org/waydings/addwayd | html2text
 
 rm /tmp/MN.log

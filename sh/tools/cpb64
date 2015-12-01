@@ -94,7 +94,8 @@ _die() {
 
 _cpb64() {
     for file; do
-        [ ! -r "${file}" ] && { printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): '${file}' does not exist or is not readable" >&2; exit 1; }
+        [ ! -r "${file}" ] && {
+            printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): '${file}' does not exist or is not readable" >&2; exit 1; }
     done
 
     if command -v "base64" >/dev/null 2>&1; then

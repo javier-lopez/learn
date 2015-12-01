@@ -190,14 +190,12 @@ for arg; do #parse options
                 _die "Option '${arg}' requires a parameter"
             fi ;;
         -p*) arg=${arg#?}; arg=${arg#?}; passwd="${arg}"; shift ;;
-        -o)
-            if [ "${#}" -gt "1" ]; then
+        -o) if [ "${#}" -gt "1" ]; then
                 shift; backup_dir="${1}"; [ "${1}" ] && shift
             else
                 _die "Option '${arg}' requires a parameter"
             fi ;;
-        -c)
-            if [ "${#}" -gt "1" ]; then
+        -c) if [ "${#}" -gt "1" ]; then
                 config_file="$(printf "%s " "${@}" | awk '{print $2}')"
                 shift 2
             else

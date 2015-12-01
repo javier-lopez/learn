@@ -33,13 +33,20 @@ if [ ! -t 0 ]; then
     set -- "${@}" $(cat)
 fi
 
-[ "${#}" -eq "0" ] && { printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') [you|off] process_name ..." >&2 ; exit 1; }
+[ "${#}" -eq "0" ] && {
+    printf "Usage: %s\\n" \
+    "$(expr "${0}" : '.*/\([^/]*\)') [you|off] process_name ..." >&2
+    exit 1
+}
 
 case "${1}" in
     you|off) shift ;;
-    -h|--help) printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') [you|off] process_name ..." && exit ;;
-    -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${1}'" >&2;
-        printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') [you|off] process_name ..." >&2
+    -h|--help) printf "Usage: %s\\n" \
+        "$(expr "${0}" : '.*/\([^/]*\)') [you|off] process_name ..." && exit ;;
+    -*) printf "%s\\n" \
+        "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${1}'" >&2
+        printf "Usage: %s\\n" \
+        "$(expr "${0}" : '.*/\([^/]*\)') [you|off] process_name ..." >&2
         exit 1 ;;
 esac
 

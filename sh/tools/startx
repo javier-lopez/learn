@@ -4,7 +4,8 @@
 
 #http://bbs.archlinux.org/viewtopic.php?pid=484915
 
-_num() {   #look for a number, returns 0 on success, 1 otherwise
+_num() {
+    #look for a number, returns 0 on success, 1 otherwise
     [ -z "${1}" ] && return 1
     printf "%s\\n" "${@}" | grep -v "[^0-9]" >/dev/null
 }

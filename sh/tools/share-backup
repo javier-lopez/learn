@@ -67,12 +67,13 @@ _usage() {
 
 if [ X"${1}" = X"stop" ]; then
     ID="$(pgrep -f simple-httpd)"
-    [ -n "$ID" ] && { kill -9 "${ID}"; printf "%s\\n" "Stopped"; exit 0; } || { printf "%s\\n" "No instance found" >&2; exit 1; }
+    [ -n "$ID" ] && { kill -9 "${ID}"; printf "%s\\n" "Stopped"; exit 0; } || \
+        { printf "%s\\n" "No instance found" >&2; exit 1; }
 fi
 
 if ! command -v "simple-httpd" >/dev/null 2>&1; then
     printf "%s\\n" "$(_basename "${0}"): simple-httpd was not found!" >&2
-    printf "%s\\n" "download it at: https://raw.github.com/chilicuil/learn/master/python/simple-httpd" >&2
+    printf "%s\\n" "download it from: https://raw.github.com/chilicuil/learn/master/python/simple-httpd" >&2
     exit 1
 fi
 
@@ -147,7 +148,9 @@ printf "%s\\n"
 printf "%s\\n" "Run: $(_basename "${0}") stop, to stop sharing"
 
 if [ -d "${files}" ]; then
-    eval simple-httpd -p "${port}" --username="${user}" --password="${passwd}" "${ssl_opts}" "${files}"/* >/dev/null 2>&1 &
+    eval simple-httpd -p "${port}" --username="${user}" \
+        --password="${passwd}" "${ssl_opts}" "${files}"/* >/dev/null 2>&1 &
 else
-    eval simple-httpd -p "${port}" --username="${user}" --password="${passwd}" "${ssl_opts}" "${files}" >/dev/null 2>&1 &
+    eval simple-httpd -p "${port}" --username="${user}" \
+        --password="${passwd}" "${ssl_opts}" "${files}" >/dev/null 2>&1 &
 fi

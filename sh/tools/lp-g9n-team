@@ -34,7 +34,8 @@ _whereis() {
 
 _internetavailable() {
     #check for internet connection, returns 0 on success, 1 otherwise
-    wget --tries=3 --timeout=5 http://www.google.com -O /tmp/index.google > /dev/null 2>&1
+    wget --tries=3 --timeout=5 http://www.google.com \
+        -O /tmp/index.google > /dev/null 2>&1
 
     if [ -s /tmp/index.google ]; then
         rm /tmp/index.google
@@ -74,6 +75,10 @@ if ! _internetavailable; then
     _die "you must have an active internet connection to run this program"
 fi
 
-[ -f /tmp/lp-g9n.py ] || wget https://raw.github.com/chilicuil/learn/master/python/lp-g9n -O /tmp/lp-g9n.py >/dev/null 2>&1
-[ -f /tmp/lp-g9n.py ] && printf "%s\\n" "Outputing data to \"lp-g9n-team.csv\"" || _die "lp-g9n-team: failed to connect to launchpad, verify your connection"
+[ -f /tmp/lp-g9n.py ] || wget \
+    https://raw.github.com/chilicuil/learn/master/python/lp-g9n \
+    -O /tmp/lp-g9n.py >/dev/null 2>&1
+[ -f /tmp/lp-g9n.py ] && printf "%s\\n" \
+    "Outputing data to \"lp-g9n-team.csv\"" || \
+    _die "lp-g9n-team: failed to connect to launchpad, verify your connection"
 python /tmp/lp-g9n.py "${team}" | tee lp-g9n-team.csv

@@ -33,8 +33,12 @@ done
 script="${1}"
 
 if command -v "${script}" >/dev/null 2>&1; then
-    [ -z "${EDITOR}" ] && { printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): variable EDITOR was not found" >&2; exit 1; }
+    [ -z "${EDITOR}" ] && { printf "%s\\n" \
+        "$(expr "${0}" : '.*/\([^/]*\)'): variable EDITOR was not found" >&2
+        exit 1; }
     ${EDITOR} "$(command -v "${script}" 2>/dev/null)"
 else
-    printf "$(expr "${0}" : '.*/\([^/]*\)'): %s\\n" "'${script}' was not found in \$PATH" >&2; exit 1
+    printf "$(expr "${0}" : '.*/\([^/]*\)'): %s\\n" \
+        "'${script}' was not found in \$PATH" >&2
+    exit 1
 fi

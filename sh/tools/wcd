@@ -21,7 +21,8 @@ else
     if [ -z "${1}" ]; then
         \cd "$("${WICD_BIN}" ${WICD_OPTIONS} "${HOME}")"
     else
-        CD_PATH="$(printf "%s\\n" "$("${WICD_BIN}" ${WICD_OPTIONS} "${@}")" | sed -e 's:\\::g')"
+        CD_PATH="$(printf "%s\\n" "$("${WICD_BIN}" ${WICD_OPTIONS} "${@}")" | \
+                   sed -e 's:\\::g')"
         \cd "${CD_PATH}"; ls
     fi
 fi

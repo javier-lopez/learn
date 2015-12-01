@@ -201,7 +201,7 @@ _backup() {
         _verbose " "
         _backup__realpath="$(_realpath "${file}")"
         _backup__remotepath="$(printf "%s" "${_backup__realpath}" |           \
-            awk '{sub(/\//,"root-"); print $0}' | awk '{gsub(/\//,"-"); print $0}')"
+            awk '{sub(/\//,"root-"); gsub(/\//,"-"); print $0}')"
         case "${_backup__remotepath}" in
             *-) _backup__remotepath="$(printf "%s" "${_backup__remotepath}" | \
                 cut -c1-"$((${#_backup__remotepath} - 1))")" ;;

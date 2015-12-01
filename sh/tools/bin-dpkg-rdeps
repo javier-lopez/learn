@@ -8,6 +8,10 @@
 #libc6-armhf-cross
 #libc6-i386
 
+_false() {
+    return 1
+}
+
 _rdeps() {
     for _rdeps__binary; do
         fpath="$(command -v "${_rdeps__binary}")"
@@ -19,12 +23,11 @@ _rdeps() {
         if [ -n "${fpath}" ]; then
             if ldd "${fpath}" >/dev/null 2>/dev/null; then
                 for _rdeps__library in $(ldd "${fpath}" | sort -n | uniq | awk '{print $1}'); do
-                    _rdeps__pkgs="${_rdeps__pkgs}
-                    $(apt-file search "${_rdeps__library}")"
+                    _rdeps__pkgs="${_rdeps__pkgs} $(apt-file search "${_rdeps__library}")"
                 done
                 printf "%s\\n" "${_rdeps__pkgs}" | cut -d':' -f1 | sort | uniq | awk 'NF { sub(/^[ \t]+/, ""); print }'
             else
-                printf "$(expr "${0}" : '.*/\([^/]*\)'): %s\\n" "not a dynamic executable '${fpath}'" >&2 && false
+                printf "$(expr "${0}" : '.*/\([^/]*\)'): %s\\n" "not a dynamic executable '${fpath}'" >&2 && _false
             fi
         fi
     done

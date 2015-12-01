@@ -349,7 +349,4 @@ install -o "${OWNER}" -g "${GROUP}" -m "${MODE}" -s \
 
 #delete temporary directory
 rm -rf "${tmp}"; tmp=""
-
 _verbose "Wrapper successfully generated and installed"
-
-exit 0

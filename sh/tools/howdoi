@@ -50,66 +50,87 @@ _howdoi() {
     _howdoi__question_format="$(printf "%s" "${*}" | tr ' ' '_')"
 
     if [ -z "${HOWDOI_DISABLE_CACHE}" ]; then
-        _howdoi__google_links="$(find ~/.cache/howdoi/ -iname "${_howdoi__question_format}".links 2>/dev/null | head -n 1)"
+        _howdoi__google_links="$(find ~/.cache/howdoi/ -iname \
+            "${_howdoi__question_format}".links 2>/dev/null | head -n 1)"
         _howdoi__google_links="$(cat "${_howdoi__google_links}" 2>/dev/null)"
     fi
 
     #for some reason the google api doesn't return the same results
     #http://ajax.googleapis.com/ajax/services/search/web?v=1.0
     if [ -z "${_howdoi__google_links}" ]; then
-        #_howdoi__google_links="$(wget -q -U "Firefox/3.0.5" "http://www.google.com/search?q=site:stackoverflow.com%20${_howdoi__question}" -O- |\
-            #awk 'match($0,/http:\/\/stackoverflow.com\/questions\/[0-9]*\/[A-Za-z-]+/) {print substr($0,RSTART,RLENGTH)}')"
-        _howdoi__google_links="$(wget -q -U "Firefox/3.0.5" "http://www.google.com/search?q=site:stackoverflow.com%20${_howdoi__question}" -O- |\
+        _howdoi__google_links="$(wget -q -U "Firefox/3.0.5" \
+            "http://www.google.com/search?q=site:stackoverflow.com%20${_howdoi__question}" -O- | \
             awk 'match($0,/http:\/\/stackoverflow.com\/questions\/[0-9]*\/[A-Za-z-]+/) {if(NR!=1){print substr($0,RSTART,RLENGTH)}}')"
     fi
 
     if [ -z "${HOWDOI_DISABLE_CACHE}" ]; then
         [ ! -d ~/.cache/howdoi/ ] && mkdir ~/.cache/howdoi/
         [ ! -f ~/.cache/howdoi/"${_howdoi__question_format}".links ] && \
-            printf "%s\\n" "${_howdoi__google_links}" > ~/.cache/howdoi/"${_howdoi__question_format}".links
+            printf "%s\\n" "${_howdoi__google_links}" > \
+            ~/.cache/howdoi/"${_howdoi__question_format}".links
     fi
 
-    [ -z "${_howdoi__google_links}" ] && { printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): No results"; exit 1; }
+    [ -z "${_howdoi__google_links}" ] && {
+        printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): No results"; exit 1; }
 
-    _howdoi__google_link="$(printf "%s\\n" "${_howdoi__google_links}" | awk -v l="${pflag}" 'NR == l {print; exit}')"
+    _howdoi__google_link="$(printf "%s\\n" "${_howdoi__google_links}" | \
+        awk -v l="${pflag}" 'NR == l {print; exit}')"
     [ -n "${lflag}" ] && { printf "%s\\n" "${_howdoi__google_link}"; exit; }
 
     #if a user request a link out of scope, return the last link instead
-    [ -z "${_howdoi__google_link}" ] && _howdoi__google_link="$(printf "%s\\n" "${_howdoi__google_links}" | awk 'END {print}')"
+    [ -z "${_howdoi__google_link}" ] && \
+        _howdoi__google_link="$(printf "%s\\n" "${_howdoi__google_links}" | \
+            awk 'END {print}')"
     _howdoi__so_basename="$(expr "${_howdoi__google_link}" : '.*/\([^/]*\)')"
 
     if [ -z "${HOWDOI_DISABLE_CACHE}" ]; then
-        _howdoi__so_answers="$(find ~/.cache/howdoi/ -iname "${_howdoi__so_basename}".answers 2>/dev/null | head -n 1)"
+        _howdoi__so_answers="$(find ~/.cache/howdoi/ -iname \
+            "${_howdoi__so_basename}".answers 2>/dev/null | head -n 1)"
         _howdoi__so_answers="$(cat "${_howdoi__so_answers}" 2>/dev/null)"
     fi
 
     #the stackoverflow api doesn't print answers body
     #http://api.stackoverflow.com/2.0/usage
     if [ -z "${_howdoi__so_answers}" ]; then
-        _howdoi__so_answers="$(wget -q -U "Firefox/3.0.5" "$(printf "%s" "${_howdoi__google_link}")" -O- | \
+        _howdoi__so_answers="$(wget -q -U "Firefox/3.0.5"    \
+            "$(printf "%s" "${_howdoi__google_link}")" -O- | \
             awk '/answercell/,/div>/ {if ($0 ~ "div>") print "-----"; else print;}' | \
             awk '/<pre><code>/,/<\/code><\/pre>/ {gsub(/^[ \t]+<pre>/, ""); print ">>", $0}1' | \
             awk '/>>/ {print $0; getline; next}1' | \
-            awk '{gsub("<[^>]*>", ""); gsub(/^[ \t]+|[ \t]+$/, ""); gsub(/>>$/, ""); gsub(/>>[ \t]/, ">");
-                 gsub(/&lt;/, "<"); gsub(/&gt;/, ">"); sub(/\r$/,""); if ($0 != "") print}')"
+            awk '{gsub("<[^>]*>", ""); gsub(/^[ \t]+|[ \t]+$/, "");
+                 gsub(/>>$/, ""); gsub(/>>[ \t]/, ">"); gsub(/&lt;/, "<");
+                 gsub(/&gt;/, ">"); sub(/\r$/,""); if ($0 != "") print}')"
     fi
 
-    _howdoi__so_answers_len="$(printf "%s" "${_howdoi__so_answers}" | awk '/-----/ {i++} END {print i}')"
+    _howdoi__so_answers_len="$(printf "%s" "${_howdoi__so_answers}" | \
+        awk '/-----/ {i++} END {print i}')"
 
-    [ -z "${_howdoi__so_answers}" ] && { printf "%s\\n" "No answers for your question"; exit 1; }
+    [ -z "${_howdoi__so_answers}" ] && {
+        printf "%s\\n" "No answers for your question" >&2; exit 1; }
 
     if [ -z "${HOWDOI_DISABLE_CACHE}" ]; then
         [ ! -d ~/.cache/howdoi/ ] && mkdir ~/.cache/howdoi/
         [ ! -f ~/.cache/howdoi/"${_howdoi__so_basename}".answers ] && \
-            printf "%s\\n" "${_howdoi__so_answers}" > ~/.cache/howdoi/"${_howdoi__so_basename}".answers
+            printf "%s\\n" "${_howdoi__so_answers}" \
+                > ~/.cache/howdoi/"${_howdoi__so_basename}".answers
     fi
 
-    [ -n "${aflag}" ] && { printf "%s\\n" "${_howdoi__so_answers}" | awk '{gsub(/>/, "   "); print $0}'; printf "%s\\n" "${_howdoi__google_link}"; exit; }
+    [ -n "${aflag}" ] && {
+        printf "%s\\n" "${_howdoi__so_answers}" | \
+        awk '{gsub(/>/, "   "); print $0}'
+        printf "%s\\n" "${_howdoi__google_link}"; exit; }
 
     if [ "${nflag}" -lt "2" ] || [ "${_howdoi__so_answers_len}" -lt "2" ]; then
-        printf "%s" "${_howdoi__so_answers}" | awk '/^>/ {sub(/^>/, ""); print $0; getline t; if ( t ~ "^>") {sub(/^>/, "", t); print t;} else exit }'
+        printf "%s" "${_howdoi__so_answers}" | \
+            awk '/^>/ {sub(/^>/, ""); print $0; getline t;
+                if ( t ~ "^>") {sub(/^>/, "", t); print t;} else exit }'
     else
-        printf "%s" "${_howdoi__so_answers}" | awk -v l="${nflag}" 'BEGIN {i++} /^>/ {if (flagend !~ "set") {print "--- Answer", i, "---"; sub(/^>/, ""); print $0; getline; while ( $0 ~ "^>") {sub(/^>/, ""); print; getline;} i++; flagend="set";} else { if ($0 !~ "^-----$") flagend="none"} if (i == l+1) exit}'
+        printf "%s" "${_howdoi__so_answers}" | \
+            awk -v l="${nflag}" 'BEGIN {i++} /^>/ {
+            if (flagend !~ "set") {print "--- Answer", i, "---"; sub(/^>/, "");
+            print $0; getline; while ( $0 ~ "^>") {sub(/^>/, ""); print;
+            getline;} i++; flagend="set";} else
+            { if ($0 !~ "^-----$") flagend="none"} if (i == l+1) exit}'
     fi
 }
 
@@ -131,7 +152,8 @@ for arg; do #parse options
         -a) aflag="true"; shift;;
         -l) lflag="true"; shift;;
         -c) cflag="true"; shift;;
-        -C) rm -rf ~/.cache/howdoi && printf "%s\\n" "Cache cleared successfully" && exit ;;
+        -C) rm -rf ~/.cache/howdoi
+            printf "%s\\n" "Cache cleared successfully" && exit ;;
         -p) if [ "${#}" -gt "1" ]; then
                 pflag="$(printf "%s " "${@}" | awk '{print $2}')"
                 shift 2

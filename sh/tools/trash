@@ -24,7 +24,6 @@ _str2lower() {
     #convert a string to lower string
     [ -z "${1}" ] && return 1
     printf "%s\\n" "${@}" | tr 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 'abcdefghijklmnopqrstuvwxyz'
-    # tr '[:upper:]' '[:lower:]'
 }
 
 #http://www.makkintosshu.com/journal/a-realpath-implementation-in-bash

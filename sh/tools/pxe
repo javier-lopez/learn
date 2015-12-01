@@ -12,7 +12,7 @@ _usage() {
     printf "%s\\n" "  -v           verbose mode"
     printf "%s\\n" "  -h, --help   help"
     printf "\\n"
-    printf "%s\\n" "  dir          creates the pxe environment in this directory (./pxe_setup by default)"
+    printf "%s\\n" "  dir          creates pxe environment in this directory [./pxe_setup]"
 }
 
 _die() {

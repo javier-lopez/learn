@@ -10,7 +10,7 @@ api="" #mailgun api, required
 
 _usage() {
     printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') [options] to@address.tld message ..."
-    printf "%s\\n" "Send emails using the mailgun service."
+    printf "%s\\n" "Send emails using mailgun infraestructure."
     printf "%s\\n"
     printf "%s\\n" "  -a, --api       mailgun api"
     printf "%s\\n" "  -f, --from      from header"
@@ -47,7 +47,8 @@ _mailgun() {
     _mailgun__to="${1}";      shift
     _mailgun__subject="${1}"; shift
     _mailgun__msg="${*}"
-    curl -s --user "${_mailgun__api}" -G https://api.mailgun.net/v2/correo.io/messages \
+    curl -s --user "${_mailgun__api}" \
+         -G https://api.mailgun.net/v2/correo.io/messages \
          -F from="${_mailgun__from}" -F to="${_mailgun__to}" \
          -F subject="${_mailgun__subject}" -F text="${_mailgun__msg}"
 }
@@ -97,7 +98,8 @@ elif ! _validmail "${to}"; then
     _die "$(expr "${0}" : '.*/\([^/]*\)'): Invalid email address: '${to}'"
 fi
 
-#TODO 01-10-2014 12:50 >> no source options when they had already been provided through the cli interface
+#TODO 01-10-2014 12:50 >> no source options when they had already been provided
+                         #through the cli interface
 if [ -z "${config}" ]; then
     if [ -f ./.mailgun ]; then
         _loadconf ./.mailgun
@@ -111,7 +113,8 @@ else
     _loadconf "${config}"
 fi
 
-[ "${#api}" -ne "40" ] && _die "Specify a valid mailgun api and try again (the api is 40 characters long)"
+[ "${#api}" -ne "40" ] && \
+    _die "Specify a valid mailgun api and try again (the api is 40 characters long)"
 
 if ! command -v "curl" >/dev/null 2>&1; then
     _die "install 'curl' to run this program"

@@ -70,7 +70,6 @@ _command() {
 _str2upper() {
     [ -z "${1}" ] && return 1
     printf "%s\\n" "${@}" | tr 'abcdefghijklmnopqrstuvwxyz' 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-    # tr '[:upper:]' '[:lower:]'
 }
 
 _substr() { 

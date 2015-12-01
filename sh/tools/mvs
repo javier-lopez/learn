@@ -40,7 +40,7 @@ _mkdir_p() {
                 if cd "${_mkdir_p__subdir}"; then
                     :
                 else
-                    printf "%s\\n" "_mkdir_p: Can't enter ${_mkdir_p__subdir} while creating ${_mkdir_p__dir}"
+                    printf "%s\\n" "_mkdir_p: Can't enter ${_mkdir_p__subdir} while creating ${_mkdir_p__dir}" >&2
                     exit 1
                 fi
             else

@@ -69,6 +69,7 @@ _extract() {
                     *) printf "%s\\n" "'${_extract__file}' is not a valid compressed file" >&2 ;;
                 esac
             else
+
                 case "${_extract__file}" in
                     *.deb|*.udeb)           _exec "ar xv '${_extract__file}'"                   ;;
                     *.tar.lrz|*.tlrz|*.tlz) _exec "lrzcat < '${_extract__file}' | tar xvf -"    ;;

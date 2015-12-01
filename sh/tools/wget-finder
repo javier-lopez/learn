@@ -131,7 +131,6 @@ _get_links() {
     [ -z "${2}" ] && return 1
 
     _get_links_google() { 
-        #randomnize links to avoid hitting the same servers too often _shuf
         _get_links_google__query="Index of \"${1}.\" -filewatcher"
         wget -q -U "Mozilla/5.0" "http://www.google.com/search?q=${_get_links_google__query}" -O- | \
             awk 'match($0,/(http|https|ftp):\/\/.*\/&/) {if(NR!=1){$0=substr($0,RSTART,RLENGTH); print substr($0,1,length($0)-1)}}' | \

@@ -58,10 +58,13 @@ _translate() {
     [ -z "${1}" ] && return 1
     #update 14-12-2012 05:06: http://crunchbang.org/forums/viewtopic.php?id=17034
     _translate__phrase="${*}"
-    _translate__page="$(curl -s -i --user-agent "" -d "sl=${sl}" -d "tl=${tl}"      \
-                           -d "client=t"  -d "ie=UTF-8" -d "oe=UTF-8" --data-urlencode \
-                           "text=${_translate__phrase}" http://translate.google.com/translate_a/t)"
-    _translate__result="$(printf "%s" "${_translate__page}" | tail -1 | cut -d\" -f2)"
+    _translate__page="$(curl -s -i --user-agent "" -d "sl=${sl}"  \
+                        -d "tl=${tl}" -d "client=t" -d "ie=UTF-8" \
+                        -d "oe=UTF-8" --data-urlencode \
+                        "text=${_translate__phrase}"   \
+                        http://translate.google.com/translate_a/t)"
+    _translate__result="$(printf "%s" "${_translate__page}" | tail -1 | \
+                          cut -d\" -f2)"
 
     if [ -z "${_translate__result}" ];then
        _translate__result="Translation api timeout"
