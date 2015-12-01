@@ -7,8 +7,7 @@
 #sudo cp dmenu-killall /usr/local/bin
 
 #Don't forget to update _usage when adding new functions
-_usage()
-{
+_usage() {
     printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') module"
     printf "%s\\n" "Setup my common tasks."
     printf "\\n"
@@ -17,14 +16,13 @@ _usage()
     printf "%s\\n" "  script   cp custom script to the path system"
 }
 
-_die()
-{
+_die() {
     [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
     _usage >&2; exit 1
 }
 
-_exec()
-{   #print current command, exits on fail
+_exec() {
+    #print current command, exits on fail
     [ -z "${1}" ] && return 0
 
     printf "%s " "${@}"
@@ -35,9 +33,7 @@ _exec()
     [ X"${_exec__status}" != X"0" ] && exit "${_exec__status}" || return
 }
 
-_script()
-{
-
+_script() {
     [ -z "${1}" ] && _die "$(expr "${0}" : '.*/\([^/]*\)'): Missing argument, looking for a .sh|.py|.rb|etc script"
 
     for file; do
@@ -46,8 +42,7 @@ _script()
     done
 }
 
-_autocp()
-{
+_autocp() {
     [ -n "${1}" ] || _die "$(expr "${0}" : '.*/\([^/]*\)'): Missing parameter, looking for an .autocp file"
 
     for file; do

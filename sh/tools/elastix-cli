@@ -7,8 +7,7 @@ set -e #exit as soon as any command fail
 default_ssh_passwd="c2VjcmV0Cg=="
 default_mysql_passwd="c2VjcmV0Cg=="
 
-_basename()
-{
+_basename() {
     [ -z "${1}" ] && return 1 || _basename__name="${1}"
     [ -z "${2}" ] || _basename__suffix="${2}"
     case "${_basename__name}" in
@@ -32,8 +31,7 @@ if ! flock -n 9 ; then
     exit 1
 fi
 
-_usage()
-{
+_usage() {
     printf "%s\\n" "Usage: $(_basename "${0}") [options] type args..."
     printf "%s\\n" "Control Elastix through a cli interface."
     printf "\\n"
@@ -63,16 +61,15 @@ _usage()
     printf "%s\\n" "[1] remote access is defined as: user@remotehost:port,ssh_passwd,mysql_passwd, and can be defined as many lines as desired"
 }
 
-_die()
-{
+_die() {
     [ -z "${1}" ] && return 1
     printf "%s\\n" "${*}" >&2
     printf "%s\\n" "See $(_basename "${0}") --help" >&2
     exit 1
 }
 
-_networkup()
-{   #check for internet connection, returns 0 on success, 1 otherwise
+_networkup() {
+    #check for internet connection, returns 0 on success, 1 otherwise
     wget --tries=3 --timeout=5 http://www.google.com -O /tmp/index.google > /dev/null 2>&1
 
     if [ -s /tmp/index.google ]; then
@@ -84,25 +81,23 @@ _networkup()
     fi
 }
 
-_isnum()
-{   #look for a number, returns 0 on success, 1 otherwise
+_isnum() { 
+    #look for a number, returns 0 on success, 1 otherwise
     [ -z "${1}" ] && return 1
     printf "%s\\n" "${@}" | grep -v "[^0-9]" >/dev/null
 }
 
-_haswhitespaces()
-{
+_haswhitespaces() {
     grep " " "${@}" >/dev/null 2>&1
 }
 
-_decode64()
-{
+_decode64() {
     [ -z "${1}" ] && return 1
     printf "%s\\n" "${1}" | openssl enc -base64 -d
 }
 
-_isip4valid()
-{   #return 0 if parameter is a valid ip4 address, non-zero otherwise
+_isip4valid() {
+    #return 0 if parameter is a valid ip4 address, non-zero otherwise
     #https://groups.google.com/forum/#!original/comp.unix.shell/NDu-kAL5cHs/7Zpc6Q2Hu5YJ
     [ -z "${1}" ] && return 1
 
@@ -120,13 +115,13 @@ _isip4valid()
         [ "${3:-666}" -le "255" ] && [ "${4:-666}" -le "254" ]
 }
 
-_isdomainvalid()
-{   #return 0 if parameter is a valid domain address, non-zero otherwise
+_isdomainvalid() {  
+    #return 0 if parameter is a valid domain address, non-zero otherwise
     printf "%s" "${@}" | grep -P '(?=^.{5,254}$)(^(?:(?!\d+\.)[a-zA-Z0-9_\-]{1,63}\.?)+(?:[a-zA-Z]{2,})$)' >/dev/null
 }
 
-_elastixfileformatisvalid()
-{   #return 0 if parameter in file contain a valid format, non-zero otherwise
+_elastixfileformatisvalid() {
+    #return 0 if parameter in file contain a valid format, non-zero otherwise
     elastix_format_trunk="$(grep "^trunk" "${1}" | cut -f2 -d"=")"
     elastix_format_host="$(grep "^host" "${1}"   | cut -f2 -d"=")"
     elastix_format_proxy="$(grep "^proxy" "${1}" | cut -f2 -d"=")"
@@ -168,8 +163,7 @@ _elastixfileformatisvalid()
     return 0
 }
 
-_trunk()
-{
+_trunk() {
     [ -z "${2}" ] && _die "Missing param for: trunk ${1}"
 
     #do we have valid parameters?, preliminar tests

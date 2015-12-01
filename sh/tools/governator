@@ -6,14 +6,12 @@
 #no output, it however sets the best governator for performance
 
 #https://bbs.archlinux.org/viewtopic.php?pid=431775#p431775
-_usage()
-{
+_usage() {
     printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') get"
     printf "%s\\n" "       $(expr "${0}" : '.*/\([^/]*\)') set powersave|conservative|ondemand|performance"
 }
 
-_exec()
-{
+_exec() {
     _exec__status="${?}"
     if [ X"${_exec__status}" != X"0" ]; then
         exit "${_exec__status}"

@@ -1,18 +1,15 @@
 #!/bin/sh
-#functions, copy and paste in your own scripts
-
-#if you have more or can improve the current ones please send your push request!
+#shell functions, copy and paste in your own scripts
 
 #new functions:
 #[+] must be self contained, with no dependencies in other functions
-#[+] can depend on exotic cli commands
 #[+] must follow general style (read guideline.md) and comply with POSIX sh
 #[+] must no print errors, use return instead
+#[+] can depend on exotic cli commands
 #[+] must provide an example after the definition of the function
-#[+] must provide at least 1 unit test (tests/lib.db)
+#[+] must provide at least one unit test (tests/lib.db)
 
-_1stchar()
-{   #return first char of a string
+_1stchar() { #return first char of a string
     [ -z "${1}" ] && return 1
     _1stchar__substr="${1#?}"
     printf "%s\\n" "${1%$_1stchar__substr}"
@@ -21,8 +18,7 @@ _1stchar()
 #_1stchar test #print 't'
 #=================================================================
 
-_abs()
-{   #return the absolute value of the argument, or 1 on failure
+_abs() { #return the absolute value of the argument, or 1 on failure
     case "${1}" in
         *[!0-9-]*|"") return 1 ;;
     esac
@@ -34,9 +30,7 @@ _abs()
 #_abs 2  #print 2
 #=================================================================
 
-_alphanum()
-{ #check for alphanum strings
-  #return 0 if all upper+lower+digits, 1 otherwise
+_alphanum() { #check for alphanum strings
   [ -z "${1}" ] && return 1
 
   #remove unacceptable chars
@@ -55,9 +49,7 @@ _alphanum()
 #exit 0
 #=================================================================
 
-_aptproxy()
-{   #test if an apt proxy exist on the local network
-    #return 0 on sucess, 1 otherwise
+_aptproxy() { #test if an apt proxy exist on the local network
     avahi-browse -a  -t | grep apt-cacher-ng >/dev/null && return 0
     return 1
 }
@@ -67,8 +59,7 @@ _aptproxy()
 #fi
 #=================================================================
 
-_arch()
-{   #check system arch, return 64|32 (32 by default)
+_arch() { #check system arch, return 64|32 (32 by default)
     if [ -z "${MACHTYPE}" ]; then
         _arch__arch="$(uname -m)"
     else
@@ -87,8 +78,7 @@ _arch()
 #[ "${arch}" -eq "32" ] && command32 || command64
 #=================================================================
 
-_basename()
-{   #portable basename
+_basename() { #portable basename
     [ -z "${1}" ] && return 1 || _basename__name="${1}"
     [ -z "${2}" ] || _basename__suffix="${2}"
     case "${_basename__name}" in
@@ -108,9 +98,8 @@ _basename()
 #_basename /path/file #print file
 #=================================================================
 
-_basename2()
-{   #alternative portable basename, faster but with possible drawbacks
-    #require more testing
+_basename2() { #alternative portable basename, faster but with
+               #possible drawbacks
     [ -z "${1}" ] && return 1 || _basename2__name="${1}"
     [ -z "${2}" ] || _basename2__suffix="${2}"
     case "${_basename2__name}" in
@@ -127,8 +116,7 @@ _basename2()
 #_basename2 /path/file #print file
 #=================================================================
 
-_char2int()
-{
+_char2int() {
     [ -z "${1}" ] && return 1
     printf '%d' "'${*}"
 }
@@ -137,8 +125,7 @@ _char2int()
 #printf "%s\\n" "${num}" #prints 97
 #=================================================================
 
-_daemonize()
-{   #daemonize an external command
+_daemonize() { #daemonize an external command
     #http://blog.n01se.net/blog-n01se-net-p-145.html
     [ -z "${1}" ] && return 1
     (   # 1. fork, to guarantee the child is not a process
@@ -196,8 +183,7 @@ _daemonize()
 #kill -15 $(cat /var/run/script.pid #finish daemon
 #=================================================================
 
-_decode64()
-{   #decode a base64 string
+_decode64() { #decode a base64 string
     [ ! -t 0 ] && set -- "${@}" "$(cat)"
     [ -z "${1}" ] && return 1
     if command -v "base64" >/dev/null 2>&1; then
@@ -265,8 +251,7 @@ _decode64()
 #[ -z "${string}" ] && printf "%s\\n" "fail, empty string"
 #=================================================================
 
-_die()
-{   # exit execution after printing a message
+_die() { #exit execution after printing a message
     [ -z "${1}" ] && return 1
     printf "%b\\n" "$(expr "${0}" : '.*/\([^/]*\)'): ${*}" >&2
     exit 1
@@ -275,9 +260,9 @@ _die()
 #[ -z "${var}" ] && _die "error msg"
 #=================================================================
 
-_dirname()
-{   #return string containing dirname on success, 1 on failure
-    [ -z "${1}" ] && return 1
+_dirname() {
+    #return string containing dirname on success, 1 on failure
+    k -z "${1}" ] && return 1
 
     #http://www.linuxselfhelp.com/gnu/autoconf/html_chapter/autoconf_10.html
     case "${1}" in
@@ -290,8 +275,7 @@ _dirname()
 #_dirname /path/file #print /path
 #=================================================================
 
-_distro()
-{   #return distro name in lower string
+_distro() { #return distro name in lower string
     _distro__DIST_INFO="/etc/lsb-release"
     if [ -r "${_distro__DIST_INFO}" ]; then
         . "${_distro__DIST_INFO}"
@@ -348,8 +332,7 @@ _distro()
 #distro="$(_distro)"
 #=================================================================
 
-_echo()
-{   #safe echo, http://www.etalabs.net/sh_tricks.html
+_echo() { #safe echo, http://www.etalabs.net/sh_tricks.html
     fmt=%s end=\\n IFS=" "
 
     while [ "${#}" -gt "1" ] ; do
@@ -368,8 +351,8 @@ _echo()
 #_echo 'Hello World!' #print Hello World!
 #=================================================================
 
-_empty()
-{  #detect if arg is an empty file, returns 0 on sucess, 1 otherwise
+_empty() {
+    #detect if arg is an empty file, returns 0 on sucess, 1 otherwise
     [ -z "${1}" ] && return 1
     if [ -f "${1}" ] && [ X"$(wc -c "${1}" | cut -d" " -f1)" = X"0" ]; then
         return 0
@@ -385,8 +368,7 @@ _empty()
 #fi
 #=================================================================
 
-_encode64()
-{   #encode a base64 string
+_encode64() { #encode a base64 string
     [ ! -t 0 ] && set -- "${@}" "$(cat)"
     [ -z "${1}" ] && return 1
     if command -v "base64" >/dev/null 2>&1; then
@@ -513,8 +495,7 @@ _encode64()
 #string="$(_encode64 "${string}")"
 #=================================================================
 
-_ensurecron()
-{   #adds cron job, returns 1 on error
+_ensurecron() { #adds cron job, returns 1 on error
     [ -z "${1}" ] && return 1
     _ensurecron__exist="$(crontab -l 2>/dev/null | awk -v p="${1}" '{ if ($0 == p) {print p}}')"
     [ -n "${_ensurecron__exist}" ] && return 0
@@ -524,8 +505,7 @@ _ensurecron()
 #_ensurecron "* * * * * /path/task"
 #=================================================================
 
-_float2fraction()
-{
+_float2fraction() {
     [ -z "${1}" ] && return 1
     _float2fraction__num="${1%%.*}"
     _float2fraction__den="${1##*.}"
@@ -559,8 +539,7 @@ _float2fraction()
 #_float2fraction "0.75" #prints "3/4"
 #=================================================================
 
-_getfirstvalue()
-{   #returns first value that is non-empty
+_getfirstvalue() { #returns first value that is non-empty
     for _getfirstvalue__param; do
         if [ ! -z "${_getfirstvalue__param}" ]; then
             printf "%s\\n" "${_getfirstvalue__param}"
@@ -573,8 +552,7 @@ _getfirstvalue()
 #EDITOR="$(_getfirstvalue "$VISUAL" "$EDITOR" vi)"
 #=================================================================
 
-_getfs()
-{   #returns file system detected or 1 on failure
+_getfs() { #returns file system detected or 1 on failure
     [ -z "${1}" ] && return 1
     udevadm info -q all -n "${1}" | awk -F"=" '/ID_FS_TYPE/ {print $2 }'
 }
@@ -582,8 +560,7 @@ _getfs()
 #_getfs /dev/sda1 #print "ext4" or the format found
 #=================================================================
 
-_getpasswd()
-{   #define vars as passwords
+_getpasswd() { #define vars as passwords
     if [ -n "${1}" ]; then
         _getpasswd__option="$(printf "%s\\n" "${1}" | tr '[:upper:]' '[:lower:]')"
         printf "%s" "Enter your ${_getpasswd__option} password: "
@@ -606,8 +583,7 @@ _getpasswd()
 #printf "%s\\n" "${configpasswd}"
 #=================================================================
 
-_getuuid()
-{   #returns a uuid or 1 on failure
+_getuuid() { #returns a uuid or 1 on failure
     [ -z "${1}" ] && return 1
     udevadm info -q all -n "${1}" | awk -F"/" '/^S.*uuid.*/ {print $3}'
 }
@@ -615,8 +591,8 @@ _getuuid()
 #_getuuid /dev/sda1 #print "793e9a6d-d545-46f0-ac9c-49071c450b62"
 #=================================================================
 
-_internet()
-{   #check for internet connection, return 0 on success, 1 otherwise
+_internet() {
+    #check for internet connection, return 0 on success, 1 otherwise
     wget --tries=3 --timeout=5 http://www.google.com -O /tmp/index.google > /dev/null 2>&1
     if [ -s /tmp/index.google ]; then
         rm -rf /tmp/index.google
@@ -634,8 +610,7 @@ _internet()
 #fi
 #=================================================================
 
-_is_int()
-{   #look for an integer, returns 0 on success, 1 otherwise
+_is_int() { #look for an integer, returns 0 on success, 1 otherwise
     #http://www.unix.com/shell-programming-and-scripting/172070-help-scripting-command.html
     case "${1}" in
         *[!0-9]*|"") return 1 ;;
@@ -653,8 +628,7 @@ _is_int()
 #exit 0
 #=================================================================
 
-_lastchar()
-{   #return last char of a string
+_lastchar() { #return last char of a string
     [ -z "${1}" ] && return 1
     for i; do :; done
     _1stchar__substr="${i%?}"
@@ -664,8 +638,8 @@ _lastchar()
 #_1stchar test #print 't'
 #=================================================================
 
-_livecd()
-{   #detect a livecd system, return 0 on success, 1 otherwise
+_livecd() {
+    #detect a livecd system, return 0 on success, 1 otherwise
     grep boot=live   /proc/cmdline >/dev/null && return 0
     grep boot=casper /proc/cmdline >/dev/null && return 0
     return 1
@@ -678,8 +652,8 @@ _livecd()
 #fi
 #=================================================================
 
-_lock()
-{   #locks the execution of a program, it should be used at the
+_lock() {
+    #locks the execution of a program, it should be used at the
     #beggining of it, exit on failure
     exec 9>/tmp/"$(expr "${1}" : '.*/\([^/]*\)')".lock #verify only one instance is running
     [ X"${LOGNAME}" = X"root" ] && chmod 666 /tmp/"$(expr "${1}" : '.*/\([^/]*\)')".lock
@@ -692,8 +666,7 @@ _lock()
 #_lock "${0}" #locks script till finish
 #=================================================================
 
-_mkdir_p()
-{   #portable mkdir -p function
+_mkdir_p() { #portable mkdir -p function
     for _mkdir_p__dir; do
         _mkdir_p__IFS="$IFS"
         IFS="/"
@@ -724,8 +697,8 @@ _mkdir_p()
 #_mkdir_p "foo/bar/daa" #creates the directory hier
 #=================================================================
 
-_newer()
-{   #compare the dates of two files, return true (0) if file1 has
+_newer() {
+    #compare the dates of two files, return true (0) if file1 has
     #been modified more recently otherwise 1
 
     [ "${#}" -ne "2" ] && return 1
@@ -748,8 +721,8 @@ _newer()
 #fi
 #=================================================================
 
-_notify()
-{   #output messages through the notification system, prints to
+_notify() {
+    #output messages through the notification system, prints to
     #stdout in the worst escenario
     [ -z "${1}" ] && return 1
     if [ X"${TERM}" = X"linux" ] || [ -z "${TERM}" ]; then
@@ -775,8 +748,7 @@ _notify()
 #_notify "You need html2text" "$ sudo apt-get install html2text"
 #=================================================================
 
-_notify2()
-{
+_notify2() {
     #output messages through the notification system, prints to
     #stdout in the worst escenario
     [ -z "${1}" ] && return 1
@@ -809,8 +781,7 @@ _notify2()
 #_notify2 "5+3 = 8" "8" "Copied to the clipboard!"
 #=================================================================
 
-_printfc()
-{   #print command
+_printfc() { #print command
     [ -z "${1}" ] && return 1
     printf "%s\\n" "    $ ${*}"
 }
@@ -818,8 +789,7 @@ _printfc()
 #_printfc "command"
 #=================================================================
 
-_printfl()
-{   #print lines
+_printfl() { #print lines
     _printfl__max_len="80"
     if [ -n "${1}" ]; then
         _printfl__word_len="$((${#*} + 2))"
@@ -846,8 +816,7 @@ _printfl()
 #_printfl #prints a line
 #=================================================================
 
-_printfs()
-{   #print step
+_printfs() { #print step
     [ -z "${1}" ] && return 1
     printf "%s\\n" "[+] ${*}"
 }
@@ -855,8 +824,7 @@ _printfs()
 #_printfs "Subtitle"
 #=================================================================
 
-_printtime()
-{  #format seconds to a pretty string
+_printtime() { #format seconds to a pretty string
     [ -z "${1}" ] && return 1
     printf "%s\\n" "${1}" | grep -v "[^0-9]" >/dev/null || return 1;
 
@@ -890,8 +858,9 @@ _printtime()
 #_printtime "${SECONDS}" #prints "0d 3h 25m 49s"
 #=================================================================
 
-_privport()
-{   #check if port is a num and if it's privated (<1025), returns 0 on success, 1 otherwise
+_privport() {
+    #check if port is a num and if it's privated (<1025)
+    #returns 0 on success, 1 otherwise
     [ -z "${1}" ] && return 1
 
     printf "%s\\n" "${1}" | grep -v "[^0-9]" >/dev/null
@@ -911,8 +880,7 @@ _privport()
 #fi
 #=================================================================
 
-_readc()
-{
+_readc() {
     stty -echo
     stty raw
     dd bs=1 count=1 2> /dev/null
@@ -928,8 +896,7 @@ _readc()
 #done
 #=================================================================
 
-_realpath()
-{   # print the absolute path
+_realpath() { # print the absolute path
     _realpath__success="true"
     _realpath__path="${1}"
 
@@ -991,8 +958,7 @@ _realpath()
 #fi
 #=================================================================
 
-_rmcron()
-{   #remove cron jobs, returns 1 on failure
+_rmcron() { #remove cron jobs, returns 1 on failure
     [ -z "${1}" ] && return 1
     crontab -l | grep -v "${1}" | crontab
 }
@@ -1000,8 +966,7 @@ _rmcron()
 #_rmcron "pattern"
 #=================================================================
 
-_seq()
-{   #portable seq
+_seq() { #portable seq
     for _seq__arg; do
         case "${_seq__arg}" in
             *[!0-9-]*|"") return 1 ;;
@@ -1035,16 +1000,14 @@ _seq()
 #3
 #=================================================================
 
-_shuf()
-{   #shuffle input
+_shuf() { #shuffle input
     awk 'BEGIN{srand()}{print rand()"\t"$0}' "${@}" | sort | cut -f2- ;
 }
 #==================================================== Example ====
 #printf "%s" "1,2,3,4,5" | tr ',' '\n' | _shuf | tr '\n' ','
 #=================================================================
 
-_str2octal()
-{   #convert a string to octal
+_str2octal() { #convert a string to octal
     [ -z "${1}" ] && return 1
     printf "%s" "${@}" | od -v -A n -t o1 | \
         sed "s:^ ::" | tr -d "\n"
@@ -1055,8 +1018,7 @@ _str2octal()
 #printf "%s\\n" "${hello}"   #prints "150 145 154 154 157"
 #=================================================================
 
-_str2octal_escaped()
-{   #convert a string to escaped octal
+_str2octal_escaped() { #convert a string to escaped octal
     [ -z "${1}" ] && return 1
     printf "%s" "${@}" | od -v -A n -t o1 | \
         sed "s/ *\([0-9]*\) */\\\\\1/g" | tr -d "\n"
@@ -1067,8 +1029,7 @@ _str2octal_escaped()
 #printf "%s\\n" "${hello}"   #prints "\150\145\154\154\157"
 #=================================================================
 
-_str2lower()
-{   #convert a string to lower string
+_str2lower() { #convert a string to lower string
     [ -z "${1}" ] && return 1
     printf "%s\\n" "${@}" | \
     tr 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 'abcdefghijklmnopqrstuvwxyz'
@@ -1080,8 +1041,7 @@ _str2lower()
 #printf "%s\\n" "${hello}"   #prints "hello world"
 #=================================================================
 
-_str2upper()
-{   #convert a string to lower string
+_str2upper() { #convert a string to lower string
     [ -z "${1}" ] && return 1
     printf "%s\\n" "${@}" | \
     tr 'abcdefghijklmnopqrstuvwxyz' 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
@@ -1093,8 +1053,7 @@ _str2upper()
 #printf "%s\\n" "${hello}"   #prints "HELLO WORLD"
 #=================================================================
 
-_strdiff()
-{   #prints the diff of two strings
+_strdiff() { #prints the diff of two strings
     [ -z "${1}" ] && return 1
     [ -z "${2}" ] && return 1
 
@@ -1118,8 +1077,7 @@ _strdiff()
 #printf "%s\\n"  "${diff}"   #prints "hello"
 #=================================================================
 
-_strduplicates()
-{   #print duplicated strings, return 1 on failure
+_strduplicates() { #print duplicated strings, return 1 on failure
     [ -z "${1}" ] && return 1
     [ -z "${2}" ] && return 1
     printf "%s\\n" $@ | awk 'x[$0]++'
@@ -1131,8 +1089,7 @@ _strduplicates()
 #printf "%s\\n"  "${world}"   #prints "world"
 #=================================================================
 
-_strlen()
-{   #print the length of a string, return 1 on failure
+_strlen() { #print the length of a string, return 1 on failure
     [ -z "${1}" ] && return 1
     printf "%s\\n" "${#1}"
 }
@@ -1140,8 +1097,7 @@ _strlen()
 #_strlen "hello world!" #returns "12"
 #=================================================================
 
-_strreplace()
-{  #replace param in string, return 1 on failure
+_strreplace() { #replace param in string, return 1 on failure
    #http://www.unix.com/shell-programming-and-scripting/124160-replace-word-string.html
   _strreplace__orig="${1}"
   [ -n "${3}" ] || return 1 #nothing to search for: error
@@ -1162,8 +1118,7 @@ _strreplace()
 #printf "%s\\n" "${bye}"   #prints "bye world"
 #=================================================================
 
-_strreplace2()
-{   #replace param in string, return 1 on failure
+_strreplace2() { #replace param in string, return 1 on failure
     [ -z "${1}" ] && return 1
     [ -z "${2}" ] && return 1
     [ -z "${3}" ] && return 1
@@ -1176,8 +1131,7 @@ _strreplace2()
 #printf "%s\\n" "${bye}"   #prints "bye world"
 #=================================================================
 
-_strunique()
-{   #print unique strings, return 1 on failure
+_strunique() { #print unique strings, return 1 on failure
     [ -z "${1}" ] && return 1
     [ -z "${2}" ] && return 1
     _strunique__retval="$(printf "%s\\n" $@ | \
@@ -1194,8 +1148,7 @@ _strunique()
 #printf "%s\\n"  "${world}"   #prints "hello world bye"
 #=================================================================
 
-_substr()
-{   #print a substring
+_substr() { #print a substring
     [ -z "${1}" ] && return 1
     [ -z "${2}" ] && return 1
 
@@ -1226,8 +1179,7 @@ _substr()
 #_substr "abcdef" 0 4 #print "abcd"
 #=================================================================
 
-_unprintf()
-{   #unprint sentence
+_unprintf() { #unprint sentence
     [ -z "${1}" ] && return 1
     _unprintf__word_len="${#1}"
     _unprintf__i="0"
@@ -1243,8 +1195,7 @@ _unprintf()
 #prinf "bye world"
 #=================================================================
 
-_uploadimg()
-{   #upload images, return url on success, 1 otherwise
+_uploadimg() { #upload images, return url on success, 1 otherwise
     #requires curl, and optionally xclip
     [ -z "${1}" ] && return 1
 
@@ -1277,8 +1228,8 @@ _uploadimg()
 #[ -z "${url}" ] && printf "%s\\n" "Error"
 #=================================================================
 
-_user()
-{   #test if an user exists on the system
+_user() {
+    #test if an user exists on the system
     #return 0 on sucess, 1 otherwise
     [ -z "${1}" ] && return 1
     if id -u "${1}" >/dev/null 2>&1; then
@@ -1293,8 +1244,8 @@ _user()
 #fi
 #=================================================================
 
-_validip4()
-{   #return 0 if parameter is a valid ip4 address, non-zero otherwise
+_validip4() {
+    #return 0 if parameter is a valid ip4 address, non-zero otherwise
     #https://groups.google.com/forum/#!original/comp.unix.shell/NDu-kAL5cHs/7Zpc6Q2Hu5YJ
     [ -z "${1}" ] && return 1
 
@@ -1317,8 +1268,7 @@ _validip4()
 #fi
 #=================================================================
 
-_validmail()
-{   #verify if an email is valid, return 1 on failure
+_validmail() { #verify if an email is valid, return 1 on failure
     case "${1}" in
         *@*.*) return 0 ;;
          *|"") return 1 ;;
@@ -1330,8 +1280,9 @@ _validmail()
 #fi
 #=================================================================
 
-_validnetinterface()
-{   #return 0 if parameter is a valid network interface, 1 otherwise
+_validnetinterface() {
+    #check if parameter is a valid network interface
+    #return 0 if sucess, 0 otherwise
     [ -z "${1}" ] && return 1
     ip addr show | grep "${1}": >/dev/null && return 0
 }
@@ -1341,8 +1292,7 @@ _validnetinterface()
 #fi
 #=================================================================
 
-_verbose()
-{   #print a message when in verbose mode
+_verbose() { #print a message when in verbose mode
     [ -z "${1}" ] && return 1
     [ -n "${VERBOSE}" ] && printf "%s\\n" "${*}"
 }
@@ -1351,8 +1301,7 @@ _verbose()
 #VERBOSE=1 _verbose "hello" # print verbose
 #=================================================================
 
-_whereis()
-{   #whereis portable version
+_whereis() { #whereis portable version
     command -v "${1}" 2>/dev/null || return 1
 }
 #==================================================== Example ====
@@ -1361,8 +1310,7 @@ _whereis()
 #fi
 #=================================================================
 
-_xmessage()
-{   #prints a message using xmessage || gxmessage
+_xmessage() { #prints a message using xmessage || gxmessage
     [ -z "${1}" ] && return 1
     _xmessage__bin="$(command -v gxmessage 2>/dev/null)" \
         || _xmessage__bin="$(command -v xmessage 2>/dev/null)"

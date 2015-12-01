@@ -25,8 +25,7 @@
 #code/learn/sh/is/kernel-ck-ubuntu
 #...
 
-_basename()
-{
+_basename() {
     [ -z "${1}" ] && return 1 || _basename__name="${1}"
     [ -z "${2}" ] || _basename__suffix="${2}"
     case "${_basename__name}" in
@@ -43,8 +42,7 @@ _basename()
     printf "%s\\n" "${_basename__name}"
 }
 
-_realpath()
-{
+_realpath() {
     _realpath__success="true"
     _realpath__path="${1}"
 
@@ -96,8 +94,7 @@ _realpath()
     fi
 }
 
-_usage()
-{
+_usage() {
     printf "%s\\n" "Usage: $(_basename "${0}") -r domain:/path [options] [local_dir ...]"
     printf "%s\\n" "Backup directories to a remote system."
     printf "\\n"
@@ -119,14 +116,12 @@ _usage()
     printf "%s\\n" "NOTE: ssh key authentication must be configured for this script to work"
 }
 
-_die()
-{
+_die() {
     [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
     _usage >&2; exit 1
 }
 
-_logger()
-{
+_logger() {
     if [ -n "${logfile}" ]; then
         printf "%s\\n" "${*}" | tee -a "${logfile}"
     else
@@ -134,14 +129,13 @@ _logger()
     fi
 }
 
-_verbose()
-{
+_verbose() {
     [ -z "${1}" ] && return 1
     [ -n "${verbose_flag}" ] && _logger "[V]: ${*}"
 }
 
-_printtime()
-{  #format seconds to a pretty string
+_printtime() {
+    #format seconds to a pretty string
     [ -z "${1}" ] && return 1
     printf "%s\\n" "${1}" | grep -v "[^0-9]" >/dev/null || return 1;
 
@@ -170,20 +164,17 @@ _printtime()
     printf "%s\\n" "${_printtime__day}d ${_printtime__hour}h ${_printtime__min}m ${_printtime__sec}s"
 }
 
-_hasdotfiles()
-{
+_hasdotfiles() {
     [ -z "${1}" ] && return 1
     [ -z "$(find "${1}" -maxdepth 1 -iname ".*" | awk '! /^.$/ {print $1}')" ] && return 1
     return 0
 }
 
-_internetavailable()
-{
+_internetavailable() {
     ping -q -w 1 -c 1 google.com >/dev/null 2>&1 && return 0 || return 1
 }
 
-_backup()
-{
+_backup() {
     [ -z "${1}" ] && return 1 || _backup__files="${1}"
     [ -z "${2}" ] && return 1 || _backup__remote_user="${2}"
     [ -z "${3}" ] && return 1 || _backup__remote_server="${3}"

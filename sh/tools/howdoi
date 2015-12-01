@@ -5,8 +5,7 @@
 #example: howdoi format date bash
 #DATE=`date +%Y-%m-%d`
 
-_usage()
-{
+_usage() {
     printf "%b\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] query ..."
     printf "%b\\n" "Instant coding answers via the command line."
     printf "\\n"
@@ -23,20 +22,18 @@ _usage()
     printf "%b\\n" "  -h, --help   show this help message and exit"
 }
 
-_num()
-{   #look for a number, returns 0 on success, 1 otherwise
+_num() {
+    #look for a number, returns 0 on success, 1 otherwise
     [ -z "${1}" ] && return 1
     printf "%s\\n" "${@}" | grep -v "[^0-9]" >/dev/null
 }
 
-_die()
-{
+_die() {
     [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
     _usage >&2; exit 1
 }
 
-_howdoi()
-{
+_howdoi() {
     [ -z "${1}" ] && return 1
     [ -z "${pflag}" ] && pflag="1" || {
         case "${pflag}" in

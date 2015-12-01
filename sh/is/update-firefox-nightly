@@ -4,8 +4,7 @@
 trap _cleanup 0 15 #trap ctrl-c
 #trap _cleanup SIGINT SIGTERM #trap ctrl-c
 
-_cmd()
-{   #print current command, exits on fail
+_cmd() {
     [ -z "${1}" ] && return 0
 
     printf "%s " "    $ ${@}"
@@ -16,15 +15,13 @@ _cmd()
     [ X"${_cmd__status}" != X"0" ] && exit "${_cmd__status}" || return
 }
 
-_die()
-{
+_die() {
     [ -z "${1}" ] && return 1
     printf "%b\\n" "$(expr "${0}" : '.*/\([^/]*\)'): ${*}" >&2
     exit 1
 }
 
-_cleanup()
-{   #clean tmp files, exits with no parameters
+_cleanup() {
     stty echo
     printf "\\n"
     printf "%s\\n" "[+] cleanup ..."
@@ -33,8 +30,7 @@ _cleanup()
     [ -z ${1} ] && exit
 }
 
-_notify()
-{
+_notify() {
     [ -z "${1}" ] && return 1
     if [ X"${TERM}" = X"linux" ] || [ -z "${TERM}" ]; then
         kill -9 $(pgrep notify-osd) >/dev/null 2>&1
@@ -56,8 +52,7 @@ _notify()
     fi
 }
 
-_arch()
-{   #check for system arch, returns [64|32]
+_arch() {
     if [ -z "${MACHTYPE}" ]; then
         _arch__arch="$(uname -m)"
     else
@@ -73,8 +68,7 @@ _arch()
     printf "%s" "${_arch__arch}"
 }
 
-_update_firefox()
-{
+_update_firefox() {
     _update_firefox__arch="$(_arch)"
     [ -d "${HOME}/.bin/firefox${_update_firefox__arch}" ] && _cmd mkdir -p "${HOME}/.bin/firefox${_update_firefox__arch}"
     case "${_update_firefox__arch}" in

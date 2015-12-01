@@ -11,8 +11,7 @@
 #original python implementation
 #http://charlesleifer.com/blog/using-python-and-k-means-to-find-the-dominant-colors-in-images/
 
-_usage()
-{
+_usage() {
     printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') [options] image-file ..."
     printf "%s\\n" "Find dominant colors in images."
     printf "\\n"
@@ -23,22 +22,20 @@ _usage()
     printf "%s\\n" "  -h, --help        show this help message and exit"
 }
 
-_die()
-{
+_die() {
     [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
     _usage >&2; exit 1
 }
 
-_is_int()
-{   #look for an integer, returns 0 on success, 1 otherwise
+_is_int() {
+    #look for an integer, returns 0 on success, 1 otherwise
     #http://www.unix.com/shell-programming-and-scripting/172070-help-scripting-command.html
     case "${1}" in
         *[!0-9]*|"") return 1 ;;
     esac
 }
 
-_false()
-{
+_false() {
     return 1
 }
 

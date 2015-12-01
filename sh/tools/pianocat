@@ -27,8 +27,7 @@ Press any key to play, 1..7 to select an octave
    (by default 4) >/< to move the keyboard
                or Esc to exit")"
 
-_usage()
-{
+_usage() {
     printf "%s\\n" "Usage: ${progname} [options]"
     printf "%s\\n" "A piano emulator."
     printf "\\n"
@@ -43,14 +42,13 @@ _usage()
     printf "%s\\n" "  -f, --format        audio format     (wav)"
 }
 
-_die()
-{
+_die() {
     [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
     _usage >&2; exit 1
 }
 
-_basename()
-{   #alternative basename portable version, faster! but with possible drawbacks
+_basename() {
+    #alternative basename portable version, faster! but with possible drawbacks
     [ -z "${1}" ] && return 1 || _basename__name="${1}" && _basename__retval=""
     [ -z "${2}" ] || _basename__suffix="${2}"
     case "${_basename__name}" in
@@ -62,23 +60,21 @@ _basename()
     #printf "%s" "${_basename__name}"
 }
 
-_command()
-{
+_command() {
     if ! command -v "${1}" >/dev/null 2>&1; then
         printf "%s\\n" "install '${1}' to run this program" >&2
         exit 1
     fi
 }
 
-_str2upper()
-{
+_str2upper() {
     [ -z "${1}" ] && return 1
     printf "%s\\n" "${@}" | tr 'abcdefghijklmnopqrstuvwxyz' 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
     # tr '[:upper:]' '[:lower:]'
 }
 
-_substr()
-{   #print a substring
+_substr() { 
+    #print a substring
     [ -z "${1}" ] && return 1
     [ -z "${2}" ] && return 1
 
@@ -106,8 +102,8 @@ _substr()
     printf "%s\\n" "${1}" | cut -c"${_substr__start}"-"${_substr__len}"
 }
 
-_strreplace()
-{  #replace param in string, return 1 on failure
+_strreplace() {
+    #replace param in string, return 1 on failure
    #http://www.unix.com/shell-programming-and-scripting/124160-replace-word-string.html
   _strreplace__orig="${1}" && _strreplace__retval=""
   [ -n "${2}" ] || return 1
@@ -125,8 +121,7 @@ _strreplace()
   #printf "%s" "${_strreplace__orig}"
 }
 
-_float2fraction()
-{
+_float2fraction() {
     [ -z "${1}" ] && return 1 || _float2fraction__retval=""
     _float2fraction__num="${1%%.*}"
     _float2fraction__den="${1##*.}"
@@ -157,13 +152,11 @@ _float2fraction()
     #printf "%s\\n" "${_float2fraction__num}/${_float2fraction__den}"
 }
 
-_ascii2int()
-{
+_ascii2int() {
     printf '%d' "'${*}"
 }
 
-_readc()
-{
+_readc() {
     [ ! -t 0 ] && _readc__retval="27" && return || _readc__retval=""
     stty -echo
     stty raw
@@ -172,15 +165,13 @@ _readc()
     stty echo
 }
 
-_cleanup()
-{
+_cleanup() {
     clear      # clear the screen
     stty echo  # show input
     tput rmcup # restore terminal view
 }
 
-_key()
-{
+_key() {
     #auxiliar to calculate the current octave
     #it maintains an internal counter, and set either 1/-1 to _key__retval
     #depending the spaces the keyboard has moved
@@ -218,8 +209,7 @@ _key()
     esac
 }
 
-_pianocat()
-{
+_pianocat() {
     case "${sound}" in
         s*) #look for local sounds and use them if available
             if [ -f "${directory}/${collection}/A4.${format}" ]; then

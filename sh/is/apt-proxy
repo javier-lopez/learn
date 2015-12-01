@@ -2,16 +2,14 @@
 
 updates="https://raw.github.com/chilicuil/learn/master/sh/is/apt-proxy"
 
-_header()
-{
+_header() {
     clear
     printf "%b\\n" "\033[1m-------------------------\033[7m Setup apt proxy \033[0m\033[1m----------------------------\033[0m"
     printf "%b\\n" "\033[1mUpdates:\033[0m ${updates}"
     printf "%b\\n" "\033[1m----------------------------------------------------------------------\033[0m"
 }
 
-_whereis()
-{
+_whereis() {
     [ -z "${1}" ] && return 1
     [ -n "${2}" ] && return 1
     if ! command -v "${1}" 2>/dev/null; then
@@ -19,14 +17,12 @@ _whereis()
     fi
 }
 
-_existaptproxy()
-{
+_existaptproxy() {
     avahi-browse -a  -t | grep apt-cacher-ng >/dev/null && return 0
     return 1
 }
 
-_animcui()
-{   #wait animation
+_animcui() {
     [ -z "${1}" ] && { printf "%5s\n" ""; return 1; }
 
     if ! printf "%s" "$(pidof "${1}")" | grep "[0-9].*" >/dev/null; then
@@ -60,8 +56,7 @@ _animcui()
     printf "%b" "\b\b\b\b\b" && printf "%5s\n" ""
 }
 
-_getroot()
-{   #get sudo's password, define $sudopwd and $sudocmd
+_getroot() {
     if [ ! X"${LOGNAME}" = X"root" ]; then
         printf "%s\\n" "Detecting user ${LOGNAME} (non-root) ..."
         printf "%s\\n" "Checking if sudo is available ..."
@@ -133,8 +128,7 @@ _getroot()
     fi
 }
 
-_cmdsudo()
-{   #print && execute a command, exit on fail
+_cmdsudo() {
     [ -z "${1}" ] && return 1
 
     printf "%s \\n" "    $ sudo ${*}"
@@ -150,8 +144,7 @@ _cmdsudo()
     fi
 }
 
-_waitforsudo()
-{   #print, execute and wait for a command to finish
+_waitforsudo() {
     [ -z "${1}" ] && return 1
 
     printf "%s " "    $ sudo ${@} ..."

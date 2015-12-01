@@ -14,8 +14,7 @@ passwd=""
 compression=""
 backup_dir=""
 
-_usage()
-{
+_usage() {
     printf "%s\\n" "Usage: ${progname} [options] -u USER -p PASSWD [database]..."
     printf "%s\\n" "Dump available databases."
     printf "\\n"
@@ -33,8 +32,8 @@ _usage()
     printf "%s\\n" "  -h, --help       show this help message and exit"
 }
 
-_basename()
-{   #alternative basename portable version, faster! but with possible drawbacks
+_basename() {
+    #alternative basename portable version, faster! but with possible drawbacks
     [ -z "${1}" ] && return 1 || _basename__name="${1}" && _basename__retval=""
     [ -z "${2}" ] || _basename__suffix="${2}"
     case "${_basename__name}" in
@@ -46,14 +45,13 @@ _basename()
     #printf "%s" "${_basename__name}"
 }
 
-_die()
-{
+_die() {
     [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
     _usage >&2; exit 1
 }
 
-_printtime()
-{  #format seconds to a pretty string
+_printtime() {
+    #format seconds to a pretty string
     [ -z "${1}" ] && return 1
     printf "%s\\n" "${1}" | grep -v "[^0-9]" >/dev/null || return 1;
 
@@ -82,22 +80,18 @@ _printtime()
     printf "%s\\n" "${_printtime__day}d ${_printtime__hour}h ${_printtime__min}m ${_printtime__sec}s"
 }
 
-_loadconf()
-{
+_loadconf() {
     [ ! -f "${1}" ] && return 1
     _loadconf__options=$(awk '! /export/ {if ($0 ~ "^.*=[^;&]*" && $0 !~ "&&" && $1 !~ "^#") print }' "${1}")
     eval "${_loadconf__options}"
 }
 
-_mysql()
-{
-    _mysql_list()
-    {
+_mysql() {
+    _mysql_list() {
         mysql -u"${user}" -p"${passwd}" -Bse 'show databases'
     }
 
-    _mysql_backup()
-    {
+    _mysql_backup() {
         [ "${verbose}" ] && _mysql__start_time="$(date +%s)"
         #http://dba.stackexchange.com/questions/19532/safest-way-to-perform-mysqldump-on-a-live-system-with-active-reads-and-writes
         mysql -u"${user}" -p"${passwd}" -Ae"FLUSH TABLES WITH READ LOCK; SELECT SLEEP(86400)" >/dev/null 2>&1 &

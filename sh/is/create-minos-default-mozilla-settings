@@ -8,8 +8,8 @@
 trap _cleanup 15 #trap ctrl-c
 #trap _cleanup SIGINT SIGTERM #trap ctrl-c
 
-_cmd()
-{   #print current command, exits on fail
+_cmd() {
+    #print current command, exits on fail
     [ -z "${1}" ] && return 0
 
     printf "%s " "[$] ${@}"
@@ -20,8 +20,7 @@ _cmd()
     [ X"${_cmd__status}" != X"0" ] && exit "${_cmd__status}" || return
 }
 
-_cleanup()
-{   #clean tmp files, exits with no parameters
+_cleanup() {
     stty echo
     printf "\\n"
     printf "%s\\n" "[+] cleanup ..."
@@ -30,8 +29,7 @@ _cleanup()
     [ -z ${1} ] && exit
 }
 
-_create_minos_default_mozilla_settings()
-{
+_create_minos_default_mozilla_settings() {
     [ -d mozilla-orig ] && _cmd rm -rf mozilla-orig
     _cmd cp -r ~/.mozilla mozilla-orig
     _cmd mkdir mozilla-orig/tmp

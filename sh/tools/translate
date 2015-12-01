@@ -11,8 +11,7 @@
 #example: translate "hola mundo"
 #hello world
 
-_usage()
-{
+_usage() {
     printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [-sl-tl] string ..."
     printf "%s\\n" "Translate strings using google online translator."
     printf "\\n"
@@ -20,8 +19,7 @@ _usage()
     printf "%s\\n" "  tl   target language (english by default)"
 }
 
-_die()
-{
+_die() {
     [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
     _usage >&2; exit 1
 }
@@ -56,8 +54,7 @@ _notify() {
     esac
 }
 
-_translate()
-{
+_translate() {
     [ -z "${1}" ] && return 1
     #update 14-12-2012 05:06: http://crunchbang.org/forums/viewtopic.php?id=17034
     _translate__phrase="${*}"

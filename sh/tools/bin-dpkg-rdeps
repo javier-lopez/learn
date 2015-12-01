@@ -8,8 +8,7 @@
 #libc6-armhf-cross
 #libc6-i386
 
-_rdeps()
-{
+_rdeps() {
     for _rdeps__binary; do
         fpath="$(command -v "${_rdeps__binary}")"
         if [ -z "${fpath}" ]; then

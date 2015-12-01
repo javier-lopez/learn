@@ -5,8 +5,7 @@
 #example: pxe pxe_env
 #pxe: created directory `pxe_env'
 
-_usage()
-{
+_usage() {
     printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] [dir]"
     printf "%s\\n" "Setup a pxe environment."
     printf "\\n"
@@ -16,20 +15,18 @@ _usage()
     printf "%s\\n" "  dir          creates the pxe environment in this directory (./pxe_setup by default)"
 }
 
-_die()
-{
+_die() {
     [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
     _usage >&2; exit 1
 }
 
-_verbose()
-{
+_verbose() {
     [ -z "${1}" ] && return 1
     [ -n "${_verbose_flag}" ] && printf "%s\\n" "${*}" || :
 }
 
-_dirname()
-{   #returns string containing dirname on success, 1 on fail
+_dirname() {
+    #returns string containing dirname on success, 1 on fail
     [ -z "${1}" ] && return 1
 
     case "${1}" in
@@ -41,8 +38,7 @@ _dirname()
     esac
 }
 
-_whereis()
-{
+_whereis() {
     [ -z "${1}" ] && return 1
     [ -n "${2}" ] && return 1
     if ! command -v "${1}" 2>/dev/null; then
@@ -50,8 +46,7 @@ _whereis()
     fi
 }
 
-_writeconf()
-{
+_writeconf() {
     [ ! -d "${1}" ] && _die "No valid directory ${1}"
 
     _verbose "  - creating ${1}/pxelinux.cfg/default ..."
@@ -177,8 +172,7 @@ EOF
     touch "${1}"/tools/tools.menu
 }
 
-_deps()
-{
+_deps() {
     [ ! -d "${1}" ] && _die "No valid directory ${1}"
     _whereis python >/dev/null || _die "python was not found!"
 
@@ -1141,8 +1135,7 @@ E=O=F
     chmod +x "${1}"/simple-tftpd
 }
 
-_pxe()
-{
+_pxe() {
     [ -z "${1}" ] && return 1
     _verbose "- setting pxe environment in ${1} ..."
     _deps      "${1}" #memdisk,menu.c32,pxelinux.0,simple-dhcpd,simple-tftpd

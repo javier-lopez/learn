@@ -17,8 +17,7 @@
 #
 #Run: share-backup stop, to stop sharing"
 
-_basename()
-{
+_basename() {
     [ -z "${1}" ] && return 1 || _basename__name="${1}"
     [ -z "${2}" ] || _basename__suffix="${2}"
     case "${_basename__name}" in
@@ -35,20 +34,18 @@ _basename()
     printf "%s\\n" "${_basename__name}"
 }
 
-_die()
-{
+_die() {
     [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
     _usage >&2; exit 1
 }
 
-_num()
-{   #look for a number, returns 0 on success, 1 otherwise
+_num() {
+    #look for a number, returns 0 on success, 1 otherwise
     [ -z "${1}" ] && return 1
     printf "%s\\n" "${@}" | grep -v "[^0-9]" >/dev/null
 }
 
-_usage()
-{
+_usage() {
     printf "%b\\n" "Usage: $(_basename "${0}") [options] [stop] [directory|file]"
     printf "%s\\n" "Share a directory over http."
     printf "\\n"

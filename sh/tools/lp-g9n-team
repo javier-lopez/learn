@@ -10,8 +10,7 @@
 
 #http://viajemotu.wordpress.com/2013/11/14/launchpad-maps/
 
-_usage()
-{
+_usage() {
     printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] [lp-group]"
     printf "%s\\n" "Create CVS files with geolocalization data of launchpad groups."
     printf "\\n"
@@ -20,14 +19,12 @@ _usage()
     printf "%s\\n" "  lp-group    launchpad group to query, 'ubuntumembers' by default"
 }
 
-_die()
-{
+_die() {
     [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
     _usage >&2; exit 1
 }
 
-_whereis()
-{
+_whereis() {
     [ -z "${1}" ] && return 1
     [ -n "${2}" ] && return 1
     if ! command -v "${1}" >/dev/null 2>&1; then
@@ -35,8 +32,8 @@ _whereis()
     fi
 }
 
-_internetavailable()
-{   #check for internet connection, returns 0 on success, 1 otherwise
+_internetavailable() {
+    #check for internet connection, returns 0 on success, 1 otherwise
     wget --tries=3 --timeout=5 http://www.google.com -O /tmp/index.google > /dev/null 2>&1
 
     if [ -s /tmp/index.google ]; then

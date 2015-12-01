@@ -7,8 +7,7 @@
 #file2
 #...
 
-_basename()
-{
+_basename() {
     [ -z "${1}" ] && return 1 || _basename__name="${1}"
     [ -z "${2}" ] || _basename__suffix="${2}"
     case "${_basename__name}" in
@@ -25,8 +24,7 @@ _basename()
     printf "%s\\n" "${_basename__name}"
 }
 
-_usage()
-{
+_usage() {
     printf "%s\\n" "Usage: $(_basename "${0}") [options] files ..."
     printf "%s\\n" "Extract files."
     printf "\\n"
@@ -34,14 +32,12 @@ _usage()
     printf "%s\\n" "  -h, --help      show this help message and exit"
 }
 
-_die()
-{
+_die() {
     [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
     _usage >&2; exit 1
 }
 
-_exec()
-{
+_exec() {
     _exec__status="${?}"
     [ X"${_exec__status}" != X"0" ] && exit "${_exec__status}"
     if [ ! -z "${VFLAG}" ]; then
@@ -51,8 +47,7 @@ _exec()
     eval "${@}"
 }
 
-_extract()
-{
+_extract() {
     for _extract__file; do
         if [ -f "${_extract__file}" ] ; then
             if [ -z "${VFLAG}" ]; then

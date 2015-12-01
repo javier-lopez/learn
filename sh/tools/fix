@@ -5,8 +5,7 @@
 #example: fix webcam
 #$ sudo chmod o+rw /dev/video0
 
-_usage()
-{
+_usage() {
     printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] module"
     printf "%s\\n" "Fix common problems."
     printf "%s\\n"
@@ -21,14 +20,12 @@ _usage()
     printf "%s\\n" "  webcam       fix webcam, thinkpad"
 }
 
-_die()
-{
+_die() {
     [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
     _usage >&2; exit 1
 }
 
-_exec()
-{
+_exec() {
     _exec__status="${?}"
     if [ X"${_exec__status}" != X"0" ]; then
         exit "${_exec__status}"
@@ -38,14 +35,12 @@ _exec()
     ${@}
 }
 
-_apache()
-{
+_apache() {
     _exec sudo mv /etc/init.d/apache2.1 /etc/init.d/apache2
     _exec sudo /etc/init.d/apache2 start
 }
 
-_ipw2200()
-{
+_ipw2200() {
     _exec sudo rmmod ipw2200
     _exec sudo modprobe ipw2200
 }
@@ -58,8 +53,7 @@ _wl(){
     _exec sudo modprobe wl
 }
 
-_iwlagn()
-{
+_iwlagn() {
     _exec sudo rmmod iwlagn
     _exec sudo service wicd stop
     _exec sleep 3s
@@ -67,15 +61,13 @@ _iwlagn()
     _exec sudo modprobe iwlagn
 }
 
-_mpd()
-{
+_mpd() {
     _exec mpc clear
     _exec rm -rf /var/lib/mpd/tag_cache
     _exec sudo service mpd start-create-db
 }
 
-_webcam()
-{
+_webcam() {
     _exec sudo chmod o+rw /dev/video0
 }
 

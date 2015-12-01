@@ -10,8 +10,8 @@
 
 decodestr="$(
 cat - <<'EOF'
-_decode64()
-{   #decode a string in base64
+_decode64() {
+    #decode a string in base64
     [ ! -t 0 ] && set -- "${@}" "$(cat)"
     [ -z "${1}" ] && return 1
     if command -v "base64" >/dev/null 2>&1; then
@@ -77,8 +77,7 @@ _decode64()
 EOF
 )" #'
 
-_usage()
-{
+_usage() {
     printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] file ..."
     printf "%s\\n" "Copy files using base64."
     printf "\\n"
@@ -88,14 +87,12 @@ _usage()
     printf "%s\\n" "  -h, --help       show this help message and exit"
 }
 
-_die()
-{
+_die() {
     [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
     _usage >&2; exit 1
 }
 
-_cpb64()
-{
+_cpb64() {
     for file; do
         [ ! -r "${file}" ] && { printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): '${file}' does not exist or is not readable" >&2; exit 1; }
     done

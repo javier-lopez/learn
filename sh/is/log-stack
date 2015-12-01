@@ -18,8 +18,7 @@ ES_HOME=/home/elasticsearch
 REDIS_HOME=/home/redis
 LOGSTASH_HOME=/home/logstash
 
-_header()
-{
+_header() {
     clear
     printf "%b\\n" "\033[1m----------------------\033[7m log setup stack \033[0m\033[1m--------------------------\033[0m"
     printf "%b\\n" "\033[1m  logstash:\033[0m        ${logstash_version}"
@@ -29,8 +28,7 @@ _header()
     printf "\\n"
 }
 
-_cmd()
-{   #print current command, exits on fail
+_cmd() {
     [ -z "${1}" ] && return 0
 
     printf "%s\\n" "    $ ${@}"
@@ -40,8 +38,7 @@ _cmd()
     [ X"${status}" != X"0" ] && exit "${status}" || return
 }
 
-_cmdsudo()
-{   #print current command, exits on fail
+_cmdsudo() {
     [ -z "${1}" ] && return 0
 
     printf "%s\\n" "    $ ${@}"
@@ -51,8 +48,7 @@ _cmdsudo()
     [ X"${status}" != X"0" ] && exit "${status}" || return
 }
 
-_userexist()
-{
+_userexist() {
     if id -u "${1}" >/dev/null 2>&1; then
         return 0
     else
@@ -60,8 +56,7 @@ _userexist()
     fi
 }
 
-_handscui()
-{
+_handscui() {
     [ -z "${1}" ] && { printf "%5s\n" ""; return 1; }
     pid="${1}"
     animation_state="1"
@@ -90,8 +85,7 @@ _handscui()
     printf "%b" "\b\b\b\b\b" && printf "%5s\n" ""
 }
 
-_getroot()
-{   #get sudo's password, define $sudopwd and $sudocmd
+_getroot() {
     if [ ! X"${LOGNAME}" = X"root" ]; then
         printf "%s\\n" "Detecting user ${LOGNAME} (non-root) ..."
         printf "%s\\n" "Checking if sudo is available ..."
@@ -163,8 +157,7 @@ _getroot()
     fi
 }
 
-_cleanup()
-{
+_cleanup() {
     printf "\\n"
     printf "%b\\n" "\033[1m-------------------\033[7m Cleanup \033[0m\033[1m-------------------\033[0m"
     printf "%s\\n" "[+] removing files ..."
@@ -181,8 +174,7 @@ _cleanup()
     [ -z "${1}" ] && exit
 }
 
-_waitfor()
-{
+_waitfor() {
     [ -z "${1}" ] && return 1
 
     printf "%s" "    $ ${@} ..."
@@ -192,8 +184,7 @@ _waitfor()
     _handscui "$(pidof ${1})"
 }
 
-_waitforsudo()
-{
+_waitforsudo() {
     [ -z "${1}" ] && return 1
 
     printf "%s" "    $ sudo ${@} ..."
@@ -203,8 +194,7 @@ _waitforsudo()
     _handscui "$(pidof ${1})"
 }
 
-_mk_conf_files()
-{
+_mk_conf_files() {
     cat > elasticsearch.yml << 'EOF'
 ##################### ElasticSearch Configuration Example #####################
 
@@ -1449,24 +1439,21 @@ checkpid() {
 #
 # Function that starts the daemon/service
 #
-do_start()
-{
+do_start() {
   [ -f "$PIDFILE" ] && { printf "%s\\n" "Already running"; exit; }
   cd $LOCATION && \
   ($DAEMON $ARGS &) \
   && log_end_msg 0 || log_end_msg 1
 }
 
-set_pidfile()
-{
+set_pidfile() {
   pgrep -f "$DAEMON[[:space:]]*$ARGS" > $PIDFILE
 }
 
 #
 # Function that stops the daemon/service
 #
-do_stop()
-{
+do_stop() {
   [ -f "$PIDFILE" ] || { printf "%s\\n" "Not pidfile found"; exit; }
   pid=`cat $PIDFILE`
                        if checkpid $pid 2>&1; then
@@ -1576,24 +1563,21 @@ checkpid() {
 #
 # Function that starts the daemon/service
 #
-do_start()
-{
+do_start() {
   [ -f "$PIDFILE" ] && { printf "%s\\n" "Already running"; exit; }
   cd $LOCATION && \
   ($DAEMON $ARGS &) \
   && log_end_msg 0 || log_end_msg 1
 }
 
-set_pidfile()
-{
+set_pidfile() {
   pgrep -f "$DAEMON[[:space:]]*$ARGS" > $PIDFILE
 }
 
 #
 # Function that stops the daemon/service
 #
-do_stop()
-{
+do_stop() {
   [ -f "$PIDFILE" ] || { printf "%s\\n" "Not pidfile found"; exit; }
   pid=`cat $PIDFILE`
                        if checkpid $pid 2>&1; then
@@ -1651,8 +1635,7 @@ EOF
     [ ! -f shipper.conf ]       && { printf "%s\\n" "Generation failed: shipper.conf"; exit 1; }
 }
 
-_fixdependencies()
-{
+_fixdependencies() {
     printf "%b\\n" "\033[1m----------------------\033[7m Fixing dependencies \033[0m\033[1m-------------------------\033[0m"
 
     if [ -f /usr/bin/lsb_release ]; then
@@ -1689,8 +1672,8 @@ _fixdependencies()
     [ ! -f /usr/bin/git ] && { printf "%s\\n" "Dependecy step failed"; exit 1; }
 }
 
-_elasticsearch()
-{   #requires openjdk-7-jre-headless
+_elasticsearch() {
+    #requires openjdk-7-jre-headless
     printf "%b\\n" "\033[1m-----------------------\033[7m Elasticsearch \033[0m\033[1m----------------------------\033[0m"
 
     #TODO 18-07-2013 18:45 >> remove '/home/elasticsearch' hardcoded vars, use sed
@@ -1729,8 +1712,7 @@ _elasticsearch()
     _cmdsudo chown -R elasticsearch:elasticsearch ${ES_HOME}
 }
 
-_redis()
-{
+_redis() {
     printf "%b\\n" "\033[1m-----------------------\033[7m Redis \033[0m\033[1m----------------------------\033[0m"
 
     if ! _userexist redis; then
@@ -1764,8 +1746,8 @@ _redis()
     _cmdsudo chmod 700 ${REDIS_HOME}
 }
 
-_logstash()
-{   #requires openjdk-7-jre-headless
+_logstash() {
+    #requires openjdk-7-jre-headless
     printf "%b\\n" "\033[1m-----------------------\033[7m Logstash (shipper, indexer) \033[0m\033[1m----------------------------\033[0m"
 
     if ! _userexist logstash; then
@@ -1797,8 +1779,7 @@ _logstash()
     _cmdsudo chmod 700 ${LOGSTASH_HOME}
 }
 
-_kibana()
-{
+_kibana() {
     printf "%b\\n" "\033[1m-----------------------\033[7m Kibana \033[0m\033[1m----------------------------\033[0m"
 
     printf "%s\\n" "[+] downloading app ... "
@@ -1813,8 +1794,7 @@ _kibana()
     _cmd rm -rf kibana-master
 }
 
-_party()
-{
+_party() {
     printf "%b\\n" "\033[1m-----------------------\033[7m Launching \033[0m\033[1m----------------------------\033[0m"
     #source <(cat .root_bash_profile)
     _cmdsudo mv .root_bash_profile /root/.bash_profile

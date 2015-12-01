@@ -6,8 +6,7 @@
 
 trash_dir="${HOME}"/.local/share/Trash
 
-_usage()
-{
+_usage() {
     printf "%b\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] file ..."
     printf "%b\\n" "rm wrapper compatible with nautilus|pcmanfm file managers."
     printf "\\n"
@@ -21,16 +20,15 @@ _usage()
     printf "%b\\n" "$(expr "${0}" : '.*/\([^/]*\)') deletes directories and files without distintion, an -r option is not provided"
 }
 
-_str2lower()
-{   #convert a string to lower string
+_str2lower() {
+    #convert a string to lower string
     [ -z "${1}" ] && return 1
     printf "%s\\n" "${@}" | tr 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 'abcdefghijklmnopqrstuvwxyz'
     # tr '[:upper:]' '[:lower:]'
 }
 
 #http://www.makkintosshu.com/journal/a-realpath-implementation-in-bash
-_realpath()
-{
+_realpath() {
     _realpath__success="true"
     _realpath__path="${1}"
 
@@ -75,8 +73,8 @@ _realpath()
 }
 
 #http://www.linuxmisc.com/12-unix-web-servers/d31beb238f7b5a6b.htm
-_dirname()
-{   #returns string containing dirname on success, 1 on fail
+_dirname() {
+    #returns string containing dirname on success, 1 on fail
     [ -z "${1}" ] && return 1
 
     case "${1}" in
@@ -88,8 +86,7 @@ _dirname()
     esac
 }
 
-_list()
-{
+_list() {
     OLDIFS="${IFS}"; IFS='
    ' #fix case where files have spaces
     for _list__data in $(grep -A 1 -Hri "path.*${1}" \
@@ -131,8 +128,7 @@ _list()
     IFS="${OLDIFS}"
 }
 
-_archive()
-{
+_archive() {
     # Make sure that the $trash_dir exists
     if [ ! -w "${HOME}" ]; then
         printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)') failed: can't create ${trash_dir} in ${HOME}" >&2
@@ -170,8 +166,7 @@ _archive()
     done
 }
 
-_recover()
-{
+_recover() {
     #TODO 08-08-2011 05:39 => "*" should match nothing
     if [ -z "${yflag}" ]; then
         _recover__list="$(verbose=0; _list "${1}")"
@@ -224,8 +219,7 @@ _recover()
     exit
 }
 
-_clean()
-{
+_clean() {
     if [ -z "${yflag}" ]; then
         _clean__list="$(verbose=0; _list "${1}")"
         [ -z "${_clean__list}" ] && exit

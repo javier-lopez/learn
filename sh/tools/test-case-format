@@ -4,8 +4,7 @@
 
 INDENTATION="4"
 
-_basename()
-{
+_basename() {
     [ -z "${1}" ] && return 1 || _basename__name="${1}"
     [ -z "${2}" ] || _basename__suffix="${2}"
     case "${_basename__name}" in
@@ -22,20 +21,17 @@ _basename()
     printf "%s\\n" "${_basename__name}"
 }
 
-_usage()
-{
+_usage() {
     printf "%s\\n" "Usage: $(_basename "${0}") testcase ..."
     printf "%s\\n" "https://wiki.ubuntu.com/Testing/TestCaseFormat"
 }
 
-_die()
-{
+_die() {
     [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
     _usage >&2; exit 1
 }
 
-_tmp_files()
-{
+_tmp_files() {
     mkdir -p /tmp/"$(_basename "${0}")"/indent
     #this file can also be copied to ~/.vim/indent/html.vim so
     #vim indent html files the testcase way <dl>/<dt>/<dd>
@@ -316,8 +312,7 @@ filetype plugin indent on   "enable filetype-specific plugins
 EOF
 }
 
-_format()
-{
+_format() {
     for _format__testcase; do
         printf "%s\\n" "${_format__testcase}"
         tidy -f /tmp/"$(_basename "${0}")"/testcase -xml -i "${_format__testcase}" > /dev/null

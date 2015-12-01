@@ -50,7 +50,7 @@
        steps
    }
    ```
-- Prefer minimal style, except in functions:
+- Prefer minimal style:
 
   **Bad**
    ```sh
@@ -69,7 +69,8 @@
        other_cmd
    fi
 
-   _function() {
+   _function()
+   {
        steps
    }
    ```
@@ -84,8 +85,7 @@
 
    [ -z "${foo}" ] && cmd || other_cmd
 
-   _function()
-   {
+   _function() {
        steps
    }
    ```

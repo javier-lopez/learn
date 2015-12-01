@@ -7,8 +7,7 @@
 #files/file2
 #...
 
-_basename()
-{
+_basename() {
     [ -z "${1}" ] && return 1 || _basename__name="${1}"
     [ -z "${2}" ] || _basename__suffix="${2}"
     case "${_basename__name}" in
@@ -25,8 +24,7 @@ _basename()
     printf "%s\\n" "${_basename__name}"
 }
 
-_usage()
-{
+_usage() {
     printf "%s\\n" "Usage: $(_basename "${0}") [options] files ... file.[tar.gz,tar.bz2,zip...]"
     printf "%s\\n" "Compress files."
     printf "\\n"
@@ -34,14 +32,12 @@ _usage()
     printf "%s\\n" "  -h, --help      show this help message and exit"
 }
 
-_die()
-{
+_die() {
     [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
     _usage >&2; exit 1
 }
 
-_compress()
-{
+_compress() {
     for _compress__compression; do :; done
     i=0; for _compress__file; do
         i="$((${i} + 1))"

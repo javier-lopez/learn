@@ -10,8 +10,7 @@
 # mvs *
 # mvs a*
 
-_usage()
-{
+_usage() {
     printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] file ..."
     printf "%s\\n" "Rename lots of files using your favorite text editor."
     printf "\\n"
@@ -19,14 +18,13 @@ _usage()
     printf "%b\\n" "  -h, --help     show this help message and exit"
 }
 
-_die()
-{
+_die() {
     [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
     _usage >&2; exit 1
 }
 
-_mkdir_p()
-{   #portable mkdir -p function
+_mkdir_p() {
+    #portable mkdir -p function
     for _mkdir_p__dir; do
         _mkdir_p__IFS="$IFS"
         IFS="/"
@@ -54,8 +52,8 @@ _mkdir_p()
     unset _mkdir_p__dir
 }
 
-_dirname()
-{   #return string containing dirname on success, 1 on failure
+_dirname() {
+    #return string containing dirname on success, 1 on failure
     [ -z "${1}" ] && return 1
 
     #http://www.linuxselfhelp.com/gnu/autoconf/html_chapter/autoconf_10.html

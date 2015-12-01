@@ -8,8 +8,7 @@ subject="Automated mail from $(hostname -f)"
 to=""
 api="" #mailgun api, required
 
-_usage()
-{
+_usage() {
     printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') [options] to@address.tld message ..."
     printf "%s\\n" "Send emails using the mailgun service."
     printf "%s\\n"
@@ -20,14 +19,12 @@ _usage()
     printf "%s\\n" "  -h, --help      show this help message and exit"
 }
 
-_die()
-{
+_die() {
     [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
     _usage >&2; exit 1
 }
 
-_validmail()
-{
+_validmail() {
     [ -z "${1}" ] && return 1
 
     case "${1}" in
@@ -36,15 +33,13 @@ _validmail()
     esac
 }
 
-_loadconf()
-{
+_loadconf() {
     [ ! -e "${1}" ] && return 1
     _loadconf__options=$(awk '! /export/ {if ($0 ~ "^.*=[^;&]*" && $0 !~ "&&" && $1 !~ "^#") print }' "${1}")
     eval "${_loadconf__options}"
 }
 
-_mailgun()
-{
+_mailgun() {
     [ -z "${5}" ] && return 1
 
     _mailgun__api="${1}";     shift

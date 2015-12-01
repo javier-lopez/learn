@@ -5,8 +5,7 @@
 #https://gist.github.com/namuol/9122237
 #example: fuck you firefox
 
-_flip()
-{
+_flip() {
     [ -z "${1}" ] && return 1
     printf "%s\\n" "${1}" | sed -e 's:a:ɐ:g'     \
         -e 's:b:ԛ:g' -e 's:c:ɔ:g' -e 's:d:𝗉:g'   \
@@ -19,8 +18,7 @@ _flip()
         sed 's/./&\n/g' | tac | sed -e :a -e 'N;s/\n//g;ta'
 }
 
-_fuck()
-{
+_fuck() {
     for _fuck__process; do
         if kill -9 $(pgrep "${_fuck__process}") >/dev/null 2>&1; then
             printf "%s %s\\n" 'ヽ(`Д´)ﾉ⌒' "$(_flip "${_fuck__process}")"

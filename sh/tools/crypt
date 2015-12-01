@@ -5,8 +5,7 @@
 #example: crypt script
 #creates script.crypt
 
-_basename()
-{
+_basename() {
     [ -z "${1}" ] && return 1 || _bbasename__name="${1}"
     [ -z "${2}" ] || _bbasename__suffix="${2}"
     case "${_bbasename__name}" in
@@ -20,13 +19,11 @@ _basename()
     printf "%s" "${_bbasename__name}"
 }
 
-_false()
-{
+_false() {
     return 1
 }
 
-_crypt()
-{
+_crypt() {
     for _crypt__file; do
         if [ -f "${_crypt__file}" ] ; then
             _crypt__file_output="${_crypt__file}".crypt

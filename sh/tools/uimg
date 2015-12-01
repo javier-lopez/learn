@@ -5,22 +5,19 @@
 #example: uimg img.png
 #http://i.imgur.com/image.png
 
-_usage()
-{
+_usage() {
     printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') image.[png|jpg] ..."
     printf "%s\\n" "Upload images to http://imgur.com."
     printf "\\n"
     printf "%b\\n" "  -h, --help   show this help message and exit"
 }
 
-_die()
-{
+_die() {
     [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
     _usage >&2; exit 1
 }
 
-_false()
-{
+_false() {
     return 1
 }
 
@@ -54,8 +51,7 @@ _notify() {
     esac
 }
 
-_uimg()
-{
+_uimg() {
     for _uimg__img; do
         if [ -f "${_uimg__img}" ] ; then
             case "${_uimg__img}" in

@@ -6,8 +6,7 @@ updates="https://github.com/chilicuil/learn/blob/master/sh/is/gitpages"
 apps_deps="ruby1.9.1 build-essential ruby1.9.1-dev libgsl0-dev"
 gems_deps="bundler gsl"
 
-_header()
-{
+_header() {
     clear
     _printfl "Gitpages Environment"
     printf "%b\\n" "\033[1m Manual:\033[0m   ${manual}"
@@ -17,8 +16,7 @@ _header()
     fi
 }
 
-_printfl()
-{   #print lines
+_printfl() {
     _printfl__max_len="80"
     if [ -n "${1}" ]; then
         _printfl__word_len="$((${#1} + 2))"
@@ -41,14 +39,13 @@ _printfl()
     fi
 }
 
-_printfs()
-{   #print step
+_printfs() {
+    #print step
     [ -z "${1}" ] && return 1
     printf "%s\\n" "[+] ${*}"
 }
 
-_getroot()
-{   #get sudo's password, define $sudopwd and $sudocmd
+_getroot() {
     if [ ! X"${LOGNAME}" = X"root" ]; then
         printf "%s\\n" "Detecting user ${LOGNAME} (non-root) ..."
         printf "%s\\n" "Checking if sudo is available ..."
@@ -120,8 +117,7 @@ _getroot()
     fi
 }
 
-_animcui()
-{   #wait animation
+_animcui() {
     [ -z "${1}" ] && { printf "%5s\n" ""; return 1; }
 
     if ! printf "%s" "$(pidof "${1}")" | grep "[0-9].*" >/dev/null; then
@@ -155,8 +151,7 @@ _animcui()
     printf "%b" "\b\b\b\b\b" && printf "%5s\n" ""
 }
 
-_cmdsudo()
-{   #print && execute a command, exit on fail
+_cmdsudo() {
     [ -z "${1}" ] && return 1
 
     printf "%s \\n" "    $ sudo ${*}"

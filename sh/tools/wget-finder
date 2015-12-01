@@ -9,8 +9,7 @@
 search_engines="google filemare ftplike"
 checksums="md5 sha1 sha256 sha512"
 
-_usage()
-{
+_usage() {
     printf "%b\\n" "Usage: ${progname} [OPTION]... FILE:CHECKSUM..."
     printf "%b\\n" "A wrapper around the wget non-interactive network retriever."
     printf "\\n"
@@ -23,8 +22,7 @@ _usage()
     exec wget "${@}"
 }
 
-_basename()
-{
+_basename() {
     [ -z "${1}" ] && return 1 || _basename__name="${1}"
     [ -z "${2}" ] || _basename__suffix="${2}"
     case "${_basename__name}" in
@@ -38,8 +36,7 @@ _basename()
     printf "%s" "${_basename__name}"
 }
 
-_dirname()
-{
+_dirname() {
     [ -z "${1}" ] && return 1
     case "${1}" in
         /*|*/*) #http://www.linuxselfhelp.com/gnu/autoconf/html_chapter/autoconf_10.html
@@ -50,13 +47,11 @@ _dirname()
     esac
 }
 
-_shuf()
-{
+_shuf() {
     awk 'BEGIN{srand()}{print rand()"\t"$0}' | sort | cut -f2- ;
 }
 
-_checksum_type()
-{
+_checksum_type() {
     case "${#1}" in
         32)  printf "md5"    ;;
         40)  printf "sha1"   ;;
@@ -66,8 +61,7 @@ _checksum_type()
     esac
 }
 
-_checksum()
-{
+_checksum() {
     [ -z "${1}" ] && return 1
     if [ -z "${2}" ]; then
         case "${1}" in
@@ -122,8 +116,7 @@ _checksum()
     fi
 }
 
-_cat()
-{
+_cat() {
     [ -z "${1}" ] && return 1
     [ -z "${global_output}" ] && output="$(_basename "${1}")"
     [ -z "${quiet}" ] && printf "%s\\n" "${output}"
@@ -134,20 +127,18 @@ _cat()
     fi
 }
 
-_get_links()
-{
+_get_links() {
     [ -z "${2}" ] && return 1
 
-    _get_links_google()
-    {   #randomnize links to avoid hitting the same servers too often _shuf
+    _get_links_google() { 
+        #randomnize links to avoid hitting the same servers too often _shuf
         _get_links_google__query="Index of \"${1}.\" -filewatcher"
         wget -q -U "Mozilla/5.0" "http://www.google.com/search?q=${_get_links_google__query}" -O- | \
             awk 'match($0,/(http|https|ftp):\/\/.*\/&/) {if(NR!=1){$0=substr($0,RSTART,RLENGTH); print substr($0,1,length($0)-1)}}' | \
             awk 'NF' | _shuf
     }
 
-    _get_links_filemare()
-    {
+    _get_links_filemare() {
         #//relevance/10/10 #more pages
         #//relevance/20/10
         #//relevance/30/10
@@ -158,8 +149,7 @@ _get_links()
             awk '{gsub(/>/,""); gsub(/</,"/"); print}' | _shuf
     }
 
-    _get_links_ftplike()
-    {
+    _get_links_ftplike() {
         _get_links_ftplike__query="${1}"
         wget -q -U "Mozilla/5.0" \
             "http://ftplike.com/index.aspx?q=${_get_links_ftplike__query}&m=EXACT&s=1385681-1385681&t=Files" -O- | \
@@ -173,8 +163,7 @@ _get_links()
     esac
 }
 
-_wget_finder()
-{
+_wget_finder() {
     _wget_finder__archives="${*}"
     while [ "${_wget_finder__archives}" ]; do
         _wget_finder__archive="${_wget_finder__archives%%/*}"

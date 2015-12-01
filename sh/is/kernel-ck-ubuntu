@@ -32,8 +32,7 @@ vbfq="$(printf "%s" "${bfq}" | cut -d'-' -f2)"
 ckk="$(printf "%s" "${patchck}" | cut -d'-' -f2)"
 arqt="$(dpkg --print-architecture)"
 
-_printfl()
-{   #print lines
+_printfl() {
     _printfl__max_len="80"
     if [ -n "${1}" ]; then
         _printfl__word_len="$((${#1} + 2))"
@@ -56,21 +55,18 @@ _printfl()
     fi
 }
 
-_printfs()
-{   #print step
+_printfs() {
     [ -z "${1}" ] && return 1
     printf "%s\\n" "[+] ${*}"
 }
 
-_die()
-{
+_die() {
     [ -z "${1}"] && return 1
     printf "%b\\n" "[-] Error: ${*}"
     exit 1
 }
 
-_header()
-{
+_header() {
     clear
     _printfl "Kernel ck builder (${patchkernel})"
     printf "%b\\n" "\033[1m Updates:\033[0m     https://github.com/chilicuil/learn/blob/master/sh/is/kernel-ck-ubuntu"
@@ -87,8 +83,7 @@ _header()
     _printfl
 }
 
-_cmd()
-{   #print current command, exits on fail
+_cmd() {
     [ -z "${1}" ] && return 0
 
     printf "%s " "    $ ${@}"
@@ -101,8 +96,7 @@ _cmd()
         exit "${status}"; } || return
 }
 
-_cmdsudo()
-{   #print current command, exits on fail
+_cmdsudo() {
     [ -z "${1}" ] && return 0
 
     printf "%s " "    $ sudo ${@}"
@@ -114,8 +108,7 @@ _cmdsudo()
         exit "${status}"; } || return
 }
 
-_animcui()
-{   #wait animation
+_animcui() {
     [ -z "${1}" ] && { printf "%5s\n" ""; return 1; }
 
     if ! printf "%s" "$(pidof "${1}")" | grep "[0-9].*" >/dev/null; then
@@ -149,8 +142,7 @@ _animcui()
     printf "%b" "\b\b\b\b\b" && printf "%5s\n" ""
 }
 
-_getroot()
-{   #get sudo's password, define $sudopwd and $sudocmd
+_getroot() {
     if [ ! X"${LOGNAME}" = X"root" ]; then
         printf "%s\\n" "Detecting user ${LOGNAME} (non-root) ..."
         printf "%s\\n" "Checking if sudo is available ..."
@@ -222,8 +214,7 @@ _getroot()
     fi
 }
 
-_cleanup()
-{
+_cleanup() {
     stty echo
     printf "\\n"
     _printfl "Cleanup"
@@ -237,8 +228,7 @@ _cleanup()
     [ -z "${1}" ] && exit
 }
 
-_waitfor()
-{   #print, execute and wait for a command to finish
+_waitfor() {
     [ -z "${1}" ] && return 1
 
     printf "%s " "    $ ${@} ..."
@@ -248,8 +238,7 @@ _waitfor()
     _animcui "${1}"
 }
 
-_waitforsudo()
-{   #print, execute and wait for a command to finish
+_waitforsudo() {
     [ -z "${1}" ] && return 1
 
     printf "%s " "    $ sudo ${@} ..."
