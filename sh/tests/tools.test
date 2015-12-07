@@ -116,6 +116,7 @@ test X"$(cconverter cui cui 2>&1 | head -1)"                   = X"cconverter: m
 test X"$(cconverter cui cui cui 2>&1 | head -1)"               = X"cconverter: invalid syntax 'cui cui cui'"
 test X"$(cconverter 1 usd mxn | awk '{print $1 $2 $3 $5}')"    = X"1USD=MXN"
 test X"$(cconverter 1 usd to mxn | awk '{print $1 $2 $3 $5}')" = X"1USD=MXN"
+test X"$(cconverter '1 usd to mxn' | awk '{print $1 $2 $3 $5}')" = X"1USD=MXN"
 @end
 
 @begin{compress}
