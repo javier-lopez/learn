@@ -14,6 +14,7 @@ _simple-httpd()
              COMPREPLY=($(compgen -W "${long_opts}" -- ${cur}));  return ;;
         -*)  short_opts="$(simple-httpd -h 2>&1 | awk 'match($0,/ -[0-9A-Za-z_]+/) {print substr($0,RSTART,RLENGTH)}')"
              COMPREPLY=($(compgen -W "${short_opts}" -- ${cur})); return ;;
+         *)  _filedir; return ;;
     esac
 } &&
 complete -F _simple-httpd simple-httpd
