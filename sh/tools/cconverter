@@ -9,8 +9,8 @@ _usage() {
     printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] int|float currency [to] currency"
     printf "%s\\n" "Currency converter."
     printf "\\n"
-    printf "%s\\n" "  -h, --help      show this help message and exit"
     printf "%s\\n" "  -q, --quiet     quiet mode, the default is verbose mode"
+    printf "%s\\n" "  -h, --help      show this help message and exit"
 }
 
 _die() {
@@ -48,9 +48,9 @@ _notify() {
             #dumping xclip's stdout to the bitbucket works around xclip's
             #failure to properly daemonize
             #https://sourceforge.net/p/xclip/patches/9/
-            printf "%s" "${2}" | xclip -selection clipboard -i >/dev/null 2>&1 || \
-            printf "%s" "${2}" | xsel -bi 2>/dev/null || \
-            printf "%s" "${2}" | pbcopy 2>/dev/null   || :
+            printf "%s" "${2}" 2>/dev/null | xclip -selection clipboard -i >/dev/null 2>&1 || \
+            printf "%s" "${2}" 2>/dev/null | xsel -bi 2>/dev/null || \
+            printf "%s" "${2}" 2>/dev/null | pbcopy 2>/dev/null   || :
             ;;
     esac
 }

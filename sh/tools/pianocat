@@ -31,15 +31,15 @@ _usage() {
     printf "%s\\n" "Usage: ${progname} [options]"
     printf "%s\\n" "A piano emulator."
     printf "\\n"
-    printf "%s\\n" "  -h, --help          show this help message and exit"
     printf "%s\\n" "  -b, --beat          beat time in seconds (0.5)"
-    printf "%s\\n" "  -s, --sound [s|d]   set method to generate sound (static with fallback to dynamic)" 
+    printf "%s\\n" "  -s, --sound [s|d]   set method to generate sound (static with fallback to dynamic)"
     printf "%s\\n" "                      by default, ${progname} will look for wav files or other static"
     printf "%s\\n" "                      files matching the notes played, eg: A4.wav, if no static files"
     printf "%s\\n" "                      are found then it'll use sox to generate the sounds dinamically"
     printf "%s\\n" "  -d, --directory     base directory   (~/.pianocat)"
     printf "%s\\n" "  -c, --collection    collection sound (iowa-steinway-b)"
     printf "%s\\n" "  -f, --format        audio format     (wav)"
+    printf "%s\\n" "  -h, --help          show this help message and exit"
 }
 
 _die() {
@@ -72,7 +72,7 @@ _str2upper() {
     printf "%s\\n" "${@}" | tr 'abcdefghijklmnopqrstuvwxyz' 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 }
 
-_substr() { 
+_substr() {
     #print a substring
     [ -z "${1}" ] && return 1
     [ -z "${2}" ] && return 1

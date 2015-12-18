@@ -9,10 +9,10 @@ _usage() {
     printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] [dir]"
     printf "%s\\n" "Setup a pxe environment."
     printf "\\n"
+    printf "%s\\n" "  dir          creates pxe environment in dir, default ./pxe_setup"
+    printf "\\n"
     printf "%s\\n" "  -v           verbose mode"
     printf "%s\\n" "  -h, --help   help"
-    printf "\\n"
-    printf "%s\\n" "  dir          creates pxe environment in this directory [./pxe_setup]"
 }
 
 _die() {

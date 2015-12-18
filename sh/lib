@@ -771,9 +771,9 @@ _notify2() {
             #dumping xclip's stdout to the bitbucket works around xclip's
             #failure to properly daemonize
             #https://sourceforge.net/p/xclip/patches/9/
-            printf "%s" "${2}" | xclip -selection clipboard -i >/dev/null 2>&1 || \
-            printf "%s" "${2}" | xsel -bi 2>/dev/null || \
-            printf "%s" "${2}" | pbcopy 2>/dev/null   || :
+            printf "%s" "${2}" 2>/dev/null | xclip -selection clipboard -i >/dev/null 2>&1 || \
+            printf "%s" "${2}" 2>/dev/null | xsel -bi 2>/dev/null || \
+            printf "%s" "${2}" 2>/dev/null | pbcopy 2>/dev/null   || :
             ;;
     esac
 }

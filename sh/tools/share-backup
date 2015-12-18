@@ -52,7 +52,7 @@ _usage() {
     printf "%b\\n" "  stop             stop sharing"
     printf "\\n"
     printf "%b\\n" "  -u [user]        set user (guest by default)"
-    printf "%b\\n" "  -p [port]        set port (random above 1025 by default)"
+    printf "%b\\n" "  -p [port]        set port (above 1025 by default)"
     printf "%b\\n" "  -P [password]    set password (random by default)"
     printf "%b\\n" "  -c [cert_file]   set certificate.pem"
     printf "%b\\n" "  -h, --help       show this help message and exit"

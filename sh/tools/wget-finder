@@ -13,11 +13,11 @@ _usage() {
     printf "%b\\n" "Usage: ${progname} [OPTION]... FILE:CHECKSUM..."
     printf "%b\\n" "A wrapper around the wget non-interactive network retriever."
     printf "\\n"
-    printf "%b\\n" "  -h, --help             show this and wget help message and exit"
     printf "%b\\n" "  --clean-cache          remove temporal files"
     printf "%b\\n" "  --search-engine        prefer a search engine"
     printf "%b\\n" "  --list-search-engine   list supported search engines"
     printf "%b\\n" "  --list-checksum        list supported checksums functions"
+    printf "%b\\n" "  -h, --help             show this and wget help message and exit"
     printf "%b\\n" "------------------------------------------------------------"
     exec wget "${@}"
 }
