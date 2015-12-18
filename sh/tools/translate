@@ -11,6 +11,41 @@
 #example: translate "hola mundo"
 #hello world
 
+#TODO 18-12-2015 13:32 >> add more translation apis, eg, mymemory
+
+#https://github.com/soimort/translate-shell/issues/94#issuecomment-165433715
+py_google_tk_script="
+import sys
+import time
+import ctypes
+
+def RL(a, b):
+    for c in range(0, len(b)-2, 3):
+        d = b[c+2]
+        d = ord(d) - 87 if d >= 'a' else int(d)
+        xa = ctypes.c_uint32(a).value
+        d = xa >> d if b[c+1] == '+' else xa << d
+        a = a + d & 4294967295 if b[c] == '+' else a ^ d
+    return ctypes.c_int32(a).value
+
+def calc_tk(a):
+    b = int(time.time() / 3600)
+    if sys.version_info >= (3,):
+        d = a.encode('utf-8')
+    else:
+        d = map(ord, a)
+    a = b
+    for di in d:
+        a = RL(a + di, '+-a^+6')
+    a = RL(a, '+-3^+b+-f')
+    a = a if a >= 0 else ((a & 2147483647) + 2147483648)
+    a %= pow(10, 6)
+    return '%d.%d' % (a, a ^ b)
+
+if __name__ == '__main__':
+    text = ' '.join(sys.argv[1:])
+    print(calc_tk(text))"
+
 _usage() {
     printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [-sl-tl] string ..."
     printf "%s\\n" "Translate strings using google online translator."
@@ -47,11 +82,22 @@ _notify() {
             #dumping xclip's stdout to the bitbucket works around xclip's
             #failure to properly daemonize
             #https://sourceforge.net/p/xclip/patches/9/
-            printf "%s" "${2}" | xclip -selection clipboard -i >/dev/null 2>&1 || \
-            printf "%s" "${2}" | xsel -bi 2>/dev/null || \
-            printf "%s" "${2}" | pbcopy 2>/dev/null   || :
+            printf "%s" "${2}" 2>/dev/null | xclip -selection clipboard -i >/dev/null 2>&1 || \
+            printf "%s" "${2}" 2>/dev/null | xsel -bi 2>/dev/null || \
+            printf "%s" "${2}" 2>/dev/null | pbcopy 2>/dev/null   || :
             ;;
     esac
+}
+
+_tk() {
+    if command -v "python" >/dev/null 2>&1; then
+        printf "%s\\n" "${py_google_tk_script}" > /tmp/_tk.py
+        python /tmp/_tk.py "${*}"
+        rm -rf /tmp/_tk.py
+    else
+        #TODO 18-12-2015 12:36 >> additional tk implementations
+        :
+    fi
 }
 
 _translate() {
@@ -60,8 +106,8 @@ _translate() {
     _translate__phrase="${*}"
     _translate__page="$(curl -s -i --user-agent "" -d "sl=${sl}"  \
                         -d "tl=${tl}" -d "client=t" -d "ie=UTF-8" \
-                        -d "oe=UTF-8" --data-urlencode \
-                        "text=${_translate__phrase}"   \
+                        -d "oe=UTF-8" -d tk="$(_tk "${_translate__phrase}")" \
+                        --data-urlencode "text=${_translate__phrase}"        \
                         http://translate.google.com/translate_a/t)"
     _translate__result="$(printf "%s" "${_translate__page}" | tail -1 | \
                           cut -d\" -f2)"
