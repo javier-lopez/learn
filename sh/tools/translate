@@ -1,6 +1,6 @@
 #!/bin/sh
 #description: translate string
-#usage: translate [options] string
+#usage: translate [sl-tl] [options] string
 
 #example: translate -en-es "hello world"
 #hola mundo
@@ -11,14 +11,16 @@
 #example: translate "hola mundo"
 #hello world
 
-#TODO 18-12-2015 13:32 >> add more translation apis, eg, mymemory
+VERSION="2015.12.18-16:31"
 
+progname="$(expr "${0}" : '.*/\([^/]*\)')"
+
+#TODO 18-12-2015 13:32 >> add more translation apis, eg, mymemory
 #https://github.com/soimort/translate-shell/issues/94#issuecomment-165433715
 py_google_tk_script="
 import sys
 import time
 import ctypes
-
 def RL(a, b):
     for c in range(0, len(b)-2, 3):
         d = b[c+2]
@@ -27,7 +29,6 @@ def RL(a, b):
         d = xa >> d if b[c+1] == '+' else xa << d
         a = a + d & 4294967295 if b[c] == '+' else a ^ d
     return ctypes.c_int32(a).value
-
 def calc_tk(a):
     b = int(time.time() / 3600)
     if sys.version_info >= (3,):
@@ -41,17 +42,19 @@ def calc_tk(a):
     a = a if a >= 0 else ((a & 2147483647) + 2147483648)
     a %= pow(10, 6)
     return '%d.%d' % (a, a ^ b)
-
 if __name__ == '__main__':
     text = ' '.join(sys.argv[1:])
     print(calc_tk(text))"
 
 _usage() {
-    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [-sl-tl] string ..."
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [-sl-tl] [options] string ..."
     printf "%s\\n" "Translate strings using google online translator."
     printf "\\n"
     printf "%s\\n" "  sl   source language (auto by default)"
     printf "%s\\n" "  tl   target language (english by default)"
+    printf "\\n"
+    printf "%b\\n" "  -U, --update   update this programa to latest version"
+    printf "%s\\n" "  -h, --help     show this help message and exit"
 }
 
 _die() {
@@ -111,15 +114,60 @@ _translate() {
                         http://translate.google.com/translate_a/t)"
     _translate__result="$(printf "%s" "${_translate__page}" | tail -1 | \
                           cut -d\" -f2)"
-
     if [ -z "${_translate__result}" ];then
        _translate__result="Translation api timeout"
     else
         _translate__clipboard_text="Copied to clipboard!"
     fi
-
     _notify "${_translate__result}" "${_translate__result}" \
             "${_translate__clipboard_text}"
+}
+
+_update() {
+    _u__current_file="$(cd "$(dirname "${0}")" && pwd)/${0}"
+    _u__current_version_long="$(awk -F\" \
+        '/VERSION=/{print $2;exit}' "${_u__current_file}" 2>/dev/null)"
+    _u__current_version="$(printf "%s" "${_u__current_version_long}" | awk \
+        '{gsub(/[\.:]/,"");gsub(/-/,"");print;exit}' 2>/dev/null)"
+    [ -z "${_u__current_version}" ] && printf "%s\\n%s\\n%s\\n"    \
+        "ERROR: Failed to detect current version, please update manually" \
+        "${progname}         = ${_u__current_file}"                 \
+        "${progname} version = ${_u__current_version}" >&2 && return 1
+
+    command -v "wget" >/dev/null 2>&1 || command -v "curl" >/dev/null 2>&1 || { \
+    printf "%s\\n" "ERROR: Install either 'wget' or 'curl' to update within the program" >&2
+    return 1; }
+
+    _u__error_msg="$(wget -q -O- --no-check-certificate \
+    https://raw.githubusercontent.com/chilicuil/learn/master/sh/tools/translate \
+        > "/tmp/${progname}.${$}" >/dev/null || curl -s  \
+    https://raw.githubusercontent.com/chilicuil/learn/master/sh/tools/translate \
+    > "/tmp/${progname}.${$}" >/dev/null)" || { printf "%s\\n%s\\n" \
+        "ERROR: Failed to fetch update, please try later or update manually" \
+        "${_u__error_msg}" >&2; return 1; }
+
+    _u__update_version_long="$(awk -F\" \
+        '/VERSION=/{print $2;exit}' "/tmp/${progname}.${$}" 2>/dev/null)"
+    _u__update_version="$(printf "%s" "${_u__update_version_long}" | awk \
+        '{gsub(/[\.:]/,"");gsub(/-/,"");print;exit}' 2>/dev/null)"
+    [ -z "${_u__update_version}" ] && _u__update_version="0"
+
+    if [ "${_u__current_version}" -lt "${_u__update_version}" ]; then
+        printf "%s %s\\n" "Updating from version" \
+            "${_u__current_version_long} to ${_u__update_version_long} ..."
+        if ! mv "/tmp/${progname}.${$}" "${_u__current_file}" 2>/dev/null; then
+            printf "%s\\n" "ERROR: no write permissions on ${_u__current_file}" >&2
+            printf "%s\\n" "INFO : trying with sudo ..."
+            if command -v "sudo" >/dev/null 2>&1; then
+                sudo mv "/tmp/${progname}.${$}" "${_u__current_file}" || return 1
+            else
+                printf "%s\\n" "ERROR: sudo isn't available, exiting ..."
+                rm -rf "/tmp/${progname}.${$}"; return 1
+            fi
+        fi
+    fi
+    printf "%s %s\\n" "${progname} is up-to-date (${_u__current_version_long})"
+    rm -rf "/tmp/${progname}.${$}"
 }
 
 if [ ! -t 0 ]; then
@@ -130,7 +178,8 @@ fi
 [ "${#}" -eq "0" ] && _die
 
 case "${1}" in
-    -h|--help) _usage && exit ;;
+    -h|--help)   _usage && exit ;;
+    -U|--update) _update; exit "${?}" ;;
     --*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${1}'" ;;
     -*) sl="$(printf "%s" "${1}" | cut -d'-' -f2)"
         tl="$(printf "%s" "${1}" | cut -d'-' -f3)"
