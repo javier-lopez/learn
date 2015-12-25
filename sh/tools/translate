@@ -11,7 +11,7 @@
 #example: translate "hola mundo"
 #hello world
 
-VERSION="2015.12.18-16:31"
+VERSION="2015.12.25-16:12"
 
 progname="$(expr "${0}" : '.*/\([^/]*\)')"
 
