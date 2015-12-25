@@ -124,7 +124,7 @@ _translate() {
 }
 
 _update() {
-    _u__current_file="$(cd "$(dirname "${0}")" && pwd)/${0}"
+    _u__current_file="$(cd "$(dirname "${0}")" && pwd)/$(basename "${0}")"
     _u__current_version_long="$(awk -F\" \
         '/VERSION=/{print $2;exit}' "${_u__current_file}" 2>/dev/null)"
     _u__current_version="$(printf "%s" "${_u__current_version_long}" | awk \
@@ -140,9 +140,9 @@ _update() {
 
     _u__error_msg="$(wget -q -O- --no-check-certificate \
     https://raw.githubusercontent.com/chilicuil/learn/master/sh/tools/translate \
-        > "/tmp/${progname}.${$}" >/dev/null || curl -s  \
+        > "/tmp/${progname}.${$}" 2>/dev/null || curl -s  \
     https://raw.githubusercontent.com/chilicuil/learn/master/sh/tools/translate \
-    > "/tmp/${progname}.${$}" >/dev/null)" || { printf "%s\\n%s\\n" \
+    > "/tmp/${progname}.${$}" 2>/dev/null)" || { printf "%s\\n%s\\n" \
         "ERROR: Failed to fetch update, please try later or update manually" \
         "${_u__error_msg}" >&2; return 1; }
 
@@ -155,7 +155,8 @@ _update() {
     if [ "${_u__current_version}" -lt "${_u__update_version}" ]; then
         printf "%s %s\\n" "Updating from version" \
             "${_u__current_version_long} to ${_u__update_version_long} ..."
-        if ! mv "/tmp/${progname}.${$}" "${_u__current_file}" 2>/dev/null; then
+        chmod +x "/tmp/${progname}.${$}"
+        if ! mv -f "/tmp/${progname}.${$}" "${_u__current_file}" 2>/dev/null; then
             printf "%s\\n" "ERROR: no write permissions on ${_u__current_file}" >&2
             printf "%s\\n" "INFO : trying with sudo ..."
             if command -v "sudo" >/dev/null 2>&1; then
@@ -165,6 +166,8 @@ _update() {
                 rm -rf "/tmp/${progname}.${$}"; return 1
             fi
         fi
+        printf "%s %s\\n" "${progname} is up-to-date (${_u__update_version_long})"
+        return 0
     fi
     printf "%s %s\\n" "${progname} is up-to-date (${_u__current_version_long})"
     rm -rf "/tmp/${progname}.${$}"
