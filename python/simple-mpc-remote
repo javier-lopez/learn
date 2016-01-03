@@ -1,15 +1,13 @@
 #!/usr/bin/env python
-#usage: simple-mplayer-remote [options]
-#require an mplayer instance running in -slave mode
+#usage: simple-mpc-remote [options]
 
 #based on mplayer-remote v0.0.4, http://www.gwenn.dk/mplayer-remote.html
 
 import BaseHTTPServer, commands, sys, os, socket
 from optparse import OptionParser
 
-parser = OptionParser(description='%prog - a simple mplayer web control', usage='%prog [options]')
+parser = OptionParser(description='%prog - a simple mpc web control', usage='%prog [options]')
 parser.add_option("-p", "--port", dest="port", action="store", help='local port to bind (default 80).')
-parser.add_option("-f", "--fifo", dest="fifo", action="store", help='mplayer fifo file, see mplayer slave mode (default /tmp/mplayer.fifo).')
 
 (options, args) = parser.parse_args()
 
@@ -17,11 +15,6 @@ if options.port:
     port = int(options.port)
 else:
     port = 80
-
-if options.fifo:
-    fifo = options.fifo
-else:
-    fifo = '/tmp/mplayer.fifo'
 
 if port < 1024:
     if not os.geteuid() == 0:
@@ -36,7 +29,7 @@ pagehead = """
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
- <TITLE>Remote Mplayer</TITLE>
+ <TITLE>Remote mpc</TITLE>
  <style type="text/css" media="screen">
 
 body {
@@ -110,23 +103,23 @@ window.addEventListener("orientationchange", hideAddressBar );
 """
 
 pagectrl = """
-<h1>Remote Mplayer</h1>
+<h1>Mpd Control</h1>
 <form action="/control" method="get">
-  <input type="submit" value="<" name="video" class="ctrl">
-  <input type="submit" value=">||" name="video" class="ctrl">
-  <input type="submit" value=">" name="video" class="ctrl">
+  <input type="submit" value="|<"  name="mpc" class="ctrl">
+  <input type="submit" value=">||" name="mpc" class="ctrl">
+  <input type="submit" value=">|"  name="mpc" class="ctrl">
   <br/>
-  <input type="submit" value="|<" name="video" class="ctrl">
-  <input type="submit" value="<<" name="video" class="ctrl">
-  <input type="submit" value=">>" name="video" class="ctrl">
-  <input type="submit" value=">|" name="video" class="ctrl">
+  <input type="submit" value="<<"  name="mpc" class="ctrl">
+  <input type="submit" value="<"   name="mpc" class="ctrl">
+  <input type="submit" value=">"   name="mpc" class="ctrl">
+  <input type="submit" value=">>"  name="mpc" class="ctrl">
   <br/><h2>Volume</h2>
-  <input type="submit" value="-" name="volume" class="ctrl">
+  <input type="submit" value="-"    name="volume" class="ctrl">
   <input type="submit" value="mute" name="volume" class="ctrl">
-  <input type="submit" value="+" name="volume" class="ctrl">
+  <input type="submit" value="+"    name="volume" class="ctrl">
   <br/>
-  <input type="submit" value="fullscreen" name="video" class="ctrl2">
-  <input type="submit" value="quit" name="video" class="ctrl2">
+  <!-- <input type="submit" value="fullscreen" name="mpc" class="ctrl2"> -->
+  <input type="submit" value="quit" name="mpc" class="ctrl2">
 </form>"""
 
 pageend = """
@@ -134,20 +127,20 @@ pageend = """
 </body>
 </html>"""
 
-vidcmd = { "%7C%3C"    :"pt_step -1",
-           "%3C%3C"    :"seek -100",
-           "%3C"       :"seek -10",
-           "%3E%7C%7C" :"pause",
-           "%3E"       :"seek 10",
-           "%3E%3E"    :"seek 100",
-           "%3E%7C"    :"pt_step 1",
-           "quit"      :"quit",
-           "fullscreen":"vo_fullscreen"
+ctrlcmd = { "%7C%3C"    :"prev",         # |<
+            "%3C%3C"    :"seek -20%",    # <<
+            "%3C"       :"seek -5%",     # <
+            "%3E%7C%7C" :"toggle",       # >||
+            "%3E"       :"seek +5%",     # >
+            "%3E%3E"    :"seek +20%",    # >>
+            "%3E%7C"    :"next",         # >|
+            "quit"      :"stop",         # quit
+            "fullscreen":"vo_fullscreen" # fullscreen
            }
 
-volcmd = {"%2B" :"amixer --quiet set Master 1%+",
-          "-"   :"amixer --quiet set Master 1%-",
-          "mute":"amixer --quiet set Master toggle"}
+volcmd = {"%2B" :"amixer --quiet set Master 1%+",    #+
+          "-"   :"amixer --quiet set Master 1%-",    #-
+          "mute":"amixer --quiet set Master toggle"} #mute
 
 def execute(cmd):
     """ Execute a shell command, while handling errors gracefully"""
@@ -170,10 +163,10 @@ class myHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     def handleCmd(self,param):
         """Global handler of commands, doesn't care what the page is, just
         executes the correct commands if possible"""
-        if "video" in param:
-            if param["video"] in vidcmd:
-                self.write(execute("printf \"%s\\\\n\" \"" + vidcmd[param["video"]] + "\" >" + fifo))
-                print "exec: printf \"%s\\\\n\" \"" +  vidcmd[param["video"]] + "\" >" + fifo
+        if "mpc" in param:
+            if param["mpc"] in ctrlcmd:
+                self.write(execute("mpc " + ctrlcmd[param["mpc"]]))
+                print "exec: mpc " + ctrlcmd[param["mpc"]]
         if "volume" in param:
             if param["volume"] in volcmd:
                 self.write(execute(volcmd[param["volume"]]))
@@ -235,13 +228,6 @@ def run():
     This is the "main" function, that gets called from the
     end of the file, after everything has been parsed.
     """
-    if not os.path.exists(fifo):
-        os.setegid(1000)
-        os.seteuid(1000)
-        execute("mkfifo "+fifo)
-        os.seteuid(0)
-        os.setegid(0)
-
     try:
         server = StoppableHTTPServer(('', port), myHandler)
         print 'Started httpserver on port ' , port
