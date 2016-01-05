@@ -147,9 +147,9 @@
 
   **Better**
    ```sh
-   [ -f "$(command -v "mplayer")" ] && $(command -v "mplayer")
+   [ -f "$(command -v "ps")" ] && $(command -v "ps")
    ```
-- Avoid -q in grep
+- Avoid -q in grep, send stdout to /dev/null instead
 
    **Bad**
    ```sh
