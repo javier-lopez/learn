@@ -34,7 +34,7 @@ _notify() {
     [ -z "${1}" ] && return 1
     if [ X"${TERM}" = X"linux" ] || [ -z "${TERM}" ]; then
         kill -9 $(pgrep notify-osd) >/dev/null 2>&1
-        if ! DISPLAY=:0 notify-send -t 1000 "${1}"  "${2}"; then
+        if ! DISPLAY=${DISPLAY:-:0} notify-send -t 1000 "${1}"  "${2}"; then
             if command -v "gxmessage" 2>/dev/null; then
                 font="Monaco 9"
                 gxmessage "${font:+-fn "$font"}" "${1} ${2}" "ok"

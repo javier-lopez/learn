@@ -23,13 +23,13 @@ _notify() {
     [ -z "${1}" ] && return 1
     if [ X"${TERM}" = X"linux" ] || [ -z "${TERM}" ]; then
         kill -9 $(pgrep notify-osd) >/dev/null 2>&1
-        if ! DISPLAY=:0 notify-send -t 1000 "${1}"  "${2}"; then
+        if ! DISPLAY=${DISPLAY:-:0} notify-send -t 1000 "${1}"  "${2}"; then
             if command -v "gxmessage" 2>/dev/null; then
                 font="Monaco 9"
-                gxmessage "${font:+-fn "$font"}" "${1} ${2}" "ok"
-            else
+                DISPLAY=${DISPLAY:-:0} gxmessage "${font:+-fn "$font"}" "${1} ${2}" "ok"
+            elif command -v "xmessage" 2>/dev/null; then
                 font="fixed"
-                xmessage "${font:+-fn "$font"}" "${1} ${2}" "ok"
+                DISPLAY=${DISPLAY:-:0}  xmessage "${font:+-fn "$font"}" "${1} ${2}" "ok"
             fi
         fi
     else
@@ -57,7 +57,7 @@ fi
 if [ ! -z "${1}" ]; then
     case "${1}" in
         u|up|update|-u|-up|-update|--update)
-            curl -s http://mononeurona.org/waydings/addwayd | html2text
+            curl --max-time 2 --connect-timeout 5 -s http://mononeurona.org/waydings/addwayd | html2text
             exit ;;
         -h|--help) _usage && exit ;;
         -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${1}'" ;;

@@ -44,7 +44,7 @@ printf "%s\\n\\n" "Info - running ${tools} tests:"
 
 for tool in ${TOOLS_WITH_TEST}; do
     rm -rf ./* >/dev/null 2>&1
-    printf "%s\\n" "${tool}........................." | awk '{ printf("%s", substr($0, 0, 25)); }'
+    printf "%s\\n" "${tool} ........................" | awk '{ printf("%s ", substr($0, 0, 25)); }'
     printf "%s\\n" "PATH=../${tools}:/bin:/usr/bin" > run.sh
     sed -e "/^@begin{$tool}/,/^@end/p" -e '1,$d' ../${tools_db} |\
     sed -e '/^@begin/d' -e '/^@end/d' \

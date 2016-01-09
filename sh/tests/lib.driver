@@ -12,7 +12,7 @@ lib_db="./lib.test"
 PS4=">>"
 
 #test lib
-FUNCTIONS="$(grep '^_.*()' "${lib}" | sed -e 's:()::')"
+FUNCTIONS="$(grep '^_.*()' "${lib}" | sed -e 's:().*::')"
 TESTS="$(grep '^@begin' "${lib_db}" | sed -e 's/^@begin{//' -e 's/}.*$//')"
 FUNCTIONS_WITH_TESTS="$(printf "%s\\n" ${FUNCTIONS} ${TESTS} | awk 'x[$0]++')"
 
@@ -42,7 +42,7 @@ printf "%s\\n\\n" "Info - running ${lib} tests:"
 
 for function in ${FUNCTIONS_WITH_TESTS}; do
     rm -rf ./* >/dev/null 2>&1
-    printf "%s\\n" "${function}........................." | awk '{ printf("%s", substr($0, 0, 25)); }'
+    printf "%s\\n" "${function} ........................" | awk '{ printf("%s ", substr($0, 0, 25)); }'
     printf "%s\\n" ". ../${lib}" > run.sh
     sed -e "/^@begin{$function}/,/^@end/p" -e '1,$d' ../${lib_db} |\
     sed -e '/^@begin/d' -e '/^@end/d' \
