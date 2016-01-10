@@ -1005,7 +1005,7 @@ _seq() { #portable seq
 #=================================================================
 
 _shuf() { #shuffle input
-    awk 'BEGIN{srand()}{print rand()"\t"$0}' "${@}" | sort | cut -f2- ;
+    awk 'BEGIN{srand()}{print rand()"\t"$0}' "${@}" | sort | cut -f2-
 }
 #==================================================== Example ====
 #printf "%s" "1,2,3,4,5" | tr ',' '\n' | _shuf | tr '\n' ','
