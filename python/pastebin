@@ -7,13 +7,11 @@ import threading
 import urllib
 import urlparse
 
-
 __version__ = (0, 1, 0)
 
 PASTEE_URL = "https://pastee.org"
 DEFAULT_LEXER = "text"
 DEFAULT_TTL = 1  # days
-
 
 class Paste:
   """Class representing a paste that has been submitted."""

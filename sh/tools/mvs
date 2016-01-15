@@ -1,14 +1,10 @@
 #!/bin/sh
-# Copyright (C) 2007-2010 by Jonas Kramer. All rights reserved.
-# Copyright (C) 2013-2015 by Javier Lopez. All rights reserved.
-# Published under the terms of the GNU General Public License (GPL).
-
-# Rename lots of files using your favorite text editor.
-# Original: https://github.com/jkramer/virn
+#Rename lots of files using your favorite text editor.
+#Original: https://github.com/jkramer/virn
 
 #examples
-# mvs *
-# mvs a*
+# $ mvs *  #rename all files
+# $ mvs a* #rename all files starting with 'a'
 
 _usage() {
     printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] file ..."
@@ -23,8 +19,7 @@ _die() {
     _usage >&2; exit 1
 }
 
-_mkdir_p() {
-    #portable mkdir -p function
+_mkdir_p() { #portable mkdir -p function
     for _mkdir_p__dir; do
         _mkdir_p__IFS="$IFS"
         IFS="/"
@@ -48,20 +43,22 @@ _mkdir_p() {
             fi
         done
         )
-    done
-    unset _mkdir_p__dir
+    done; unset _mkdir_p__dir
 }
 
-_dirname() {
-    #return string containing dirname on success, 1 on failure
+_dirname() { #return string containing dirname on success, 1 on failure
     [ -z "${1}" ] && return 1
-
     #http://www.linuxselfhelp.com/gnu/autoconf/html_chapter/autoconf_10.html
     case "${1}" in
         /*|*/*) _dirname__dir=$(expr "x${1}" : 'x\(.*\)/[^/]*' \| '.' : '.')
                 printf "%s\\n" "${_dirname__dir}" ;;
              *) printf "%s\\n" ".";;
     esac
+}
+
+_print_warning() {
+    [ -z "${1}" ] && return 1
+    printf "Warning: %s\\n" "$*" >&2
 }
 
 if [ ! -t 0 ]; then
@@ -76,64 +73,102 @@ for arg; do #parse options
         -h|--help) _usage && exit ;;
         -e|--editor)
             if [ "${#}" -gt "1" ]; then
-                editor="$(printf "%s " "${@}" | awk '{print $2}')"
-                shift && shift
+                case "${2}" in
+                    -*) _die "Option '${arg}' requires a parameter"
+                esac
+                shift; editor="${1}"; [ "${1}" ] && shift
             else
                 _die "Option '${arg}' requires a parameter"
-            fi ;;
+            fi
+            ;;
         -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${arg}'" ;;
     esac
 done
 
-[ -z "${editor}" ] && editor="${EDITOR}"
-[ -z "${EDITOR}" ] && _die "\${EDITOR} not defined."
+if [ "${EDITOR}" ]; then
+    if [ -z "${editor}" ]; then
+        editor="${EDITOR}"
+    else
+        command -v "${editor}" >/dev/null 2>&1 || {
+            _print_warning "'${editor}' editor was not found, falling back to '${EDITOR}'"
+            editor="${EDITOR}"; }
+    fi
+else
+    if [ -z "${editor}" ]; then
+        _die "\$EDITOR is not defined, specify an editor and try again"
+    else
+        command -v "${editor}" >/dev/null 2>&1 || _die "'${editor}' editor was not found."
+    fi
+fi
 
-# Create targets file.
-targets="/tmp/mvs-${$}"
-i=0; for FILE; do
-    [ -e "${FILE}" ] || {
-        i="$((i+1))";
-        printf "%s\\n" "Warning: '${FILE}' doesn't exist, skipping ..." >&2 ;
-        continue; }
-    printf "%s\\n" "${FILE}" >> "${targets}"
+tmp_mvs_file="/tmp/mvs-${$}"
+missing_files=0; for FILE; do #look for valid files in mvs parameters
+    if [ -e "${FILE}" ]; then
+        printf "%s\\n" "${FILE}" >> "${tmp_mvs_file}"
+    else
+        _print_warning "'${FILE}' doesn't exist, skipping ..."
+        missing_files="$((missing_files+1))"
+        continue;
+    fi
 done
 
-[ ! -f "${targets}" ] && exit
+#exit if there are no valid files to rename
+[ -f "${tmp_mvs_file}" ] || exit
 
-# Start $EDITOR
-if ${editor} ${targets}; then
+#start $editor
+if ${editor} "${tmp_mvs_file}"; then
         [ ! -t 0 ] && reset
-        count="$(awk 'END {print NR}' "${targets}" 2>/dev/null)"
-        param_len="${#}"; param_len="$((param_len - i))"
+        tmp_mvs_file_len="$(awk 'END {print NR}' "${tmp_mvs_file}" 2>/dev/null)"
+        param_len="${#}"; param_len="$((param_len - missing_files))"
 
-        # Exit with error message if number of arguments and line count of
-        # targets file differ.
-        if [ "${count}" -ne "${param_len}" ]; then
-            rm -- "${targets}"
+        #exit with error if the number of arguments and tmp_mvs_file len differ
+        if [ "${tmp_mvs_file_len}" -ne "${param_len}" ]; then
+            rm -- "${tmp_mvs_file}"
             _die 'Numbers of files mismatch.'
         fi
 
-        # Read targets file line by line and rename the source
-        # files from ARGV appropriately.
-        while read target; do
-            while [ ! -e "${source}" ]; do
-                source="${1}"
-                shift
+        #read tmp_mvs_file line by line and rename appropriately
+        while read target_file; do
+            while [ ! -e "${source_file}" ]; do
+                source_file="${1}" && shift
             done
-            if [ X"${source}" != X"${target}" ]; then
-                case "${target}" in
+            if [ X"${source_file}" != X"${target_file}" ]; then
+                case "${target_file}" in
                     /*|*/*)
-                        target="$(printf "%s" "${target}" | \
+                        target_file="$(printf "%s" "${target_file}" | \
                             sed "s:\$HOME:$HOME:g;s:~/:$HOME/:;")"
-                        _mkdir_p "$(_dirname "${target}")" ;;
+                        dirname_target_file="$(_dirname "${target_file}")"
+                        if [ -e "${dirname_target_file}" ]; then
+                            if [ X"${source_file}" = X"${dirname_target_file}" ]; then
+                                mv -n -v -- "${source_file}" "${source_file}.${$}" || {
+                                    continue; }
+                                source_file="${source_file}.${$}"
+                            fi
+                        fi
+                        _mkdir_p "${dirname_target_file}"
+                        ;;
                 esac
-                mv -v -f -- "${source}" "${target}"
-                case "${source}" in
-                    /*|*/*) rmdir -p "$(_dirname "${source}")" 2>/dev/null ;;
+                if [ X"${source_file}" = X"${target_file%/}.${$}" ]; then
+                    mv -n -v -- "${source_file}" "${target_file}/${source_file%.$$}"
+                else
+                    if [ -e "${target_file}" ]; then
+                        target_file="${target_file}.${$}"
+                    fi
+                    mv -n -v -- "${source_file}" "${target_file}"
+                fi
+                case "${source_file}" in
+                    /*|*/*) rmdir -p "$(_dirname "${source_file}")" 2>/dev/null ;;
                 esac
             fi
-            source=""
-        done < "${targets}"
+            source_file=""
+        done < "${tmp_mvs_file}"
+
+        #fix appended files
+        while read target_file; do
+            if [ ! -f "${target_file}" ] && [ -f "${target_file}.${$}" ]; then
+                mv -n -v -- "${target_file}.${$}" "${target_file}"
+            fi
+        done < "${tmp_mvs_file}"
 fi
 
-rm "${targets}"
+rm "${tmp_mvs_file}"
