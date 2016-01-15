@@ -398,7 +398,7 @@ sleep 0.2 && test X"$(pgrep -x top)" = X"" && test X"$(pgrep -x dmenu)" = X""
 @end
 
 @begin{governator}
-governator; test X"${?}"                                        = X"0"
+governator; test X"${?}" = X"$(test -f /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor && printf "0" || printf "1")"
 governator -h; test X"${?}"                                     = X"0"
 printf "%s" "--help" | governator; test X"${?}"                 = X"0"
 test X"$(governator -h|head -1)"                                = X"Usage: governator get"

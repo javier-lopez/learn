@@ -150,7 +150,7 @@ test X"${var}" = X"first"
 @begin{_getfs}
 _getfs; test X"${?}" = X"1"
 drive="$(grep "swap" /etc/fstab | grep -o "/dev/.*" | cut -d" " -f1)"
-test X"$(_getfs "${drive}")" = X"swap"
+test -z "${drive}" || test X"$(_getfs "${drive}")" = X"swap"
 @end
 
 @begin{_getpasswd}
@@ -212,22 +212,10 @@ _livecd; test X"${?}" = X"1"
 @end
 
 @begin{_mkdir_p}
-_newer; test X"${?}" = X"1"
+_mkdir_p; test X"${?}" = X"1"
 _mkdir_p a         && test -d "a"       && rm -rf a
 _mkdir_p a/b       && test -d "a/b"     && rm -rf a
 _mkdir_p "a/b/c d" && test -d "a/b/c d" && rm -rf a
-@end
-
-@begin{_newer}
-_newer; test X"${?}"             = X"1"
-_newer file1; test X"${?}"       = X"1"
-_newer file1 file2; test X"${?}" = X"1"
-touch file1
-_newer file1; test X"${?}"       = X"1"
-touch file2
-_newer file1 file2; test X"${?}" = X"1"
-_newer file2 file1; test X"${?}" = X"0"
-rm -rf file1 file2
 @end
 
 @begin{_is_int}

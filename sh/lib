@@ -701,30 +701,6 @@ _mkdir_p() { #portable mkdir -p function
 #_mkdir_p "foo/bar/daa" #creates the directory hier
 #=================================================================
 
-_newer() {
-    #compare the dates of two files, return true (0) if file1 has
-    #been modified more recently otherwise 1
-
-    [ "${#}" -ne "2" ] && return 1
-
-    if [ ! -f "${1}" ] || [ ! -f "${2}" ]; then
-        return 1
-    fi
-
-    if [ -n "$(find "${1}" -newer "${2}" -print)" ]; then
-        return 0
-    else
-        return 1
-    fi
-}
-#==================================================== Example ====
-#if _newer 1stfile 2ndfile; then
-    #printf "%s\\n" "1stfile is newer"
-#else
-    #printf "%s\\n" "2ndfile is newer"
-#fi
-#=================================================================
-
 _notify() {
     #output messages through the notification system, prints to
     #stdout in the worst escenario
