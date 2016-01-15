@@ -1,0 +1,6 @@
+before_install:
+  - sudo apt-get update
+  - sudo apt-get install -y wget curl apt-file xclip xdotool gnupg suckless-tools gnupg-agent
+  - sudo apt-file update
+  - eval $(gpg-agent --daemon)
+script: (cd python/tests/ && sh tools.driver) && (cd sh/tests/ && sh lib.driver && xvfb-run sh tools.driver)
