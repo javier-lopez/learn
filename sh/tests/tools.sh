@@ -1,8 +1,8 @@
 #!/bin/sh
 #Based on the GNU shtool test suite
 
-tools="../"
-tools_db="./tools.test"
+tools="../tools/"
+tools_db="./tools.db"
 
 #database exist?
 [ -d "${tools}" ]    || exit 1
@@ -12,7 +12,7 @@ tools_db="./tools.test"
 PS4=">>"
 
 #test tools
-TOOLS="$(find "${tools}" -maxdepth 1 -type f -exec basename '{}' ';')"
+TOOLS="$(find "${tools}"  -type f -exec basename '{}' ';')"
 TESTS="$(grep '^@begin' "${tools_db}" | sed -e 's/^@begin{//' -e 's/}.*$//')"
 TOOLS_WITH_TEST="$(printf "%s\\n" ${TOOLS} ${TESTS} | awk 'x[$0]++')"
 
@@ -67,15 +67,13 @@ for tool in ${TOOLS_WITH_TEST}; do
     ran="$((${ran} + 1))"
 done
 
-#cleanup
-cd ..
-rm -rf test.sd >/dev/null 2>&1
-
 #result
 if [ "${failed}" -gt "0" ]; then
     printf "FAILED: passed: ${passed}/${ran}, failed: ${failed}/${ran}\\n"
+    exit 1
 else
     printf "OK: passed: ${passed}/${ran}\\n"
+    cd .. && rm -rf test.sd >/dev/null 2>&1
 fi
 
 # vim: set ts=8 sw=4 tw=0 ft=sh :

@@ -2,6 +2,6 @@ Usage
 -----
 
    ```sh
-   $ sh lib.driver
-   $ sh tools.driver
+   $ sh lib.sh
+   $ sh tools.sh
    ```

@@ -2,5 +2,5 @@ Usage
 -----
 
    ```sh
-   $ sh tools.driver
+   $ sh tools.sh
    ```
