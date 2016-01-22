@@ -1,16 +1,16 @@
 #!/bin/sh
 #description: browse upnp-av based media servers
-#usage: simple-av-browser [options] [pattern]
+#usage: simple-dlna-browser [options] [pattern]
 
 #example:
-#$ simple-av-browser "Video file"
+#$ simple-dlna-browser "Video file"
 #http://192.168.1.254:8200/MediaItems/22.mp4
 
 _usage() {
     printf "%s\\n" "Usage: ${progname} [options] [pattern]"
-    printf "%s\\n" "Query upnp-av media servers."
+    printf "%s\\n" "Query dlna media servers."
     printf "\\n"
-    printf "%s\\n" "  -L, --list-servers       list available upnp-av media servers, require 'socat'"
+    printf "%s\\n" "  -L, --list-servers       list available dlna media servers, require 'socat'"
     printf "%s\\n" "  -l, --list-media [ID]    list multimedia resources"
     printf "%s\\n" "  -s, --server IP[:PORT]   specify media server"
     printf "%s\\n" "  -p, --port   PORT        specify media server port, default 8200"
@@ -19,10 +19,10 @@ _usage() {
     printf "\\n"
     printf "%s\\n" "Examples:"
     printf "\\n"
-    printf "%s\\n" "  $ simple-av-browser video1"
+    printf "%s\\n" "  $ ${progname} video1"
     printf "%s\\n" "  http://192.168.1.254:8200/MediaItems/22.mp4"
     printf "\\n"
-    printf "%s\\n" "  $ simple-av-browser -s 192.168.1.254:8200 -v video"
+    printf "%s\\n" "  $ ${progname} -s 192.168.1.254:8200 -v video"
     printf "%s\\n" "  http://192.168.1.254:8200/MediaItems/22.mp4 - video1"
     printf "%s\\n" "  http://192.168.1.254:8200/MediaItems/23.mp4 - Other video file"
     printf "%s\\n" "  http://192.168.1.254:8200/MediaItems/24.mp4 - Yet another video file"
@@ -30,19 +30,19 @@ _usage() {
     printf "%s\\n" "  Search pattern in all detected media servers, require 'socat' or specify"
     printf "%s\\n" "  a media server IP (-s|--server) and port (-p|--port)"
     printf "\\n"
-    printf "%s\\n" "  $ simple-av-browser -l -v"
+    printf "%s\\n" "  $ ${progname} -l -v"
     printf "%s\\n" "  http://192.168.1.111:8200/Desc.xml (Multimedia)"
     printf "%s\\n" "     File1 - 64\$0"
     printf "%s\\n" "     File2 - 64\$1"
     printf "%s\\n" "     Folder/ - 64\$2"
     printf "\\n"
-    printf "%s\\n" "  $ simple-av-browser -l '64\$2'"
+    printf "%s\\n" "  $ ${progname} -l '64\$2'"
     printf "%s\\n" "  http://192.168.1.111:8200/Desc.xml (Multimedia)"
     printf "%s\\n" "     File1"
     printf "%s\\n" "     File2"
     printf "%s\\n" "     File3"
     printf "\\n"
-    printf "%s\\n" "  $ simple-av-browser -L"
+    printf "%s\\n" "  $ ${progname} -L"
     printf "%s\\n" "  http://192.168.1.254:8200/rootDesc.xml (MiniDLNA)"
     printf "%s\\n" "  http://192.168.1.111:8200/Desc.xml (Multimedia)"
 }
@@ -196,7 +196,7 @@ _fetch_data() {
              -H "${soap_action}"     \
              -H "${accept_language}" \
              -H "${accept_encoding}" \
-             -X POST -d "${soap__envelope}" -s "${1}/ctl/ContentDir"
+             -X POST -d "${soap_envelope}" -s "${1}/ctl/ContentDir"
 
     elif wget --help 2>&1 | grep post-data >/dev/null 2>&1; then
         wget --header="${user_agent}"      \
@@ -205,10 +205,10 @@ _fetch_data() {
              --header="${soap_action}"     \
              --header="${accept_language}" \
              --header="${accept_encoding}" \
-             --post-data="${soap__envelope}" -q -O- "${1}/ctl/ContentDir"
+             --post-data="${soap_envelope}" -q -O- "${1}/ctl/ContentDir"
 
     elif command -v "nc" >/dev/null 2>&1; then
-        _fmedia__envelope_len="$(printf "%s\\n" "${soap__envelope}" | wc -c)"
+        _fmedia__envelope_len="$(printf "%s\\n" "${soap_envelope}" | wc -c)"
         _fmedia__server="${1#http://}"
         header="POST /ctl/ContentDir HTTP/1.1\r\n"
         header="${header}${user_agent}\r\n"
@@ -219,7 +219,7 @@ _fetch_data() {
         header="${header}${soap_action}\r\n"
         header="${header}${accept_language}\r\n"
         header="${header}${accept_encoding}\r\n\r\n\r\n"
-        header="${header}${soap__envelope}"
+        header="${header}${soap_envelope}"
 
         printf "%b" "${header}" | \
             nc "${_fmedia__server%:*}" "${_fmedia__server#*:}"
@@ -241,7 +241,7 @@ _list_media() {
     shift && shift && shift
 
     _init_http_headers
-    soap__envelope='<?xml version="1.0"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"><s:Body><u:Browse xmlns:u="urn:schemas-upnp-org:service:ContentDirectory:1"><ObjectID>'"${@:-0}"'</ObjectID><BrowseFlag>BrowseDirectChildren</BrowseFlag><Filter>@childCount</Filter><StartingIndex>0</StartingIndex><RequestedCount>10000</RequestedCount><SortCriteria></SortCriteria></u:Browse></s:Body></s:Envelope>'
+    soap_envelope='<?xml version="1.0"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"><s:Body><u:Browse xmlns:u="urn:schemas-upnp-org:service:ContentDirectory:1"><ObjectID>'"${@:-0}"'</ObjectID><BrowseFlag>BrowseDirectChildren</BrowseFlag><Filter>@childCount</Filter><StartingIndex>0</StartingIndex><RequestedCount>10000</RequestedCount><SortCriteria></SortCriteria></u:Browse></s:Body></s:Envelope>'
 
     for _lmedia__server in $(printf "%s" "${_lmedia__servers}" | \
         awk '{print $1}'|cut -d'/' -f1-3); do
@@ -266,7 +266,7 @@ _search_media() {
 
     _init_http_headers
     soap_action='SOAPAction: "urn:schemas-upnp-org:service:ContentDirectory:1#Search"'
-    soap__envelope='<?xml version="1.0" encoding="UTF-8" ?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"><s:Body><u:Search xmlns:u="urn:schemas-upnp-org:service:ContentDirectory:1"><ContainerID>0</ContainerID><SearchCriteria>(dc:title contains "'"${@}"'")</SearchCriteria><Filter>*</Filter><StartingIndex>0</StartingIndex><RequestedCount>100</RequestedCount><SortCriteria>+dc:title</SortCriteria></u:Search></s:Body></s:Envelope>'
+    soap_envelope='<?xml version="1.0" encoding="UTF-8" ?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"><s:Body><u:Search xmlns:u="urn:schemas-upnp-org:service:ContentDirectory:1"><ContainerID>0</ContainerID><SearchCriteria>(dc:title contains "'"${@}"'")</SearchCriteria><Filter>*</Filter><StartingIndex>0</StartingIndex><RequestedCount>100</RequestedCount><SortCriteria>+dc:title</SortCriteria></u:Search></s:Body></s:Envelope>'
 
     for _smedia__server in $(printf "%s" "${_smedia__servers}" | \
         awk '{print $1}'|cut -d'/' -f1-3); do
@@ -343,15 +343,15 @@ if [ "${list_servers_option}" ]; then
 elif [ "${list_media_option}" ]; then
     _list_media "${server}" "${port}" "${verbose_lvl}" "${@}" || {
         case "${?}" in
-            127) _die "Specify an upnp-av media server" \
+            127) _die "Specify a dlna media server" \
                       "or install 'socat' to enable autodetection." ;;
-              *) _die "No upnp-av media server was found at: ${server}:${port}"
+              *) _die "No dlna media server found at: ${server}:${port}"
         esac
     }
 else
     _search_media "${server}" "${port}" "${verbose_lvl}" "${@}" || {
         case "${?}" in
-            127) _die "Specify an upnp-av media server" \
+            127) _die "Specify a dlna media server" \
                       "or install 'socat' to enable autodetection." ;;
               *) _die "No result found for \"${@}\""
         esac
