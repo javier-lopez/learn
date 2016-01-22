@@ -164,6 +164,48 @@ _kmeans_awk() {
     done
 }
 
+_check_deps() {
+    if command -v "awk" >/dev/null 2>&1; then
+        awk_bin="awk"
+    elif busybox awk 1 /dev/null >/dev/null 2>&1; then
+        awk_bin="busybox awk"
+    else
+        printf "%s\\n" "install 'awk' to run this program" >&2
+        exit 1
+    fi
+
+    if ! command -v "convert" >/dev/null 2>&1; then
+        printf "%s\\n" "install 'convert' to run this program" >&2
+        exit 1
+    fi
+}
+
+_sanitize_input(){
+    if [ -z "${kmeans}" ]; then
+        kmeans="3"
+    else
+        _is_int "${kmeans}" || _die "Option -k|--kmeans requires a number parameter '${kmeans}'"
+    fi
+
+    if [ -z "${deviation}" ]; then
+        deviation="1"
+    else
+        _is_int "${deviation}" || _die "Option -d|--deviation requires a number parameter '${deviation}'"
+    fi
+
+    if [ -z "${format}" ]; then
+        format="rgb"
+    else
+        case "${format}" in
+            rgb|hex) : ;;
+            *) _die "Output valid formats are rgb|hex: '${format}'" ;;
+        esac
+    fi
+
+    [ -z "${resize}" ] && resize="25x25"
+    [ "${#}" -eq "0" ] && _die
+}
+
 if [ ! -t 0 ]; then
     #there is input comming from pipe or file, add to the end of $@
     set -- "${@}" $(cat)
@@ -220,42 +262,5 @@ for arg; do #parse options
     esac
 done
 
-if command -v "awk" >/dev/null 2>&1; then
-    awk_bin="awk"
-elif busybox awk 1 /dev/null >/dev/null 2>&1; then
-    awk_bin="busybox awk"
-else
-    printf "%s\\n" "install 'awk' to run this program" >&2
-    exit 1
-fi
-
-if ! command -v "convert" >/dev/null 2>&1; then
-    printf "%s\\n" "install 'convert' to run this program" >&2
-    exit 1
-fi
-
-if [ -z "${kmeans}" ]; then
-    kmeans="3"
-else
-    _is_int "${kmeans}" || _die "Option -k|--kmeans requires a number parameter '${kmeans}'"
-fi
-
-if [ -z "${deviation}" ]; then
-    deviation="1"
-else
-    _is_int "${deviation}" || _die "Option -d|--deviation requires a number parameter '${deviation}'"
-fi
-
-if [ -z "${format}" ]; then
-    format="rgb"
-else
-    case "${format}" in
-        rgb|hex) : ;;
-        *) _die "Output valid formats are rgb|hex: '${format}'" ;;
-    esac
-fi
-
-[ -z "${resize}" ] && resize="25x25"
-[ "${#}" -eq "0" ] && _die
-
+_check_deps && _sanitize_parameters
 _kmeans_awk "${@}"
