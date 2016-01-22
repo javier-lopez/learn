@@ -180,7 +180,7 @@ _check_deps() {
     fi
 }
 
-_sanitize_input(){
+_sanitize_parameters(){
     if [ -z "${kmeans}" ]; then
         kmeans="3"
     else
@@ -203,7 +203,6 @@ _sanitize_input(){
     fi
 
     [ -z "${resize}" ] && resize="25x25"
-    [ "${#}" -eq "0" ] && _die
 }
 
 if [ ! -t 0 ]; then
@@ -262,5 +261,6 @@ for arg; do #parse options
     esac
 done
 
-_check_deps && _sanitize_parameters
+_check_deps && _sanitize_parameters && [ "${#}" -eq "0" ] && _die
+
 _kmeans_awk "${@}"
