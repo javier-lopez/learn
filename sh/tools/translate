@@ -105,13 +105,14 @@ _tk() {
 
 _translate() {
     [ -z "${1}" ] && return 1
-    #update 14-12-2012 05:06: http://crunchbang.org/forums/viewtopic.php?id=17034
+    #https://github.com/soimort/translate-shell/commit/ec44b14a0d368949e0ad7cca1b90c30997392b11
     _translate__phrase="${*}"
-    _translate__page="$(curl -s -i --user-agent "" -d "sl=${sl}"  \
-                        -d "tl=${tl}" -d "client=t" -d "ie=UTF-8" \
-                        -d "oe=UTF-8" -d tk="$(_tk "${_translate__phrase}")" \
-                        --data-urlencode "text=${_translate__phrase}"        \
-                        http://translate.google.com/translate_a/t)"
+    _translate__page="$(curl -s -i \
+        --user-agent "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/602.1 (KHTML, like Gecko) Version/8.0 Safari/602.1 Epiphany/3.18.2" \
+        -d "sl=${sl}"  -d "tl=${tl}" -d "client=t" -d "ie=UTF-8" \
+        -d "oe=UTF-8" -d tk="$(_tk "${_translate__phrase}")"     \
+        --data-urlencode "text=${_translate__phrase}"            \
+        http://translate.google.com/translate_a/t)"
     _translate__result="$(printf "%s" "${_translate__page}" | tail -1 | \
                           cut -d\" -f2)"
     if [ -z "${_translate__result}" ];then
