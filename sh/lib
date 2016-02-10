@@ -860,6 +860,18 @@ _privport() {
 #fi
 #=================================================================
 
+_random() { #return a random number between two limits
+    #default to numbers between 1-10
+    _random__min="${1:-1}"
+    _random__max="${2:-10}"
+    _random__awk_prog='BEGIN {srand(); print int(MIN+rand()*(MAX-MIN+1))}'
+    awk -v MIN="${_random__min}" -v MAX="${_random__max}" "${_random__awk_prog}" < /dev/null
+}
+#==================================================== Example ====
+#printf "%s\\n" "$(_random)"     "prints random numbers between 1 and 10
+#printf "%s\\n" "$(_random 1 5)" "prints random numbers between 1 and 5
+#=================================================================
+
 _readc() {
     stty -echo
     stty raw

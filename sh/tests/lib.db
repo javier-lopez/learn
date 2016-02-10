@@ -300,6 +300,19 @@ _privport 80; test X"${?}"     = X"0"
 _privport 8080; test X"${?}"   = X"1"
 @end
 
+@begin{_random}
+test "$(_random)" -ge "1" && test "$(_random)" -le "10"
+test "$(_random)" -ge "1" && test "$(_random)" -le "10"
+test "$(_random)" -ge "1" && test "$(_random)" -le "10"
+test "$(_random)" -ge "1" && test "$(_random)" -le "10"
+test "$(_random)" -ge "1" && test "$(_random)" -le "10"
+test "$(_random 5 7)" -ge "5" && test "$(_random 5 7)" -le "7"
+test "$(_random 5 7)" -ge "5" && test "$(_random 5 7)" -le "7"
+test "$(_random 5 7)" -ge "5" && test "$(_random 5 7)" -le "7"
+test "$(_random 5 7)" -ge "5" && test "$(_random 5 7)" -le "7"
+test "$(_random 5 7)" -ge "5" && test "$(_random 5 7)" -le "7"
+@end
+
 @begin{_realpath}
 _realpath; test X"${?}"                  = X"1"
 test X"$(_realpath ~)"                   = X"${HOME}"
