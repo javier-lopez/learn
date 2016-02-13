@@ -35,7 +35,7 @@ _validmail() {
 
 _loadconf() {
     [ ! -e "${1}" ] && return 1
-    _loadconf__options=$(awk '! /export/ {if ($0 ~ "^.*=[^;&]*" && $0 !~ "&&" && $1 !~ "^#") print }' "${1}")
+    _loadconf__options=$(awk '! /export/ {if ($0 ~ "^.*=[^;&]*" && $0 !~ "&&" && $1 !~ "^#") print }' "${1}" 2>/dev/null)
     eval "${_loadconf__options}"
 }
 
