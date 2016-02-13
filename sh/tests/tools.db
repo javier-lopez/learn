@@ -392,8 +392,8 @@ top -b 2>&1 >/dev/null & : && sleep 0.1 && pgrep -x top
 fuck you top; test X"${?}"                         = X"0"
 sleep 0.2 && test X"$(pgrep -x top)"               = X""
 top -b 2>&1 >/dev/null & :
-dmenu  2>&1 >/dev/null & :
-test X"$(fuck you dmenu top | head -1)"            = X"ヽ(\`Д´)ﾉ⌒ n𝗎ǝɯ𝗉"
+telnet  2>&1 >/dev/null & :
+test X"$(fuck you telnet top | head -1)"            = X"ヽ(\`Д´)ﾉ⌒ ʇǝ𝗎|ǝʇ"
 sleep 0.2 && test X"$(pgrep -x top)" = X"" && test X"$(pgrep -x dmenu)" = X""
 @end
 
