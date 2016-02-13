@@ -638,7 +638,7 @@ _lastchar() { #return last char of a string
     printf "%s\\n" "${i#$_1stchar__substr}"
 }
 #==================================================== Example ====
-#_1stchar test #print 't'
+#_lastchar test #print 't'
 #=================================================================
 
 _livecd() {
@@ -888,57 +888,43 @@ _readc() {
 #done
 #=================================================================
 
-_realpath() { # print the absolute path
-    _realpath__success="true"
-    _realpath__path="${1}"
+_realpath() {
+    #print absolute path
+    [ -z "${1}" ] && return 1
 
-    # make sure the string isn't empty as that implies something in further logic
-    if [ -z "${_realpath__path}" ]; then
-        _realpath__success="false"
-    else
-        # start with the file name (sans the trailing slash)
-        _realpath__path="${_realpath__path%/}"
+    #start with the file name (sans the trailing slash)
+    _realpath__path="${1%/}"
 
-        # if we stripped off the trailing slash and were left with nothing, that means we're in the root directory
-        [ -z "${_realpath__path}" ] && _realpath__path="/"
+    #if we stripped off the trailing slash and were left with nothing, that means we're in the root directory
+    [ -z "${_realpath__path}" ] && _realpath__path="/"
 
-        # get the basename of the file (ignoring '.' & '..', because they're really part of the path)
-        _realpath__file_basename="${_realpath__path##*/}"
-        if [ X"${_realpath__file_basename}" = X"." ] || [ X"${_realpath__file_basename}" = X".." ]; then
-            _realpath__file_basename=""
-        fi
-
-        # extracts the directory component of the full path, if it's empty then assume '.' (the current working directory)
-        _realpath__directory="${_realpath__path%${_realpath__file_basename}}"
-        [ -z "${_realpath__directory}" ] && _realpath__directory="."
-
-        # attempt to change to the directory
-        if ! \cd "${_realpath__directory}" >/dev/null 2>/dev/null; then
-            _realpath__success="false"
-        fi
-
-        if "${_realpath__success}"; then
-            # does the filename exist?
-            if [ -n "${_realpath__file_basename}" ] && [ ! -e "${_realpath__file_basename}" ]; then
-                _realpath__success="false"
-            fi
-
-            # get the absolute path of the current directory & change back to previous directory
-            _realpath__abs_path="$(pwd -P)"
-            \cd "-" >/dev/null 2>/dev/null
-
-            # Append base filename to absolute path
-            if [ X"${_realpath__abs_path}" = X"/" ]; then
-                _realpath__abs_path="${_realpath__abs_path}${_realpath__file_basename}"
-            else
-                _realpath__abs_path="${_realpath__abs_path}/${_realpath__file_basename}"
-            fi
-
-            printf "%s\\n" "${_realpath__abs_path}"
-        fi
+    #get the basename of the file (ignoring '.' & '..', because they're really part of the path)
+    _realpath__file_basename="${_realpath__path##*/}"
+    if [ X"${_realpath__file_basename}" = X"." ] || [ X"${_realpath__file_basename}" = X".." ]; then
+        _realpath__file_basename=""
     fi
 
-    "${_realpath__success}"
+    #extracts the directory component of the full path, if it's empty then assume '.'
+    _realpath__directory="${_realpath__path%${_realpath__file_basename}}"
+    [ -z "${_realpath__directory}" ] && _realpath__directory="."
+
+    #attempt to change to the directory
+    if ! \cd "${_realpath__directory}" >/dev/null 2>/dev/null; then
+        return 1
+    fi
+
+    #get the absolute path of the current directory & change back to previous directory
+    _realpath__abs_path="$(pwd -P)"
+    \cd "-" >/dev/null 2>/dev/null
+
+    #append base filename to absolute path
+    if [ X"${_realpath__abs_path}" = X"/" ]; then
+        _realpath__abs_path="${_realpath__abs_path}${_realpath__file_basename}"
+    else
+        _realpath__abs_path="${_realpath__abs_path}/${_realpath__file_basename}"
+    fi
+
+    printf "%s\\n" "${_realpath__abs_path}"
 }
 #==================================================== Example ====
 #relative_path="../Shared/"

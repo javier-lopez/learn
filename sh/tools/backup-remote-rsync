@@ -1,9 +1,9 @@
 #!/bin/sh
 #description: backup directories to a remote system
-#usage: backup-remote-rsync -r DOMAIN:PATH [-h|-v|-s|-o|-n|-u USER|-p PORT|-i SSH KEY|-l LOGFILE] [LOCAL_DIR ...]
+#usage: backup-remote-rsync -r domain[:/path] [options] [local_dir ...]"
 
 #example: backup-remote-rsync -r b.javier.io:~/backup/$(hostname -f) -v -u admin -i /home/user/.ssh/id_rsa /home/user
-#creates backup-remote-rsync.log  root-home-user/  root-home-user.dotfiles/ inside b.javier.io:~/backup/$(hostname -f)
+#creates backup-remote-rsync.log, root-home-user/, root-home-user.dotfiles/ inside b.javier.io:~/backup/$(hostname -f)
 #==================================
 #Fri May  2 00:27:38 CDT 2013
 #==================================
@@ -33,9 +33,11 @@ _basename() {
     esac
 
     if [ -n "${_basename__suffix}" ] && [ "${#_basename__name}" -gt "${#2}" ]; then
-        if [ X"$(printf "%s" "${_basename__name}" | cut -c"$((${#_basename__name} - ${#_basename__suffix} + 1))"-"${#_basename__name}")" \
+        if [ X"$(printf "%s" "${_basename__name}" | \
+            cut -c"$((${#_basename__name} - ${#_basename__suffix} + 1))"-"${#_basename__name}")" \
            = X"$(printf "%s" "${_basename__suffix}")" ]; then
-            _basename__name="$(printf "%s" "${_basename__name}" | cut -c1-"$((${#_basename__name} - ${#_basename__suffix}))")"
+            _basename__name="$(printf "%s" "${_basename__name}" \
+                | cut -c1-"$((${#_basename__name} - ${#_basename__suffix}))")"
         fi
     fi
 
@@ -43,77 +45,68 @@ _basename() {
 }
 
 _realpath() {
-    _realpath__success="true"
-    _realpath__path="${1}"
+    #print absolute path
+    [ -z "${1}" ] && return 1
 
-    # make sure the string isn't empty as that implies something in further logic
-    if [ -z "${_realpath__path}" ]; then
-        _realpath__success="false"
-    else
-        # start with the file name (sans the trailing slash)
-        _realpath__path="${_realpath__path%/}"
+    #start with the file name (sans the trailing slash)
+    _realpath__path="${1%/}"
 
-        # if we stripped off the trailing slash and were left with nothing, that means we're in the root directory
-        [ -z "${_realpath__path}" ] && _realpath__path="/"
+    #if we stripped off the trailing slash and were left with nothing, that
+    #means we're in the root directory
+    [ -z "${_realpath__path}" ] && _realpath__path="/"
 
-        # get the basename of the file (ignoring '.' & '..', because they're really part of the path)
-        _realpath__file_basename="${_realpath__path##*/}"
-        if [ X"${_realpath__file_basename}" = X"." ] || [ X"${_realpath__file_basename}" = X".." ]; then
-            _realpath__file_basename=""
-        fi
-
-        # extracts the directory component of the full path, if it's empty then assume '.' (the current working directory)
-        _realpath__directory="${_realpath__path%${_realpath__file_basename}}"
-        [ -z "${_realpath__directory}" ] && _realpath__directory="."
-
-        # attempt to change to the directory
-        if ! \cd "${_realpath__directory}" >/dev/null 2>/dev/null; then
-            _realpath__success="false"
-        fi
-
-        if "${_realpath__success}"; then
-            # does the filename exist?
-            if [ -n "${_realpath__file_basename}" ] && [ ! -e "${_realpath__file_basename}" ]; then
-                _realpath__success="false"
-            fi
-
-            # get the absolute path of the current directory & change back to previous directory
-            _realpath__abs_path="$(pwd -P)"
-            \cd "-" >/dev/null 2>/dev/null
-
-            # Append base filename to absolute path
-            if [ X"${_realpath__abs_path}" = X"/" ]; then
-                _realpath__abs_path="${_realpath__abs_path}${_realpath__file_basename}"
-            else
-                _realpath__abs_path="${_realpath__abs_path}/${_realpath__file_basename}"
-            fi
-
-            # output the absolute path
-            printf "%s\\n" "${_realpath__abs_path}"
-        fi
+    #get the basename of the file (ignoring '.' & '..', because they're really
+    #part of the path)
+    _realpath__file_basename="${_realpath__path##*/}"
+    if [ X"${_realpath__file_basename}" = X"."  ] || \
+       [ X"${_realpath__file_basename}" = X".." ]; then
+        _realpath__file_basename=""
     fi
+
+    #extracts the directory component of the full path, if it's empty then
+    #assume '.'
+    _realpath__directory="${_realpath__path%${_realpath__file_basename}}"
+    [ -z "${_realpath__directory}" ] && _realpath__directory="."
+
+    #attempt to change to the directory
+    if ! \cd "${_realpath__directory}" >/dev/null 2>/dev/null; then
+        return 1
+    fi
+
+    #get the absolute path of the current directory & change back to previous
+    #directory
+    _realpath__abs_path="$(pwd -P)"
+    \cd "-" >/dev/null 2>/dev/null
+
+    #append base filename to absolute path
+    if [ X"${_realpath__abs_path}" = X"/" ]; then
+        _realpath__abs_path="${_realpath__abs_path}${_realpath__file_basename}"
+    else
+        _realpath__abs_path="${_realpath__abs_path}/${_realpath__file_basename}"
+    fi
+
+    printf "%s\\n" "${_realpath__abs_path}"
 }
 
 _usage() {
-    printf "%s\\n" "Usage: $(_basename "${0}") -r domain:/path [options] [local_dir ...]"
+    printf "%s\\n" "Usage: ${progname} -r DOMAIN[:/PATH] [OPTIONS] [LOCAL DIR|FILE ...]"
     printf "%s\\n" "Backup directories to a remote system."
     printf "\\n"
     printf "%s\\n" "Required arguments:"
-    printf "%s\\n" "  -r domain|ip:/path     remote server"
+    printf "%s\\n" "  -r, --remote DOMAIN[:/PATH]   remote server"
     printf "\\n"
     printf "%s\\n" "Optional arguments:"
-    printf "%s\\n" "  local_dir|local_file   dirs|files to backup [${HOME}]"
-    printf "%s\\n" "  -v                     verbose"
-    printf "%s\\n" "  -s                     skip ssh auth pre-tests"
-    printf "%s\\n" "  -o                     omit executing commmands, useful with -v"
-    printf "%s\\n" "  -n                     dry run, list files to be modified"
-    printf "%s\\n" "  -u user                remote user    [${USER}]"
-    printf "%s\\n" "  -p port                remote port    [22]"
-    printf "%s\\n" "  -i ssh key             ssh public key [${HOME}/.ssh/id_rsa]"
-    printf "%s\\n" "  -l file                log file       [/tmp/$(_basename "${0}").log ]"
-    printf "%s\\n" "  -h, --help             show this help message and exit"
+    printf "%s\\n" "  -s, --skip                    skip ssh auth pre-tests"
+    printf "%s\\n" "  -o, --omit                    omit executing commands, useful with -v"
+    printf "%s\\n" "  -n, --dry-run                 dry run, list files to be modified"
+    printf "%s\\n" "  -u, --user USER               remote user    [${USER}]"
+    printf "%s\\n" "  -p, --port PORT               remote port    [22]"
+    printf "%s\\n" "  -i, --identity-file FILE      ssh public key [${HOME}/.ssh/id_rsa]"
+    printf "%s\\n" "  -l, --log-file FILE           log file       [/tmp/${progname}.log ]"
+    printf "%s\\n" "  -v, --verbose                 verbose"
+    printf "%s\\n" "  -h, --help                    show this help message and exit"
     printf "\\n"
-    printf "%s\\n" "NOTE: ssh key authentication must be configured for this script to work"
+    printf "%s\\n" "  local DIR|FILE                files to backup [${HOME}]"
 }
 
 _die() {
@@ -164,12 +157,6 @@ _printtime() {
     printf "%s\\n" "${_printtime__day}d ${_printtime__hour}h ${_printtime__min}m ${_printtime__sec}s"
 }
 
-_hasdotfiles() {
-    [ -z "${1}" ] && return 1
-    [ -z "$(find "${1}" -maxdepth 1 -iname ".*" | awk '! /^.$/ {print $1}')" ] && return 1
-    return 0
-}
-
 _internetavailable() {
     ping -q -w 1 -c 1 google.com >/dev/null 2>&1 && return 0 || return 1
 }
@@ -180,19 +167,19 @@ _backup() {
     [ -z "${3}" ] && return 1 || _backup__remote_server="${3}"
     [ -z "${4}" ] && return 1 || _backup__remote_port="${4}"
     [ -z "${5}" ] && return 1 || _backup__sshkey="${5}"
+    [ -z "${6}" ] && return 1 || _backup__logfile="${6}"
     [ -n "${dryrun_flag}" ]   && _backup__dry_run="--dry-run"
+    _backup_start_time="$(date +%s)"
 
     if rsync -h | grep -- --detect-renamed >/dev/null; then
         _backup__extra_flags="--detect-renamed"
     fi
 
-    _backup__start="$(date +%s)"
-
     _backup__ssh_mkdir="$(printf "%s %s" "ssh -p ${_backup__remote_port} -i ${_backup__sshkey}" \
         "${_backup__remote_user}@$(printf "%s" "${_backup__remote_server}" | \
         cut -d':' -f1) \"mkdir backup 2>/dev/null; mkdir backup/$(hostname -f) 2>/dev/null\"")"
     _verbose "exec         : ${_backup__ssh_mkdir}"
-    [ -z "${ommit_flag}" ] && eval "${_backup__ssh_mkdir}" | tee -a "${logfile}"
+    [ -z "${ommit_flag}" ] && eval "${_backup__ssh_mkdir}" | tee -a "${_backup__logfile}"
 
     OLDIFS="${IFS}"
     IFS="|"
@@ -203,8 +190,8 @@ _backup() {
         _backup__remotepath="$(printf "%s" "${_backup__realpath}" |           \
             awk '{sub(/\//,"root-"); gsub(/\//,"-"); print $0}')"
         case "${_backup__remotepath}" in
-            *-) _backup__remotepath="$(printf "%s" "${_backup__remotepath}" | \
-                cut -c1-"$((${#_backup__remotepath} - 1))")" ;;
+            #remove last hypen
+            *-) _backup__remotepath="${_backup__remotepath%?}" ;;
         esac
 
         _verbose "realpath     : ${_backup__realpath}"
@@ -213,50 +200,34 @@ _backup() {
         if [ -d "${_backup__realpath}" ]; then
             _backup__rsync="$(printf "%s %s %s %s %s" "rsync ${_backup__dry_run} -avz"  \
                 "-e \"ssh -p ${_backup__remote_port} -i ${_backup__sshkey}\" --partial" \
-                "--one-file-system --delete --exclude=.gvfs ${_backup__realpath}/"         \
+                "--one-file-system --delete --exclude=.gvfs ${_backup__realpath}/"      \
                 "${_backup__extra_flags}" \
                 "${_backup__remote_user}@${_backup__remote_server}/${_backup__remotepath}")"
-            _verbose "exec         : ${_backup__rsync}"
-            [ -z "${ommit_flag}" ] && eval "${_backup__rsync}" | tee -a "${logfile}"
-
-            #TODO 07-08-2014 03:03 >> separe dotfiles
-            #if _hasdotfiles "${_backup__realpath}"; then
-                #_backup__dotfiles="${_backup__remotepath}.dotfiles"
-                #_verbose "dotfiles     : ${_backup__dotfiles}"
-                #_backup__rsync="$(printf "%s %s %s %s %s %s" "ls ${_backup__realpath}"  \
-                    #"| rsync ${_backup__dry_run} -avz -e "                                 \
-                    #"\"ssh -p ${_backup__remote_port} -i ${_backup__sshkey}\""          \
-                    #"--one-file-system  --delete --partial --exclude-from=-"                  \
-                    #"--exclude=.gvfs ${_backup__extra_flags} ${_backup__realpath}/"     \
-                    #"${_backup__remote_user}@${_backup__remote_server}/${_backup__dotfiles}")"
-                    #_verbose "exec         : ${_backup__rsync}"
-                    #[ -z "${ommit_flag}" ] && eval "${_backup__rsync}" | tee -a "${logfile}"
-            #else
-                #_verbose "dotfiles     : no"
-            #fi
         elif [ -f "${_backup__realpath}" ]; then
             _backup__rsync="$(printf "%s %s %s %s %s" "rsync ${_backup__dry_run} -avz"   \
                "-e \"ssh -p ${_backup__remote_port} -i ${_backup__sshkey}\" --partial"   \
-               "--one-file-system --delete --partial ${_backup__extra_flags}"               \
+               "--one-file-system --delete --partial ${_backup__extra_flags}"            \
                "${_backup__realpath}" \
                "${_backup__remote_user}@${_backup__remote_server}/${_backup__remotepath}")"
-            _verbose "exec         : ${_backup__rsync}"
-            [ -z "${ommit_flag}" ] && eval "${_backup__rsync}" | tee -a "${logfile}"
         fi
+        _verbose "exec         : ${_backup__rsync}"
+        [ -z "${ommit_flag}" ] && eval "${_backup__rsync}" | tee -a "${_backup__logfile}"
     done
 
     IFS="${OLDIFS}"
 
-    _backup__end="$(date +%s)"
-    _backup__diff="$((${_backup__end} - ${_backup__start}))"
+    _backup_end_time="$(date +%s)"
+    _backup_total_time="$((${_backup_end_time} - ${_backup_start_time}))"
 
     _logger "$(printf "%*s\\n" "34" ''  | tr ' ' =)"
-    _logger "Total time: $(_printtime "${_backup__diff}")"
+    _logger "Total time: $(_printtime "${_backup_total_time}")"
     _logger "$(printf "%*s\\n" "34" ''  | tr ' ' =)"
 
     rsync -e "ssh -p ${_backup__remote_port} -i ${_backup__sshkey}" \
-        "${logfile}" "${_backup__remote_user}@${_backup__remote_server}"
+        "${_backup__logfile}" "${_backup__remote_user}@${_backup__remote_server}"
 }
+
+progname="$(_basename "${0}")"
 
 if [ ! -t 0 ]; then
     #there is input comming from pipe or file, add to the end of $@
@@ -267,42 +238,67 @@ fi
 
 for arg; do #parse options
     case "${arg}" in
-        -h|--help) _usage && exit ;;
-        -v) verbose_flag="true";   shift ;;
-        -n) dryrun_flag="true";    shift ;;
-        -o) ommit_flag="true";     shift ;;
-        -s) skip_ssh_tests="true"; shift ;;
-        -u) if [ "${#}" -gt "1" ]; then
-                remote_user="$(printf "%s " "${@}" | awk '{print $2}')"
-                shift 2
-            else
-               _die "Option '${arg}' requires a parameter"
-            fi ;;
-        -p) if [ "${#}" -gt "1" ]; then
-                remote_port="$(printf "%s " "${@}" | awk '{print $2}')"
-                shift 2
+        -h|--help)       _usage && exit ;;
+        -v|--verbose)    verbose_flag="true"; shift ;;
+        -s|--skip-tests) skip_ssh_tests="true"; shift ;;
+        -o|--omit)       ommit_flag="true";   shift ;;
+        -n|--dry-run)    dryrun_flag="true";  shift ;;
+        '-r'|'--remote')
+            if [ "${#}" -gt "1" ]; then
+                case "${2}" in
+                    -*) _die "Option '${arg}' requires a parameter";;
+                esac
+                shift; remote_server="${1}"; [ "${1}" ] && shift
             else
                 _die "Option '${arg}' requires a parameter"
             fi ;;
-        -r) if [ "${#}" -gt "1" ]; then
-                remote_server="$(printf "%s " "${@}" | awk '{print $2}')"
-                shift 2
+        -r*)       remote_server="${1#-r}";       shift ;;
+        --remote*) remote_server="${1#--remote}"; shift ;;
+        '-u'|'--user')
+            if [ "${#}" -gt "1" ]; then
+                case "${2}" in
+                    -*) _die "Option '${arg}' requires a parameter";;
+                esac
+                shift; remote_user="${1}"; [ "${1}" ] && shift
             else
                 _die "Option '${arg}' requires a parameter"
             fi ;;
-        -i) if [ "${#}" -gt "1" ]; then
-                sshkey="$(printf "%s " "${@}" | awk '{print $2}')"
-                shift 2
+        -u*)     remote_user="${1#-u}";     shift ;;
+        --user*) remote_user="${1#--user}"; shift ;;
+        '-p'|'--port')
+            if [ "${#}" -gt "1" ]; then
+                case "${2}" in
+                    -*) _die "Option '${arg}' requires a parameter";;
+                esac
+                shift; remote_port="${1}"; [ "${1}" ] && shift
             else
                 _die "Option '${arg}' requires a parameter"
             fi ;;
-        -l) if [ "${#}" -gt "1" ]; then
-                logfile="$(printf "%s " "${@}" | awk '{print $2}')"
-                shift 2
+        -p*)     remote_port="${1#-p}";     shift ;;
+        --port*) remote_port="${1#--port}"; shift ;;
+        '-i'|'--identity-file')
+            if [ "${#}" -gt "1" ]; then
+                case "${2}" in
+                    -*) _die "Option '${arg}' requires a parameter";;
+                esac
+                shift; sshkey="${1}"; [ "${1}" ] && shift
             else
                 _die "Option '${arg}' requires a parameter"
             fi ;;
-        -*) _die "$(_basename "${0}"): unrecognized option '${arg}'" ;;
+        -i*)              sshkey="${1#-i}";              shift ;;
+        --identity-file*) sshkey="${1#--identity-file}"; shift ;;
+        '-l'|'--log-file')
+            if [ "${#}" -gt "1" ]; then
+                case "${2}" in
+                    -*) _die "Option '${arg}' requires a parameter";;
+                esac
+                shift; logfile="${1}"; [ "${1}" ] && shift
+            else
+                _die "Option '${arg}' requires a parameter"
+            fi ;;
+        -l*)         logfile="${1#-l}";         shift ;;
+        --log-file*) logfile="${1#--log-file}"; shift ;;
+        -*) _die "${progname}: unrecognized option '${arg}'" ;;
     esac
 done
 
@@ -312,36 +308,33 @@ elif ! command -v "ssh" >/dev/null; then
     printf "%s\\n" "install 'ssh' to run this program" >&2; exit 1
 fi
 
-exec 9>/tmp/"$(_basename "${0}")".lock #verify that only one instance is running
-[ X"${LOGNAME}" = X"root" ] && chmod 666 /tmp/"$(_basename "${0}")".lock
+exec 9>/tmp/"${progname}".lock #verify that only one instance is running
+[ X"${LOGNAME}" = X"root" ] && chmod 666 /tmp/"${progname}".lock
 if ! flock -n 9; then #http://mywiki.wooledge.org/BashFAQ/045
-    printf "%s\\n" "$(_basename "${0}"): another instance is running";
+    printf "%s\\n" "${progname}: another instance is running";
     exit 1
 fi
 
-[ -z "${logfile}" ]     && logfile="/tmp/$(_basename "${0}").log"
+[ -z "${logfile}" ]     && logfile="/tmp/${progname}.log"
 [ -z "${remote_user}" ] && remote_user="${USER}"
 [ -z "${remote_port}" ] && remote_port="22"
 
 if [ -z "${remote_server}" ]; then
-    _die "$(_basename "${0}"): no remote server specified"
+    _die "${progname}: no remote server specified"
 else
     if [ -z "$(printf "%s" "${remote_server}" | awk -F":" '{print $2}')" ]; then
-        if [ X"${remote_user}" = X"${USER}" ]; then
-            remote_server="${remote_server}:~/backup/$(hostname -f)"
-        else
-            remote_server="${remote_server}:/home/${remote_user}/backup/$(hostname -f)"
-        fi
+        remote_server="${remote_server}:/home/${remote_user}/backup/$(hostname -f)"
     fi
 fi
 
 if [ -z "${ommit_flag}" ]; then
     if ! _internetavailable; then
-        printf "%s\\n" "$(_basename "${0}"): no internet access, exiting." >&2
+        printf "%s\\n" "${progname}: no internet access, exiting." >&2
         exit 1
     fi
 fi
 
+#header
 _logger "$(printf "%*s\\n" "34" ''  | tr ' ' =)"
 _logger "$(date)"
 _logger "$(printf "%*s\\n" "34" ''  | tr ' ' =)"
@@ -359,35 +352,37 @@ if [ -z "${sshkey}" ]; then
     OLDIFS="${IFS}"
     IFS="|"
 
+    #if no header is given, look for it in every directory given
     for file in ${files}; do
         if [ -f "${file}"/.ssh/id_rsa ]; then
-            sshkey="${file}"/.ssh/id_rsa
-            break
+            sshkey="${file}"/.ssh/id_rsa; break
         fi
     done
 
+    #or in the default ssh directory
     if [ -z "${sshkey}" ]; then
-        [ -f "${HOME}"/.ssh/id_rsa ] && sshkey="${HOME}"/.ssh/id_rsa
+       [ -f "${HOME}"/.ssh/id_rsa ] && sshkey="${HOME}"/.ssh/id_rsa
     fi
 
     IFS="${OLDIFS}"
 fi
 
 if [ -z "${skip_ssh_tests}" ]; then
-    [ -z "${sshkey}" ] && {
+    if [ -z "${sshkey}" ]; then
         _logger "[E]: no ssh key found!, you may try options -i or -s"
-        printf "\\n" >&2; _usage >&2; exit 1; }
+        printf "\\n" >&2; _usage >&2; exit 1
+    fi
 
     remote_ip="$(printf "%s" "${remote_server}"|cut -d':' -f1)"
-    ssh_auth_test="$(printf "%s %s %s %s" "ssh -o PasswordAuthentication=no"      \
-       "-o ChallengeResponseAuthentication=no -o GSSAPIAuthentication=no"         \
-       "-o KbdInteractiveAuthentication=no -p ${remote_port} -i ${sshkey}"        \
+    ssh_auth_test="$(printf "%s %s %s %s" "ssh -o PasswordAuthentication=no" \
+       "-o ChallengeResponseAuthentication=no  -o GSSAPIAuthentication=no"   \
+       "-o KbdInteractiveAuthentication=no -p ${remote_port} -i ${sshkey}"   \
        "${remote_user}@${remote_ip} ls")"
 
     _verbose "exec         : ${ssh_auth_test}"
     if [ -z "${ommit_flag}" ]; then
         if ! eval "${ssh_auth_test}" >/dev/null 2>&1; then
-            _logger "[E]: couldn't connect to remote server, wrong username/ssh key, try options -u or -s"
+            _logger "[E]: couldn't connect to remote server, wrong username/ssh key."
             printf "\\n" >&2; _usage >&2; exit 1
         fi
     fi
@@ -399,6 +394,7 @@ _verbose "remote server: ${remote_server}"
 _verbose "remote port  : ${remote_port}"
 _verbose "ssh key      : ${sshkey}"
 _verbose "log          : ${logfile}"
+
 [ X"${LOGNAME}" = X"root" ] && chmod 666 "${logfile}"
 
 _backup "${files}" "${remote_user}" "${remote_server}" "${remote_port}" "${sshkey}" "${logfile}"
