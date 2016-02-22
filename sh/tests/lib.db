@@ -418,6 +418,33 @@ hello="hello world"; bye="bye world"
 test X"$(_strunique "${hello}" "${bye}")" = X"hello world bye"
 @end
 
+@begin{_subchar}
+_subchar; test X"${?}"             = X"1"
+_subchar string;   test X"${?}"    = X"1"
+_subchar string 1; test X"${?}"    = X"0"
+_subchar a 1; test X"${?}"         = X"1"
+test X"$(_subchar "abcdef" -1)"    = X"f"
+test X"$(_subchar "abcdef" -2)"    = X"e"
+test X"$(_subchar "abcdef" -3)"    = X"d"
+test X"$(_subchar "abcdef" 0)"     = X"a"
+test X"$(_subchar "abcdef" 2)"     = X"c"
+test X"$(_subchar "abcdef" 4)"     = X"e"
+test X"$(_subchar a 1)"            = X""
+test X"$(_subchar "abcdef" 1)"     = X"b"
+@end
+
+@begin{_subchar2}
+_subchar2; test X"${?}"             = X"0"
+_subchar2 string;   test X"${?}"    = X"0"
+_subchar2 string 1; test X"${?}"    = X"0"
+_subchar2 a 1; test X"${?}"         = X"0"
+test X"$(_subchar2 "abcdef" 0)"     = X"a"
+test X"$(_subchar2 "abcdef" 2)"     = X"c"
+test X"$(_subchar2 "abcdef" 4)"     = X"e"
+test X"$(_subchar2 a 1)"            = X""
+test X"$(_subchar2 "abcdef" 1)"     = X"b"
+@end
+
 @begin{_substr}
 _substr; test X"${?}"             = X"1"
 _substr string; test X"${?}"      = X"1"

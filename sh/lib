@@ -1126,6 +1126,44 @@ _strunique() { #print unique strings, return 1 on failure
 #printf "%s\\n"  "${world}"   #prints "hello world bye"
 #=================================================================
 
+_subchar() { #print n character in string
+    [ -z "${1}" ] && return 1
+    [ -z "${2}" ] && return 1
+
+    if [ "${2}" -lt "0" ]; then
+        _subchar__pos="$((${#1} + ${2}))"
+    else
+        _subchar__pos="${2}"
+    fi
+
+    [ "${_subchar__pos}" -ge "${#1}" ] && return 1
+    [ "${_subchar__pos}" -lt "0" ]     && return 1
+
+    _subchar__string="${1}"
+
+    i="0"; while [ "${i}" -le "${_subchar__pos}" ]; do
+        _subchar__char="${_subchar__string#?}"
+        _subchar__char="${_subchar__string%$_subchar__char}"
+        i="$(($i+1))"
+        _subchar__string="${_subchar__string#?}"
+    done
+    #_subchar__retval="${_subchar__char}"
+    printf "%s\\n" "${_subchar__char}"
+}
+
+_subchar2() { #print n character in string
+    #faster but unsecure alternative
+    _subchar__string="${1}"
+    i="0"; while [ "${i}" -le "${2}" ]; do
+        _subchar__char="${_subchar__string#?}"
+        _subchar__char="${_subchar__string%$_subchar__char}"
+        i="$(($i+1))"
+        _subchar__string="${_subchar__string#?}"
+    done
+    #_subchar__retval="${_subchar__char}"
+    printf "%s\\n" "${_subchar__char}"
+}
+
 _substr() { #print a substring
     [ -z "${1}" ] && return 1
     [ -z "${2}" ] && return 1
