@@ -46,7 +46,71 @@ _whereis() {
     fi
 }
 
-_writeconf() {
+_decode64() { #decode a string in base64
+    [ ! -t 0 ] && set -- "${@}" "$(cat)"
+    [ -z "${1}" ] && return 1
+    if command -v "base64" >/dev/null 2>&1; then
+        printf "%s\\n" "${@}" | base64 -d
+    elif command -v "openssl" >/dev/null 2>&1; then
+        printf "%s\\n" "${@}" | openssl enc -base64 -d
+    elif command -v "awk" >/dev/null 2>&1 && (command -v "uudecode" || command -v "busybox") >/dev/null 2>&1; then
+        if command -v "uudecode" >/dev/null 2>&1; then
+            uudecode__bin="uudecode"
+        elif command -v "busybox"  >/dev/null 2>&1; then
+            uudecode__bin="busybox uudecode"
+        fi
+        _decode64_awk() { [ ! -t 0 ] && set -- "${@}" "$(cat)"
+          [ -z "${1}" ] && return 1
+          printf "%s\\n" "${@}" | sed 's/=//g' | (
+            printf "begin 644 -\\n"; awk 'function _decode64_awk() {
+              inp=1; out=""; while (getline) { for(i=1; i<=length($0); i++) {
+                  c=substr(uu,index(b64,substr($0,i,1)),1);
+                  inp++; out=(out c); if (inp==61) {
+                    print "M" out; inp=1; out=""; }}}
+              if (length(out)) { printf "%c", (32+3*length(out)/4); print out; }}
+            BEGIN { b64="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+              uu="`!\"#$%&'\''()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_"
+              _decode64_awk(); exit; }'
+            printf "%s\\n%s\\n" '`' 'end'
+          ) | $uudecode__bin
+        }
+        printf "%s\\n" "${@}" | _decode64_awk
+    else
+        _decode64_sh() { [ ! -t 0 ] && set -- "${@}" "$(cat)"
+            _decode64_sh__b64='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+            _decode64_sh__n="0"; _decode64_sh__v="0"; _decode64_sh__args="${@}"
+            while [ "${_decode64_sh__args}" ]; do #process char by char
+                _decode64_sh__char="${_decode64_sh__args%${_decode64_sh__args#?}}"
+                case "${_decode64_sh__char}" in
+                    '\n') continue ;;
+                     '=') _decode64_sh__v="$(($_decode64_sh__v << 6))" ;;
+                       *) _decode64_sh__char="${_decode64_sh__b64#*$_decode64_sh__char}"
+                          _decode64_sh__char="$((${#_decode64_sh__b64}-${#_decode64_sh__char}))"
+                          if [ "${_decode64_sh__char}" -eq "0" ]; then
+                            [ X"${_decode64_sh__args}" = X"${_decode64_sh__char}" ] &&\
+                                _decode64_sh__args='' || _decode64_sh__args="${_decode64_sh__args#?}"
+                            continue
+                          fi
+                          _decode64_sh__v="$(($_decode64_sh__v << 6 | $_decode64_sh__char-1))"
+                esac
+                _decode64_sh__n="$(($_decode64_sh__n+1))"
+                if [ "${_decode64_sh__n}" -eq "4" ]; then
+                    _decode64_sh__s="16"; while [ "${_decode64_sh__s}" -gt "-1" ]; do
+                        _decode64_sh__char="$(($_decode64_sh__v >> $_decode64_sh__s & 255))"
+                        printf \\$(($_decode64_sh__char/64*100+$_decode64_sh__char%64/8*10+$_decode64_sh__char%8))
+                        _decode64_sh__s="$(($_decode64_sh__s-8))"
+                    done
+                    _decode64_sh__v="0"; _decode64_sh__n="0"
+                fi
+                [ X"${_decode64_sh__args}" = X"${_decode64_sh__char}" ] &&\
+                    _decode64_sh__args='' || _decode64_sh__args="${_decode64_sh__args#?}"
+            done
+        }
+        printf "%s\\n" "${@}" | _decode64_sh
+    fi
+} #too hardcore for vim syntax'`"
+
+_write_conf() {
     [ ! -d "${1}" ] && _die "No valid directory ${1}"
 
     _verbose "  - creating ${1}/pxelinux.cfg/default ..."
@@ -111,41 +175,53 @@ EOF
     _verbose "  - creating ${1}/ubuntu/ubuntu.menu ..."
     mkdir -p "${1}"/ubuntu/1204/amd64
     mkdir -p "${1}"/ubuntu/1204/i386
+    mkdir -p "${1}"/ubuntu/1404/amd64
+    mkdir -p "${1}"/ubuntu/1404/i386
     cat    > "${1}"/ubuntu/ubuntu.menu << EOF
 LABEL 1
-MENU LABEL Ubuntu minimal 12.04 (32-bit)
+MENU LABEL Ubuntu minimal 12.04 LTS (32-bit)
 KERNEL ubuntu/1204/i386/linux
 IPAPPEND 2
 APPEND lang=us interface=auto initrd=ubuntu/1204/i386/initrd.gz
-TEXT HELP
-Install Ubuntu 12.04 (32-bit)
-ENDTEXT
 LABEL 2
-MENU LABEL Ubuntu minimal 12.04 (64-bit)
+MENU LABEL Ubuntu minimal 12.04 LTS (64-bit)
 KERNEL ubuntu/1204/amd64/linux
 IPAPPEND 2
 APPEND lang=us interface=auto initrd=ubuntu/1204/amd64/initrd.gz
-TEXT HELP
-Install Ubuntu 12.04 (64-bit)
-ENDTEXT
 LABEL 3
-MENU LABEL Ubuntu minimal 12.04 (32-bit)(hands-free)
+MENU LABEL Ubuntu minimal 12.04 LTS (32-bit)(hands-free)
 KERNEL ubuntu/1204/i386/linux
 IPAPPEND 2
-APPEND DEBCONF_DEBUG=5 priority=critical locale=en_US interface=auto netcfg/get_nameservers=8.8.8.8 url=http://people.ubuntu.com/~chilicuil/conf/preseed/minimal.preseed initrd=ubuntu/1204/i386/initrd.gz
-#APPEND DEBCONF_DEBUG=5 priority=critical locale=en_US user=joe interface=auto proxy=http://10.99.88.1:3142 netcfg/get_nameservers=8.8.8.8 url=http://people.ubuntu.com/~chilicuil/conf/preseed/minimal.preseed initrd=ubuntu/1204/i386/initrd.gz
-TEXT HELP
-Install Ubuntu 12.04 (32-bit)
-ENDTEXT
+APPEND DEBCONF_DEBUG=5 priority=critical locale=en_US interface=auto netcfg/get_nameservers=8.8.8.8 url=http://people.ubuntu.com/~chilicuil/conf/preseed/ubuntu-minimal.preseed initrd=ubuntu/1204/i386/initrd.gz
+#APPEND DEBCONF_DEBUG=5 priority=critical locale=en_US user=joe interface=auto proxy=http://10.99.88.1:3142 netcfg/get_nameservers=8.8.8.8 url=http://people.ubuntu.com/~chilicuil/conf/preseed/ubuntu-minimal.preseed initrd=ubuntu/1204/i386/initrd.gz
 LABEL 4
-MENU LABEL Ubuntu minimal 12.04 (64-bit)(hands-free)
+MENU LABEL Ubuntu minimal 12.04 LTS (64-bit)(hands-free)
 KERNEL ubuntu/1204/amd64/linux
 IPAPPEND 2
-APPEND DEBCONF_DEBUG=5 priority=critical locale=en_US interface=auto netcfg/get_nameservers=8.8.8.8 url=http://people.ubuntu.com/~chilicuil/conf/preseed/minimal.preseed initrd=ubuntu/1204/amd64/initrd.gz
-#APPEND DEBCONF_DEBUG=5 priority=critical locale=en_US user=joe interface=auto proxy=http://10.99.88.1:3142 netcfg/get_nameservers=8.8.8.8 url=http://people.ubuntu.com/~chilicuil/conf/preseed/minimal.preseed initrd=ubuntu/1204/amd64/initrd.gz
-TEXT HELP
-Install Ubuntu 12.04 (64-bit)
-ENDTEXT
+APPEND DEBCONF_DEBUG=5 priority=critical locale=en_US interface=auto netcfg/get_nameservers=8.8.8.8 url=http://people.ubuntu.com/~chilicuil/conf/preseed/ubuntu-minimal.preseed initrd=ubuntu/1204/amd64/initrd.gz
+#APPEND DEBCONF_DEBUG=5 priority=critical locale=en_US user=joe interface=auto proxy=http://10.99.88.1:3142 netcfg/get_nameservers=8.8.8.8 url=http://people.ubuntu.com/~chilicuil/conf/preseed/ubuntu-minimal.preseed initrd=ubuntu/1204/amd64/initrd.gz
+LABEL 5
+MENU LABEL Ubuntu minimal 14.04 LTS (32-bit)
+KERNEL ubuntu/1404/i386/linux
+IPAPPEND 2
+APPEND lang=us interface=auto initrd=ubuntu/1404/i386/initrd.gz
+LABEL 6
+MENU LABEL Ubuntu minimal 14.04 LTS (64-bit)
+KERNEL ubuntu/1404/amd64/linux
+IPAPPEND 2
+APPEND lang=us interface=auto initrd=ubuntu/1404/amd64/initrd.gz
+LABEL 7
+MENU LABEL Ubuntu minimal 14.04 LTS (32-bit)(hands-free)
+KERNEL ubuntu/1404/i386/linux
+IPAPPEND 2
+APPEND DEBCONF_DEBUG=5 priority=critical locale=en_US interface=auto netcfg/get_nameservers=8.8.8.8 url=http://people.ubuntu.com/~chilicuil/conf/preseed/ubuntu-minimal.preseed initrd=ubuntu/1404/i386/initrd.gz
+#APPEND DEBCONF_DEBUG=5 priority=critical locale=en_US user=joe interface=auto proxy=http://10.99.88.1:3142 netcfg/get_nameservers=8.8.8.8 url=http://people.ubuntu.com/~chilicuil/conf/preseed/ubuntu-minimal.preseed initrd=ubuntu/1404/i386/initrd.gz
+LABEL 8
+MENU LABEL Ubuntu minimal 14.04 LTS (64-bit)(hands-free)
+KERNEL ubuntu/1404/amd64/linux
+IPAPPEND 2
+APPEND DEBCONF_DEBUG=5 priority=critical locale=en_US interface=auto netcfg/get_nameservers=8.8.8.8 url=http://people.ubuntu.com/~chilicuil/conf/preseed/ubuntu-minimal.preseed initrd=ubuntu/1404/amd64/initrd.gz
+#APPEND DEBCONF_DEBUG=5 priority=critical locale=en_US user=joe interface=auto proxy=http://10.99.88.1:3142 netcfg/get_nameservers=8.8.8.8 url=http://people.ubuntu.com/~chilicuil/conf/preseed/ubuntu-minimal.preseed initrd=ubuntu/1404/amd64/initrd.gz
 EOF
     _verbose "  - creating ${1}/pxe/fedora/fedora.menu ..."
     mkdir -p "${1}"/fedora/19/amd64
@@ -155,16 +231,10 @@ LABEL 1
 MENU LABEL Fedora minimal 19 (32-bit)
 KERNEL fedora/19/i386/linux
 APPEND lang=us keymap=us ip=dhcp ksdevice=eth0 initrd=fedora/19/i386/initrd.gz
-TEXT HELP
-Install Fedora 19 (32-bit)
-ENDTEXT
 LABEL 2
 MENU LABEL Fedora minimal 19 (64-bit)
 KERNEL fedora/19/amd64/linux
 APPEND lang=us keymap=us ip=dhcp ksdevice=eth0 initrd=fedora/6/amd64/initrd.gz
-TEXT HELP
-Install Fedora 19 (64-bit)
-ENDTEXT
 EOF
 
     _verbose "  - creating ${1}/tools/tools.menu ..."
@@ -172,7 +242,7 @@ EOF
     touch "${1}"/tools/tools.menu
 }
 
-_deps() {
+_create_deps() {
     [ ! -d "${1}" ] && _die "No valid directory ${1}"
     _whereis python >/dev/null || _die "python was not found!"
 
@@ -182,7 +252,7 @@ _deps() {
 
     #menu.c32
     _verbose "  - creating ${1}/menu.c32 ..."
-    cat<<E=O=F | openssl enc -base64 -d | zcat | tar xvf - >/dev/null
+    cat<<E=O=F | _decode64 | zcat | tar xvf - >/dev/null
 H4sIAA7KhVIAA+29C1xU1do4vIfZwCCje9TBMDHH3BYoFZNUkpjDTUipUNBIrbTU
 UElNZ4QKBdxMsdjOyU52jp1j52Ta+1r5nuxkhtcYMPCSCpiJWnmtM+No4SUFL8z3
 PGvtPTMgdnzf/+X7fb8v+O3Za6+1nst6nmc967LXWvvFabNt9z4/5H7u/+BfHPw9
@@ -794,7 +864,7 @@ E=O=F
 
     #pxelinux.0
     _verbose "  - creating ${1}/pxelinux.0 ..."
-    cat<<E=O=F | openssl enc -base64 -d | zcat | tar xvf - >/dev/null
+    cat<<E=O=F | _decode64 | zcat | tar xvf - >/dev/null
 H4sIAKPKhVIAA+17e1RTV/bwuSHcBAQSFfEN11ZTmSolavEVqFqL2lEErTx8kETh
 CC2CE26g7a/TgUadXILUX2tbp/UBYq3Do2I+x0LpJMFrQadV0T7GjNMW0dqTxvoo
 igQ0+fZJtO3Mr9/3W+tb6/fHt5aHxT2vffbeZ5999t7n3JuNz+cW5Bcan4+LR/9j
@@ -1047,62 +1117,60 @@ E=O=F
 
     #simple-dhcpd
     _verbose "  - creating ${1}/simple-dhcpd ..."
-    cat<<E=O=F | openssl enc -base64 -d | zcat | tar xvf - >/dev/null
-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
-83/4/AcUSUzEACgAAA==
+    cat<<E=O=F | _decode64 | zcat | tar xvf - >/dev/null
+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
+3xv+B/HD6NcAUAAA
 E=O=F
 
     [ -f simple-dhcpd ] && mv simple-dhcpd "${1}" || _die "simple-dhcpd couldn't be created"
@@ -1110,25 +1178,31 @@ E=O=F
 
     #simple-tftpd
     _verbose "  - creating ${1}/simple-tftpd ..."
-    cat<<E=O=F | openssl enc -base64 -d | zcat | tar xvf - >/dev/null
-H4sIADj3hlIAA+2VYW/TMBCG+zm/4tiEkmghTbJ2g0hBGmwgNGBiA/GhVFOauI1p
-akf2ZWv59dht0rXrBuIDQkh+pMp18vrynu+cSDqrSvIMx1jlnb9EoDg+7usxPO4H
-m6PmMIiCThhFvbB/HPV7UScIe2EYdiD4W4Y2qSWmAqCTFbSkWU3LR3S/u/+fsv+k
-W0vRHVHWJewGqgUWnFn7lVxkBZ+lgnJ4BgViJeNud0KxqEd+xmfdDYFlqR7iAkHy
-bErQU7FSmVHqcWmNBZ/BLMUCGk1GaLm6KheyvUjmFC2r4BIhAdu2lhcTOHphWVKN
-q7j+anCa2cmb63cfzz577d2ri9fn16dvL08+uJb0JUF9nVdr/dXF+2ut2VpyfXn2
-5ers5PT00oNQr1Pec8fRTjzQLlzXsnIyhongdeVID5gbgyBYCwYDOaAxPWBDGHMB
-FCiDuUjZhDiBByVhjnS1fmiVqcTEca1b1UIEwtgCBYrF6o9mRqRMJ8SDNM+F+q+T
-9gXJbvROOc/DF5G71tIx6ICQJK06howzpKwmm6Impq/7G+WtKp1jf5sHgfqFtspi
-/+vlp7X+zkOyXleVFFdLbHdTOFZZsHS2Vg7C4SCMh5uSSlCGrT1v7zZlKPc8QSrh
-tKu3Qiq7jCNw6VeqV3zVDxLlnTTe1Cp0fVmOfJ1Qv02McZB1Viw9wiqM7TU+3HtR
-djZN5ybpD5K0Piaqi9T8Yc87Jo5G5VTL9bQfRnrAdv5ULvcRnq6esGuJlL8uWW9Z
-sosKT16fb7pY9lYTbSuRhFeqBVvnni22i5inmCZj1WNp7uzcUKcnWXW8nnkqmfvV
-0u3dKF14CUf9/mEvbsq+95UzG+GWi6kHyLnyKFRSvg8vj3ofXu1t2dQnh+Vk7mVF
-zab6DBFWz4hIkawfcL/8W0fn8Xoc2gftq8ivWUHmaosXjhqd5RMPQncQxUNffFef
-AKfn2arN3YOljcc6hswzUiF8XlTkTAguHnAxUjs63WnX9VEOo+e/bqLfmY4eMP2g
-3bGflVySpriN83OyGPFU5O8YEiHqCu8y0O9gJf7X3yODwWAwGAwGg8FgMBgMBoPB
-YDAYDAaDwWAwGAx/zk+rzcJ+ACgAAA==
+    cat<<E=O=F | _decode64 | zcat | tar xvf - >/dev/null
+H4sIAJ5N0VYAA+1W7W7bNhTNbz0FpyKQtMiy5dhOY9QFsjQdiq5rlmToANcwaImy2cikSlJJvKff
+JfVlO0n7Z8UwQAcwZJKH9/uSlHSdpaSjEpXFBz8IPcDJyVB/w5Nhb/urMTw+GRyE/eFoNDiGAfDC
+QXg8OEC9H2XQNnKpsEDoIFrRlEY5TZ/hfW/9f4oXP3VzKboLyrqE3aFso1acWS+4oEvKcJpuUCL4
+Gq2UyuS4211StcoXQcTX3UxuohVfY0F593Jz+deFZUEtcaGQ5NEtUT7IxDKi1OfSlxtpGUFrrFao
+5EWEpsUsz1SGhSTVysdMUc4u9ZSwrJgkaCl4nrnSR8wbI0FULhiayikd0yM2QwkXiCLK0IPAbEnc
+no9Swlzpaf7MsoxwgSY7gt2YyEhQMzNxDjPBl6iDMJKmJdDN25tLBLQ7Ihwf5RIvScWacrNJzhyv
+FB3gOJ4Xs67dyWwf2Z2OdgX+gRo1scsBjow6WyouCIxXJM0mjnFacQQhixHYleA8VWh06gXPaFCF
+BkXXhOeNkmb8tB6WrxcQB56AYxFnsdRK7zFVJoIYAptBxmsDes/q/1ro/5pT0mivRju650rkxFCM
+zMlbnEpS2WN2oDWPSaOUJ4lRa7lllEGgWEoPsldaYj5zPekCjSaoJAY6jGMLAUxAJ1ARyt1e9CwC
+2h9RnNGpsyupDGTBLAd78srZbZENsWekGRWvUNjrDwoCzDEOLspgSRTJaeyCW8AuVo1VAnQgFxgZ
+dEqwwJIwvCbufJ7QlMznHjpCNnQABzEZEWtqjIEIEcRIRKTEYlNXEnyNCTZskkq4JgRagK5ngjqZ
+ZsiMRDTZQPYZZ1r/HShakrjYCmUhcoawNCqDz8z2GlvLdGiT5zqhbrMGDR+QB6rcEAIrISLFoRAU
+H7ccnb2dv/v94savVq8/nr+fv/n16uyDp+NXxfM1RAjJQBJVzrh18M2s3g1pcWspv821pB3B86uL
+P68vzt68ufJRqPfpCLmuA71twlLk32SnTLApzrJWTFaQfQ13haJsiQ5lEAQ2OnwiU9pzqM27aW/m
+eTu7EYIeEpCjMYKTVRcTEQmGpNl7NFPHemoncXukqkRrUh2TPWE0NrJqXlF9mS6+fa4+7sC9MQq6
+P+8atTu61F6gV+dKpJ3z17qKdK4D27JSDCcB1ME9XJcEhWVfiE1T4WtdpEs4Aspg6NoIBInu9E3g
+vgxP+00VQUa0QN0jdejg3IIU5GSbVMoM9F2u5D1cUq7z+aHXg1/owIXx4tPVHzW/sWFS78tSKFWz
+xfG2ibrpdFYr5jScTcPxbJtSxKQ0z7fvMVPS9uEkFW61e0dkcwaYuoHASSUb6nibqxsJCpzFitcO
+DSvHGPRuHq2MjagQ4/ilHd6elEdB075J+jeZVHZASejx0zY/MmK0SG81XQ+HYV9/VDU+lCaO0BxG
+w2OTSPrtlA1MyuCqPjt/v22Fqa1S2o4jE57BbV9Z7jtiN4kxVniSQI3h2H20AMfHpHhc6JEPzuxn
+S78kSqYHR9FoODwejMu02584cxS65+LWhzbgYKMAp4IAvR4NPvxi75ipHyksJg9+tMrZrX6uELiQ
+icCK1Ar207/TOs/n49g5qp5bQc5W5AFCvHHh6xqNR6E37Y9ngfgCz1134DtQ5t6RMeO5iiEPEckU
+utlk5EIILp6wYgERvX1UrnUrh/2X3y6i7xndf8LoJ81NgijlkpTJLS1/TzYLjkX8Th+zIs9U44G5
+mDzrv357t2jRokWLFi1atGjRokWLFi1atGjRokWLFi1atGjxb+MfkOfsjwAoAAA=
 E=O=F
 
     [ -f simple-tftpd ] && mv simple-tftpd "${1}" || _die "simple-tftpd couldn't be created"
@@ -1138,8 +1212,8 @@ E=O=F
 _pxe() {
     [ -z "${1}" ] && return 1
     _verbose "- setting pxe environment in ${1} ..."
-    _deps      "${1}" #memdisk,menu.c32,pxelinux.0,simple-dhcpd,simple-tftpd
-    _writeconf "${1}" #pxelinux.cfg/default,ubuntu,fedora,tools
+    _create_deps      "${1}" #memdisk,menu.c32,pxelinux.0,simple-dhcpd,simple-tftpd
+    _write_conf "${1}"       #pxelinux.cfg/default,ubuntu,fedora,tools
     printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): created directory \`${1}'"
 }
 
