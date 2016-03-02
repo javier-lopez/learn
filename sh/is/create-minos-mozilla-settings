@@ -40,6 +40,7 @@ _create_minos_default_mozilla_settings() {
          fftmp mimeTypes.rdf search.sqlite ../../tmp/)
     _cmd rm -rf mozilla-orig/firefox/*.default/*
     rm -rf mozilla-orig/firefox/Crash*
+    rm -rf mozilla-orig/.mozilla
     _cmd "mkdir 'mozilla-orig/firefox/Crash Reports/'"
     _cmd mv mozilla-orig/tmp/* mozilla-orig/firefox/*.default/
     _cmd rm -rf mozilla-orig/tmp
