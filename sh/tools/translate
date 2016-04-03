@@ -141,9 +141,9 @@ _update() {
 
     _u__error_msg="$(wget -q -O- --no-check-certificate \
     https://raw.githubusercontent.com/chilicuil/learn/master/sh/tools/translate \
-        > "/tmp/${progname}.${$}" 2>/dev/null || curl -s  \
+        > "/tmp/${progname}.${$}" 2>&1 || curl -s  \
     https://raw.githubusercontent.com/chilicuil/learn/master/sh/tools/translate \
-    > "/tmp/${progname}.${$}" 2>/dev/null)" || { printf "%s\\n%s\\n" \
+    > "/tmp/${progname}.${$}" 2>&1)"   || { printf "%s\\n%s\\n" \
         "ERROR: Failed to fetch update, please try later or update manually" \
         "${_u__error_msg}" >&2; return 1; }
 
@@ -159,11 +159,11 @@ _update() {
         chmod +x "/tmp/${progname}.${$}"
         if ! mv -f "/tmp/${progname}.${$}" "${_u__current_file}" 2>/dev/null; then
             printf "%s\\n" "ERROR: no write permissions on ${_u__current_file}" >&2
-            printf "%s\\n" "INFO : trying with sudo ..."
+            printf "%s\\n" "INFO : trying with sudo ..." >&2
             if command -v "sudo" >/dev/null 2>&1; then
                 sudo mv "/tmp/${progname}.${$}" "${_u__current_file}" || return 1
             else
-                printf "%s\\n" "ERROR: sudo isn't available, exiting ..."
+                printf "%s\\n" "ERROR: sudo isn't available, exiting ..." >&2
                 rm -rf "/tmp/${progname}.${$}"; return 1
             fi
         fi
