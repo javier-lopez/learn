@@ -750,6 +750,8 @@ uimg --help ; test X"${?}"                         = X"0"
 printf "%s" '--help' | uimg; test X"${?}"          = X"0"
 uimg --cui; test X"${?}"                           = X"1"
 printf "%s" '--cui' | uimg; test X"${?}"           = X"1"
+uimg -l; test X"${?}"                              = X"0"
+uimg --list-sites; test X"${?}"                    = X"0"
 uimg cui; test X"${?}"                             = X"1"
 test X"$(uimg      | head -1)"                     = X""
 test X"$(uimg 2>&1 | head -1)"                     = X"Usage: uimg image.[png|jpg] ..."
@@ -767,8 +769,8 @@ b64_3line="SyY9G0JzJSVei9qynm9qyjBpLp0pYW7pbzBl8L8fEIdJL9AvFMkAAAAASUVORK5CYII="
 printf "%s\\n%s\\n%s\\n" "${b64_1line}${b64_2line}${b64_3line}" | base64 --decode > wb.png
 test -f wb.png
 url="$(uimg wb.png)" && rm -rf wb.png && wget "${url}" -O wb.png
-test X"$(base64 wb.png | head -1)"  = X"${b64_1line}"
-test X"$(uimg wb.png wb.png|wc -l)" = X"2"
+test X"$(base64 wb.png 2>&1 | head -1)"   = X"${b64_1line}"
+test X"$(uimg wb.png wb.png 2>&1 |wc -l)" = X"2"
 @end
 
 @begin{update-cd}
