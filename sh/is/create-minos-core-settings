@@ -112,9 +112,9 @@ _create_minos_default_core_settings() {
 #!/bin/sh
 . /etc/os-release 2>/dev/null
 if [ -z "$VERSION_ID" ]; then
-    printf "Welcome to Minos (%s %s %s)\\n\\n" "$(uname -o)" "$(uname -r)" "$(uname -m)"
+    printf "\\nWelcome to Minos (%s %s %s)\\n\\n" "$(uname -o)" "$(uname -r)" "$(uname -m)"
 else
-    printf "Welcome to Minos %s LTS (%s %s %s)\\n\\n" "$VERSION_ID" "$(uname -o)" "$(uname -r)" "$(uname -m)"
+    printf "\\nWelcome to Minos %s LTS (%s %s %s)\\n\\n" "$VERSION_ID" "$(uname -o)" "$(uname -r)" "$(uname -m)"
 fi
 EOF
     _cmd "chmod +x ${1}/etc##update-motd.d##00-header"
@@ -132,21 +132,24 @@ EOF
 [ -x /etc/update-motd.d/50-landscape-sysinfo ] && exit
 
 load=`awk '{print $1}' /proc/loadavg`
-root_usage=`df -h / | awk '/\// {print $(NF-1)}'`
-home_usage=`df -h /home | awk '/\/home/ {print $(NF-1)}'`
-memory_usage=`free -m | awk '/Mem:/ { total=$2 } /buffers\/cache/ { used=$3 } END { printf("%3.1f%%", used/total*100)}'`
-swap_usage=`free -m | awk '/Swap/ { printf("%3.1f%%", "exit !$2;$3/$2*100") }'`
+df_output=`df -h`
+root_usage=`printf "%s" "${df_output}" | awk '/\/$/ {print $(NF-1);exit}'`
+home_usage=`printf "%s" "${df_output}" | awk '/\/home$/ {print $(NF-1);exit}'`
+memory_output=`free -m`
+memory_usage=`printf "%s" "${memory_output}" | awk '/Mem:/ {total=$2} /buffers\/cache/ { used=$3 } END { printf("%3.1f%%", used/total*100)}'`
+swap_usage=`printf "%s" "${memory_output}" |awk '/Swap/ {printf("%3.1f%%", "exit !$2;$3/$2*100")}'`
 #users=`users | wc -w`
-uptime=`uptime | grep -ohe 'up .*' | sed 's/,/\ hours/g' | awk '{ printf $2" "$3 }'`
-processes=`ps aux | wc -l`
-top_process=`ps aux | awk '{print $2, $4"%", $11}' | sort -k2rn | head -1 | awk '{print $3, $2}'`
+uptime=`uptime | awk '{sub(/,/," hours"); printf $3" "$4}'`
+#ps_output=`ps aux`
+#processes=`printf "%s" "${ps_output}" | wc -l`
+#top_process=`printf "%s\\n" "${ps_output}" | awk '{print $2, $4"%", $11}' | sort -k2rn | awk '{print $3, $2;exit}'`
 #ip=`ifconfig $(route | grep default | awk '{ print $8 }') | grep "inet addr" | awk -F: '{print $2}' | awk '{print $1}'`
 
 printf "%s\\n\\n" "System information as of: `date`"
 printf "System load:\t%s\tSystem uptime:\t%s\n" "$load" "$uptime"
 printf "Memory usage:\t%s\tSwap usage:\t%s\n" "$memory_usage" "$swap_usage"
 printf "Usage on /:\t%s\tUsage on /home:\t%s\n" "$root_usage" "$home_usage"
-printf "processes:\t%s\tTop process:\t%s\n" "$processes" "$top_process"
+#printf "Processes:\t%s\tTop process:\t%s\n" "$processes" "$top_process"
 printf "\\n"
 EOF
     _cmd "chmod +x ${1}/etc##update-motd.d##10-minos-sysinfo"
