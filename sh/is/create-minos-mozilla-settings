@@ -1,9 +1,9 @@
 #!/bin/sh
-#simple script to create the default mozilla settings for minos
+#create default minos settings for mozilla
 #usage: create-minos-default-mozilla-setting
 
 #example create-minos-default-mozilla-setting
-#a mozilla-orig/ directory is generated with minimal minos settings
+#a mozilla-orig/ directory is generated with minos settings
 
 trap _cleanup 15 #trap ctrl-c
 #trap _cleanup SIGINT SIGTERM #trap ctrl-c
