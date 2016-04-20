@@ -38,6 +38,7 @@ test X"$(_basename ./test)"                 = X"test"
 test X"$(_basename ../test)"                = X"test"
 test X"$(_basename .././test)"              = X"test"
 test X"$(_basename ../../test)"             = X"test"
+test X"$(_basename ../../test/)"            = X"test"
 test X"$(_basename /usr/local/bin/test)"    = X"test"
 test X"$(_basename test t)"                 = X"tes"
 test X"$(_basename test st)"                = X"te"
@@ -63,6 +64,7 @@ test X"$(_basename2 ./test)"                 = X"test"
 test X"$(_basename2 ../test)"                = X"test"
 test X"$(_basename2 .././test)"              = X"test"
 test X"$(_basename2 ../../test)"             = X"test"
+test X"$(_basename2 ../../test/)"            = X"test"
 test X"$(_basename2 /usr/local/bin/test)"    = X"test"
 test X"$(_basename2 test t)"                 = X"tes"
 test X"$(_basename2 test st)"                = X"te"
@@ -409,6 +411,16 @@ hello="hello world"
 test X"$(_strreplace "${hello}" "hello" "bye")" = X"bye world"
 hello="hello world"
 test X"$(_strreplace "${hello}" "noexists" "bye")" = X"hello world"
+@end
+
+@begin{_strreplace2}
+_strreplace2; test X"${?}"                       = X"1"
+_strreplace2 string; test X"${?}"                = X"1"
+_strreplace2 string otherstring; test X"${?}"    = X"1"
+hello="hello world"
+test X"$(_strreplace2 "${hello}" "hello" "bye")" = X"bye world"
+hello="hello world"
+test X"$(_strreplace2 "${hello}" "noexists" "bye")" = X"hello world"
 @end
 
 @begin{_strunique}

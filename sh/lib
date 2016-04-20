@@ -79,7 +79,7 @@ _arch() { #check system arch, return 64|32 (32 by default)
 #=================================================================
 
 _basename() { #portable basename
-    [ -z "${1}" ] && return 1 || _basename__name="${1}"
+    [ -z "${1}" ] && return 1 || _basename__name="${1%%/}"
     [ -z "${2}" ] || _basename__suffix="${2}"
     case "${_basename__name}" in
         /*|*/*) _basename__name="$(expr "${_basename__name}" : '.*/\([^/]*\)')" ;;
@@ -100,7 +100,7 @@ _basename() { #portable basename
 
 _basename2() { #alternative portable basename, faster but with
                #possible drawbacks
-    [ -z "${1}" ] && return 1 || _basename2__name="${1}"
+    [ -z "${1}" ] && return 1 || _basename2__name="${1%%/}"
     [ -z "${2}" ] || _basename2__suffix="${2}"
     case "${_basename2__name}" in
         /*|*/*) _basename2__name="${_basename2__name##*/}"
