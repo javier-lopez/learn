@@ -6,7 +6,7 @@
 #socat-1.7.2.0.tar.gz
 
 #TODO 27-02-2015 08:23 >> try to match checksums without downloading files (Content-MD5, md5sum.txt, etc)
-search_engines="google filemare ftplike"
+search_engines="google ftplike"
 checksums="md5 sha1 sha256 sha512"
 
 _usage() {
@@ -135,16 +135,16 @@ _get_links() {
             awk 'NF' | _shuf
     }
 
-    _get_links_filemare() {
-        #//relevance/10/10 #more pages
-        #//relevance/20/10
-        #//relevance/30/10
-        _get_links_filemare__query="${1}"
-        wget -q -U "Mozilla/5.0" \
-            "http://filemare.com/en/search/${_get_links_filemare__query}" -O- | \
-            awk 'match($0,/>(http|https|ftp):\/\/.*</) {print substr($0,RSTART,RLENGTH)}' | \
-            awk '{gsub(/>/,""); gsub(/</,"/"); print}' | _shuf
-    }
+    #_get_links_filemare() {
+        ##//relevance/10/10 #more pages
+        ##//relevance/20/10
+        ##//relevance/30/10
+        #_get_links_filemare__query="${1}"
+        #wget -q -U "Mozilla/5.0" \
+            #"http://filemare.com/en/search/${_get_links_filemare__query}" -O- | \
+            #awk 'match($0,/>(http|https|ftp):\/\/.*</) {print substr($0,RSTART,RLENGTH)}' | \
+            #awk '{gsub(/>/,""); gsub(/</,"/"); print}' | _shuf
+    #}
 
     _get_links_ftplike() {
         _get_links_ftplike__query="${1}"
@@ -155,7 +155,7 @@ _get_links() {
     }
 
     case "${1}" in
-        google|filemare|ftplike) _get_links_"${1}" "${2}" ;;
+        google|ftplike) _get_links_"${1}" "${2}" ;;
         *) return 1 ;;
     esac
 }

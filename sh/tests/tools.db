@@ -836,7 +836,6 @@ wget-finder http://google.com -O test3 && test -f "test3"
 wget-finder socat-1.7.2.0.tar.gz:cui; test X"${?}" = X"1"
 
 test "$(wget-finder --search-engine google   --list-links libssh2-1.3.0.tar.gz:6425331899ccf1015f1ed79448cb4709 | wc -l)" -gt "0"
-test "$(wget-finder --search-engine filemare --list-links libssh2-1.3.0.tar.gz:6425331899ccf1015f1ed79448cb4709 | wc -l)" -gt "0"
 test "$(wget -V|awk -F. '{print $1 $2; exit}'|awk '{print $3}')" -gt 113 && test "$(wget-finder --search-engine ftplike  --list-links libssh2-1.3.0.tar.gz:6425331899ccf1015f1ed79448cb4709 | wc -l)" -gt "0" || :
 
 test X"$(wget-finder socat-1.7.2.0.tar.gz:cui  | head -1)" = X""
