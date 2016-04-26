@@ -8,6 +8,8 @@
 trap _cleanup 15 #trap ctrl-c
 #trap _cleanup SIGINT SIGTERM #trap ctrl-c
 
+file_header="This file is part of the minos-core-settings package"
+
 _usage() {
     printf "%b\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [directory]"
     printf "%b\\n" "minos core settings creator."
@@ -44,10 +46,10 @@ _create_minos_default_core_settings() {
 
     #echo
     #_cmd cp ~/.minos/autostart "${1}"/etc.minos.autostart
-    #_cmd "sed -i 's:^#!/bin/sh:#!bin/sh\n\n#This file is part of the minos-core-settings package:' ${1}/etc.minos.autostart"
+    #_cmd "sed -i 's:^#!/bin/sh:#!bin/sh\n\n#${file_header}' ${1}/etc.minos.autostart"
 
     echo
-    _cmd "printf \"%s\\n\\n\" \"#This file is part of the minos-core-settings package\" > \"${1}\"/etc##profile.d##minos-bash.sh"
+    _cmd "printf \"%s\\n\\n\" \"#${file_header}\" > \"${1}\"/etc##profile.d##minos-bash.sh"
     _cmd "sed -n '/^#===/,/^#}1/p;/^#}1/q' ${HOME}/.bashrc | head -n -1 >> ${1}/etc##profile.d##minos-bash.sh"
     _cmd "sed -n '/{2/,/^#}2/p;/^#}2/q' ${HOME}/.bashrc  | head -n -1 | sed 1d >> ${1}/etc##profile.d##minos-bash.sh"
     _cmd "echo >> ${1}/etc##profile.d##minos-bash.sh"
@@ -60,7 +62,7 @@ _create_minos_default_core_settings() {
     _cmd "sed -i '/LC_ALL/d' ${1}/etc##profile.d##minos-bash.sh"
 
     echo
-    _cmd "printf \"%s\\n\\n\" \"#This file is part of the minos-core-settings package\" > \"${1}\"/etc##skel##.aliases"
+    _cmd "printf \"%s\\n\\n\" \"#${file_header}\" > \"${1}\"/etc##skel##.aliases"
     _cmd "sed -n '/^\[/,/xdg-open/p;/xdg-open/q' ${HOME}/.aliases >> ${1}/etc##skel##.aliases"
     _cmd "sed -n '/(gpg -d/p' ${HOME}/.aliases >> ${1}/etc##skel##.aliases"
     _cmd "echo >> ${1}/etc##skel##.aliases"
@@ -69,28 +71,28 @@ _create_minos_default_core_settings() {
     _cmd "echo '# vim: set ts=8 sw=4 tw=0 ft=conf :' >> ${1}/etc##skel##.aliases"
 
     echo
-    _cmd "printf \"%s\\n\\n\" \"#This file is part of the minos-core-settings package\" > \"${1}\"/etc##skel##.bash_profile"
+    _cmd "printf \"%s\\n\\n\" \"#${file_header}\" > \"${1}\"/etc##skel##.bash_profile"
     _cmd "cat ${HOME}/.bash_profile >> ${1}/etc##skel##.bash_profile"
 
     echo
-    _cmd "printf \"%s\\n\\n\" \"#This file is part of the minos-core-settings package\" > \"${1}\"/etc##skel##.profile.d##shundle.sh"
+    _cmd "printf \"%s\\n\\n\" \"#${file_header}\" > \"${1}\"/etc##skel##.profile.d##shundle.sh"
     _cmd "printf \"%s\\n\\n\" \"#http://github.com/chilicuil/shundle\" >> \"${1}\"/etc##skel##.profile.d##shundle.sh"
     _cmd "sed -n '/shundle/,\$p' ${HOME}/.bashrc >> ${1}/etc##skel##.profile.d##shundle.sh"
 
     echo
-    _cmd "printf \"%s\\n\\n\" \"#This file is part of the minos-core-settings package\" > \"${1}\"/etc##skel##.tmux.conf"
+    _cmd "printf \"%s\\n\\n\" \"#${file_header}\" > \"${1}\"/etc##skel##.tmux.conf"
     _cmd "cat ${HOME}/.tmux.conf >> ${1}/etc##skel##.tmux.conf"
 
     echo
-    _cmd "printf \"%s\\n\\n\" \"\\\"This file is part of the minos-core-settings package\" > \"${1}\"/etc##skel##.vimrc"
+    _cmd "printf \"%s\\n\\n\" \"\\\"${file_header}\" > \"${1}\"/etc##skel##.vimrc"
     _cmd "cat ${HOME}/.vimrc >> ${1}/etc##skel##.vimrc"
 
     echo
-    _cmd "printf \"%s\\n\\n\" \"#This file is part of the minos-core-settings package\" > \"${1}\"/etc##ssh##ssh_config"
+    _cmd "printf \"%s\\n\\n\" \"#${file_header}\" > \"${1}\"/etc##ssh##ssh_config"
     _cmd "sed -n '/^Host \*$/,/^$/p;/^$/q' ${HOME}/.ssh/config >> ${1}/etc##ssh##ssh_config"
 
     echo
-    _cmd "printf \"%s\\n\\n\" \"#This file is part of the minos-core-settings package\" > \"${1}\"/etc##sudoers.d##minos-core"
+    _cmd "printf \"%s\\n\\n\" \"#${file_header}\" > \"${1}\"/etc##sudoers.d##minos-core"
     _cmd "printf \"%s\\n\" \"Defaults	insults,timestamp_timeout=60\" >> \"${1}\"/etc##sudoers.d##minos-core"
     _cmd "echo >> ${1}/etc##sudoers.d##minos-core"
     _cmd "printf \"%s\\n\" \"Cmnd_Alias MINOS_SESSION=/usr/sbin/pm-suspend,/usr/sbin/pm-hibernate,/sbin/shutdown\" >> \"${1}\"/etc##sudoers.d##minos-core"
@@ -156,6 +158,14 @@ EOF
 
     echo
     _cmd "touch ${1}/etc##legal"
+
+    echo
+    _cmd "printf \"%s\\n\\n\" \"// ${file_header}\" > \"${1}\"/etc##apt##apt.conf.d##05disable-recommends"
+    _cmd "printf \"%s\\n\" \"APT::Install-Recommends \\\"false\\\";\" >> \"${1}\"/etc##apt##apt.conf.d##05disable-recommends"
+
+    echo
+    _cmd "printf \"%s\\n\\n\" \"// ${file_header}\" > \"${1}\"/etc##apt##apt.conf.d##05disable-suggests"
+    _cmd "printf \"%s\\n\" \"APT::Install-Suggests \\\"false\\\";\" >> \"${1}\"/etc##apt##apt.conf.d##05disable-suggests"
 
     echo
     printf "%s\\n" "[+] New minos core settings generated at: ${1}/"
