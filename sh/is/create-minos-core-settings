@@ -168,6 +168,12 @@ EOF
     _cmd "printf \"%s\\n\" \"APT::Install-Suggests \\\"false\\\";\" >> \"${1}\"/etc##apt##apt.conf.d##05disable-suggests"
 
     echo
+    _cmd "printf \"%s\\n\\n\" \";${file_header}\" > \"${1}\"/etc##gitconfig"
+    _cmd "cat ~/.gitconfig                        >>    ${1}/etc##gitconfig"
+    _cmd "sed -i '/^\[user\]$/,/^$/d'                   ${1}/etc##gitconfig"
+    _cmd "sed -i '/^\[github\]$/,/^$/d'                 ${1}/etc##gitconfig"
+
+    echo
     printf "%s\\n" "[+] New minos core settings generated at: ${1}/"
 
     cat > "${1}/README.md" << 'E=O=F'
