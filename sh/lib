@@ -116,6 +116,22 @@ _basename2() { #alternative portable basename, faster but with
 #_basename2 /path/file #print file
 #=================================================================
 
+_bytes2human() { #convert byte-count into human readable K|M|G|..
+    [ -z "${1}" ] && return 1
+    #is int?
+    case "${1%.*}" in
+        *[!0-9]*|"") return 1 ;;
+    esac
+
+    printf "%s" "${1}" | awk '{
+        split( "B K M G T E P Y Z" , v );
+        s=1; while($1>=1024) { $1/=1024; s++ }
+        printf("%.2f %s\n", $1, v[s])}' | sed 's:\.00 ::;s:B::;s: ::'
+}
+#==================================================== Example ====
+#_bytes2human 1024 #prints 1K
+#=================================================================
+
 _char2int() {
     [ -z "${1}" ] && return 1
     printf '%d' "'${*}"

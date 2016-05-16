@@ -83,6 +83,28 @@ test X"$(_basename2 /usr/local/bin/test t)"  = X"tes"
 test X"$(_basename2 /usr/local/bin/test st)" = X"te"
 @end
 
+@begin{_bytes2human}
+_bytes2human; test X"${?}"                     = X"1"
+_bytes2human test; test X"${?}"                = X"1"
+_bytes2human -1; test X"${?}"                  = X"1"
+_bytes2human -1024; test X"${?}"               = X"1"
+_bytes2human 1024s; test X"${?}"               = X"1"
+test X"$(_bytes2human)"                        = X""
+test X"$(_bytes2human test)"                   = X""
+test X"$(_bytes2human -1)"                     = X""
+test X"$(_bytes2human -1024)"                  = X""
+test X"$(_bytes2human 1)"                      = X"1"
+test X"$(_bytes2human 1023)"                   = X"1023"
+test X"$(_bytes2human 1024)"                   = X"1K"
+test X"$(_bytes2human 1024s)"                  = X""
+test X"$(_bytes2human 10240)"                  = X"10K"
+test X"$(_bytes2human 102400)"                 = X"100K"
+test X"$(_bytes2human 1024000)"                = X"1000K"
+test X"$(_bytes2human 10240000)"               = X"9.77M"
+test X"$(_bytes2human 10240000000)"            = X"9.54G"
+test X"$(_bytes2human 10240000000000)"         = X"9.31T"
+@end
+
 @begin{_char2int}
 _char2int; test X"${?}"  = X"1"
 test X"$(_char2int "a")" = X"97"
