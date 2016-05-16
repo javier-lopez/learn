@@ -22,7 +22,7 @@ notify_contacts="admin@example.com,contact@example.com"
 #thresholds
 module_memory_threshold="80"
 module_swap_threshold="80"
-module_load_threshold="10"
+module_load_threshold="4"
 module_storage_threshold="80"
 
 #partitions
@@ -37,6 +37,7 @@ module_notification_msg="Next maintenance windows is programmed at Tuesday May 1
 themes="default"
 theme="default"
 
+date_format="+%d-%m-%Y %H:%M"
 config_file="/etc/staticus.conf"
 ###############################################################################
 
@@ -77,6 +78,33 @@ _die() {
     _usage >&2; exit 1
 }
 
+_str2lower() {
+    [ -z "${1}" ] && return 1
+    printf "%s\\n" "${@}" | \
+    tr 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 'abcdefghijklmnopqrstuvwxyz'
+    # tr '[:upper:]' '[:lower:]'
+}
+
+_str2upper() {
+    [ -z "${1}" ] && return 1
+    printf "%s\\n" "${@}" | \
+        tr 'abcdefghijklmnopqrstuvwxyz' 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    # tr '[:upper:]' '[:lower:]'
+}
+
+_bytes2human() {
+    [ -z "${1}" ] && return 1
+    #is int?
+    case "${1%.*}" in
+        *[!0-9]*|"") return 1 ;;
+    esac
+
+    printf "%s" "${1}" | awk '{
+        split( "bytes Kb Mb Gb Tb Eb Pb Yb Zb" , v );
+        s=1; while($1>=1024) { $1/=1024; s++ }
+        printf("%.2f %s\n", $1, v[s])}' | sed 's:\.00 : :'
+}
+
 _loadconf() {
     #$1 => config file
     [ ! -f "${1}" ] && return 1
@@ -100,11 +128,16 @@ _module_memory() {
     [ -z "${1}" ] && return 1
     printf "%s\\n" "module memory"
 
-    _mmemory__input="$(free -m | grep Mem)"
+    _mmemory__input="$(free -m 2>&1)" && \
+        _mmemory__input="$(printf "%s" "${_mmemory__input}"|grep Mem 2>&1)" || {
+        _staticus_report_module "memory" "error" "${_mmemory__input}"
+        return 1
+    }
+
     _mmemory__total="$(printf "%s" "${_mmemory__input}" | awk '{print $2}')"
     _mmemory__used="$(printf  "%s" "${_mmemory__input}" | awk '{print $3}')"
     _mmemory__used_percentage="$(printf "%s" "${_mmemory__input}" | awk '{print $3/$2 * 100.0}' | cut -d\. -f1)"
-    _mmemory__threshold="$(printf "%s" "${_mmemory__total} ${1}" | awk '{print $1 * ($2/100)}'|cut -d\. -f1)"
+    _mmemory__threshold="$(printf "%s" "${_mmemory__total} ${1}"  | awk '{print $1 * ($2/100)}' | cut -d\. -f1)"
 
     _mmemory__description="$(printf "%s\\n%s\\n%s\\n" \
         "* threshold ${_mmemory__threshold} bytes (${1}%)" \
@@ -113,21 +146,26 @@ _module_memory() {
 
     if [ "${_mmemory__used_percentage}" -ge "${1}" ]; then
         _staticus_report_module "memory" "warning" "${_mmemory__description}"
-        #echo "CRITICAL : Memory usage of $memory_alarm% detected." >> $status_page
     else
         _staticus_report_module "memory" "ok" "${_mmemory__description}"
     fi
 }
 
 _module_swap() {
+    # $1 => threshold
     [ -z "${1}" ] && return 1
     printf "%s\\n" "module swap"
 
-    _mswap__input="$(free -m | grep Swap)"
+    _mswap__input="$(free -m 2>&1)" && \
+        _mswap__input="$(printf "%s" "${_mswap__input}"|grep Swap 2>&1)" || {
+        _staticus_report_module "swap" "error" "${_mswap__input}"
+        return 1
+    }
+
     _mswap__total="$(printf "%s" "${_mswap__input}" | awk '{print $2}')"
     _mswap__used="$(printf "%s" "${_mswap__input}"  | awk '{print $3}')"
     _mswap__used_percentage="$(printf "%s" "${_mswap__input}" | awk '{print $3/$2 * 100.0}' | cut -d\. -f1)"
-    _mswap__threshold="$(printf "%s" "${_mswap__total} ${1}"  | awk '{print $1 * ($2/100)}'|cut -d\. -f1)"
+    _mswap__threshold="$(printf "%s" "${_mswap__total} ${1}"  | awk '{print $1 * ($2/100)}' | cut -d\. -f1)"
 
     _mswap__description="$(printf "%s\\n%s\\n%s\\n" \
         "* threshold ${_mswap__threshold} bytes (${1}%)" \
@@ -136,7 +174,6 @@ _module_swap() {
 
     if [ "${_mswap__used_percentage}" -ge "${1}" ]; then
         _staticus_report_module "swap" "warning" "${_mswap__description}"
-        #echo "CRITICAL : Memory usage of $memory_alarm% detected." >> $status_page
     else
         _staticus_report_module "swap" "ok" "${_mswap__description}"
     fi
@@ -144,38 +181,88 @@ _module_swap() {
 
 _module_load() {
     [ -z "${1}" ] && return 1
+    # $1 => threshold
     printf "%s\\n" "module load"
-    #load_al=`/usr/bin/uptime | awk -F'load average:' '{ print $2}' | sed 's/\./ /g' | awk '{print $1}'`
-    #if [ $load_alarm -ge 10 ]; then
-        #echo "CRITICAL : Load Average of $load_alarm detected." >> $status_page
-        #ok=0
-    #fi
+
+    _mload__input="$(awk '{print $1}' /proc/loadavg 2>&1)" || {
+        _staticus_report_module "load" "error" "${_mload__input}"
+        return 1
+    }
+
+    _mload__used_percentage="$(printf "%s" "${_mload__input} ${1}" | awk '{print ($1 * 100.0) / $2}' | cut -d\. -f1)"
+    _mload__description="$(printf "%s\\n%s\\n%s\\n" \
+        "* threshold ${1}" \
+        "* current   ${_mload__input} (${_mload__used_percentage}%)")"
+
+    if [ "${_mload__input%.*}" -ge "${1}" ]; then
+        _staticus_report_module "load" "warning" "${_mload__description}"
+    else
+        _staticus_report_module "load" "ok" "${_mload__description}"
+    fi
 }
 
 _module_storage() {
+    # $1 => threshold
+    # $2 => partitions
     [ -z "${2}" ] && return 1
     printf "%s\\n" "module storage"
-    #for i in ${partitions[@]}; do
-        #disk_alarm=`/bin/df -h $i | tail -1 |awk '{print $5}' | sed -e 's/\%//g'`
-        #diskused=`/bin/df -h $i | tail -1 | awk '{print $3}'`
-        #diskmax=`/bin/df -h $i | tail -1 | awk '{print $2}'`
-        #if [ $disk_alarm -ge $storage_threshold ]; then
-            #echo "CRITICAL : $i currently at $disk_alarm% capacity." >> $status_page
-            #ok=0
-        #fi
-    #done;
+
+    _mstorage__input="$(df 2>&1)" || {
+        _staticus_report_module "storage" "error" "${_mstorage__input}"
+        return 1
+    }
+
+    OLDIFS="${IFS}"
+    IFS=","; for partition in ${2}; do
+        _mstorage__partition="$(printf "%s" "${_mstorage__input}" | grep "${partition}$")"
+        _mstorage__total="$(printf "%s" "${_mstorage__partition}" | awk '{print $2}')"
+        _mstorage__used="$(printf "%s"  "${_mstorage__partition}" | awk '{print $3}')"
+        _mstorage__used_percentage="$(printf "%s" "${_mstorage__partition}" | awk '{gsub("%",""); print $5}')"
+        _mstorage__threshold="$(printf "%s" "${_mstorage__total} ${1}"  | awk '{print $1 * ($2/100)}' | cut -d\. -f1)"
+
+        #df outputs numbers in Kb, convert them to bytes
+        _mstorage__used="$(($_mstorage__used*1024))"
+        _mstorage__total="$(($_mstorage__total*1024))"
+        _mstorage__threshold="$(($_mstorage__threshold*1024))"
+
+        _mstorage__description="$(printf "%s\\n%s\\n%s\\n" \
+            "* threshold $(_bytes2human "${_mstorage__threshold}") (${1}%)" \
+            "* current   $(_bytes2human "${_mstorage__used}") (${_mstorage__used_percentage}%)" \
+            "* total     $(_bytes2human "${_mstorage__total}")")"
+
+        if [ "${_mstorage__used_percentage}" -ge "${1}" ]; then
+            _staticus_report_module "storage ${partition}" "warning" "${_mstorage__description}"
+        else
+            _staticus_report_module "storage ${partition}" "ok" "${_mstorage__description}"
+        fi
+    done; IFS="${OLDIFS}"
 }
 
 _module_process() {
+    # $1 => processes
     [ -z "${1}" ] && return 1
     printf "%s\\n" "module process"
-    #for i in ${process_names[@]}; do
-        #check=`ps ax |grep -v grep | grep -c $i`
-        #if [ $check = 0 ]; then
-            #echo "CRITICAL : $i not running!" >> $status_page
-            #ok=0
-        #fi;
-    #done
+
+    _mprocess__input="$(ps aux 2>&1)" || {
+        _staticus_report_module "process" "error" "${_mprocess__input}"
+        return 1
+    }
+
+    OLDIFS="${IFS}"
+    IFS=","; for process in ${1}; do
+        _mprocess__name="$(printf "%s" "${_mprocess__input}"    | awk '/'"${process}"'/ {print; exit}')"
+        _mprocess__detailed="$(printf "%s" "${_mprocess__name}" | \
+            awk '{print "cpu:", $3 "%", "mem:", $4 "%s", "user:", $1, "cmd:", substr($0, index($0,$11)); exit}')"
+
+        _mprocess__description="$(printf "%s\\n" "* ${_mprocess__detailed}")"
+
+        if [ -z "${_mprocess__name}" ]; then
+            _mprocess__description="$(printf "%s\\n" "* process isn't running")"
+            _staticus_report_module "process ${process}" "warning" "${_mprocess__description}"
+        else
+            _staticus_report_module "process ${process}" "ok" "${_mprocess__description}"
+        fi
+    done; IFS="${OLDIFS}"
 }
 
 _module_info() {
@@ -194,10 +281,19 @@ _staticus_report_general_status() {
 }
 
 _staticus_report_module() {
+    # $1 => memory|swap|load|...
+    # $2 => ok|warning|error|notification|...
+    # $3 => msg
     [ -z "${2}" ] && return 1
     printf "\\n%s\\n" "### ${1}: ${2}" >> "${report_txt}"
     if [ -n "${3}" ]; then
         printf "%s\\n" "${3}" >> "${report_txt}"
+    fi
+
+    if [ "$(_str2lower "${notify}")" = "true" ]; then
+        case "$(_str2lower "${2}")" in
+            error|warning) _staticus_notify "${1}" "$(_str2upper "${2}")" "${3}" ;;
+        esac
     fi
 }
 
@@ -210,11 +306,11 @@ _staticus_notify() {
     _staticus_notify_mailgun() {
         if command -v "mailgun" >/dev/null; then
             for contact in ${notify_contacts}; do
-                contact="$(printf "%s\\n" "${mail}" | sed "s:#%#:@:")"
+                contact="$(printf "%s\\n" "${contact}" | sed "s:#%#:@:")"
                 mailgun --subject "${progname} - $(hostname -f): ${1} - ${2}" "${contact}" "$(
-                printf "+---Message---------------------------\\n"
+                printf "+---Notification----------------------------+\\n"
                 printf "%b\\n" "${*}"
-                printf "+-------------------------------------\\n"
+                printf "+-------------------------------------------+\\n"
                 )" >/dev/null
             done
         else
@@ -225,9 +321,9 @@ _staticus_notify() {
     }
 
     _snotify__module="${1}"; shift
-    _snotify__type="${1}"; shift
+    _snotify__type="${1}";   shift
     printf "%b\\n" "${_snotify__module} - ${_snotify__type}: ${*}" >&2
-    case "${notify_method}" in
+    case "$(_str2lower "${notify_method}")" in
         mailgun) _staticus_notify_"${notify_method}" "${_snotify__module}" "${_snotify__type}" "${*}" ;;
               *) return 1;;
     esac
@@ -238,17 +334,17 @@ _staticus_txt2html() {
 }
 
 _staticus() {
-    _staticus_report_title "$(hostname -f) $(date +%d-%m-%Y) ${progname}"
+    _staticus_report_title "$(hostname -f) $(date "${date_format}") ${progname}"
 
     OLDIFS="${IFS}"
-    IFS=","; for module in ${modules}; do
+    IFS=","; for module in $(_str2lower "${modules}"); do
         case "${module}" in
             notification) _module_"${module}" "${module_notification_msg}" || _failed_module ;;
-            memory)  _module_"${module}" "${module_memory_threshold}"  || _failed_module ;;
-            swap)    _module_"${module}" "${module_swap_threshold}"    || _failed_module ;;
-            load)    _module_"${module}" "${module_load_threshold}"    || _failed_module ;;
+            memory)  _module_"${module}" "${module_memory_threshold}" || _failed_module ;;
+            swap)    _module_"${module}" "${module_swap_threshold}"   || _failed_module ;;
+            load)    _module_"${module}" "${module_load_threshold}"   || _failed_module ;;
             storage) _module_"${module}" "${module_storage_threshold}" "${module_storage_partitions}" || _failed_module ;;
-            process) _module_"${module}" "${module_process_list}" || _failed_module ;;
+            process) _module_"${module}" "${module_process_list}"     || _failed_module ;;
             info)    _module_"${module}" || _failed_module ;;
             *) printf "%s\\n" "module ${module} doesn't exists, skipping..." >&2 ;;
         esac
@@ -325,7 +421,7 @@ for arg; do #parse options
                 -o*) user_page_html="${1#-o}"; shift ;;
                 --output-html*) user_page_html="${1#--output-html}"; shift ;;
             esac
-            touch "${user_page_html}" 2>&1 >/dev/null || _die "Unable to create '${user_page_html}' output file"
+            touch "${user_page_html}" >/dev/null 2>&1 || _die "Unable to create '${user_page_html}' output file"
             [ -w "${user_page_html}" ] && rm -rf "${user_page_html}" || \
                 _die "Unable to write to '${user_page_html}' output file"
             report_html="${user_page_html}"
@@ -345,7 +441,7 @@ for arg; do #parse options
                 -O*) user_page_txt="${1#-O}"; shift ;;
                 --output-txt*) user_page_txt="${1#--output-txt}"; shift ;;
             esac
-            touch "${user_page_txt}" 2>&1 >/dev/null || _die "Unable to create '${user_page_txt}' output file"
+            touch "${user_page_txt}" >/dev/null 2>&1 || _die "Unable to create '${user_page_txt}' output file"
             [ -w "${user_page_txt}" ] && rm -rf "${user_page_txt}" || \
                 _die "Unable to write to '${user_page_txt}' output file"
             report_txt="${user_page_txt}"
