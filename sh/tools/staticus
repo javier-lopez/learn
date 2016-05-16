@@ -1,0 +1,403 @@
+#!/bin/sh
+#description: create static status pages
+#usage: staticus [options]
+
+#example:
+#$ staticus -c ~/.staticus.conf --modules "memory,swap,load" -o status.html
+
+###############################################################################
+############################## Configuration ##################################
+###############################################################################
+
+report_html="./staticus.html"
+report_txt="./staticus.txt"
+
+modules="memory,swap,load,storage,process,info"
+#modules="notification,memory,swap,load,storage,process,info"
+
+notify="true"
+notify_method="mailgun"
+notify_contacts="admin@example.com,contact@example.com"
+
+#thresholds
+module_memory_threshold="80"
+module_swap_threshold="80"
+module_load_threshold="10"
+module_storage_threshold="80"
+
+#partitions
+module_storage_partitions="/,/home"
+
+#processes
+module_process_list="mpd,rsyslogd,dbus-daemon"
+
+module_notification_msg="Next maintenance windows is programmed at Tuesday May 12th"
+
+#themes
+themes="default"
+theme="default"
+
+config_file="/etc/staticus.conf"
+###############################################################################
+
+_usage() {
+    printf "%s\\n" "Usage: ${progname} [options]"
+    printf "%s\\n" "Create static status pages."
+    printf "\\n"
+    printf "%s\\n" "  -c, --config /etc/staticus.conf   read options from a configuration file"
+    printf "%s\\n" "  -m, --modules \"all\"               use defined modules"
+    printf "%s\\n" "  -o, --output-html staticus.html   save html  status output to this file"
+    printf "%s\\n" "  -O, --output-txt  staticus.txt    save plain status output to this file"
+    printf "%s\\n" "  --txt2html staticus.txt           convert a plain status output to a static html page"
+    printf "%s\\n" "  --theme default                   use specified html theme"
+    printf "%s\\n" "  --list-modules                    list available modules"
+    printf "%s\\n" "  --list-themes                     list available html themes"
+    printf "%s\\n" "  -h, --help                        show this help message and exit"
+}
+
+_basename() {
+    [ -z "${1}" ] && return 1 || _basename__name="${1%%/}"
+    [ -z "${2}" ] || _basename__suffix="${2}"
+    case "${_basename__name}" in
+        /*|*/*) _basename__name="$(expr "${_basename__name}" : '.*/\([^/]*\)')" ;;
+    esac
+
+    if [ -n "${_basename__suffix}" ] && [ "${#_basename__name}" -gt "${#2}" ]; then
+        if [ X"$(printf "%s" "${_basename__name}" | cut -c"$((${#_basename__name} - ${#_basename__suffix} + 1))"-"${#_basename__name}")" \
+           = X"$(printf "%s" "${_basename__suffix}")" ]; then
+            _basename__name="$(printf "%s" "${_basename__name}" | cut -c1-"$((${#_basename__name} - ${#_basename__suffix}))")"
+        fi
+    fi
+
+    printf "%s" "${_basename__name}"
+}
+
+_die() {
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
+}
+
+_loadconf() {
+    #$1 => config file
+    [ ! -f "${1}" ] && return 1
+    _loadconf__options=$(awk '! /export/ {if ($0 ~ "^.*=[^;&]*" && $0 !~ "&&" && $1 !~ "^#") print }' "${1}")
+    eval "${_loadconf__options}"
+}
+
+_failed_module() {
+    [ -z "${failed_modules}" ] && failed_modules="0"
+    failed_modules="$(($failed_modules+1))"
+}
+
+_module_notification() {
+    [ -z "${1}" ] && return 1
+    printf "%s\\n" "module notification"
+    _staticus_report_module "notification" "notification" "${*}"
+}
+
+_module_memory() {
+    # $1 => threshold
+    [ -z "${1}" ] && return 1
+    printf "%s\\n" "module memory"
+
+    _mmemory__input="$(free -m | grep Mem)"
+    _mmemory__total="$(printf "%s" "${_mmemory__input}" | awk '{print $2}')"
+    _mmemory__used="$(printf  "%s" "${_mmemory__input}" | awk '{print $3}')"
+    _mmemory__used_percentage="$(printf "%s" "${_mmemory__input}" | awk '{print $3/$2 * 100.0}' | cut -d\. -f1)"
+    _mmemory__threshold="$(printf "%s" "${_mmemory__total} ${1}" | awk '{print $1 * ($2/100)}'|cut -d\. -f1)"
+
+    _mmemory__description="$(printf "%s\\n%s\\n%s\\n" \
+        "* threshold ${_mmemory__threshold} bytes (${1}%)" \
+        "* current   ${_mmemory__used} bytes (${_mmemory__used_percentage}%)" \
+        "* total     ${_mmemory__total} bytes")"
+
+    if [ "${_mmemory__used_percentage}" -ge "${1}" ]; then
+        _staticus_report_module "memory" "warning" "${_mmemory__description}"
+        #echo "CRITICAL : Memory usage of $memory_alarm% detected." >> $status_page
+    else
+        _staticus_report_module "memory" "ok" "${_mmemory__description}"
+    fi
+}
+
+_module_swap() {
+    [ -z "${1}" ] && return 1
+    printf "%s\\n" "module swap"
+
+    _mswap__input="$(free -m | grep Swap)"
+    _mswap__total="$(printf "%s" "${_mswap__input}" | awk '{print $2}')"
+    _mswap__used="$(printf "%s" "${_mswap__input}"  | awk '{print $3}')"
+    _mswap__used_percentage="$(printf "%s" "${_mswap__input}" | awk '{print $3/$2 * 100.0}' | cut -d\. -f1)"
+    _mswap__threshold="$(printf "%s" "${_mswap__total} ${1}"  | awk '{print $1 * ($2/100)}'|cut -d\. -f1)"
+
+    _mswap__description="$(printf "%s\\n%s\\n%s\\n" \
+        "* threshold ${_mswap__threshold} bytes (${1}%)" \
+        "* current   ${_mswap__used} bytes (${_mswap__used_percentage}%)" \
+        "* total     ${_mswap__total} bytes")"
+
+    if [ "${_mswap__used_percentage}" -ge "${1}" ]; then
+        _staticus_report_module "swap" "warning" "${_mswap__description}"
+        #echo "CRITICAL : Memory usage of $memory_alarm% detected." >> $status_page
+    else
+        _staticus_report_module "swap" "ok" "${_mswap__description}"
+    fi
+}
+
+_module_load() {
+    [ -z "${1}" ] && return 1
+    printf "%s\\n" "module load"
+    #load_al=`/usr/bin/uptime | awk -F'load average:' '{ print $2}' | sed 's/\./ /g' | awk '{print $1}'`
+    #if [ $load_alarm -ge 10 ]; then
+        #echo "CRITICAL : Load Average of $load_alarm detected." >> $status_page
+        #ok=0
+    #fi
+}
+
+_module_storage() {
+    [ -z "${2}" ] && return 1
+    printf "%s\\n" "module storage"
+    #for i in ${partitions[@]}; do
+        #disk_alarm=`/bin/df -h $i | tail -1 |awk '{print $5}' | sed -e 's/\%//g'`
+        #diskused=`/bin/df -h $i | tail -1 | awk '{print $3}'`
+        #diskmax=`/bin/df -h $i | tail -1 | awk '{print $2}'`
+        #if [ $disk_alarm -ge $storage_threshold ]; then
+            #echo "CRITICAL : $i currently at $disk_alarm% capacity." >> $status_page
+            #ok=0
+        #fi
+    #done;
+}
+
+_module_process() {
+    [ -z "${1}" ] && return 1
+    printf "%s\\n" "module process"
+    #for i in ${process_names[@]}; do
+        #check=`ps ax |grep -v grep | grep -c $i`
+        #if [ $check = 0 ]; then
+            #echo "CRITICAL : $i not running!" >> $status_page
+            #ok=0
+        #fi;
+    #done
+}
+
+_module_info() {
+    printf "%s\\n" "module info"
+}
+
+_staticus_report_title() {
+    [ -z "${1}" ] && return 1
+    printf "%s\\n" "# title: ${1}" > "${report_txt}"
+}
+
+_staticus_report_general_status() {
+    [ -z "${1}" ] && return 1
+    #sed "# title:" and write after line
+    #printf "%s\\n" "# title: ${1}" > "${report_txt}"
+}
+
+_staticus_report_module() {
+    [ -z "${2}" ] && return 1
+    printf "\\n%s\\n" "### ${1}: ${2}" >> "${report_txt}"
+    if [ -n "${3}" ]; then
+        printf "%s\\n" "${3}" >> "${report_txt}"
+    fi
+}
+
+_staticus_notify() {
+    # $1 => memory|swap|load|...
+    # $2 => ALERT|NOTIFICATION|CRITICAL|...
+    # $3 => msg
+    [ -z "${3}" ] && return 1
+
+    _staticus_notify_mailgun() {
+        if command -v "mailgun" >/dev/null; then
+            for contact in ${notify_contacts}; do
+                contact="$(printf "%s\\n" "${mail}" | sed "s:#%#:@:")"
+                mailgun --subject "${progname} - $(hostname -f): ${1} - ${2}" "${contact}" "$(
+                printf "+---Message---------------------------\\n"
+                printf "%b\\n" "${*}"
+                printf "+-------------------------------------\\n"
+                )" >/dev/null
+            done
+        else
+            printf "%b\\n" "mailgun is not available, install it to use this notification module" >&2
+            printf "%b\\n" "https://raw.githubusercontent.com/chilicuil/learn/master/sh/tools/mailgun" >&2
+            return 1
+        fi
+    }
+
+    _snotify__module="${1}"; shift
+    _snotify__type="${1}"; shift
+    printf "%b\\n" "${_snotify__module} - ${_snotify__type}: ${*}" >&2
+    case "${notify_method}" in
+        mailgun) _staticus_notify_"${notify_method}" "${_snotify__module}" "${_snotify__type}" "${*}" ;;
+              *) return 1;;
+    esac
+}
+
+_staticus_txt2html() {
+    :
+}
+
+_staticus() {
+    _staticus_report_title "$(hostname -f) $(date +%d-%m-%Y) ${progname}"
+
+    OLDIFS="${IFS}"
+    IFS=","; for module in ${modules}; do
+        case "${module}" in
+            notification) _module_"${module}" "${module_notification_msg}" || _failed_module ;;
+            memory)  _module_"${module}" "${module_memory_threshold}"  || _failed_module ;;
+            swap)    _module_"${module}" "${module_swap_threshold}"    || _failed_module ;;
+            load)    _module_"${module}" "${module_load_threshold}"    || _failed_module ;;
+            storage) _module_"${module}" "${module_storage_threshold}" "${module_storage_partitions}" || _failed_module ;;
+            process) _module_"${module}" "${module_process_list}" || _failed_module ;;
+            info)    _module_"${module}" || _failed_module ;;
+            *) printf "%s\\n" "module ${module} doesn't exists, skipping..." >&2 ;;
+        esac
+    done; IFS="${OLDIFS}"
+    _staticus_report_general_status "${failed_modules}"
+
+    _staticus_txt2html "${report_txt}" "${report_html}" "${theme}"
+}
+
+progname="$(_basename "${0}")"
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- "${@}" $(cat)
+fi
+
+for arg; do #parse options
+    case "${arg}" in
+        -h|--help) _usage && exit ;;
+        '-c'|'--config'|-c*|--config*)
+            case "${arg}" in
+                '-c'|'--config')
+                    if [ "${#}" -gt "1" ]; then
+                        case "${2}" in
+                            -*) _die "Option '${arg}' requires a parameter" ;;
+                        esac
+                        shift; user_config_file="${1}"; [ "${1}" ] && shift
+                    else
+                        _die "Option '${arg}' requires a parameter"
+                    fi
+                    ;;
+                -c*) user_config_file="${1#-c}"; shift ;;
+                --config*) user_config_file="${1#--config}"; shift ;;
+            esac
+            if [ -r "${user_config_file}" ]; then
+               [ -f "${user_config_file}" ] && config_file="${user_config_file}" || \
+                    _die "Specified config file '${user_config_file}' doesn't exists"
+            else
+                _die "Specified config file '${user_config_file}' isn't readable"
+            fi
+            ;;
+        '-m'|'--modules'|-m*|--modules*)
+            case "${arg}" in
+                '-m'|'--modules')
+                    if [ "${#}" -gt "1" ]; then
+                        case "${2}" in
+                            -*) _die "Option '${arg}' requires a parameter" ;;
+                        esac
+                        shift; user_modules="${1}"; [ "${1}" ] && shift
+                    else
+                        _die "Option '${arg}' requires a parameter"
+                    fi
+                    ;;
+                -m*) user_modules="${1#-m}"; shift ;;
+                --modules*) user_modules="${1#--modules}"; shift ;;
+            esac
+            case "${user_modules}" in
+                all) : ;;
+                *) modules="${user_modules}"
+            esac
+            ;;
+        '-o'|'--output-html'|-o*|--output-html*)
+            case "${arg}" in
+                '-o'|'--output-html')
+                    if [ "${#}" -gt "1" ]; then
+                        case "${2}" in
+                            -*) _die "Option '${arg}' requires a parameter" ;;
+                        esac
+                        shift; user_page_html="${1}"; [ "${1}" ] && shift
+                    else
+                        _die "Option '${arg}' requires a parameter"
+                    fi
+                    ;;
+                -o*) user_page_html="${1#-o}"; shift ;;
+                --output-html*) user_page_html="${1#--output-html}"; shift ;;
+            esac
+            touch "${user_page_html}" 2>&1 >/dev/null || _die "Unable to create '${user_page_html}' output file"
+            [ -w "${user_page_html}" ] && rm -rf "${user_page_html}" || \
+                _die "Unable to write to '${user_page_html}' output file"
+            report_html="${user_page_html}"
+            ;;
+        '-O'|'--output-txt'|-O*|--output-txt*)
+            case "${arg}" in
+                '-O'|'--output-txt')
+                    if [ "${#}" -gt "1" ]; then
+                        case "${2}" in
+                            -*) _die "Option '${arg}' requires a parameter" ;;
+                        esac
+                        shift; user_page_txt="${1}"; [ "${1}" ] && shift
+                    else
+                        _die "Option '${arg}' requires a parameter"
+                    fi
+                    ;;
+                -O*) user_page_txt="${1#-O}"; shift ;;
+                --output-txt*) user_page_txt="${1#--output-txt}"; shift ;;
+            esac
+            touch "${user_page_txt}" 2>&1 >/dev/null || _die "Unable to create '${user_page_txt}' output file"
+            [ -w "${user_page_txt}" ] && rm -rf "${user_page_txt}" || \
+                _die "Unable to write to '${user_page_txt}' output file"
+            report_txt="${user_page_txt}"
+            ;;
+        --txt2html|--txt2html*)
+            case "${arg}" in
+                '--txt2html')
+                    if [ "${#}" -gt "1" ]; then
+                        case "${2}" in
+                            -*) _die "Option '${arg}' requires a parameter" ;;
+                        esac
+                        shift; user_txt2html="${1}"; [ "${1}" ] && shift
+                    else
+                        _die "Option '${arg}' requires a parameter"
+                    fi
+                    ;;
+                --txt2html*) user_txt2html="${1#--txt2html}"; shift ;;
+            esac
+            if [ -r "${user_txt2html}" ]; then
+               [ -f "${user_txt2html}" ] && report_txt="${user_txt2html}" || \
+                    _die "Specified ${progname} file '${user_txt2html}' doesn't exists"
+            else
+                _die "Specified ${progname} file '${user_config_file}' isn't readable"
+            fi
+            ;;
+        --theme|--theme*)
+            case "${arg}" in
+                '--theme')
+                    if [ "${#}" -gt "1" ]; then
+                        case "${2}" in
+                            -*) _die "Option '${arg}' requires a parameter" ;;
+                        esac
+                        shift; user_theme="${1}"; [ "${1}" ] && shift
+                    else
+                        _die "Option '${arg}' requires a parameter"
+                    fi
+                    ;;
+                --theme*) user_theme="${1#--theme}"; shift ;;
+            esac
+            if [ -z "$(printf "%s\\n" "${themes}" | tr ' ' '\n' | awk "/^$user_theme\$/")" ]; then
+                printf "%s\\n" "${progname}: '${user_theme}' is not a recognized theme, using default ..." >&2
+            fi
+            ;;
+        --list-modules) printf "%s\\n" "${modules}" | tr ',' '\n'; exit 0; ;;
+        --list-themes)  printf "%s\\n" "${themes}"  | tr ',' '\n'; exit 0; ;;
+        -*) _die "${progname}: unrecognized option '${arg}'" ;;
+    esac
+done
+
+_loadconf "${config_file}"
+if [ -z "${user_txt2html}" ]; then
+    _staticus
+else
+    _staticus_txt2html "${report_txt}" "${report_html}" "${theme}"
+fi
