@@ -31,7 +31,7 @@ module_storage_partitions="/,/home"
 #processes
 module_process_list="mpd,rsyslogd,dbus-daemon"
 
-module_notification_msg="Next maintenance windows is programmed at Tuesday May 12th"
+module_notification_msg="Next maintenance window is programmed at Tuesday May 12th"
 
 #themes
 themes="default"
@@ -271,7 +271,7 @@ _module_info() {
     _minfo__uptime="$(uptime | awk '{sub(/,/," hours"); printf $3" "$4}')"
     _minfo__description="$(printf "%s\\n%s\\n%s\\n" \
         "* /etc/issue $(cat /etc/issue.net)" \
-        "* uname      $(uname -a)" \
+        "* uname      $(uname -snvp)" \
         "* uptime     ${_minfo__uptime}")"
 
     _staticus_report_module "info" "info" "${_minfo__description}"
@@ -286,13 +286,10 @@ _staticus_report_general_status() {
     [ -z "${1}" ] && return 1
 
     if [ "${1}" -lt "1" ]; then
-        sed -i "s/^# title:.*/&\n\n##status: ok\nEverything is running ok/" "${report_txt}"
+        sed -i "s/^# title:.*/&\n\n## status: ok\nEverything is running ok/" "${report_txt}"
     else
-        sed -i "s/^# title:.*/&\n\n##status: error\nThere are ${1} issues/" "${report_txt}"
+        sed -i "s/^# title:.*/&\n\n## status: error\nThere are ${1} issues/" "${report_txt}"
     fi
-    #sed 's/.*Fedora.*/&\nCygwin/'
-    #sed "# title:" and write after line
-    #printf "%s\\n" "# title: ${1}" > "${report_txt}"
 }
 
 _staticus_report_notification() {
