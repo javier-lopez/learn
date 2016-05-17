@@ -120,7 +120,7 @@ _failed_module() {
 _module_notification() {
     [ -z "${1}" ] && return 1
     printf "%s\\n" "module notification"
-    _staticus_report_module "notification" "notification" "${*}"
+    _staticus_report_notification "notification" "notification" "${*}"
 }
 
 _module_memory() {
@@ -128,7 +128,7 @@ _module_memory() {
     [ -z "${1}" ] && return 1
     printf "%s\\n" "module memory"
 
-    _mmemory__input="$(free -m 2>&1)" && \
+    _mmemory__input="$(free -b 2>&1)" && \
         _mmemory__input="$(printf "%s" "${_mmemory__input}"|grep Mem 2>&1)" || {
         _staticus_report_module "memory" "error" "${_mmemory__input}"
         return 1
@@ -136,13 +136,13 @@ _module_memory() {
 
     _mmemory__total="$(printf "%s" "${_mmemory__input}" | awk '{print $2}')"
     _mmemory__used="$(printf  "%s" "${_mmemory__input}" | awk '{print $3}')"
-    _mmemory__used_percentage="$(printf "%s" "${_mmemory__input}" | awk '{print $3/$2 * 100.0}' | cut -d\. -f1)"
-    _mmemory__threshold="$(printf "%s" "${_mmemory__total} ${1}"  | awk '{print $1 * ($2/100)}' | cut -d\. -f1)"
+    _mmemory__used_percentage="$(printf "%s" "${_mmemory__input}" | awk '{printf "%.2f", $3/$2 * 100.0}' | cut -d\. -f1)"
+    _mmemory__threshold="$(printf "%s" "${_mmemory__total} ${1}"  | awk '{printf "%.2f", $1 * ($2/100)}' | cut -d\. -f1)"
 
     _mmemory__description="$(printf "%s\\n%s\\n%s\\n" \
-        "* threshold ${_mmemory__threshold} bytes (${1}%)" \
-        "* current   ${_mmemory__used} bytes (${_mmemory__used_percentage}%)" \
-        "* total     ${_mmemory__total} bytes")"
+        "* threshold $(_bytes2human "${_mmemory__threshold}") (${1}%)" \
+        "* current   $(_bytes2human "${_mmemory__used}") (${_mmemory__used_percentage}%)" \
+        "* total     $(_bytes2human "${_mmemory__total}")")"
 
     if [ "${_mmemory__used_percentage}" -ge "${1}" ]; then
         _staticus_report_module "memory" "warning" "${_mmemory__description}"
@@ -156,7 +156,7 @@ _module_swap() {
     [ -z "${1}" ] && return 1
     printf "%s\\n" "module swap"
 
-    _mswap__input="$(free -m 2>&1)" && \
+    _mswap__input="$(free -b 2>&1)" && \
         _mswap__input="$(printf "%s" "${_mswap__input}"|grep Swap 2>&1)" || {
         _staticus_report_module "swap" "error" "${_mswap__input}"
         return 1
@@ -164,13 +164,13 @@ _module_swap() {
 
     _mswap__total="$(printf "%s" "${_mswap__input}" | awk '{print $2}')"
     _mswap__used="$(printf "%s" "${_mswap__input}"  | awk '{print $3}')"
-    _mswap__used_percentage="$(printf "%s" "${_mswap__input}" | awk '{print $3/$2 * 100.0}' | cut -d\. -f1)"
-    _mswap__threshold="$(printf "%s" "${_mswap__total} ${1}"  | awk '{print $1 * ($2/100)}' | cut -d\. -f1)"
+    _mswap__used_percentage="$(printf "%s" "${_mswap__input}" | awk '{printf "%.2f", $3/$2 * 100.0}' | cut -d\. -f1)"
+    _mswap__threshold="$(printf "%s" "${_mswap__total} ${1}"  | awk '{printf "%.2f", $1 * ($2/100)}' | cut -d\. -f1)"
 
     _mswap__description="$(printf "%s\\n%s\\n%s\\n" \
-        "* threshold ${_mswap__threshold} bytes (${1}%)" \
-        "* current   ${_mswap__used} bytes (${_mswap__used_percentage}%)" \
-        "* total     ${_mswap__total} bytes")"
+        "* threshold $(_bytes2human "${_mswap__threshold}") (${1}%)" \
+        "* current   $(_bytes2human "${_mswap__used}") (${_mswap__used_percentage}%)" \
+        "* total     $(_bytes2human "${_mswap__total}")")"
 
     if [ "${_mswap__used_percentage}" -ge "${1}" ]; then
         _staticus_report_module "swap" "warning" "${_mswap__description}"
@@ -189,7 +189,7 @@ _module_load() {
         return 1
     }
 
-    _mload__used_percentage="$(printf "%s" "${_mload__input} ${1}" | awk '{print ($1 * 100.0) / $2}' | cut -d\. -f1)"
+    _mload__used_percentage="$(printf "%s" "${_mload__input} ${1}" | awk '{printf "%.2f", ($1 * 100.0) / $2}' | cut -d\. -f1)"
     _mload__description="$(printf "%s\\n%s\\n%s\\n" \
         "* threshold ${1}" \
         "* current   ${_mload__input} (${_mload__used_percentage}%)")"
@@ -218,7 +218,7 @@ _module_storage() {
         _mstorage__total="$(printf "%s" "${_mstorage__partition}" | awk '{print $2}')"
         _mstorage__used="$(printf "%s"  "${_mstorage__partition}" | awk '{print $3}')"
         _mstorage__used_percentage="$(printf "%s" "${_mstorage__partition}" | awk '{gsub("%",""); print $5}')"
-        _mstorage__threshold="$(printf "%s" "${_mstorage__total} ${1}"  | awk '{print $1 * ($2/100)}' | cut -d\. -f1)"
+        _mstorage__threshold="$(printf "%s" "${_mstorage__total} ${1}"  | awk '{printf "%.2f", $1 * ($2/100)}' | cut -d\. -f1)"
 
         #df outputs numbers in Kb, convert them to bytes
         _mstorage__used="$(($_mstorage__used*1024))"
@@ -267,6 +267,14 @@ _module_process() {
 
 _module_info() {
     printf "%s\\n" "module info"
+
+    _minfo__uptime="$(uptime | awk '{sub(/,/," hours"); printf $3" "$4}')"
+    _minfo__description="$(printf "%s\\n%s\\n%s\\n" \
+        "* /etc/issue $(cat /etc/issue.net)" \
+        "* uname      $(uname -a)" \
+        "* uptime     ${_minfo__uptime}")"
+
+    _staticus_report_module "info" "info" "${_minfo__description}"
 }
 
 _staticus_report_title() {
@@ -276,8 +284,33 @@ _staticus_report_title() {
 
 _staticus_report_general_status() {
     [ -z "${1}" ] && return 1
+
+    if [ "${1}" -lt "1" ]; then
+        sed -i "s/^# title:.*/&\n\n##status: ok\nEverything is running ok/" "${report_txt}"
+    else
+        sed -i "s/^# title:.*/&\n\n##status: error\nThere are ${1} issues/" "${report_txt}"
+    fi
+    #sed 's/.*Fedora.*/&\nCygwin/'
     #sed "# title:" and write after line
     #printf "%s\\n" "# title: ${1}" > "${report_txt}"
+}
+
+_staticus_report_notification() {
+    #sed "# status:" and write after line
+    # $1 => memory|swap|load|...
+    # $2 => ok|warning|error|notification|...
+    # $3 => msg
+    [ -z "${2}" ] && return 1
+    printf "\\n%s\\n" "### ${1}: ${2}" >> "${report_txt}"
+    if [ -n "${3}" ]; then
+        printf "%s\\n" "${3}" >> "${report_txt}"
+    fi
+
+    if [ "$(_str2lower "${notify}")" = "true" ]; then
+        case "$(_str2lower "${2}")" in
+            error|warning) _staticus_notify "${1}" "$(_str2upper "${2}")" "${3}" ;;
+        esac
+    fi
 }
 
 _staticus_report_module() {
@@ -285,7 +318,7 @@ _staticus_report_module() {
     # $2 => ok|warning|error|notification|...
     # $3 => msg
     [ -z "${2}" ] && return 1
-    printf "\\n%s\\n" "### ${1}: ${2}" >> "${report_txt}"
+    printf "\\n%s\\n" "#### ${1}: ${2}" >> "${report_txt}"
     if [ -n "${3}" ]; then
         printf "%s\\n" "${3}" >> "${report_txt}"
     fi
@@ -349,7 +382,7 @@ _staticus() {
             *) printf "%s\\n" "module ${module} doesn't exists, skipping..." >&2 ;;
         esac
     done; IFS="${OLDIFS}"
-    _staticus_report_general_status "${failed_modules}"
+    _staticus_report_general_status "${failed_modules:-0}"
 
     _staticus_txt2html "${report_txt}" "${report_html}" "${theme}"
 }
