@@ -15,10 +15,6 @@ report_txt="./staticus.txt"
 modules="memory,swap,load,storage,process,info"
 #modules="notification,memory,swap,load,storage,process,info"
 
-notify="true"
-notify_method="mailgun"
-notify_contacts="admin@example.com,contact@example.com"
-
 #thresholds
 module_memory_threshold="80"
 module_swap_threshold="80"
@@ -33,151 +29,156 @@ module_process_list="mpd,rsyslogd,dbus-daemon"
 
 module_notification_msg="Next maintenance window is programmed at Tuesday May 12th"
 
-date_format="+%d-%m-%Y %H:%M"
+#notifications
+notify="true"
+notify_method="mailgun"
+notify_contacts="admin@example.com,contact@example.com"
+
+date_format="+%d-%m-%Y %H:%M (%Z)"
 theme="default"
 config_file="/etc/staticus.conf"
 ###############################################################################
 
 themes="default"
-theme_default='H4sIAKwoPFcAA+w8aXPixrb5fH+F4lRqkhmBhQTYQJK63gbjIJjBjDGkpl5pAwm0XS2sl//+TndL
-oiUkzMyrfHhV8ZSN6D7n9Omzq5cJNMs1pUAr64Fl/vD3/HDwU69X0WflqsbRn/BTq9frwg8V/qpy
-xfFVvnr1A1epCpzwA8P9TfykfkI/kDyG+UHRDdNQQqNICG/1/z/9+e1H1VGCjasxyAD++Ndv6IMx
-JXv2+4VmX/zxL4b5TdckFT3Ao6UFEqPokudrwe8XYTAtXV/QXbZkab9feI7sBP4Fozh2oNkAaNiq
-tmaZqWOazipGCIzA1P54Ht4MO3dfnv9n2Bl2H367JK0Ewg82psYMx58efr8ItHVwqfh+jP1jqcRc
-vv+RsR3Pkkxjq5Whk1kKZa4sMP9lxM6Q6RqKZvsafJsZgR7KZcWxLm1NcUzJv0zjvb9E895NgeHS
-VLIMc9P0Jdsv+ZpnTFslyy+h8Us+wJckdQ5G06xw3M+t0kqTF0aQ37uXHXWzsyRvZthNbi95gaGY
-Giv5hqqxKojLMH12aswUyQ0Mx0aPoaexU8cJNI9FUkcfM88JXdaSDJu1NDtkbWnJ+pqCMfzQAvKb
-nWr44MWbpmw6ymIvharhsIpkLyWfdT1n5mm+zy5hVCeBNGzTsLUSRmgtNcSaZJZAIDO7KUu+hnoJ
-oabtBL/8hVTpOab/9deEhO3YWkvXjJkewOz+0g1V1eyvbBBFlBTcXtrJkrJAc7HVEmjA8ZqBBxJ2
-JQ8sZC81JZjREoTT1B1gZ+eEAWIBiU2Wvb+wVXzdyY4HMimBdQWO1ay4a0aFR03dy6wP7NkzosEV
-YUp2THWvTm3SiI2paQQwR2WvV6JGUFmT16xWpKVy/UqzGG4PXxcUx82fplOuRdj+CWLW3gfbMSkS
-16BtPwQuQpdqvar93MJijqXUch3fQJprehrICCZcKHtEKXDcZokr1zQLEd9F04YWHjUZ1iwSCEjJ
-X86wopoeWM+vOyTDKfhak2hlT0wrtsUKzLHKueu97gGFNWLWsGfNyF1BvOuDXl1AS6hJYeDsFQfM
-dyGrYFoa60uWm3Iby7Ed0KqisclT6yARGHkvhzANmzVsNwxYxw2IgcO0wahZ5EhgEtKOCNuwdfDA
-AFNIviQeRSgd2FsaviGbWjwCIbnDvomNbQo+T8wxgsDBDjPyF4qBv1+Q9ouvLN0I7qMFmTbQh2VA
-4y6OAJLrahIMomhNQqSlhJ4PU3AdA8TqRUP+BV4hAY/qV3rwpHEXIanaVArNIEJqNkuWsy1NHSX0
-S4ZtQ1jAeMftiUG0XElVkVK5PQbd0XZIYt+eno+ia8oCFJ+dugQR4OIrbSWJD66zY0Q4dmjJmnfx
-FbiLZINZK/muYZdo5RfCg/On4XcR49j+UmoAmSt6vhqQ3qeGZqqtfBvPJXRggrSUFETLzOO7EEWF
-FONJyM3z2ML2h/kCq4r1hUKZ75iGyviGCeac2DjDuwc5lwXwe6Zc5/HHFQoCpjbTbDVP7Yknpb03
-drjjSBkgE4xDLLifKbm+1owfWlEH8uhoAJUN9N1hQKZUinLzJY6135DEIXJA9PMkCyfjE9k7ATw8
-xbk730QPoafOl2tRSo4CeZ2rK1f1Fh29LgaodHEu2ItHDfSAIjPT00KNboDnG8+QzAuWKhGoEFeu
-Qz6hpStwXMvUgoCSXpmDSJjKDYC2f8++b0pTlPzfN2UNopVGzyoKf3ucs/8TQpEQK8vUpgEYhwdW
-QYzoJ7WC/kVWRPq5+JsX56JIcxWEVynXPBSbE9rM+yaUSUEJ1b3qoYgpR45w7A/vSNO7VAB5h2Nn
-po3Ezndfj0uCnxpyVVWkyNaa5Qo1pVRXCQWm0G+WqwARJ+bpdJoJuq3ccofWFRohpawrUFakEqF8
-jXqzqsMotOoiuMQTGKSJFk47JKmDISNmcMshOJACKpOdQggUngJFQGulG4GGR0UxY+VJbix8UiKx
-8Tcc/tlUV6onT0cRXG7XMVakxBykuOcYJ1ZyDlLShbFyrCByzEMoohopXR9qxEgU0UcpTqexiKik
-WwB4BJcnmSOsPKACGpGgTpKIYAooxFI7SSIGoioKB9ltsGmWa61McVEgtbR5HfUSVR9JNo1FtdPm
-WTDUyZEKBioY5xy9nTD+Ah5OK/oEvZP8FdhEsZudwd2RDRVTO8lbkbWdcOczuDs2zxP0svy9lS7S
-jVnrjoIFm996yhbyYDIKyQPJiiWC2WVYP/VWnD+FfP+MO/PcLY14Cu8MOZzhPcU08+X2tsUXUywQ
-8xl2mqKZqQlPqSU3LxXo6rzYWgScCrUZ4KLIWwx2wjLOisunuTyPyfN4PMO2viOmn+b/DMyzIv63
-zC3fyL89H5w/s3zEc7LFt8yrwNO+I5ecP7MCzLMyzRtzy4Zs2v3jl7KM9ykmvO6zeW2nbOYYIiP8
-Y4DsFDDEN+SY9GxOJB9MOD/UkK68MEAjFeO8KZIz3K2IXp4A3zbyImq50j7DsCh6351o3tLNeakm
-HzQ30WDQt9JMFqjQCs5KMae4O4e5c3h704q+I7Wc4vtNvG9KK2/PKc+Uvz2lnDujPLRvSSdvzyfX
-l74jlZw7o1y8b0ojuXNKx2S8iZLeYKpOa9N67vIWtc1U//mwGMyjxTG8bHdYLcaNeUtHaBuneLjj
-BcQodaTWRkXNNtHS6J1j+2gPFR5vjcAPPE2ymBfNk5hnCFGM6NgI6l6bSy9hqgk+JAUekp0hxNYf
-WVHkRMBIHFyynkcW8nJWMFNzB+pkiytaHI+ooW211NJiJIxofTTaZhNo0WIcJB960+CdZkmGmVnc
-JLsZmUZX8v0VDJ5dCMX7BZnGQMuSREuEmabQQ0DxEn+801Ww29DCu0TZxuz3MzJRWmrRGnOexeJV
-a11SnVVqlzizUFquY71hrRlqoJNN8xwB53hpLOacroOw87w7EnlOFxZ8bvs6f4kTKyFqj1URfSUK
-idctilezD0uYkQrTssEeSYmJ8hIY/BdVCqSmYUkz7dJfzj6sLbOF9o/rVfbTfaMqj1Yz1XrZKLy5
-lOecIT5XVx3j1pSt3nLSNsPJljNeXgbt7nBmdB573HhUW4xH66VsfWl0rNqyM7/+8Omxx082N7PO
-ox7I7dq2bw3mn56fHPVxsOob10vl8WUj39WWiqUATXE5Ga1NefQSqo/iEsZbdzedWefuFnhZh8rW
-nY9hTOlxwCn3zrLL9zaT0UdOep2YY74RyKNGqGwILdkW5x2DGtd+WkzmFK6gCuqmJogRvDhc1PrP
-1yvRuN6IRmUzaY8DRTBDtf2x2h3Vtp00H1vVUmCOOqc+3tS7mwZQU0J1K4ay8GR3t52VeH+zVISJ
-TfNAzxtGF7q2su1ajc1kA2Pe36y6ApJVehyZH7hKu7GQhjTvWP4r1Ne1e0v19Wk+GU1gHqrZtWqm
-etd4eHn4vFR4wHu9BdhFIN7VFmr7s9G5u5lp7YoP8qlLo5qn8D1daX85mgvVR+bE13TQy1Zpf5xP
-XsUl1Y9pTkY1fWytze7oSR/zga1YjYpsfUZ2YKqbm1Xn/mYmzhczcUh4kNov7oTXuU/PnXXv8baK
-5dQ2FyAjcfxqmop5vSaym5iK3XNlvtrozB9C8RnLh5dGL8Jnq1EF/CPaKm/CXGcA36kpj7Nkzn27
-txqPeiaMsVKsl+3k9YmfEHqubAXbMf9xNRm6PLRvJbAlRLs7/1yF35kyX9TE7QLTouRan7Qbc9n6
-GExAP4C/mbx+DibCk64915CNGJ/m62DyOtAn7Y/c+Bnmg+Y+QnKpmGBbizH0idubbf+5A76CbNR9
-HjyMP3xq9+Z9UwWd+hiH/N4iu6yPR0+gc6BhAE57MO9bSPcVXb2vufLooz15bqCxPTTnT3eNxXjr
-WqDDYPz6mcDbgxrojaKL5IzHBv4je0rZ221FsVaRHQzm6FcemZz2emt2Kz1OGq3951FFn/DIFsDn
-7xrgp+4rwHuf5ivgbWD1zaeHwbx63eUP8wbZLMBut9Hc3Mk9Z0zaL5ayFVfiViG0Hg+23rewDS5U
-y0Q2hfkGe7Qno95Sbjc2oK/5xCL/sO1A/xj5V/tlA/HBl4UOyEzke/Mx+jWicQ3gcwE6XyLbll4H
-NWSTMb7MP/0H6HNqu+EDjA6xz0T94l2HyK2tbqTRgJP5talYH8Mx/wXZ6SrGnwhg5+2Xwn7Kj+pk
-Lg1ko676uAC4m5hH2j6hXzUVXgebagjAyyaPFvhAiPq7r6o7eRw4AFcT78U8egLgLWRBCSifrPQj
-X4r1gm18NMB+h+y19xzN/7HnyIIK/o59l1PsFzOPH81qLGWwKXHYCcWhKPSH4joPbiyA3xoc150/
-rBFM//7J7A5vqvmwSEbKyTlpwHtvePOGjBAdsDkj1qkZSgJYCNh331aB7mCpbirgPzr4l1mfIP/N
-180cfAdyUo3rjta6NnrZpOIZ2D89PsQJd3LwbexPAF/VRsimYvkncRHLGGTPoRjY3YIvCQW+AX2Q
-M3ygs5SN2E8armwPtiSmPVS6KGYOP4e959W6d1cFfd5s+nfVKnxfdRLbxuMC/XVtwjdCpHdxE+t9
-sIF8v52AfyG9QtzhgL/qn/c3APeFE4cP2/694ot3qxWMFfbuZ1uI0WvxeVXrzsVN7/6h0rv/4oub
-Ki/OP9f6w8Xmz4NNcRrUATC2hWJL3+gtxNHn9eT+4Wpimb58V0l8tT9/iGMOinkffmXIXjmDDykw
-tlPyNChTg326oDqUqrj6+acY+qcY+qcY+juKoRDrHQIfyAt8YqCr7Qc6uByKoyFK+gtUMOEi58ti
-0IbnpJCgixVcUFgfIXG/IJkhnFSRI5FiBNvcnwLY2/0K+VMdByvwkQgeB9xUERQVWEgeQHuDk/XB
-FlZgWz6xUSiq0C9fgURtrqDgGqptCEwPZoCSM+hqiQqfMS/WX/jGRsLBmiru7hrUvKvXuOjZ0MXh
-wJzY4hYStkBorSnbd8PxqGJOHifu5FWJAuYtzPdlDoF6qYBfd/ioDEoS2hMqwqAAORRKURHEZwsl
-WbgFm4XiDiXrOCC3G4ZkvczBXwH/BQV+XCCKwyQJ4uR0okiqQJFkFvfTCRfPhS7Gioul154DNrVU
-IQ6+kbwFVKRJUAz0hzfbk8XASDelkeqouHBYcAdY7L9UkkX2+iWe/1YCXJzQAU99fKpMnvP4cZcy
-zyHf3UAS3va2i62YB2f1kC8HkJjXEIu34nC2mTxzq36evKwekpFwusBB/v/lrQIH0QGb65wsqMB/
-quBfrma9LIp0MwbfAR8K1buKj+MX2OSw/bEGup+K6EUnxT8udhIfxP4EtqU9mtimYvrJCwKWsbiC
-AiJJ/AW+Afn2dikDHYiXsZ+gWM0pyF7ms7CPCpC7m6KCKFUAJwUVKhS3SSHNoaJe4VG+4dBLnQ66
-d7W7GdAUocB5WIvbmQC0SSEE8VPcQiE+fPD7z1UoiD6ve8Mv2+69GPbmnUpxASTWxvMBxJvx2wXQ
-4dxutBQUr0fiZaB47YysYeIWy7Djg4h1cojTlGTNZKOTwamDqXmHHdNLquk1UEIvc1i5RBbrjo6Y
-R6ti8Uny7EFQdJL83dfMBZR9GTNbIt9SZ5LJIfX8E5z0uVbCYxkd7JYMdAQ+WQxH550BdB0xXKnw
-6WOa5OvRjQxqLbLsOauE46mprVvoT0k1PHIBB52ODi37QDOLzKA/JbQCv8OY6KlJznImvVDkRvjU
-Yeq87j/KZLhcMDCIHT5tWjICzfIxtyV0ty2ggIhaj+HAUCgoUoKnoEgTBYNW/QNFTwFFbfR40W2W
-FFhyxYXARXNKmyHiqnl8fjlRJbp7dSRqQgl/UuKAwabH0qBhU1I5gB+EQgOnhIOBU7IhoNFHyZlO
-wW9KFW5Hz6SS4TgDzaeh+Tega2no2kloQWBP9VZTtAShLMDPSYK1NLO108zW66eGr1+laNXr5Tr8
-nCR4lZ791enZX6eZvT7NbCMN3SiABuVia+UYjgHNpqw0H4OnMPgURpGuQckHjFoKo2DGBYoGDSeE
-YvVS1E5qvEqxXU2xXS1gu0Zh1FIYRXZSpzDqKYx6EUa+SYEtHQhFhkRTO2VbV5S0r1LSLrKva4rt
-6xTbRTbWoDAaKQxkZ/+2NNWQmF9QbietIHHIVr/ucEbKJCFoSkXKErWlpkim8guKkcwHhi9jGum4
-m0748RW7Q5JEtPZ7KXOkKO8qwz6+u5k+GKmarGOyobmjdlKT2iEK7QDEhCYLfx0EjZ4d/Bzi5xA9
-U5UMERi5yojTP3I98oD3aFVzZxp+fOUT8xammhTDU0yNMWx0FXfvpPpgVgYUHnGnGrCqyppGRlBY
-LOnLMHkQ5JJjZp+WTQqqDAYpZdC1ysM9HBBKfDEYX9BiXRZLh0XXRTIEeEKAXOSi0mOgs4GauTyb
-2o3UKujfYT+dnC2IdtSpiyxIW0CtOTW8+GoQUKa/7jKKBeDDNSIES10qikG9+KppykT2eoXVeVYX
-WL3K6jVWr++yl6oys89s13PpW77VnLs8Je74Ng9Mfq/zFKJA6ubzUGt7XaBxz8YU9nqVvpNcLuCX
-u87BhVFrqUo/7+ISQq4dIwNu/fgtIYPLZZCqJ0JUSurYIFPirGLjyogJD5qWAPbk1LSITLLs4hH2
-5anpSAExpR1+buLnuAOZY9SOjbiMD+lMjfXu/dZBvndoia7gHb5HV/Giq6PNi4vkpQR7WhZzR077
-gVXq33knEj/8Oz7NsdA2U0+yNJ+ZSqrWsZkdM/UcCz7iqz0M12L2TODQTRXUtCeU/u8U8nnph0EO
-qcoxKa6QmW8lgWkY1gy6DimTwe8D0QBl9Hrlah487pjk7Y5JXu+YWHkMedVgUjSSy7IMuTmfUE3e
-L4Hq5XvqJBGTdyjm/SVDv6kzVySUAmbmrT7uAYR0NEMTpmZ4zeHk3YpFUCb/S0SaryxtIJHigktm
-E2G7SPaJL0HAF1Jj2NLSmOEED3A4oGe4IjI7CBl8QFNbZPMGw8bDpnGWqxazLeH/FKTJNBoxV5fv
-mYFWQhowEM9MoGtEOXgcBhKzKZF6A9mGJcG7JoMYZ5zpzwx6q1SZgzTeXx7NIVdWMYc5stvnSIE6
-gZOcG2PSmTXXII6sLgqlTI0c2WMylnzMPDH6PIMmVkhUF5PlE3M5IoT/Lw2WbivhJmaHYRmG1G9M
-fEQ5ak0mQFZi4ub/befIllRFlu9+heGJuEs4c1gVnOnuuMqiKKAN4tIvJ0BEUXZwwYn591ssKqI9
-58xE3Jj7YHYbbJVZlVmZlZlaZHGHYPWfXbDoqXZVSgQEpqP9z5/u7nWSe7dvV4M76RvVP1ULb1Tn
-9It+5yysYtdnzW0WHpzjGDCJ5zv3YsuflCPZarphLX14noUwUqNd+NtZLukOw1+vnaCwd/z1djBJ
-RZFqMVoByQx80ZN8q1y+d7Ns9xm534tdf3W3YL7Sb8rAaVEJfz7PFUwzJEGU8Q5q4IAxXpDz64cU
-2jBG4EiZgunsl2GU6kmBzs3dh9QQpIWyVJnaMgjc4EIlvXqIzbI4jdMFO3Aj0wDaktZUyCfuoTC/
-O9039su2kr87rUnKo5w/6JVoca9sFb8UbPhC0/S1yWXfY5KSgDbJJ1hp6r/gn6r5/1cEbfy7RPTK
-OE3B8K36ZcIK4zBa2o9lTSR/F2ntrK+2q++sJVDZfOth9VG0/4k6/l4iUn0DNgiW/2uGlJnIH656
-5y6uMm0kWn3v4h72VkwSLixkneb6dG6dnwAvloZ2mecptUpNpmwnN+baAHzfolwMpWwd38ErGUbZ
-Gr6DnRtE2Qq+g5XU3LoIwHSA4qtWafW53M3fAK+e6yPcreoXrSsQz9P687g0S00c2P0gqvWsnM1v
-V6rZpAHHDqKpZerQzz8PLJOiW39ABBxB8uHkhyvJjOJlp7MDcvU89sijSST8tfr49gPWzr39kg4L
-eKdPes2d9ifdgoj6a+O+2/x2qVt9GS4C0ysuZTvHTDbB/6yBuOeX6tLWQBD1yL1eKyrlT4ub3ate
-sCwtZVlwgyQOpejtrrn8pZdb5TnHASVlKQcCmVDu16rqb3dLS5rMfuZA4fQxOKQ+vKTuQdmVJrVq
-LitJthjfrFzABg03j3Juolv0jlQ1o1XAK8WFGUo5NETve9OTgmc/2FmKtw7SDObyZcWF1dISeb59
-k3AUX9Q4x6DZcNZ4ObS9iei/JGXkyi3IG/E9SFhfoKwCYHKa1M85F/xLaIGQPAxfa3nOleew4CEI
-Ls/PrnHm5XGSAmdfXp4bXULzQhvQSr0nkgWrNSDBpfFa+3LTHmAkYXKOA05rVdWKXmupSSXBZ7o/
-rJZHya81DK5Vw2DxWitsHvOc1XnjWMWcdIbSAR50V24bgCgra0ZZgbMOnlwvqfY8ORLCoGmCI9Nj
-LOZ9IuGoLa667RneliMCWknIaWVplXdXkX2kz6yQ4Vgancz92EEcVe4swpMSuce+j6Eyt1wKewle
-mCSxxCdrtDkmHaYnipgRGcPBbLfH1mE8g44VeziAcKvX8GCJhp1RA1O4iT9lPBTa7mJ8tiSPKsUr
-o96MFkaQtOQH8485HRqsQSqUAu/ay7XTDx02CjXNq0SzptY9LRzUaIynwWrmk8oKw8QRurcMnseF
-42xwtPu84UrNdb2hczK5e/8YOl1uC/PuYDbStmhcx1oNNxShysZXZuHEHVCY2gl9h7P2zZkpY02s
-rrl1ox7bUXCkJ305DMdqjLHRKoRb24Gy2nf1mOP7FkRsnF5rP0IIhqzIgb+KtxQeCHVhh7bGQD4L
-lzDY+XYPyeRiCh0g4TSqG7PGhoDwWMKNlja1Aohv7oJePJ8Tgtae9HZHFOOJCj+lDwdgnUNTEdRh
-j8WQw4kOkRWBxBa99UK744tTfULBaBwvNsNRO8Zak0ZXh/Z12zO1OW7tVNupDwdxNKvgxIQcN9E6
-Rx6pLo3DqLFwEPJAR8q7zUZqiI3GE2zGShBJTQ8BZTcCSF84/cGOfj86OxSecd6OVLdTEvuQKyTk
-DlV8Px505rSg07PlZD2ZnIITFdXn85HQR/WBxqAIxIctyYo5RKofx4rW6UXH1Rwhlwd2wxPN1YmE
-ZwhRCcQpuW6cSFvYtw+9hqjUhX4YztrDUX1yDMPVyu/hY063emrARnvSDJjpNqaQxsb3g8iniaW7
-NF0T7R5WO71ieaK0cmyKeF+uhM6ywdotZbvXuxFmQqbNcV6otCxr+M5r+BE25i2lb441Lpx80Kd3
-ftxcuevBwDU6Cw9VxhXZ6oyiERL0QzgYDwh23ZpM1FY7wvymiXOUF4oMzlLCSGw4060teD7Vpvo+
-ofmdjwAycYk9GrQiHlQuJvuVE00YCtcnViHWs6eWz/mSumf0PrJ/nwZDmfqQdbElie2BpIadxaYx
-9kOxy9p+rMWM1Nt9nICKaIowapiiXxm4Cq5LsS9Aap1SAolj9oRmEIYWGE1wGLSG4aRXnyjzdSi+
-Mztn5Xpci+qf1sRAoLYN3RhzgiOQOis0yYo+Gdeh1kenaZAE01aPzodcxzBVDlqNNU8NAEcbPYh3
-XluT4L5OyXvUnEIb1A4ijwkBy5K52avYzrLiNl/B9TVbN1qERswggjhOjFbjOPHiGGbWAt00lW5T
-Qnc4KhyOwshTsZGmz+ru+2JPsdBEoVt9vbcP97zNIMeIqHgK5LLh8MgezABa8SYG0yTURJ3mniR2
-a39u2b4/Q0Kfa4rAIt2GJvPruu51muMtvhOZSAqHIz7pgFx4FVjkT/HxfSsuVlGHMA1UDhfL+jJc
-iyNZbzTaMqEgWxlrGfAHrb+ru4AR5fFs1JEjLdp+7GMTeLTBui7xM2xT8fYatHHxLsrzgb32RmPU
-dlvD43Q7Nhh066/bdMeONwznBFOJ1DZBwI7hmE12NvvHxV7wxI9pSMhBbG04pWINw0370G73uzNU
-Gh7FDikky3RbViZDadCg5hz3Wiu4DejG56yRswPJPM1dido1ctMeUgtuDcr92sURQsBzvVXOV596
-vaqpv9YSj1r0kbp5caJZAl11t4XhMBNGmo97nNj9Nhy8QKD1H+Km2UUBnW1zPEN/E4a0wjNyjv+Q
-QDH9LhAQh2OO5ShwNRTv0Nf4m5AlaUBgeGFgO+tMNk/ibj2+Zb69ZFHkTau0snANBFTBa42jvyG1
-t398aTWbICO7DCdj5JvYFsAcpSTeXrJUIpFtilQtFbt8e0mj/duecjmlBzCfoMHDZoU4viCTfBA0
-I1MSN8okk5GAAGd/nlH0rzCK/hijeZJbe8tP/nZmsb/CLPZjzCaW427/Vyy+QDurpP0cSAxS1c/K
-XF4ociI7/Dbi2xTTG/I0I10i7rLVJZlF7a36Z9CTFabAWXn9SnEfsFLEyWYp+7apWvhRrUyGEugz
-+jooCiJZB35kzFeU/MeIfADZVa1MgxqK4zY1/lxy3huVrKYLkGn9SdQ0z8jSieR948j9JTn8Z3lU
-bQ8k7AvXLjCfEyut+t7dPH3WaQEp4/TqKW5cxwuUeIMs/cqSrhcoK9H+d5eMf8ITnvCEJzzhCU94
-whOe8IQnPOEJT3jCE57whCc84Qn/5/Bfl2xSZQB4AAA='
+theme_default='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'
 
 _usage() {
     printf "%s\\n" "Usage: ${progname} [options]"
@@ -528,16 +529,19 @@ _staticus_report_module() {
     # $2 => ok|warning|error|info|notification|...
     # $3 => msg
     [ -z "${2}" ] && return 1
+
     printf "\\n%s\\n" "#### ${1}: ${2}" >> "${report_txt}"
     if [ -n "${3}" ]; then
         printf "%s\\n" "${3}" >> "${report_txt}"
     fi
 
-    if [ "$(_str2lower "${notify}")" = "true" ]; then
-        case "$(_str2lower "${2}")" in
-            error|warning) _staticus_notify "${1}" "$(_str2upper "${2}")" "${3}" ;;
-        esac
-    fi
+    case "$(_str2lower "${2}")" in
+      error|warning) _failed_module
+          if [ "$(_str2lower "${notify}")" = "true" ]; then
+              _staticus_notify "${1}" "$(_str2upper "${2}")" "${3}"
+          fi
+          ;;
+    esac
 }
 
 _staticus_notify() {
@@ -592,74 +596,137 @@ _staticus_txt2html() {
     _stxt2html__report_html="${2}"
     _stxt2html__theme="${3}"
     _inflate_theme "${_stxt2html__theme}" "${_stxt2html__report_html}" || return 1
+    _stxt2html__report_txt_content="$(cat "${_stxt2html__report_txt}")"
+    _stxt2html__report_html_content="$(cat "${_stxt2html__report_html}")"
 
-    _stxt2html__report_txt="$(cat "${_stxt2html__report_txt}")"
-    _stxt2html__title="$(printf "%s" "${_stxt2html__report_txt}" | \
+    #title section
+    _stxt2html__title="$(printf "%s" "${_stxt2html__report_txt_content}" | \
         awk '/^# title:/ {print substr($0, index($0,$3)); exit}' | \
         _escape_special_characters)"
     if [ -z "${_stxt2html__title}" ]; then
         _verbose "txt2html: no title was found, skipping..."
     else
-        sed -i "s/STATICUS_TITLE/${_stxt2html__title}/g" "${_stxt2html__report_html}"
+        _stxt2html__report_html_content="$(printf "%s" "${_stxt2html__report_html_content}" | \
+            sed "s/STATICUS_TITLE/${_stxt2html__title}/g")"
     fi
 
-    _stxt2html__status="$(printf "%s" "${_stxt2html__report_txt}"  | \
+    #status section
+    _stxt2html__status="$(printf "%s" "${_stxt2html__report_txt_content}" | \
         awk '/^## status:/ {print substr($0, index($0,$3)); exit}' | \
         _escape_special_characters)"
-    _stxt2html__status_description="$(printf "%s" "${_stxt2html__report_txt}"  | \
+    _stxt2html__status_description="$(printf "%s" "${_stxt2html__report_txt_content}" | \
         awk '/^## status:/ {getline;print;exit}' | _escape_special_characters)"
     if [ -z "${_stxt2html__status}" ]; then
         _verbose "txt2html: no status was found, skipping..."
     else
         case "${_stxt2html__status}" in
-            ok) sed -i \
-                "s/STATICUS_EVERYTHING_OK/${_stxt2html__status_description}/g" \
-                "${_stxt2html__report_html}" ;;
-            error) sed -i \
-                "s/STATICUS_FAILED_MODULES/${_stxt2html__status_description}/g" \
-                "${_stxt2html__report_html}" ;;
+            ok) _stxt2html__report_html_content="$(printf "%s" \
+                  "${_stxt2html__report_html_content}" | \
+                   sed "s/STATICUS_EVERYTHING_OK/${_stxt2html__status_description}/g")" ;;
+            error) _stxt2html__report_html_content="$(printf "%s" \
+                   "${_stxt2html__report_html_content}"   | \
+                   sed "s/STATICUS_FAILED_MODULES/${_stxt2html__status_description}/g")";;
         esac
     fi
 
-    _stxt2html__notification="$(printf "%s" "${_stxt2html__report_txt}"   | \
+    #notification section
+    _stxt2html__notification="$(printf "%s" "${_stxt2html__report_txt_content}" | \
         awk '/^### notification:/ {print substr($0, index($0,$3)); exit}' | \
         _escape_special_characters)"
-    _stxt2html__notification_description="$(printf "%s" "${_stxt2html__report_txt}" | \
+    _stxt2html__notification_description="$(printf "%s" "${_stxt2html__report_txt_content}" | \
         sed '1,/^### notification/d;/####/,$d' | sed '/^\s*$/d' | \
         _escape_special_characters)"
     if [ -z "${_stxt2html__notification}" ]; then
         _verbose "txt2html: no notification was found, skipping..."
     else
-        sed -i "s/STATICUS_NOTIFICATION/${_stxt2html__notification_description}/g" \
-            "${_stxt2html__report_html}"
+        _stxt2html__report_html_content="$(printf "%s" \
+            "${_stxt2html__report_html_content}" | \
+            sed "s/STATICUS_NOTIFICATION/${_stxt2html__notification_description}/g")"
     fi
 
-    _stxt2html__modules="$(printf "%s" "${_stxt2html__report_txt}" | awk '/^#### /')"
+    #modules section
+    _stxt2html__modules="$(printf "%s" "${_stxt2html__report_txt_content}" | awk '/^#### /')"
+    if [ -z "${_stxt2html__modules}" ]; then
+        _verbose "txt2html: no modules were found, skipping..."
+    else
+        _stxt2html__report_html_content="$(printf "%s" \
+            "${_stxt2html__report_html_content}" | sed 's/STATICUS_MODULE_PLACEHOLDER//g')"
+        OLDIFS="${IFS}"; IFS='
+';          for _stxt2html__module in ${_stxt2html__modules}; do
+            _stxt2html__module_status="${_stxt2html__module##*:}"
+            _stxt2html__module_status="${_stxt2html__module##* }"
+            _stxt2html__module_escaped="$(printf "%s" "${_stxt2html__module}" | \
+                _escape_special_characters)"
+            _stxt2html__module_description="$(printf "%s" \
+                "${_stxt2html__report_txt_content}"    |  \
+                sed '1,/^'"${_stxt2html__module_escaped}"'/d;/####/,$d' | sed '/^\s*$/d')"
+            _stxt2html__module="$(printf "%s" "${_stxt2html__module}" | \
+                awk -F: '{gsub("^#### ","");print $1}' |  \
+                awk -F "" '{$1=toupper($1)}1' OFS=)"
 
-    OLDIFS="${IFS}"; IFS='
-'; _stxt2html__i="0"; for _stxt2html__module in ${_stxt2html__modules}; do
-        _stxt2html__module_status="${_stxt2html__module##*:}"
-        _stxt2html__module_status="${_stxt2html__module##* }"
-        _stxt2html__module_escaped="$(printf "%s" "${_stxt2html__module}" | _escape_special_characters)"
-        _stxt2html__module_description="$(printf "%s" "${_stxt2html__report_txt}" | \
-            sed '1,/^'"${_stxt2html__module_escaped}"'/d;/####/,$d' | sed '/^\s*$/d')"
-        _stxt2html__module="$(printf "%s" "${_stxt2html__module}" | \
-            awk -F: '{gsub("^#### ","");print $1}' | awk -F "" '{$1=toupper($1)}1' OFS=)"
+            #special info formatting
+            if [ "${_stxt2html__module}" = "Info" ]; then
+              _stxt2html__report_html_content="$(printf "%s" \
+              "${_stxt2html__report_html_content}" | sed 's/STATICUS_INFO_PLACEHOLDER//g')"
+              for _stxt2html__module_description_line in ${_stxt2html__module_description}; do
+                  _stxt2html__module_description_line="${_stxt2html__module_description_line#* }"
+                  _stxt2html__module_info_cmd="${_stxt2html__module_description_line%% *}"
+                  _stxt2html__module_info_description="${_stxt2html__module_description_line#* }"
 
-        awk '/module '"${_stxt2html__module_status}"'.*STATICUS_MODULE_DESCRIPTION/ {print;print;next}; 1' "${report_html}" > "${report_html}.tmp"
-        mv "${report_html}.tmp" "${report_html}"
+                  _stxt2html__report_html_content="$(printf "%s" \
+                      "${_stxt2html__report_html_content}"   |   \
+                      awk '/STATICUS_INFO_DESCRIPTION/ {print;print;next}; 1')"
 
-        awk -v module="${_stxt2html__module}" -v description="${_stxt2html__module_description}" '/module '"${_stxt2html__module_status}"'.*STATICUS_MODULE_DESCRIPTION/ && !seen {gsub(/STATICUS_MODULE_NAME/, module); gsub(/STATICUS_MODULE_DESCRIPTION/, description); seen=1; print;next}; 1' "${report_html}" > "${report_html}.tmp"
-        mv "${report_html}.tmp" "${report_html}"
+                  _stxt2html__report_html_content="$(printf "%s" \
+                      "${_stxt2html__report_html_content}"   |   \
+                      awk -v cmd="${_stxt2html__module_info_cmd}"\
+                      -v description="${_stxt2html__module_info_description}" \
+                      '/STATICUS_INFO_DESCRIPTION/ && !seen {
+                      gsub(/STATICUS_INFO_CMD/, cmd);
+                      gsub(/STATICUS_INFO_DESCRIPTION/, description);seen=1;print;next}; 1')"
+              done
+            else
+                _stxt2html__report_html_content="$(printf "%s" \
+                    "${_stxt2html__report_html_content}"   |   \
+                    awk '/module '"${_stxt2html__module_status}"'.*STATICUS_MODULE_DESCRIPTION/ {
+                    print;print;next}; 1')"
+                _stxt2html__report_html_content="$(printf "%s" \
+                    "${_stxt2html__report_html_content}"   |   \
+                    awk -v module="${_stxt2html__module}"      \
+                    -v description="${_stxt2html__module_description}" \
+                    '/module '"${_stxt2html__module_status}"'.*STATICUS_MODULE_DESCRIPTION/ && !seen {
+                    gsub(/STATICUS_MODULE_NAME/, module);
+                    gsub(/STATICUS_MODULE_DESCRIPTION/, description);seen=1;print;next}; 1')"
+            fi
+        done; IFS="${OLDIFS}"
+    fi
 
-        _stxt2html__i="$(($_stxt2html__i + 1))"
-    done; IFS="${OLDIFS}"
+    #contacts section
+    if [ -z "${notify_contacts}" ]; then
+        _verbose "txt2html: no contacts were found, skipping..."
+    else
+        _stxt2html__report_html_content="$(printf "%s" \
+            "${_stxt2html__report_html_content}" | sed 's/STATICUS_CONTACT_PLACEHOLDER//g')"
+        for _stxt2html__contact in ${notify_contacts}; do
+            _stxt2html__report_html_content="$(printf "%s" \
+                "${_stxt2html__report_html_content}"   |   \
+                awk '/mailto:STATICUS_CONTACT/ {print;print;next}; 1')"
+            _stxt2html__report_html_content="$(printf "%s" \
+                "${_stxt2html__report_html_content}"   |   \
+                awk -v contact="${_stxt2html__contact}"    \
+                '/mailto:STATICUS_CONTACT/ && !seen {
+                gsub(/STATICUS_CONTACT/, contact);seen=1;print;next}; 1')"
+        done
+    fi
 
-    ####modules, toupper 1st word, update ID_num, format awk programs
-    ####info module and remove placeholders
-    ####contacts and remove placeholders
-    sed -i '/STATICUS_/d' "${report_html}"
     #cleanup not used placeholders
+    _stxt2html__report_html_content="$(printf "%s" "${_stxt2html__report_html_content}" | \
+        sed '/STATICUS_/d')"
+    #update IDs
+    _stxt2html__report_html_content="$(printf "%s" "${_stxt2html__report_html_content}" | \
+        awk '/ID_/ {counter++; gsub(/ID_./, "ID_" counter ); print;next}; 1')"
+    #write final html report
+    printf "%s" "${_stxt2html__report_html_content}" > "${_stxt2html__report_html}"
 }
 
 _staticus() {
@@ -667,18 +734,19 @@ _staticus() {
     OLDIFS="${IFS}"
     IFS=","; for module in $(_str2lower "${modules}"); do
         case "${module}" in
-            notification) _module_"${module}" "${module_notification_msg}" || _failed_module ;;
-            memory)  _module_"${module}" "${module_memory_threshold}" || _failed_module ;;
-            swap)    _module_"${module}" "${module_swap_threshold}"   || _failed_module ;;
-            load)    _module_"${module}" "${module_load_threshold}"   || _failed_module ;;
-            storage) _module_"${module}" "${module_storage_threshold}" "${module_storage_partitions}" || _failed_module ;;
-            process) _module_"${module}" "${module_process_list}"     || _failed_module ;;
-            info)    _module_"${module}" || _failed_module ;;
+            notification) _module_"${module}" "${module_notification_msg}" ;;
+            memory)  _module_"${module}" "${module_memory_threshold}" ;;
+            swap)    _module_"${module}" "${module_swap_threshold}"   ;;
+            load)    _module_"${module}" "${module_load_threshold}"   ;;
+            storage) _module_"${module}" "${module_storage_threshold}" "${module_storage_partitions}" ;;
+            process) _module_"${module}" "${module_process_list}"     ;;
+            info)    _module_"${module}" ;;
             *) printf "%s\\n" "module ${module} doesn't exists, skipping..." >&2 ;;
         esac
     done; IFS="${OLDIFS}"
-    _staticus_report_general_status "${failed_modules:-0}"
-    _staticus_txt2html "${report_txt}" "${report_html}" "${theme}"
+    _staticus_report_general_status "${failed_modules:-0}"         || return 1
+    _staticus_txt2html "${report_txt}" "${report_html}" "${theme}" || return 1
+    return "${failed_modules:-0}"
 }
 
 progname="$(_basename "${0}")"
@@ -825,3 +893,5 @@ if [ -z "${user_txt2html}" ]; then
 else
     _staticus_txt2html "${report_txt}" "${report_html}" "${theme}"
 fi
+
+# vim: set ts=4 sw=4 tw=0 ft=sh :
