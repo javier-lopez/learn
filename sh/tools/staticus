@@ -33,13 +33,151 @@ module_process_list="mpd,rsyslogd,dbus-daemon"
 
 module_notification_msg="Next maintenance window is programmed at Tuesday May 12th"
 
-#themes
-themes="default"
-theme="default"
-
 date_format="+%d-%m-%Y %H:%M"
+theme="default"
 config_file="/etc/staticus.conf"
 ###############################################################################
+
+themes="default"
+theme_default='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'
 
 _usage() {
     printf "%s\\n" "Usage: ${progname} [options]"
@@ -53,6 +191,7 @@ _usage() {
     printf "%s\\n" "  --theme default                   use specified html theme"
     printf "%s\\n" "  --list-modules                    list available modules"
     printf "%s\\n" "  --list-themes                     list available html themes"
+    printf "%s\\n" "  -v, --verbose                     verbose mode"
     printf "%s\\n" "  -h, --help                        show this help message and exit"
 }
 
@@ -77,6 +216,75 @@ _die() {
     [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
     _usage >&2; exit 1
 }
+
+_verbose() {
+    [ -z "${1}" ] && return 1
+    [ -n "${verbose}" ] && printf "%s\\n" "${*}"
+}
+
+_decode64() {
+    [ ! -t 0 ] && set -- "${@}" "$(cat)"
+    [ -z "${1}" ] && return 1
+    if command -v "base64" >/dev/null 2>&1; then
+        printf "%s\\n" "${@}" | base64 -d
+    elif command -v "openssl" >/dev/null 2>&1; then
+        printf "%s\\n" "${@}" | openssl enc -base64 -d
+    elif command -v "awk" >/dev/null 2>&1 && (command -v "uudecode" || command -v "busybox") >/dev/null 2>&1; then
+        if command -v "uudecode" >/dev/null 2>&1; then
+            uudecode__bin="uudecode"
+        elif command -v "busybox"  >/dev/null 2>&1; then
+            uudecode__bin="busybox uudecode"
+        fi
+        _decode64_awk() { [ ! -t 0 ] && set -- "${@}" "$(cat)"
+          [ -z "${1}" ] && return 1
+          printf "%s\\n" "${@}" | sed 's/=//g' | (
+            printf "begin 644 -\\n"; awk 'function _decode64_awk() {
+              inp=1; out=""; while (getline) { for(i=1; i<=length($0); i++) {
+                  c=substr(uu,index(b64,substr($0,i,1)),1);
+                  inp++; out=(out c); if (inp==61) {
+                    print "M" out; inp=1; out=""; }}}
+              if (length(out)) { printf "%c", (32+3*length(out)/4); print out; }}
+            BEGIN { b64="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+              uu="`!\"#$%&'\''()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_"
+              _decode64_awk(); exit; }'
+            printf "%s\\n%s\\n" '`' 'end' #'
+          ) | $uudecode__bin
+        }
+        printf "%s\\n" "${@}" | _decode64_awk
+    else
+        _decode64_sh() { [ ! -t 0 ] && set -- "${@}" "$(cat)"
+            _decode64_sh__b64='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+            _decode64_sh__n="0"; _decode64_sh__v="0"; _decode64_sh__args="$@"
+            while [ "${_decode64_sh__args}" ]; do #process char by char
+                _decode64_sh__char="${_decode64_sh__args%${_decode64_sh__args#?}}"
+                case "${_decode64_sh__char}" in
+                    '\n') continue ;;
+                     '=') _decode64_sh__v="$(($_decode64_sh__v << 6))" ;;
+                       *) _decode64_sh__char="${_decode64_sh__b64#*$_decode64_sh__char}"
+                          _decode64_sh__char="$((${#_decode64_sh__b64}-${#_decode64_sh__char}))"
+                          if [ "${_decode64_sh__char}" -eq "0" ]; then
+                            [ X"${_decode64_sh__args}" = X"${_decode64_sh__char}" ] &&\
+                                _decode64_sh__args='' || _decode64_sh__args="${_decode64_sh__args#?}"
+                            continue
+                          fi
+                          _decode64_sh__v="$(($_decode64_sh__v << 6 | $_decode64_sh__char-1))"
+                esac
+                _decode64_sh__n="$(($_decode64_sh__n+1))"
+                if [ "${_decode64_sh__n}" -eq "4" ]; then
+                    _decode64_sh__s="16"; while [ "${_decode64_sh__s}" -gt "-1" ]; do
+                        _decode64_sh__char="$(($_decode64_sh__v >> $_decode64_sh__s & 255))"
+                        printf \\$(($_decode64_sh__char/64*100+$_decode64_sh__char%64/8*10+$_decode64_sh__char%8))
+                        _decode64_sh__s="$(($_decode64_sh__s-8))"
+                    done
+                    _decode64_sh__v="0"; _decode64_sh__n="0"
+                fi
+                [ X"${_decode64_sh__args}" = X"${_decode64_sh__char}" ] &&\
+                    _decode64_sh__args='' || _decode64_sh__args="${_decode64_sh__args#?}"
+            done
+        }
+        printf "%s\\n" "${@}" | _decode64_sh
+    fi
+} # too hardcore for vim syntax`"
 
 _str2lower() {
     [ -z "${1}" ] && return 1
@@ -112,6 +320,11 @@ _loadconf() {
     eval "${_loadconf__options}"
 }
 
+_escape_special_characters() {
+    #http://stackoverflow.com/questions/407523/escape-a-string-for-a-sed-replace-pattern
+    sed -e 's/[]\/$*.^|[]/\\&/g'
+}
+
 _failed_module() {
     [ -z "${failed_modules}" ] && failed_modules="0"
     failed_modules="$(($failed_modules+1))"
@@ -119,14 +332,14 @@ _failed_module() {
 
 _module_notification() {
     [ -z "${1}" ] && return 1
-    printf "%s\\n" "module notification"
+    _verbose "notification module"
     _staticus_report_notification "notification" "notification" "${*}"
 }
 
 _module_memory() {
     # $1 => threshold
     [ -z "${1}" ] && return 1
-    printf "%s\\n" "module memory"
+    _verbose "memory module"
 
     _mmemory__input="$(free -b 2>&1)" && \
         _mmemory__input="$(printf "%s" "${_mmemory__input}"|grep Mem 2>&1)" || {
@@ -154,7 +367,7 @@ _module_memory() {
 _module_swap() {
     # $1 => threshold
     [ -z "${1}" ] && return 1
-    printf "%s\\n" "module swap"
+    _verbose "swap module"
 
     _mswap__input="$(free -b 2>&1)" && \
         _mswap__input="$(printf "%s" "${_mswap__input}"|grep Swap 2>&1)" || {
@@ -182,7 +395,7 @@ _module_swap() {
 _module_load() {
     [ -z "${1}" ] && return 1
     # $1 => threshold
-    printf "%s\\n" "module load"
+    _verbose "load module"
 
     _mload__input="$(awk '{print $1}' /proc/loadavg 2>&1)" || {
         _staticus_report_module "load" "error" "${_mload__input}"
@@ -205,7 +418,7 @@ _module_storage() {
     # $1 => threshold
     # $2 => partitions
     [ -z "${2}" ] && return 1
-    printf "%s\\n" "module storage"
+    _verbose "storage module"
 
     _mstorage__input="$(df 2>&1)" || {
         _staticus_report_module "storage" "error" "${_mstorage__input}"
@@ -241,7 +454,7 @@ _module_storage() {
 _module_process() {
     # $1 => processes
     [ -z "${1}" ] && return 1
-    printf "%s\\n" "module process"
+    _verbose "process module"
 
     _mprocess__input="$(ps aux 2>&1)" || {
         _staticus_report_module "process" "error" "${_mprocess__input}"
@@ -266,7 +479,7 @@ _module_process() {
 }
 
 _module_info() {
-    printf "%s\\n" "module info"
+    _verbose "info module"
 
     _minfo__uptime="$(uptime | awk '{sub(/,/," hours"); printf $3" "$4}')"
     _minfo__description="$(printf "%s\\n%s\\n%s\\n" \
@@ -312,7 +525,7 @@ _staticus_report_notification() {
 
 _staticus_report_module() {
     # $1 => memory|swap|load|...
-    # $2 => ok|warning|error|notification|...
+    # $2 => ok|warning|error|info|notification|...
     # $3 => msg
     [ -z "${2}" ] && return 1
     printf "\\n%s\\n" "#### ${1}: ${2}" >> "${report_txt}"
@@ -341,7 +554,7 @@ _staticus_notify() {
                 printf "+---Notification----------------------------+\\n"
                 printf "%b\\n" "${*}"
                 printf "+-------------------------------------------+\\n"
-                )" >/dev/null
+                )" >/dev/null || return 1
             done
         else
             printf "%b\\n" "mailgun is not available, install it to use this notification module" >&2
@@ -352,20 +565,105 @@ _staticus_notify() {
 
     _snotify__module="${1}"; shift
     _snotify__type="${1}";   shift
-    printf "%b\\n" "${_snotify__module} - ${_snotify__type}: ${*}" >&2
+    printf "%b\\n%b\\n" "${_snotify__module} - ${_snotify__type}" "${*}" >&2
     case "$(_str2lower "${notify_method}")" in
         mailgun) _staticus_notify_"${notify_method}" "${_snotify__module}" "${_snotify__type}" "${*}" ;;
               *) return 1;;
     esac
 }
 
+_inflate_theme() {
+    # $1 => theme
+    # $2 => report_html
+    eval "_itheme__b64=\$theme_${1}"
+    _itheme__tmpdir="$(mktemp -d)" || return 1
+    ( cd "${_itheme__tmpdir}" && printf "%s" "${_itheme__b64}" | _decode64 | zcat | tar xvf - >/dev/null ) || \
+        { rm -rf  "${_itheme__tmpdir}"; return 1; }
+    for _itheme__template in "${_itheme__tmpdir}"/*; do
+        [ -f "${_itheme__template}" ] || return 1
+        mv "${_itheme__template}" "${2}" && rm -rf "${_itheme__tmpdir}"
+        return 0
+    done
+}
+
 _staticus_txt2html() {
-    :
+    [ -z "${3}" ] && return 1
+    _stxt2html__report_txt="${1}"
+    _stxt2html__report_html="${2}"
+    _stxt2html__theme="${3}"
+    _inflate_theme "${_stxt2html__theme}" "${_stxt2html__report_html}" || return 1
+
+    _stxt2html__report_txt="$(cat "${_stxt2html__report_txt}")"
+    _stxt2html__title="$(printf "%s" "${_stxt2html__report_txt}" | \
+        awk '/^# title:/ {print substr($0, index($0,$3)); exit}' | \
+        _escape_special_characters)"
+    if [ -z "${_stxt2html__title}" ]; then
+        _verbose "txt2html: no title was found, skipping..."
+    else
+        sed -i "s/STATICUS_TITLE/${_stxt2html__title}/g" "${_stxt2html__report_html}"
+    fi
+
+    _stxt2html__status="$(printf "%s" "${_stxt2html__report_txt}"  | \
+        awk '/^## status:/ {print substr($0, index($0,$3)); exit}' | \
+        _escape_special_characters)"
+    _stxt2html__status_description="$(printf "%s" "${_stxt2html__report_txt}"  | \
+        awk '/^## status:/ {getline;print;exit}' | _escape_special_characters)"
+    if [ -z "${_stxt2html__status}" ]; then
+        _verbose "txt2html: no status was found, skipping..."
+    else
+        case "${_stxt2html__status}" in
+            ok) sed -i \
+                "s/STATICUS_EVERYTHING_OK/${_stxt2html__status_description}/g" \
+                "${_stxt2html__report_html}" ;;
+            error) sed -i \
+                "s/STATICUS_FAILED_MODULES/${_stxt2html__status_description}/g" \
+                "${_stxt2html__report_html}" ;;
+        esac
+    fi
+
+    _stxt2html__notification="$(printf "%s" "${_stxt2html__report_txt}"   | \
+        awk '/^### notification:/ {print substr($0, index($0,$3)); exit}' | \
+        _escape_special_characters)"
+    _stxt2html__notification_description="$(printf "%s" "${_stxt2html__report_txt}" | \
+        sed '1,/^### notification/d;/####/,$d' | sed '/^\s*$/d' | \
+        _escape_special_characters)"
+    if [ -z "${_stxt2html__notification}" ]; then
+        _verbose "txt2html: no notification was found, skipping..."
+    else
+        sed -i "s/STATICUS_NOTIFICATION/${_stxt2html__notification_description}/g" \
+            "${_stxt2html__report_html}"
+    fi
+
+    _stxt2html__modules="$(printf "%s" "${_stxt2html__report_txt}" | awk '/^#### /')"
+
+    OLDIFS="${IFS}"; IFS='
+'; _stxt2html__i="0"; for _stxt2html__module in ${_stxt2html__modules}; do
+        _stxt2html__module_status="${_stxt2html__module##*:}"
+        _stxt2html__module_status="${_stxt2html__module##* }"
+        _stxt2html__module_escaped="$(printf "%s" "${_stxt2html__module}" | _escape_special_characters)"
+        _stxt2html__module_description="$(printf "%s" "${_stxt2html__report_txt}" | \
+            sed '1,/^'"${_stxt2html__module_escaped}"'/d;/####/,$d' | sed '/^\s*$/d')"
+        _stxt2html__module="$(printf "%s" "${_stxt2html__module}" | \
+            awk -F: '{gsub("^#### ","");print $1}' | awk -F "" '{$1=toupper($1)}1' OFS=)"
+
+        awk '/module '"${_stxt2html__module_status}"'.*STATICUS_MODULE_DESCRIPTION/ {print;print;next}; 1' "${report_html}" > "${report_html}.tmp"
+        mv "${report_html}.tmp" "${report_html}"
+
+        awk -v module="${_stxt2html__module}" -v description="${_stxt2html__module_description}" '/module '"${_stxt2html__module_status}"'.*STATICUS_MODULE_DESCRIPTION/ && !seen {gsub(/STATICUS_MODULE_NAME/, module); gsub(/STATICUS_MODULE_DESCRIPTION/, description); seen=1; print;next}; 1' "${report_html}" > "${report_html}.tmp"
+        mv "${report_html}.tmp" "${report_html}"
+
+        _stxt2html__i="$(($_stxt2html__i + 1))"
+    done; IFS="${OLDIFS}"
+
+    ####modules, toupper 1st word, update ID_num, format awk programs
+    ####info module and remove placeholders
+    ####contacts and remove placeholders
+    sed -i '/STATICUS_/d' "${report_html}"
+    #cleanup not used placeholders
 }
 
 _staticus() {
-    _staticus_report_title "$(hostname -f) $(date "${date_format}") ${progname}"
-
+    _staticus_report_title "Staticus - $(hostname -f) $(date "${date_format}")"
     OLDIFS="${IFS}"
     IFS=","; for module in $(_str2lower "${modules}"); do
         case "${module}" in
@@ -380,7 +678,6 @@ _staticus() {
         esac
     done; IFS="${OLDIFS}"
     _staticus_report_general_status "${failed_modules:-0}"
-
     _staticus_txt2html "${report_txt}" "${report_html}" "${theme}"
 }
 
@@ -393,7 +690,8 @@ fi
 
 for arg; do #parse options
     case "${arg}" in
-        -h|--help) _usage && exit ;;
+        -h|--help) _usage && exit  ;;
+        -v|--verbose) verbose="on"; shift ;;
         '-c'|'--config'|-c*|--config*)
             case "${arg}" in
                 '-c'|'--config')
