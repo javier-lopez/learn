@@ -10,8 +10,7 @@
 
 decodestr="$(
 cat - <<'EOF'
-_decode64() {
-    #decode a string in base64
+_decode64() { #decode a base64 string
     [ ! -t 0 ] && set -- "${@}" "$(cat)"
     [ -z "${1}" ] && return 1
     if command -v "base64" >/dev/null 2>&1; then
@@ -36,14 +35,14 @@ _decode64() {
             BEGIN { b64="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
               uu="`!\"#$%&'\''()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_"
               _decode64_awk(); exit; }'
-            printf "%s\\n%s\\n" '`' 'end'
+            printf "%s\\n%s\\n" '`' 'end' #'
           ) | $uudecode__bin
         }
         printf "%s\\n" "${@}" | _decode64_awk
     else
         _decode64_sh() { [ ! -t 0 ] && set -- "${@}" "$(cat)"
             _decode64_sh__b64='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
-            _decode64_sh__n="0"; _decode64_sh__v="0"; _decode64_sh__args="${@}"
+            _decode64_sh__n="0"; _decode64_sh__v="0"; _decode64_sh__args="$@"
             while [ "${_decode64_sh__args}" ]; do #process char by char
                 _decode64_sh__char="${_decode64_sh__args%${_decode64_sh__args#?}}"
                 case "${_decode64_sh__char}" in
