@@ -343,11 +343,7 @@ _module_memory() {
     [ -z "${1}" ] && return 1
     _verbose "memory module"
 
-    _mmemory__input="$(free -b 2>&1)" && \
-        _mmemory__input="$(printf "%s" "${_mmemory__input}"|grep Mem 2>&1)" || {
-        _staticus_report_module "memory" "error" "${_mmemory__input}"
-        return 1
-    }
+    _mmemory__input="$(free -b | grep Mem)"
 
     _mmemory__total="$(printf "%s" "${_mmemory__input}" | awk '{print $2}')"
     _mmemory__used="$(printf  "%s" "${_mmemory__input}" | awk '{print $3}')"
@@ -371,14 +367,17 @@ _module_swap() {
     [ -z "${1}" ] && return 1
     _verbose "swap module"
 
-    _mswap__input="$(free -b 2>&1)" && \
-        _mswap__input="$(printf "%s" "${_mswap__input}"|grep Swap 2>&1)" || {
-        _staticus_report_module "swap" "error" "${_mswap__input}"
-        return 1
-    }
+    _mswap__input="$(free -b | grep Swap)"
 
     _mswap__total="$(printf "%s" "${_mswap__input}" | awk '{print $2}')"
     _mswap__used="$(printf "%s" "${_mswap__input}"  | awk '{print $3}')"
+
+    [ X"${_mswap__total}" = X"0" ] && {
+        _staticus_report_module "swap" "error" \
+            "$(printf "%s\\n%s\\n" "* no swap configured" "  ${_mswap__input}")"
+        return 1
+    }
+
     _mswap__used_percentage="$(printf "%s" "${_mswap__input}" | awk '{printf "%.2f", $3/$2 * 100.0}' | cut -d\. -f1)"
     _mswap__threshold="$(printf "%s" "${_mswap__total} ${1}"  | awk '{printf "%.2f", $1 * ($2/100)}' | cut -d\. -f1)"
 
