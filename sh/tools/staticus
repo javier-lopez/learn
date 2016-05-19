@@ -430,6 +430,12 @@ _module_storage() {
     OLDIFS="${IFS}"
     IFS=","; for partition in ${2}; do
         _mstorage__partition="$(printf "%s" "${_mstorage__input}" | grep "${partition}$")"
+
+        if [ -z "${_mstorage__partition}" ]; then
+            _staticus_report_module "storage ${partition}" "error" "* partition ${partition} doesn't exists"
+            continue;
+        fi
+
         _mstorage__total="$(printf "%s" "${_mstorage__partition}" | awk '{print $2}')"
         _mstorage__used="$(printf "%s"  "${_mstorage__partition}" | awk '{print $3}')"
         _mstorage__used_percentage="$(printf "%s" "${_mstorage__partition}" | awk '{gsub("%",""); print $5}')"

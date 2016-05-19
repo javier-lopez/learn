@@ -887,7 +887,7 @@ test "$(wget -V|awk -F. '{print $1 $2; exit}'|awk '{print $3}')" -gt 113 && test
 
 test X"$(wget-finder socat-1.7.2.0.tar.gz:cui  | head -1)" = X""
 test X"$(wget-finder socat-1.7.2.0.tar.gz:cui 2>&1 | head -1)" = X"Warning: 'socat-1.7.2.0.tar.gz:cui' is an invalid FILE:CHECKSUM pair, skipping..."
-wget-finder socat-1.7.2.0.tar.gz:0565dd58800e4c50534c61bbb453b771 && test -f "socat-1.7.2.0.tar.gz"
+wget-finder socat-1.7.2.0.tar.gz:0565dd58800e4c50534c61bbb453b771; test -f "socat-1.7.2.0.tar.gz"
 test X"$(openssl dgst -md5 socat-1.7.2.0.tar.gz | awk '{print $2}')" = X"0565dd58800e4c50534c61bbb453b771"
 rm -rf socat-1.7.2.0.tar.gz
 wget-finder socat-1.7.2.0.tar.gz:32181b08aa91309ee368e1e36a2cb337eedc425a && test -f "socat-1.7.2.0.tar.gz"
