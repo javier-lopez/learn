@@ -655,6 +655,53 @@ test X"$(pgrep -f '/share-backup' | wc -l)" = X"0"
 #TODO 28-09-2014 14:52 >> is there any way to test this?
 @end
 
+@begin{staticus}
+staticus -h; test X"${?}"                = X"0"
+staticus --help; test X"${?}"            = X"0"
+staticus --cui; test X"${?}"             = X"1"
+staticus; test X"${?}"                   = X"1"
+test X"$(staticus 2>&1 | head -1)"       = X"Usage: staticus [options] -o staticus.html"
+test X"$(staticus -h | head -1 )"        = X"Usage: staticus [options] -o staticus.html"
+test X"$(staticus --help | head -1 )"    = X"Usage: staticus [options] -o staticus.html"
+test X"$(staticus --cui | head -1)"      = X""
+test X"$(staticus --cui 2>&1 | head -1)" = X"staticus: unrecognized option '--cui'"
+test X"$(staticus -c | head -1)"         = X""
+test X"$(staticus -c 2>&1|head -1)"      = X"Option '-c' requires a parameter"
+test X"$(staticus -c file |head -1)"     = X""
+test X"$(staticus -c file 2>&1|head -1)" = X"Specified config file 'file' doesn't exists"
+test X"$(staticus -m 2>&1|head -1)"      = X"Option '-m' requires a parameter"
+test X"$(staticus -o 2>&1|head -1)"      = X"Option '-o' requires a parameter"
+test X"$(staticus -O 2>&1|head -1)"      = X"Option '-O' requires a parameter"
+test X"$(staticus --txt2html 2>&1|head -1)" = X"Option '--txt2html' requires a parameter"
+test X"$(staticus --theme 2>&1|head -1)"    = X"Option '--theme' requires a parameter"
+test X"$(staticus --list-modules 2>&1|head -1)" = X"memory"
+test X"$(staticus --list-themes 2>&1|head -1)"  = X"default"
+staticus go; test -f ./staticus.html  && test -f ./staticus.txt
+grep "####" ./staticus.txt >/dev/null && grep "Modules" ./staticus.html >/dev/null
+rm -rf staticus.*
+staticus -o waa.html -O cui.txt; test -f ./waa.html && test -f ./cui.txt
+grep "####" ./cui.txt >/dev/null && grep "Modules" ./waa.html >/dev/null
+rm -rf cui.txt waa.html
+staticus -o waa.html -O cui.txt -m "swap"; test -f ./waa.html && test -f ./cui.txt
+grep "####" ./cui.txt >/dev/null && grep "Modules" ./waa.html >/dev/null
+test X"$(grep "^#### " ./cui.txt  | wc -l)" = X"1"
+test X"$(grep "ID_"  ./waa.html | wc -l)"   = X"1"
+staticus -o waa.html -O cui.txt -mmemory,load; test -f ./waa.html && test -f ./cui.txt
+grep "####" ./cui.txt >/dev/null && grep "Modules" ./waa.html >/dev/null
+grep "load" ./cui.txt >/dev/null && grep "Memory"  ./waa.html >/dev/null
+test X"$(grep "^#### " ./cui.txt  | wc -l)" = X"2"
+test X"$(grep "ID_"  ./waa.html | wc -l)"   = X"2"
+rm -rf cui.txt waa.html
+printf "%s\\n" 'modules="notification,memory,load,info"' > conf
+staticus -c conf; test -f ./staticus.html  && test -f ./staticus.txt
+test X"$(grep "^### " ./staticus.txt  | wc -l)"      = X"1"
+test X"$(grep "maintenance" ./staticus.html | wc -l)" = X"1"
+test X"$(grep "^#### " ./staticus.txt  | wc -l)"     = X"3"
+test X"$(grep "ID_"  ./staticus.html   | wc -l)"     = X"2"
+test X"$(grep "Info" ./staticus.html   | wc -l)"     = X"1"
+rm -rf staticus.*
+@end
+
 @begin{test-case-format}
 test-case-format;  test X"${?}"                       = X"1"
 test-case-format -h;  test X"${?}"                    = X"0"
@@ -851,7 +898,7 @@ test X"$(openssl dgst -md5 socat-1.7.2.0.tar.gz | awk '{print $2}')" = X"0565dd5
 rm -rf socat-1.7.2.0.tar.gz
 wget-finder socat-1.7.2.0.tar.gz:80727255f5a83ab2be449bed66e65d1c2acd9d880a8672f52ab4cc48950d49a73fac13219a2ad7b30bafe3f04c82288735877a55ae1f008c19470ccd3b8f2806 && test -f "socat-1.7.2.0.tar.gz"
 test X"$(openssl dgst -md5 socat-1.7.2.0.tar.gz | awk '{print $2}')" = X"0565dd58800e4c50534c61bbb453b771"
-wget-finder -O libssh.tar.gz libssh2-1.3.0.tar.gz:6425331899ccf1015f1ed79448cb4709; test -f libssh.tar.gz
+wget-finder --search-engine google -O libssh.tar.gz libssh2-1.3.0.tar.gz:6425331899ccf1015f1ed79448cb4709; test -f libssh.tar.gz
 test X"$(openssl dgst -md5 libssh.tar.gz | awk '{print $2}')" = X"6425331899ccf1015f1ed79448cb4709"
 rm -rf *.tar.gz
 wget-finder libssh2-1.3.0.tar.gz:6425331899ccf1015f1ed79448cb4709 socat-1.7.2.0.tar.gz:0565dd58800e4c50534c61bbb453b771
