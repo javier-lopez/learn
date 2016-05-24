@@ -421,7 +421,7 @@ _module_storage() {
     [ -z "${2}" ] && return 1
     _verbose "storage module"
 
-    _mstorage__input="$(df 2>&1)" || {
+    _mstorage__input="$(df -P 2>&1)" || {
         _staticus_report_module "storage" "error" "${_mstorage__input}"
         return 1
     }
