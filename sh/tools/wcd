@@ -6,16 +6,16 @@
 
 WICD_BIN="$(command -v "wcd.exec")"
 WICD_OPTIONS="-j -GN -c -i -f ${HOME}/.wcd/.treedata.wcd"
-#-j     just go mode
-#-GN    do not creat go script ($HOME/bin/wicd.go)
-#-c     direct cd mode
-#-i     case insensitve
+#    -j      just go mode
+#    -GN     do not creat go script ($HOME/bin/wicd.go)
+#    -c      direct cd mode
+#    -i      case insensitve
 
 if [ ! -f "${WICD_BIN}" ]; then
     if [ -z "${1}" ]; then
         \cd
     else
-        \cd "${@}"; ls
+        \cd "${@}" && ls
     fi
 else
     if [ -z "${1}" ]; then
@@ -23,6 +23,6 @@ else
     else
         CD_PATH="$(printf "%s\\n" "$("${WICD_BIN}" ${WICD_OPTIONS} "${@}")" | \
                    sed -e 's:\\::g')"
-        \cd "${CD_PATH}"; ls
+        \cd "${CD_PATH}" && ls
     fi
 fi
