@@ -343,7 +343,8 @@ _module_memory() {
     [ -z "${1}" ] && return 1
     _verbose "memory module"
 
-    _mmemory__input="$(free -b | grep Mem)"
+    #https://bugzilla.redhat.com/show_bug.cgi?id=1253036
+    _mmemory__input="$(free -k | grep Mem)"
 
     _mmemory__total="$(printf "%s" "${_mmemory__input}" | awk '{print $2}')"
     _mmemory__used="$(printf  "%s" "${_mmemory__input}" | awk '{print $3}')"
@@ -351,9 +352,9 @@ _module_memory() {
     _mmemory__threshold="$(printf "%s" "${_mmemory__total} ${1}"  | awk '{printf "%.2f", $1 * ($2/100)}' | cut -d\. -f1)"
 
     _mmemory__description="$(printf "%s\\n%s\\n%s\\n" \
-        "* threshold $(_bytes2human "${_mmemory__threshold}") (${1}%)" \
-        "* current   $(_bytes2human "${_mmemory__used}") (${_mmemory__used_percentage}%)" \
-        "* total     $(_bytes2human "${_mmemory__total}")")"
+        "* threshold $(_bytes2human "$(($_mmemory__threshold*1024))") (${1}%)" \
+        "* current   $(_bytes2human "$(($_mmemory__used*1024))") (${_mmemory__used_percentage}%)" \
+        "* total     $(_bytes2human "$(($_mmemory__total*1024))")")"
 
     if [ "${_mmemory__used_percentage}" -ge "${1}" ]; then
         _staticus_report_module "memory" "warning" "${_mmemory__description}"
@@ -367,7 +368,8 @@ _module_swap() {
     [ -z "${1}" ] && return 1
     _verbose "swap module"
 
-    _mswap__input="$(free -b | grep Swap)"
+    #https://bugzilla.redhat.com/show_bug.cgi?id=1253036
+    _mswap__input="$(free -k | grep Swap)"
 
     _mswap__total="$(printf "%s" "${_mswap__input}" | awk '{print $2}')"
     _mswap__used="$(printf "%s" "${_mswap__input}"  | awk '{print $3}')"
@@ -382,9 +384,9 @@ _module_swap() {
     _mswap__threshold="$(printf "%s" "${_mswap__total} ${1}"  | awk '{printf "%.2f", $1 * ($2/100)}' | cut -d\. -f1)"
 
     _mswap__description="$(printf "%s\\n%s\\n%s\\n" \
-        "* threshold $(_bytes2human "${_mswap__threshold}") (${1}%)" \
-        "* current   $(_bytes2human "${_mswap__used}") (${_mswap__used_percentage}%)" \
-        "* total     $(_bytes2human "${_mswap__total}")")"
+        "* threshold $(_bytes2human "$(($_mswap__threshold*1024))") (${1}%)" \
+        "* current   $(_bytes2human "$(($_mswap__used*1024))") (${_mswap__used_percentage}%)" \
+        "* total     $(_bytes2human "$(($_mswap__total*1024))")")"
 
     if [ "${_mswap__used_percentage}" -ge "${1}" ]; then
         _staticus_report_module "swap" "warning" "${_mswap__description}"
@@ -421,7 +423,7 @@ _module_storage() {
     [ -z "${2}" ] && return 1
     _verbose "storage module"
 
-    _mstorage__input="$(df 2>&1)" || {
+    _mstorage__input="$(df -P 2>&1)" || {
         _staticus_report_module "storage" "error" "${_mstorage__input}"
         return 1
     }
