@@ -1,7 +1,7 @@
 #!/bin/sh
 #Based on the GNU shtool test suite
 
-tools="../"
+tools="../tools"
 tools_db="./tools.db"
 
 #database exist?
