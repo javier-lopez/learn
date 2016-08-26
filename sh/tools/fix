@@ -1,0 +1,92 @@
+#!/bin/sh
+#description: fix common problems in my system
+#usage: fix module
+
+#example: fix webcam
+#$ sudo chmod o+rw /dev/video0
+
+_usage() {
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] module"
+    printf "%s\\n" "Fix common problems."
+    printf "%s\\n"
+    printf "%s\\n" "  -h, --help   show this help message and exit"
+    printf "%s\\n"
+    printf "%s\\n" "Modules"
+    printf "%s\\n" "  apache       moves /etc/init.d/apache2.1 to apache2"
+    printf "%s\\n" "  ipw2200      restart ipw2200 module"
+    printf "%s\\n" "  wl           restart wl module"
+    printf "%s\\n" "  iwlagn       restart iwlagn module"
+    printf "%s\\n" "  mpd          restart mpd"
+    printf "%s\\n" "  webcam       fix webcam, thinkpad"
+}
+
+_die() {
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
+}
+
+_exec() {
+    _exec__status="${?}"
+    if [ X"${_exec__status}" != X"0" ]; then
+        exit "${_exec__status}"
+    fi
+    printf "%s " "$ ${*}"
+    printf "%s\\n"
+    ${@}
+}
+
+_apache() {
+    _exec sudo mv /etc/init.d/apache2.1 /etc/init.d/apache2
+    _exec sudo /etc/init.d/apache2 start
+}
+
+_ipw2200() {
+    _exec sudo rmmod ipw2200
+    _exec sudo modprobe ipw2200
+}
+
+_wl(){
+    _exec sudo rmmod wl
+    _exec sudo service wicd stop
+    _exec sleep 3s
+    _exec sudo service wicd start
+    _exec sudo modprobe wl
+}
+
+_iwlagn() {
+    _exec sudo rmmod iwlagn
+    _exec sudo service wicd stop
+    _exec sleep 3s
+    _exec sudo service wicd start
+    _exec sudo modprobe iwlagn
+}
+
+_mpd() {
+    _exec mpc clear
+    _exec rm -rf /var/lib/mpd/tag_cache
+    _exec sudo service mpd start-create-db
+}
+
+_webcam() {
+    _exec sudo chmod o+rw /dev/video0
+}
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- "${@}" $(cat)
+fi
+
+[ "${#}" -eq "0" ] && _die
+
+for arg; do
+    case "${arg}" in
+        -h|--help) _usage && exit ;;
+        apache)    _apache  ;;
+        ipw2200)   _ipw2200 ;;
+        wl)        _wl      ;;
+        iwlagn)    _iwlagn  ;;
+        mpd)       _mpd     ;;
+        webcam)    _webcam  ;;
+        *)         _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${1}'" ;;
+    esac
+done

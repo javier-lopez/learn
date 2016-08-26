@@ -1,0 +1,91 @@
+#!/bin/sh
+#description: correct previous cli commands and kill processes by name
+#usage: fuck [you|off] [program ...]
+
+#https://gist.github.com/namuol/9122237
+#https://nvbn.github.io/2015/10/08/how-thefuck-works/
+
+#example: $ sl || fuck
+#sl: command not found
+#ls [Y/n/e] Y
+#[ls output ...]
+
+#example: fuck you firefox
+#ヽ(`Д´)ﾉ⌒ xoɟǝɹᴉɟ
+
+_usage() {
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [you|off] [program ...]"
+    printf "%s\\n" "Correct previous cli commands and kill processes by name."
+    printf "\\n"
+    printf "%s\\n" "  -d, --deviation   deviation, higher value, faster computation, default 1"
+    printf "%s\\n" "  -k, --kmeans      output colors, default 3"
+    printf "%s\\n" "  -r, --resize      resize before procedure, lower value, faster computation, default 25x25"
+    printf "%s\\n" "  -f, --format      output format [rgb|hex], default rgb"
+    printf "%b\\n" "  -e, --editor      use this editor instead of the default \$EDITOR"
+    printf "%s\\n" "  -c, --config      use FILE instead of ~/.mailgun"
+    printf "%s\\n" "  -h, --help        show this help message and exit"
+}
+
+_die() {
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
+}
+
+_false() {
+    return 1
+}
+
+_flip() {
+    [ -z "${1}" ] && return 1
+    printf "%s\\n" "${1}" | sed -e 's:a:ɐ:g'     \
+        -e 's:b:ԛ:g' -e 's:c:ɔ:g' -e 's:d:𝗉:g'   \
+        -e 's:e:ǝ:g' -e 's:f:ɟ:g' -e 's:g:ƃ:g'   \
+        -e 's:h:ɥ:g' -e 's:i:ᴉ:g' -e 's:j:ɾ:g'   \
+        -e 's:k:ʞ:g' -e 's:l:|:g' -e 's:m:ɯ:g'   \
+        -e 's:n:𝗎:g' -e 's:p:d:g' -e 's:q:b:g'   \
+        -e 's:r:ɹ:g' -e 's:t:ʇ:g' -e 's:u:n:g'   \
+        -e 's:v:ʌ:g' -e 's:w:ʍ:g' -e 's:y:ʎ:g' | \
+        sed 's/./&\n/g' | \
+        #portable tac
+        awk '{a[i++]=$0} END {for (j=i-1; j>=0;) print a[j--] }' | \
+        sed -e :a -e 'N;s/\n//g;ta'
+}
+
+_fuck_process() {
+    for _fucking__process; do
+        _fucking__process_id="$(pgrep "${_fucking__process}")"
+        if [ -z "${_fucking__process_id}" ]; then
+            printf "%s\\n" "(；￣Д￣) .oO('${_fucking__process}' isn't running ...)" >&2
+            _false
+        else
+            if kill -9 ${_fucking__process_id} >/dev/null 2>&1; then
+                printf "%s %s\\n" 'ヽ(`Д´)ﾉ⌒' "$(_flip "${_fucking__process}")"
+            else
+                printf "%s\\n" "(；￣Д￣) .oO(can't kill ${_fucking__process} ..., sudo?)" >&2
+                #TODO 06-12-2015 01:58 >> add sudo version?
+                _false
+            fi
+        fi
+    done
+}
+
+_fuck() {
+    :
+}
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- "${@}" $(cat)
+fi
+
+case "${1}" in
+    you|off) shift; _fuck_process "${@}"; exit "${?}" ;;
+    -h|--help) _usage && exit ;;
+    -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${1}'" ;;
+    *) _fuck_process "${@}"; exit "${?}"
+esac; _fuck; exit "${?}"
+
+#default rules
+@begin{app}
+ls
+@end

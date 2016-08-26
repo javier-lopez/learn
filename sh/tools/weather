@@ -1,0 +1,108 @@
+#!/bin/sh
+#description: show current weather using popular sites
+#usage: weather
+
+#example: weather
+#79 °F °C Partly sunny Precipitation 0% Wind 4 MPH Humidity 71% Wed 4
+
+_usage() {
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options]"
+    printf "%s\\n" "Notify weather status."
+    printf "\\n"
+    printf "%s\\n" "  -q, --quiet   quiet mode, the default is verbose mode"
+    printf "%s\\n" "  -h, --help    show this help message and exit"
+}
+
+_die() {
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
+}
+
+_notify() {
+    #output messages through the notification system, prints to
+    #stdout in the worst escenario
+    [ -z "${1}" ] && return 1
+    if [ X"${TERM}" = X"linux" ] || [ -z "${TERM}" ]; then
+        kill -9 $(pgrep notify-osd) >/dev/null 2>&1
+        if ! DISPLAY=${DISPLAY:-:0} notify-send -t 1000 "${1}" "${3}"; then
+            if command -v "gxmessage" 2>/dev/null; then
+                font="Monaco 9"
+                DISPLAY=${DISPLAY:-:0} gxmessage "${font:+-fn "$font"}" "${1}" "ok"
+            elif command -v "xmessage" 2>/dev/null; then
+                font="fixed"
+                DISPLAY=${DISPLAY:-:0}  xmessage "${font:+-fn "$font"}" "${1}" "ok"
+            fi
+        fi
+    else
+        printf "%s\\n" "${2}"
+    fi
+    case "${3}" in
+        *clipboard*)
+            #dumping xclip's stdout to the bitbucket works around xclip's
+            #failure to properly daemonize
+            #https://sourceforge.net/p/xclip/patches/9/
+            printf "%s" "${2}" 2>/dev/null | xclip -selection clipboard -i >/dev/null 2>&1 || \
+            printf "%s" "${2}" 2>/dev/null | xsel -bi 2>/dev/null || \
+            printf "%s" "${2}" 2>/dev/null | pbcopy 2>/dev/null   || :
+            ;;
+    esac
+}
+
+_weather() {
+    #TODO 04-11-2015 12:53 >> add more weather apis
+    _weather_bing() {
+        _weather__bing_awk_prog='/<div class="b_focusTextLarge">/ {
+            gsub(/<[^>]*>/, " "); gsub(/&#176;/, "°");
+            gsub(/&#183;|<.*$|^[ \t]+|[ \t]+$/, ""); gsub(/ F /, "°F");
+            gsub(/ C /, "°C"); gsub(/[ \t]+/, " "); print $0}'
+        if command -v "perl" >/dev/null 2>&1; then
+            wget --tries=1 --timeout=3 -q -O- -U ''  \
+                'http://bing.com/search?q=weather' | \
+                awk "${_weather__bing_awk_prog}"   | \
+                perl -MHTML::Entities -pe 'decode_entities($_);'
+        else
+            wget --tries=1 --timeout=3 -q -O- -U ''  \
+                'http://bing.com/search?q=weather' | \
+                awk "${_weather__bing_awk_prog}"
+        fi
+    }
+
+    _weather_ask() {
+        _weather__ask_awk_prog='/<span class="sa_current_reading">/ || /, DIF / {
+            gsub(/<[^>]*>|^[ \t]+|[ \t]+$/, ""); gsub(/&#186;/, "°");
+            printf("%s / ", $0) }'
+        _weather__ask_result="$(wget --tries=1 --timeout=3 -q -O- -U '' \
+            'http://www.ask.com/web?q=weather' | awk "${_weather__ask_awk_prog}")"
+        printf "%s" "${_weather__ask_result% / }"
+    }
+
+    for api in bing ask; do
+        [ -z "${_weather__result}" ] && _weather__result="$(_weather_"${api}")" || break
+    done
+
+    if [ -z "${_weather__result}" ];then
+       [ -z "${QFLAG}" ] && _result="Weather api timeout" || return 1
+    fi
+
+    _notify "${_weather__result}" "${_weather__result}"
+}
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- "${@}" $(cat)
+fi
+
+for arg; do #parse options
+    case "${arg}" in
+        -h|--help)  _usage && exit ;;
+        -q|--quiet) QFLAG="true" && shift ;;
+        -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${arg}'" ;;
+    esac
+done
+
+if ! command -v "wget" >/dev/null 2>&1; then
+    _notify "%s\\n" "install 'wget' to run this program" >&2
+    exit 1
+fi
+
+_weather

@@ -1,0 +1,174 @@
+#!/bin/sh
+#Rename lots of files using your favorite text editor.
+#Original: https://github.com/jkramer/virn
+
+#examples
+# $ mvs *  #rename all files
+# $ mvs a* #rename all files starting with 'a'
+
+_usage() {
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] file ..."
+    printf "%s\\n" "Rename lots of files using your favorite text editor."
+    printf "\\n"
+    printf "%b\\n" "  -e, --editor   use this editor instead of the default \$EDITOR"
+    printf "%b\\n" "  -h, --help     show this help message and exit"
+}
+
+_die() {
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
+}
+
+_mkdir_p() { #portable mkdir -p function
+    for _mkdir_p__dir; do
+        _mkdir_p__IFS="$IFS"
+        IFS="/"
+        set -- $_mkdir_p__dir
+        IFS="$_mkdir_p__IFS"
+        (
+        case "$_mkdir_p__dir" in
+            /*) cd /; shift ;;
+        esac
+        for _mkdir_p__subdir; do
+            [ -z "${_mkdir_p__subdir}" ] && continue
+            if [ -d "${_mkdir_p__subdir}" ] || mkdir "${_mkdir_p__subdir}"; then
+                if cd "${_mkdir_p__subdir}"; then
+                    :
+                else
+                    printf "%s\\n" "_mkdir_p: Can't enter ${_mkdir_p__subdir} while creating ${_mkdir_p__dir}" >&2
+                    exit 1
+                fi
+            else
+                exit 1
+            fi
+        done
+        )
+    done; unset _mkdir_p__dir
+}
+
+_dirname() { #return string containing dirname on success, 1 on failure
+    [ -z "${1}" ] && return 1
+    #http://www.linuxselfhelp.com/gnu/autoconf/html_chapter/autoconf_10.html
+    case "${1}" in
+        /*|*/*) _dirname__dir=$(expr "x${1}" : 'x\(.*\)/[^/]*' \| '.' : '.')
+                printf "%s\\n" "${_dirname__dir}" ;;
+             *) printf "%s\\n" ".";;
+    esac
+}
+
+_print_warning() {
+    [ -z "${1}" ] && return 1
+    printf "Warning: %s\\n" "$*" >&2
+}
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- "${@}" $(cat)
+fi
+
+[ "${#}" -eq "0" ] && _die
+
+for arg; do #parse options
+    case "${arg}" in
+        -h|--help) _usage && exit ;;
+        -e|--editor)
+            if [ "${#}" -gt "1" ]; then
+                case "${2}" in
+                    -*) _die "Option '${arg}' requires a parameter"
+                esac
+                shift; editor="${1}"; [ "${1}" ] && shift
+            else
+                _die "Option '${arg}' requires a parameter"
+            fi
+            ;;
+        -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${arg}'" ;;
+    esac
+done
+
+if [ "${EDITOR}" ]; then
+    if [ -z "${editor}" ]; then
+        editor="${EDITOR}"
+    else
+        command -v "${editor}" >/dev/null 2>&1 || {
+            _print_warning "'${editor}' editor was not found, falling back to '${EDITOR}'"
+            editor="${EDITOR}"; }
+    fi
+else
+    if [ -z "${editor}" ]; then
+        _die "\$EDITOR is not defined, specify an editor and try again"
+    else
+        command -v "${editor}" >/dev/null 2>&1 || _die "'${editor}' editor was not found."
+    fi
+fi
+
+tmp_mvs_file="/tmp/mvs-${$}"
+missing_files=0; for FILE; do #look for valid files in mvs parameters
+    if [ -e "${FILE}" ]; then
+        printf "%s\\n" "${FILE}" >> "${tmp_mvs_file}"
+    else
+        _print_warning "'${FILE}' doesn't exist, skipping ..."
+        missing_files="$((missing_files+1))"
+        continue;
+    fi
+done
+
+#exit if there are no valid files to rename
+[ -f "${tmp_mvs_file}" ] || exit
+
+#start $editor
+if ${editor} "${tmp_mvs_file}"; then
+        [ ! -t 0 ] && reset
+        tmp_mvs_file_len="$(awk 'END {print NR}' "${tmp_mvs_file}" 2>/dev/null)"
+        param_len="${#}"; param_len="$((param_len - missing_files))"
+
+        #exit with error if the number of arguments and tmp_mvs_file len differ
+        if [ "${tmp_mvs_file_len}" -ne "${param_len}" ]; then
+            rm -- "${tmp_mvs_file}"
+            _die 'Numbers of files mismatch.'
+        fi
+
+        #read tmp_mvs_file line by line and rename appropriately
+        while read target_file; do
+            while [ ! -e "${source_file}" ]; do
+                source_file="${1}" && shift
+            done
+            if [ X"${source_file}" != X"${target_file}" ]; then
+                case "${target_file}" in
+                    /*|*/*)
+                        target_file="$(printf "%s" "${target_file}" | \
+                            sed "s:\$HOME:$HOME:g;s:~/:$HOME/:;")"
+                        dirname_target_file="$(_dirname "${target_file}")"
+                        if [ -e "${dirname_target_file}" ]; then
+                            if [ X"${source_file}" = X"${dirname_target_file}" ]; then
+                                mv -n -v -- "${source_file}" "${source_file}.${$}" || {
+                                    continue; }
+                                source_file="${source_file}.${$}"
+                            fi
+                        fi
+                        _mkdir_p "${dirname_target_file}"
+                        ;;
+                esac
+                if [ X"${source_file}" = X"${target_file%/}.${$}" ]; then
+                    mv -n -v -- "${source_file}" "${target_file}/${source_file%.$$}"
+                else
+                    if [ -e "${target_file}" ]; then
+                        target_file="${target_file}.${$}"
+                    fi
+                    mv -n -v -- "${source_file}" "${target_file}"
+                fi
+                case "${source_file}" in
+                    /*|*/*) rmdir -p "$(_dirname "${source_file}")" 2>/dev/null ;;
+                esac
+            fi
+            source_file=""
+        done < "${tmp_mvs_file}"
+
+        #fix appended files
+        while read target_file; do
+            if [ ! -f "${target_file}" ] && [ -f "${target_file}.${$}" ]; then
+                mv -n -v -- "${target_file}.${$}" "${target_file}"
+            fi
+        done < "${tmp_mvs_file}"
+fi
+
+rm "${tmp_mvs_file}"

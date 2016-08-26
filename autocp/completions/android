@@ -1,0 +1,178 @@
+_android()
+{
+    if ! command -v "android" >/dev/null 2>&1; then
+        return
+    fi
+
+    #When the function or command is invoked, the first argument is the name of
+    #the command whose arguments are being completed, the second argument is the
+    #word being completed, and the third argument is the word preceding the word
+    #being  completed on  the current command line.
+
+    #program_name=$1
+    #cur=$2
+    #prev=$3
+    #$4<---?
+
+    #defining local vars
+    local cur prev words cword
+    _init_completion || return
+
+    number_of_words=${#COMP_WORDS[@]}
+
+    if [ $number_of_words -gt 2 ]; then
+        prev_prev="${COMP_WORDS[COMP_CWORD-2]}"
+    fi
+
+    #=======================================================
+    #                  General options
+    #=======================================================
+    COMMANDS="list create move delete update"
+    #COMMANDS=`android -h | grep '^-' | sed -r 's/: .*//' | awk '{print $2}' | sort | uniq 2> /dev/null`
+
+    OPTS="-h --help -v --verbose -s --silent"
+
+    #=======================================================
+    #                   Nested options <1st layer>
+    #=======================================================
+    list_opts="avd target"
+    create_opts="avd project test-project lib-project"
+    move_opts="avd"
+    delete_opts="avd"
+    update_opts="avd project test-project lib-project adb sdk"
+
+    #=======================================================
+    #                   Nested options <2nd layer>
+    #=======================================================
+    create_avd_opts="-c --sdcard -t --target -n --name -a --snapshot -p\
+                     --path -f -s --skin"
+    create_project_opts="-n --name -t --target -p --path -k --package -a\
+                     --activity"
+    create_test_project_opts="-p --path -m --main -n --name"
+    create_lib_project_opts="-n --name -p --path -t --target -k --package"
+
+    move_avd_opts="-p --path -n --name -r --rename"
+    delete_avd_opts="-n --name"
+
+    update_avd_opts="-n --name"
+    update_project_opts="-p --path -l --library -n --name -t --target -s \
+                        --subprojects"
+    update_test_project_opts="-m --main -p --path"
+    update_lib_project_opts="-p --path -t --target"
+    update_adb_opts=""
+    update_sdk_opts="--proxy-port -f --force -u --no-ui -o --obsolete \
+                    --proxy-host -t --filter -s --no-https -n --dry-mode"
+
+    ########################################################
+    # -W wordlist
+    # -A action (see bash 'complete' build-in command)
+    # -G globalpath
+    # -C command
+    # -F function
+    # -X filterpath
+    # -P preffix
+    # -S suffix
+
+    if [ -n "$prev_prev" ]; then
+        #2nd layer
+        case "${prev_prev}" in
+            create)
+                case "${prev}" in
+                    avd)
+                        COMPREPLY=( $( compgen -W "$create_avd_opts" -- $cur ))
+                        return 0
+                        ;;
+                    project)
+                        COMPREPLY=( $( compgen -W "$create_project_opts" -- $cur ))
+                        return 0
+                        ;;
+                    test-project)
+                        COMPREPLY=( $( compgen -W "$create_test_project_opts" -- $cur ))
+                        return 0
+                        ;;
+                    lib-project)
+                        COMPREPLY=( $( compgen -W "$create_lib_project_opts" -- $cur ))
+                        return 0
+                        ;;
+                esac
+                ;;
+            move)
+                case "${prev}" in
+                    avd)
+                        COMPREPLY=( $( compgen -W "$move_avd_opts" -- $cur ))
+                        return 0
+                        ;;
+                esac
+                ;;
+            delete)
+                case "${prev}" in
+                    avd)
+                        COMPREPLY=( $( compgen -W "$delete_avd_opts" -- $cur ))
+                        return 0
+                        ;;
+                esac
+                ;;
+            update)
+                case "${prev}" in
+                    avd)
+                        COMPREPLY=( $( compgen -W "$update_avd_opts" -- $cur ))
+                        return 0
+                        ;;
+                    project)
+                        COMPREPLY=( $( compgen -W "$update_project_opts" -- $cur ))
+                        return 0
+                        ;;
+                    test-project)
+                        COMPREPLY=( $( compgen -W "$update_test_project_opts" -- $cur ))
+                        return 0
+                        ;;
+                    lib-project)
+                        COMPREPLY=( $( compgen -W "$update_lib_project_opts" -- $cur ))
+                        return 0
+                        ;;
+                    sdk)
+                        COMPREPLY=( $( compgen -W "$update_sdk_opts" -- $cur ))
+                        return 0
+                        ;;
+                esac
+                ;;
+        esac
+    fi
+
+    case "${prev}" in
+         ##1st layer
+         list)
+            COMPREPLY=( $( compgen -W "$list_opts" -- $cur ))
+            return 0
+            ;;
+         create)
+            COMPREPLY=( $( compgen -W "$create_opts" -- $cur ))
+            return 0
+            ;;
+         move)
+            COMPREPLY=( $( compgen -W "$move_opts" -- $cur ))
+            return 0
+            ;;
+         delete)
+            COMPREPLY=( $( compgen -W "$delete_opts" -- $cur ))
+            return 0
+            ;;
+         update)
+            COMPREPLY=( $( compgen -W "$update_opts" -- $cur ))
+            return 0
+            ;;
+    esac
+
+    #general options
+    case "${cur}" in
+        -*)
+            COMPREPLY=( $( compgen -W "$OPTS" -- $cur ))
+            ;;
+        *)
+            COMPREPLY=( $( compgen -W "$COMMANDS" -- $cur ))
+            ;;
+    esac
+} &&
+complete -F _android android
+
+# vim: set ts=8 sw=4 tw=0 ft=sh :

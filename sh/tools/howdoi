@@ -1,0 +1,181 @@
+#!/bin/sh
+#description: instant coding answers via the command line
+#usage: howdoi [options] query
+
+#example: howdoi format date bash
+#DATE=`date +%Y-%m-%d`
+
+_usage() {
+    printf "%b\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] query ..."
+    printf "%b\\n" "Instant coding answers via the command line."
+    printf "\\n"
+    printf "%b\\n" "Positional arguments:"
+    printf "%b\\n" "  query       the question to answer"
+    printf "\\n"
+    printf "%b\\n" "Optional arguments:"
+    printf "%b\\n" "  -p pos       select answer in specified position (default: 1)"
+    printf "%b\\n" "  -a           display all the answers in full text"
+    printf "%b\\n" "  -l           display only the answer link"
+    printf "%b\\n" "  -c           enable colorized output"
+    printf "%b\\n" "  -C           clear cache"
+    printf "%b\\n" "  -n num       number of answers to return"
+    printf "%b\\n" "  -h, --help   show this help message and exit"
+}
+
+_is_int() {
+    #look for an integer, returns 0 on success, 1 otherwise
+    #http://www.unix.com/shell-programming-and-scripting/172070-help-scripting-command.html
+    case "${1}" in
+        *[!0-9]*|"") return 1 ;;
+    esac
+}
+
+_die() {
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
+}
+
+_howdoi() {
+    [ -z "${1}" ] && return 1
+    [ -z "${pflag}" ] && pflag="1" || {
+        case "${pflag}" in
+            *[!0-9]) pflag="1" ;;
+        esac
+    }
+    [ -z "${nflag}" ] && nflag="1" || {
+        case "${nflag}" in
+            *[!0-9]) nflag="1" ;;
+        esac
+    }
+
+    _howdoi__question="${*}"
+    _howdoi__question_format="$(printf "%s" "${*}" | tr ' ' '_')"
+
+    if [ -z "${HOWDOI_DISABLE_CACHE}" ]; then
+        _howdoi__google_links="$(find ~/.cache/howdoi/ -iname \
+            "${_howdoi__question_format}".links 2>/dev/null | head -n 1)"
+        _howdoi__google_links="$(cat "${_howdoi__google_links}" 2>/dev/null)"
+    fi
+
+    #for some reason the google api doesn't return the same results
+    #http://ajax.googleapis.com/ajax/services/search/web?v=1.0
+    if [ -z "${_howdoi__google_links}" ]; then
+        _howdoi__google_links="$(wget -q -U "Firefox/3.0.5" \
+            "http://www.google.com/search?q=site:stackoverflow.com%20${_howdoi__question}" -O- | \
+            awk 'match($0,/http:\/\/stackoverflow.com\/questions\/[0-9]*\/[A-Za-z-]+/) {if(NR!=1){print substr($0,RSTART,RLENGTH)}}')"
+    fi
+
+    if [ -z "${HOWDOI_DISABLE_CACHE}" ]; then
+        [ ! -d ~/.cache/howdoi/ ] && mkdir ~/.cache/howdoi/
+        [ ! -f ~/.cache/howdoi/"${_howdoi__question_format}".links ] && \
+            printf "%s\\n" "${_howdoi__google_links}" > \
+            ~/.cache/howdoi/"${_howdoi__question_format}".links
+    fi
+
+    [ -z "${_howdoi__google_links}" ] && {
+        printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): No results"; exit 1; }
+
+    _howdoi__google_link="$(printf "%s\\n" "${_howdoi__google_links}" | \
+        awk -v l="${pflag}" 'NR == l {print; exit}')"
+    [ -n "${lflag}" ] && { printf "%s\\n" "${_howdoi__google_link}"; exit; }
+
+    #if a user request a link out of scope, return the last link instead
+    [ -z "${_howdoi__google_link}" ] && \
+        _howdoi__google_link="$(printf "%s\\n" "${_howdoi__google_links}" | \
+            awk 'END {print}')"
+    _howdoi__so_basename="$(expr "${_howdoi__google_link}" : '.*/\([^/]*\)')"
+
+    if [ -z "${HOWDOI_DISABLE_CACHE}" ]; then
+        _howdoi__so_answers="$(find ~/.cache/howdoi/ -iname \
+            "${_howdoi__so_basename}".answers 2>/dev/null | head -n 1)"
+        _howdoi__so_answers="$(cat "${_howdoi__so_answers}" 2>/dev/null)"
+    fi
+
+    #the stackoverflow api doesn't print answers body
+    #http://api.stackoverflow.com/2.0/usage
+    if [ -z "${_howdoi__so_answers}" ]; then
+        _howdoi__so_answers="$(wget -q -U "Firefox/3.0.5"    \
+            "$(printf "%s" "${_howdoi__google_link}")" -O- | \
+            awk '/answercell/,/div>/ {if ($0 ~ "div>") print "-----"; else print;}' | \
+            awk '/<pre><code>/,/<\/code><\/pre>/ {gsub(/^[ \t]+<pre>/, ""); print ">>", $0}1' | \
+            awk '/>>/ {print $0; getline; next}1' | \
+            awk '{gsub("<[^>]*>", ""); gsub(/^[ \t]+|[ \t]+$/, "");
+                 gsub(/>>$/, ""); gsub(/>>[ \t]/, ">"); gsub(/&lt;/, "<");
+                 gsub(/&gt;/, ">"); sub(/\r$/,""); if ($0 != "") print}')"
+    fi
+
+    _howdoi__so_answers_len="$(printf "%s" "${_howdoi__so_answers}" | \
+        awk '/-----/ {i++} END {print i}')"
+
+    [ -z "${_howdoi__so_answers}" ] && {
+        printf "%s\\n" "No answers for your question" >&2; exit 1; }
+
+    if [ -z "${HOWDOI_DISABLE_CACHE}" ]; then
+        [ ! -d ~/.cache/howdoi/ ] && mkdir ~/.cache/howdoi/
+        [ ! -f ~/.cache/howdoi/"${_howdoi__so_basename}".answers ] && \
+            printf "%s\\n" "${_howdoi__so_answers}" \
+                > ~/.cache/howdoi/"${_howdoi__so_basename}".answers
+    fi
+
+    [ -n "${aflag}" ] && {
+        printf "%s\\n" "${_howdoi__so_answers}" | \
+        awk '{gsub(/>/, "   "); print $0}'
+        printf "%s\\n" "${_howdoi__google_link}"; exit; }
+
+    if [ "${nflag}" -lt "2" ] || [ "${_howdoi__so_answers_len}" -lt "2" ]; then
+        printf "%s" "${_howdoi__so_answers}" | \
+            awk '/^>/ {sub(/^>/, ""); print $0; getline t;
+                if ( t ~ "^>") {sub(/^>/, "", t); print t;} else exit }'
+    else
+        printf "%s" "${_howdoi__so_answers}" | \
+            awk -v l="${nflag}" 'BEGIN {i++} /^>/ {
+            if (flagend !~ "set") {print "--- Answer", i, "---"; sub(/^>/, "");
+            print $0; getline; while ( $0 ~ "^>") {sub(/^>/, ""); print;
+            getline;} i++; flagend="set";} else
+            { if ($0 !~ "^-----$") flagend="none"} if (i == l+1) exit}'
+    fi
+}
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- "${@}" $(cat)
+fi
+
+[ "${#}" -eq "0" ] && _die
+
+if ! command -v "wget" >/dev/null 2>&1; then
+    printf "%s\\n" "install 'wget' to run this program" >&2
+    exit 1
+fi
+
+for arg; do #parse options
+    case "${arg}" in
+        -h|--help) _usage && exit ;;
+        -a) aflag="true"; shift;;
+        -l) lflag="true"; shift;;
+        -c) cflag="true"; shift;;
+        -C) rm -rf ~/.cache/howdoi
+            printf "%s\\n" "Cache cleared successfully" && exit ;;
+        -p) if [ "${#}" -gt "1" ]; then
+                pflag="$(printf "%s " "${@}" | awk '{print $2}')"
+                shift 2
+                if ! _is_int "${pflag}" ; then
+                    _die "Option '${arg}' requires a number: '${pflag}'"
+                fi
+            else
+                _die "Option '${arg}' requires a parameter"
+            fi ;;
+        -n) if [ "${#}" -gt "1" ]; then
+                nflag="$(printf "%s " "${@}" | awk '{print $2}')"
+                shift 2
+                if ! _is_int "${nflag}" ; then
+                    _die "Option '${arg}' requires a number: '${nflag}'"
+                fi
+            else
+                _die "Option '${arg}' requires a parameter"
+            fi ;;
+        -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${arg}'" ;;
+    esac
+done
+
+_howdoi "${@}"

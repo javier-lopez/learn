@@ -1,0 +1,566 @@
+#Based on the GNU shtool test suite
+
+@begin{_1stchar}
+_1stchar;    test X"${?}" = X"1"
+test X"$(_1stchar 0)"     = X"0"
+test X"$(_1stchar 99)"    = X"9"
+test X"$(_1stchar -1)"    = X"-"
+test X"$(_1stchar -99)"   = X"-"
+test X"$(_1stchar -99 2)" = X"-"
+@end
+
+@begin{_abs}
+_abs;         test X"${?}" = X"1"
+_abs string;  test X"${?}" = X"1"
+_abs -string; test X"${?}" = X"1"
+_abs 0.1;     test X"${?}" = X"1"
+test X"$(_abs 0)"          = X"0"
+test X"$(_abs 1)"          = X"1"
+test X"$(_abs 99)"         = X"99"
+test X"$(_abs -1)"         = X"1"
+test X"$(_abs -99)"        = X"99"
+@end
+
+@begin{_aptproxy}
+proxy="$(avahi-browse -a  -t | grep apt-cacher-ng >/dev/null && echo 0 || echo 1)"
+_aptproxy; test X"${?}" = X"${proxy}"
+@end
+
+@begin{_arch}
+archx="$(_arch)"
+(test X"${archx}" = X"32" || test X"${archx}" = X"64")
+@end
+
+@begin{_basename}
+_basename; test X"${?}"                     = X"1"
+test X"$(_basename test)"                   = X"test"
+test X"$(_basename ./test)"                 = X"test"
+test X"$(_basename ../test)"                = X"test"
+test X"$(_basename .././test)"              = X"test"
+test X"$(_basename ../../test)"             = X"test"
+test X"$(_basename ../../test/)"            = X"test"
+test X"$(_basename /usr/local/bin/test)"    = X"test"
+test X"$(_basename test t)"                 = X"tes"
+test X"$(_basename test st)"                = X"te"
+test X"$(_basename test est)"               = X"t"
+test X"$(_basename test test)"              = X"test"
+test X"$(_basename test tes)"               = X"test"
+test X"$(_basename ./test test)"            = X"test"
+test X"$(_basename ./test tes)"             = X"test"
+test X"$(_basename ../test test)"           = X"test"
+test X"$(_basename ../test tes)"            = X"test"
+test X"$(_basename ./test t)"               = X"tes"
+test X"$(_basename ./test st)"              = X"te"
+test X"$(_basename ../test t)"              = X"tes"
+test X"$(_basename ../test st)"             = X"te"
+test X"$(_basename /usr/local/bin/test t)"  = X"tes"
+test X"$(_basename /usr/local/bin/test st)" = X"te"
+@end
+
+@begin{_basename2}
+_basename2; test X"${?}"                     = X"1"
+test X"$(_basename2 test)"                   = X"test"
+test X"$(_basename2 ./test)"                 = X"test"
+test X"$(_basename2 ../test)"                = X"test"
+test X"$(_basename2 .././test)"              = X"test"
+test X"$(_basename2 ../../test)"             = X"test"
+test X"$(_basename2 ../../test/)"            = X"test"
+test X"$(_basename2 /usr/local/bin/test)"    = X"test"
+test X"$(_basename2 test t)"                 = X"tes"
+test X"$(_basename2 test st)"                = X"te"
+test X"$(_basename2 test est)"               = X"t"
+test X"$(_basename2 test test)"              = X"test"
+test X"$(_basename2 test tes)"               = X"test"
+test X"$(_basename2 ./test test)"            = X"test"
+test X"$(_basename2 ./test tes)"             = X"test"
+test X"$(_basename2 ../test test)"           = X"test"
+test X"$(_basename2 ../test tes)"            = X"test"
+test X"$(_basename2 ./test t)"               = X"tes"
+test X"$(_basename2 ./test st)"              = X"te"
+test X"$(_basename2 ../test t)"              = X"tes"
+test X"$(_basename2 ../test st)"             = X"te"
+test X"$(_basename2 /usr/local/bin/test t)"  = X"tes"
+test X"$(_basename2 /usr/local/bin/test st)" = X"te"
+@end
+
+@begin{_bytes2human}
+_bytes2human; test X"${?}"                     = X"1"
+_bytes2human test; test X"${?}"                = X"1"
+_bytes2human -1; test X"${?}"                  = X"1"
+_bytes2human -1024; test X"${?}"               = X"1"
+_bytes2human 1024s; test X"${?}"               = X"1"
+test X"$(_bytes2human)"                        = X""
+test X"$(_bytes2human test)"                   = X""
+test X"$(_bytes2human -1)"                     = X""
+test X"$(_bytes2human -1024)"                  = X""
+test X"$(_bytes2human 1)"                      = X"1"
+test X"$(_bytes2human 1023)"                   = X"1023"
+test X"$(_bytes2human 1024)"                   = X"1K"
+test X"$(_bytes2human 1024s)"                  = X""
+test X"$(_bytes2human 10240)"                  = X"10K"
+test X"$(_bytes2human 102400)"                 = X"100K"
+test X"$(_bytes2human 1024000)"                = X"1000K"
+test X"$(_bytes2human 10240000)"               = X"9.77M"
+test X"$(_bytes2human 10240000000)"            = X"9.54G"
+test X"$(_bytes2human 10240000000000)"         = X"9.31T"
+@end
+
+@begin{_char2int}
+_char2int; test X"${?}"  = X"1"
+test X"$(_char2int "a")" = X"97"
+test X"$(_char2int "A")" = X"65"
+@end
+
+@begin{_decode64}
+_decode64; test X"${?}"                    = X"1"
+test X"$(_decode64 "aGVsbG8K")"            = X"hello"
+test X"$(_decode64 "aGVsbG8K" "aGVsbG8K")" = X"$(printf "%b" "hello\\nhello")"
+@end
+
+@begin{_die}
+_die;           test X"${?}" = X"1"
+@end
+
+@begin{_dirname}
+_dirname; test X"${?}"                  = X"1"
+test X"$(_dirname test)"                = X"."
+test X"$(_dirname ./test)"              = X"."
+test X"$(_dirname ../test)"             = X".."
+test X"$(_dirname .././test)"           = X"../."
+test X"$(_dirname ../../test)"          = X"../.."
+test X"$(_dirname /usr/local/bin/test)" = X"/usr/local/bin"
+@end
+
+@begin{_distro}
+_distro | grep ".*"
+@end
+
+@begin{_echo}
+test X"$(_echo)"              = X"$(printf "\\n")"
+test X"$(_echo hello)"        = X"hello"
+hello=$(_echo -n hello); hello="$hello""$(_echo -n world)"
+test X"$(_echo "$hello")"     = X"helloworld"
+test X"$(_echo -e "h\bello")" = X"$(printf "h\bello")"
+hello=$(_echo -n hello); hello="$hello""$(_echo -ne "w\borld")"
+test X"$(_echo "$hello")"     = X"$(printf "hellow\borld")"
+@end
+
+@begin{_encode64}
+_encode64; test X"${?}"              = X"1"
+test X"$(_encode64 "hello")"         = X"aGVsbG8K"
+test X"$(_encode64 "hello" "world")" = X"aGVsbG8Kd29ybGQK"
+@end
+
+@begin{_ensurecron}
+_ensurecron; test X"${?}" = X"1" #test it return correct value on error
+_ensurecron "0 21 * * * /test_lib.db"
+test X"$(crontab -l | grep test_lib.db)" = X"0 21 * * * /test_lib.db"
+_ensurecron "0 21 * * * /test_lib.db"
+test X"$(crontab -l | grep test_lib.db | wc -l )" = X"1"
+crontab -l | grep -v test_lib.db | crontab
+@end
+
+@begin{_getfirstvalue}
+_getfirstvalue; test X"${?}" = X"1"
+var="$(_getfirstvalue "$ZDQxZDhjZDk4ZjAw" first)"
+test X"${var}" = X"first"
+var="$(_getfirstvalue "$ZDQxZDhjZDk4ZjAw" second first)"
+test X"${var}" = X"second"
+ZDQxZDhjZDk4ZjAw="first"
+var="$(_getfirstvalue "$ZDQxZDhjZDk4ZjAw" second first)"
+test X"${var}" = X"first"
+@end
+
+@begin{_getfs}
+_getfs; test X"${?}" = X"1"
+drive="$(grep "swap" /etc/fstab | grep -o "/dev/.*" | cut -d" " -f1)"
+test -z "${drive}" || test X"$(_getfs "${drive}")" = X"swap"
+@end
+
+@begin{_getpasswd}
+echo waa > waa
+test X"$(_getpasswd < waa 2>/dev/null)" = X"Enter your password: "
+_getpasswd < waa >/dev/null 2>&1
+test X"${passwd}" = X"waa"
+_getpasswd waa < waa >/dev/null 2>&1
+test X"${waapasswd}" = X"waa"
+rm waa
+@end
+
+@begin{_getuuid}
+_getuuid; test X"${?}" = X"1"
+drive="$(mount | grep "/ " | cut -d" " -f1)"
+test X"$(readlink -f /dev/disk/by-uuid/$(_getuuid "${drive}"))" = X"${drive}"
+@end
+
+@begin{_internet}
+ping -c 1 google.com; pv="${?}"; true
+_internet; iv="${?}"; true
+(test X"${pv}" = X"${iv}" || test X"$((${pv} - 1))" = X"${iv}")
+@end
+
+@begin{_alphanum}
+_alphanum;          test X"${?}" = X"1"
+_alphanum '123$#';  test X"${?}" = X"1"
+_alphanum '%$123';  test X"${?}" = X"1"
+_alphanum 'abc$#';  test X"${?}" = X"1"
+_alphanum '(/abc';  test X"${?}" = X"1"
+_alphanum '1';      test X"${?}" = X"0"
+_alphanum '123';    test X"${?}" = X"0"
+_alphanum 'a';      test X"${?}" = X"0"
+_alphanum 'abc';    test X"${?}" = X"0"
+_alphanum '123abc'; test X"${?}" = X"0"
+_alphanum 'abc123'; test X"${?}" = X"0"
+@end
+
+@begin{_empty}
+_empty; test X"${?}"      = X"1"
+touch file
+_empty file; test X"${?}" = X"0"
+echo string > file
+_empty file; test X"${?}" = X"1"
+rm -f file
+@end
+
+@begin{_lastchar}
+_lastchar;    test X"${?}" = X"1"
+test X"$(_lastchar 0)"     = X"0"
+test X"$(_lastchar 99)"    = X"9"
+test X"$(_lastchar -1)"    = X"1"
+test X"$(_lastchar -99)"   = X"9"
+test X"$(_lastchar -99 2)" = X"2"
+@end
+
+@begin{_livecd}
+_livecd; test X"${?}" = X"1"
+@end
+
+@begin{_mkdir_p}
+_mkdir_p; test X"${?}" = X"1"
+_mkdir_p a         && test -d "a"       && rm -rf a
+_mkdir_p a/b       && test -d "a/b"     && rm -rf a
+_mkdir_p "a/b/c d" && test -d "a/b/c d" && rm -rf a
+@end
+
+@begin{_is_int}
+_is_int;          test X"${?}" = X"1"
+_is_int '123$#';  test X"${?}" = X"1"
+_is_int '%$123';  test X"${?}" = X"1"
+_is_int 'abc$#';  test X"${?}" = X"1"
+_is_int '(/abc';  test X"${?}" = X"1"
+_is_int 'a';      test X"${?}" = X"1"
+_is_int 'abc';    test X"${?}" = X"1"
+_is_int '123abc'; test X"${?}" = X"1"
+_is_int 'abc123'; test X"${?}" = X"1"
+_is_int '1';      test X"${?}" = X"0"
+_is_int '123';    test X"${?}" = X"0"
+@end
+
+@begin{_lock}
+_lock ./run
+(sleep 1 &)
+test -f /tmp/run.lock
+test X"$(_lock ./run)" = X"run: another instance is running"
+rm -f /tmp/run.lock
+@end
+
+@begin{_notify}
+_notify; test X"${?}"                     = X"1"
+_notify "error"; test X"${?}"             = X"0"
+_notify "error" "subsystem"; test X"${?}" = X"0"
+test X"$(_notify "error")"                = X"error"
+test X"$(_notify "error" "subsystem")"    = X"error: subsystem"
+@end
+
+@begin{_notify2}
+_notify2; test X"${?}"                     = X"1"
+_notify2 "error"; test X"${?}"             = X"0"
+_notify2 "error" "subsystem"; test X"${?}" = X"0"
+test X"$(_notify2 "error" "error")"        = X"error"
+test X"$(_notify2 "error" "subsystem")"    = X"subsystem"
+@end
+
+@begin{_printfc}
+_printfc; test X"${?}"            = X"1"
+test X"$(_printfc ls)"            = X"    $ ls"
+test X"$(_printfc ls dir)"        = X"    $ ls dir"
+test X"$(_printfc "ls > result")" = X"    $ ls > result"
+@end
+
+@begin{_printfl}
+test X"$(_printfl)"               = X"$(printf "%b" "\033[1m--------------------------------------------------------------------------------\033[0m")"
+test X"$(_printfl message)"       = X"$(printf "%b" "\033[1m-----------------------------------\033[7m message \033[0m\033[1m------------------------------------\033[0m")"
+test X"$(_printfl message x 2)"   = X"$(printf "%b" "\033[1m---------------------------------\033[7m message x 2 \033[0m\033[1m----------------------------------\033[0m")"
+test X"$(_printfl "message x 2")" = X"$(printf "%b" "\033[1m---------------------------------\033[7m message x 2 \033[0m\033[1m----------------------------------\033[0m")"
+@end
+
+@begin{_printfs}
+_printfs; test X"${?}"            = X"1"
+test X"$(_printfs ls)"            = X"[+] ls"
+test X"$(_printfs ls dir)"        = X"[+] ls dir"
+test X"$(_printfs "ls > result")" = X"[+] ls > result"
+@end
+
+@begin{_printtime}
+_printtime; test X"${?}"        = X"1"
+_printtime string; test X"${?}" = X"1"
+test X"$(_printtime 1)"         = X"0d 0h 0m 1s"
+test X"$(_printtime 1 2)"       = X"0d 0h 0m 1s"
+test X"$(_printtime 60)"        = X"0d 0h 1m 0s"
+test X"$(_printtime 61)"        = X"0d 0h 1m 1s"
+test X"$(_printtime 3600)"      = X"0d 1h 0m 0s"
+test X"$(_printtime 3660)"      = X"0d 1h 1m 0s"
+test X"$(_printtime 3661)"      = X"0d 1h 1m 1s"
+test X"$(_printtime 86400)"     = X"1d 0h 0m 0s"
+test X"$(_printtime 90000)"     = X"1d 1h 0m 0s"
+test X"$(_printtime 90060)"     = X"1d 1h 1m 0s"
+test X"$(_printtime 90061)"     = X"1d 1h 1m 1s"
+@end
+
+@begin{_privport}
+_privport; test X"${?}"        = X"1"
+_privport string; test X"${?}" = X"1"
+_privport 80; test X"${?}"     = X"0"
+_privport 8080; test X"${?}"   = X"1"
+@end
+
+@begin{_random}
+test "$(_random)" -ge "1" && test "$(_random)" -le "10"
+test "$(_random)" -ge "1" && test "$(_random)" -le "10"
+test "$(_random)" -ge "1" && test "$(_random)" -le "10"
+test "$(_random)" -ge "1" && test "$(_random)" -le "10"
+test "$(_random)" -ge "1" && test "$(_random)" -le "10"
+test "$(_random 5 7)" -ge "5" && test "$(_random 5 7)" -le "7"
+test "$(_random 5 7)" -ge "5" && test "$(_random 5 7)" -le "7"
+test "$(_random 5 7)" -ge "5" && test "$(_random 5 7)" -le "7"
+test "$(_random 5 7)" -ge "5" && test "$(_random 5 7)" -le "7"
+test "$(_random 5 7)" -ge "5" && test "$(_random 5 7)" -le "7"
+@end
+
+@begin{_realpath}
+_realpath; test X"${?}"                  = X"1"
+test X"$(_realpath ~)"                   = X"${HOME}"
+test X"$(_realpath test)"                = X"$(pwd)/test"
+test X"$(_realpath ./test)"              = X"$(pwd)/test"
+test X"$(_realpath ../test)"             = X"$(cd ..; pwd)/test"
+test X"$(_realpath .././test)"           = X"$(cd ..; pwd)/test"
+test X"$(_realpath /usr/local/bin/test)" = X"/usr/local/bin/test"
+@end
+
+@begin{_rmcron}
+_rmcron; test X"${?}" = X"1"
+(crontab -l; printf "%s\\n" "0 21 * * * /test_lib.db" ) | crontab -
+test X"$(crontab -l | grep test_lib.db)" = X"0 21 * * * /test_lib.db"
+_rmcron "test_lib.db"
+(crontab -l | grep test_lib.db); test X"${?}" = X"1"
+@end
+
+@begin{_seq}
+_seq; test X"${?}"         = X"1"
+_seq string; test X"${?}"  = X"1"
+_seq -string; test X"${?}" = X"1"
+_seq .; test X"${?}"       = X"1"
+_seq 0; test X"${?}"       = X"0"
+_seq -1; test X"${?}"      = X"0"
+_seq -99; test X"${?}"     = X"0"
+test X"$(_seq 1)"          = X"1"
+test X"$(_seq 1 1 1)"      = X"1"
+test X"$(_seq 3)"          = X"$(printf "1\\n2\\n3\\n")"
+test X"$(_seq 3 6 )"       = X"$(printf "3\\n4\\n5\\n6\\n")"
+test X"$(_seq 3 3 9 )"     = X"$(printf "3\\n6\\n9\\n")"
+test X"$(_seq -3 3 3 )"    = X"$(printf "%b" "-3\\n0\\n3\\n")"
+@end
+
+@begin{_str2octal}
+_str2octal; test X"${?}"    = X"1"
+test X"$(_str2octal .)"     = X"056"
+test X"$(_str2octal hello)" = X"150 145 154 154 157"
+test X"$(_str2octal Hello)" = X"110 145 154 154 157"
+test X"$(_str2octal h e l l o)" = X"150 145 154 154 157"
+@end
+
+@begin{_str2octal_escaped}
+_str2octal_escaped; test X"${?}"    = X"1"
+test X"$(_str2octal_escaped .)"     = X"\056"
+test X"$(_str2octal_escaped hello)" = X"\150\145\154\154\157"
+test X"$(_str2octal_escaped Hello)" = X"\110\145\154\154\157"
+test X"$(_str2octal_escaped h e l l o)" = X"\150\145\154\154\157"
+@end
+
+@begin{_str2lower}
+_str2lower; test X"${?}"    = X"1"
+test X"$(_str2lower .)"     = X"."
+test X"$(_str2lower hello)" = X"hello"
+test X"$(_str2lower Hello)" = X"hello"
+test X"$(_str2lower HELLO)" = X"hello"
+@end
+
+@begin{_str2upper}
+_str2upper; test X"${?}"    = X"1"
+test X"$(_str2upper .)"     = X"."
+test X"$(_str2upper hello)" = X"HELLO"
+test X"$(_str2upper Hello)" = X"HELLO"
+test X"$(_str2upper HELLO)" = X"HELLO"
+@end
+
+@begin{_strdiff}
+_strdiff; test X"${?}"        = X"1"
+_strdiff string; test X"${?}" = X"1"
+hello="hello world"; world="world"
+#TODO 28-10-2013 18:19 >> make it work the other way around
+#test X"$(_strdiff "${hello}" "${world}")" = X"hello"
+test X"$(_strdiff "${world}" "${hello}")" = X"hello"
+@end
+
+@begin{_strlen}
+_strlen; test X"${?}"             = X"1"
+test X"$(_strlen "hello world!")" = X"12"
+@end
+
+@begin{_strduplicates}
+_strduplicates; test X"${?}"                    = X"1"
+_strdiff string; test X"${?}"                       = X"1"
+hello="hello world"; world="world"
+test X"$(_strduplicates "${hello}" "${world}")" = X"world"
+test X"$(_strduplicates "${world}" "${hello}")" = X"world"
+@end
+
+@begin{_strreplace}
+_strreplace; test X"${?}"                       = X"1"
+_strreplace string; test X"${?}"                = X"1"
+_strreplace string otherstring; test X"${?}"    = X"1"
+hello="hello world"
+test X"$(_strreplace "${hello}" "hello" "bye")" = X"bye world"
+hello="hello world"
+test X"$(_strreplace "${hello}" "noexists" "bye")" = X"hello world"
+@end
+
+@begin{_strreplace2}
+_strreplace2; test X"${?}"                       = X"1"
+_strreplace2 string; test X"${?}"                = X"1"
+_strreplace2 string otherstring; test X"${?}"    = X"1"
+hello="hello world"
+test X"$(_strreplace2 "${hello}" "hello" "bye")" = X"bye world"
+hello="hello world"
+test X"$(_strreplace2 "${hello}" "noexists" "bye")" = X"hello world"
+@end
+
+@begin{_strunique}
+_strunique; test X"${?}"                  = X"1"
+_strunique string; test X"${?}"           = X"1"
+hello="hello world"; bye="bye world"
+test X"$(_strunique "${hello}" "${bye}")" = X"hello world bye"
+@end
+
+@begin{_subchar}
+_subchar; test X"${?}"             = X"1"
+_subchar string;   test X"${?}"    = X"1"
+_subchar string 1; test X"${?}"    = X"0"
+_subchar a 1; test X"${?}"         = X"1"
+test X"$(_subchar "abcdef" -1)"    = X"f"
+test X"$(_subchar "abcdef" -2)"    = X"e"
+test X"$(_subchar "abcdef" -3)"    = X"d"
+test X"$(_subchar "abcdef" 0)"     = X"a"
+test X"$(_subchar "abcdef" 2)"     = X"c"
+test X"$(_subchar "abcdef" 4)"     = X"e"
+test X"$(_subchar a 1)"            = X""
+test X"$(_subchar "abcdef" 1)"     = X"b"
+@end
+
+@begin{_subchar2}
+_subchar2; test X"${?}"             = X"0"
+_subchar2 string;   test X"${?}"    = X"0"
+_subchar2 string 1; test X"${?}"    = X"0"
+_subchar2 a 1; test X"${?}"         = X"0"
+test X"$(_subchar2 "abcdef" 0)"     = X"a"
+test X"$(_subchar2 "abcdef" 2)"     = X"c"
+test X"$(_subchar2 "abcdef" 4)"     = X"e"
+test X"$(_subchar2 a 1)"            = X""
+test X"$(_subchar2 "abcdef" 1)"     = X"b"
+@end
+
+@begin{_substr}
+_substr; test X"${?}"             = X"1"
+_substr string; test X"${?}"      = X"1"
+_substr string 1; test X"${?}"    = X"0"
+test X"$(_substr "abcdef" -1)"    = X"f"
+test X"$(_substr "abcdef" -2)"    = X"ef"
+test X"$(_substr "abcdef" -3 1)"  = X"d"
+test X"$(_substr "abcdef" 0 -1)"  = X"abcde"
+test X"$(_substr "abcdef" 2 -1)"  = X"cde"
+test X"$(_substr "abcdef" 4 -4)"  = X""
+test X"$(_substr 4 -4)"           = X""
+test X"$(_substr "abcdef" -3 -1)" = X"de"
+test X"$(_substr "abcdef" 1)"     = X"bcdef"
+test X"$(_substr "abcdef" 1 3)"   = X"bcd"
+test X"$(_substr "abcdef" 0 4)"   = X"abcd"
+test X"$(_substr "abcdef" 0 8)"   = X"abcdef"
+test X"$(_substr "abcdef" -1 1)"  = X"f"
+@end
+
+@begin{_unprintf}
+_unprintf; test X"${?}" = X"1"
+test X"$(printf "hello"; _unprintf "o")"      = X"hello$(printf "%b" "\b")"
+test X"$(printf "hello"; _unprintf "lo")"     = X"hello$(printf "%b" "\b\b")"
+test X"$(printf "hello"; _unprintf "llo")"    = X"hello$(printf "%b" "\b\b\b")"
+test X"$(printf "hello"; _unprintf "ello")"   = X"hello$(printf "%b" "\b\b\b\b")"
+test X"$(printf "hello"; _unprintf "hello")"  = X"hello$(printf "%b" "\b\b\b\b\b")"
+test X"$(printf "hello"; _unprintf "hello ")" = X"hello$(printf "%b" "\b\b\b\b\b\b")"
+@end
+
+@begin{_uploadimg}
+_uploadimg;         test X"${?}" = X"1"
+_uploadimg foo;     test X"${?}" = X"1"
+_uploadimg foo.png; test X"${?}" = X"1"
+@end
+
+@begin{_user}
+_user; test X"${?}"            = X"1"
+_user foobartest; test X"${?}" = X"1"
+_user "${USER}";  test X"${?}" = X"0"
+@end
+
+@begin{_validnetinterface}
+_validnetinterface;    test X"${?}" = X"1"
+_validnetinterface lo; test X"${?}" = X"0"
+@end
+
+@begin{_validip4}
+_validip4;                   test X"${?}" = X"1"
+_validip4 string;            test X"${?}" = X"1"
+_validip4 "1";               test X"${?}" = X"1"
+_validip4 "1.1";             test X"${?}" = X"1"
+_validip4 "1.1.1";           test X"${?}" = X"1"
+_validip4 "1.1.1.1";         test X"${?}" = X"0"
+_validip4 "a.b.c.d";         test X"${?}" = X"1"
+_validip4 "1.1.1.1.1";       test X"${?}" = X"1"
+_validip4 "254.254.254.255"; test X"${?}" = X"1"
+@end
+
+@begin{_validmail}
+_validmail; test X"${?}"                   = X"1"
+_validmail string; test X"${?}"            = X"1"
+_validmail "user@domain"; test X"${?}"     = X"1"
+_validmail "user@domain.ltd"; test X"${?}" = X"0"
+@end
+
+@begin{_verbose}
+_verbose; test X"${?}"                = X"1"
+test X"$(_verbose "hello")"           = X""
+test X"$(VERBOSE=1 _verbose "hello")" = X"hello"
+@end
+
+@begin{_whereis}
+_whereis; test X"${?}"            = X"1"
+_whereis foobartest; test X"${?}" = X"1"
+test X"$(_whereis "sh")"          = X"/bin/sh"
+test X"$(_whereis sh)"            = X"/bin/sh"
+@end
+
+@begin{_xmessage}
+_xmessage; test X"${?}"                                   = X"1"
+test X"$(DISPLAY=999 _xmessage message 2>/dev/null)"      = X": message"
+test X"$(DISPLAY=999 _xmessage long message 2>/dev/null)" = X": long message"
+@end
+
+# vim: set ts=8 sw=4 tw=0 ft=sh :

@@ -1,0 +1,56 @@
+#!/usr/bin/perl
+#description: find how much time a monkey typewriter takes to guess a phrase
+#usage: monkey_typewriter
+
+use strict;
+use warnings;
+use File::Basename;
+
+my $progname = basename(__FILE__);
+
+my $phrase   = "methinks it is like a weasel";
+my $alphabet = "abcdefghijklmnopqrstuvwxyz ";
+
+sub _monkey {
+    my ($len) = @_;
+    my $monkey_phrase = "";
+    my @alphabet = split('', $alphabet);
+    $monkey_phrase .= $alphabet[rand @alphabet] for 1..$len;
+    return $monkey_phrase
+}
+
+sub _evaluate {
+    my ($monkey_phrase, $phrase) = @_;
+    my $score = 0;
+    $score = ( $monkey_phrase ^ $phrase ) =~ tr/\0//c;
+    if ($score > 0) {
+        $score = length($monkey_phrase) - $score;
+        $score = ($score * 100) / length($monkey_phrase);
+    }
+    return $score;
+}
+
+my $monkey_phrase = "";
+my $score = 0;
+my $best_phrase = "";
+my $best_score  = 0;
+my $i = 1;
+
+while (1) {
+    $monkey_phrase = _monkey(28);
+    $score         = _evaluate($monkey_phrase, $phrase);
+    if ($score == 100) {
+        print "monkey wrote it and only took $i tries!";
+        exit 0;
+    } else {
+        if ($best_score < $score) {
+            $best_score  = $score;
+            $best_phrase = $monkey_phrase;
+        }
+        if ($i % 1000 == 0) {
+            printf("%10d - best score so far against '%s' is '%s' (%d%%), current '%s' (%d%%)\n", $i, $phrase, $best_phrase, $best_score, $monkey_phrase, $score);
+            #print "$i - best score so far against '$phrase' is '$best_phrase' ($best_score%), current '$monkey_phrase' ($score%)\n";
+        }
+    }
+    $i = $i+1;
+}

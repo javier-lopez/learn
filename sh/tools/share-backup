@@ -1,0 +1,167 @@
+#!/bin/sh
+#description: share a directory over http
+#usage: share-backup [options] [stop] [directory|file]
+
+#example: share-backup backup
+#Starting server ..."
+#  address   : http://127.0.0.1:2232
+#  address   : http://192.168.1.2:2232
+#  address   : http://203.212.2.34:2232
+#  address   : http://f.javier.io:2232
+#
+#  username: guest
+#  password: Ni3k8alskk2
+#  ssl     : yes
+#
+#  serving:  backup"
+#
+#Run: share-backup stop, to stop sharing"
+
+upstream_url_httpd='https://raw.github.com/chilicuil/learn/master/python/simple-httpd'
+
+_basename() {
+    [ -z "${1}" ] && return 1 || _basename__name="${1}"
+    [ -z "${2}" ] || _basename__suffix="${2}"
+    case "${_basename__name}" in
+        /*|*/*) _basename__name="$(expr "${_basename__name}" : '.*/\([^/]*\)')" ;;
+    esac
+
+    if [ -n "${_basename__suffix}" ] && [ "${#_basename__name}" -gt "${#2}" ]; then
+        if [ X"$(printf "%s" "${_basename__name}" | cut -c"$((${#_basename__name} - ${#_basename__suffix} + 1))"-"${#_basename__name}")" \
+           = X"$(printf "%s" "${_basename__suffix}")" ]; then
+            _basename__name="$(printf "%s" "${_basename__name}" | cut -c1-"$((${#_basename__name} - ${#_basename__suffix}))")"
+        fi
+    fi
+
+    printf "%s\\n" "${_basename__name}"
+}
+
+_die() {
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
+}
+
+_num() {
+    #look for a number, returns 0 on success, 1 otherwise
+    [ -z "${1}" ] && return 1
+    printf "%s\\n" "${@}" | grep -v "[^0-9]" >/dev/null
+}
+
+_usage() {
+    printf "%b\\n" "Usage: $(_basename "${0}") [options] [stop] [directory|file]"
+    printf "%s\\n" "Share a directory over http."
+    printf "\\n"
+    printf "%b\\n" "  stop             stop sharing"
+    printf "\\n"
+    printf "%b\\n" "  -u [user]        set user (guest by default)"
+    printf "%b\\n" "  -p [port]        set port (above 1025 by default)"
+    printf "%b\\n" "  -P [password]    set password (random by default)"
+    printf "%b\\n" "  -c [cert_file]   set certificate.pem"
+    printf "%b\\n" "  -h, --help       show this help message and exit"
+}
+
+#because of being used over ssh stdin gets blocked
+#so I'll disable reading from pipes till I figure out a solution
+#if [ ! -t 0 ]; then
+    ##there is input comming from pipe or file, add to the end of $@
+    #set -- "${@}" $(cat)
+#fi
+
+if [ X"${1}" = X"stop" ]; then
+    ID="$(pgrep -f simple-httpd)"
+    [ -n "$ID" ] && { kill -9 "${ID}"; printf "%s\\n" "Stopped"; exit 0; } || \
+        { printf "%s\\n" "No instance found" >&2; exit 1; }
+fi
+
+if ! command -v "simple-httpd" >/dev/null 2>&1; then
+    wget -q "${upstream_url_httpd}" -O- > /tmp/simple-httpd 2>/dev/null || \
+    wget -q --no-check-certificate "${upstream_url_httpd}" -O- > /tmp/simple-httpd 2>/dev/null || \
+    curl -s -f -L "${upstream_url_httpd}" > /tmp/simple-httpd 2>/dev/null || \
+    curl -s -f -L -k "${upstream_url_httpd}" > /tmp/simple-httpd 2>/dev/null || {
+        printf "%s\\n" "$(_basename "${0}"): simple-httpd was not found!" >&2
+        printf "%s\\n" "download it from ${upstream_url_httpd}" >&2
+        exit 1
+    }
+
+    httpd="python /tmp/simple-httpd"
+else
+    httpd="simple-httpd"
+fi
+
+for arg; do #parse options
+    case "${arg}" in
+        -h|--help) _usage && exit ;;
+        -u) if [ "${#}" -gt "1" ]; then
+                user="$(printf "%s " "${@}" | awk '{print $2}')"
+                shift 2
+            else
+               _die "Option '${arg}' requires a parameter"
+            fi ;;
+        -p) if [ "${#}" -gt "1" ]; then
+                port="$(printf "%s " "${@}" | awk '{print $2}')"
+                shift 2
+                if ! _num "${port}"; then
+                    _die "Option '${arg}' requires a number: '${port}'"
+                fi
+            else
+                _die "Option '${arg}' requires a parameter"
+            fi ;;
+        -P) if [ "${#}" -gt "1" ]; then
+                passwd="$(printf "%s " "${@}" | awk '{print $2}')"
+                shift 2
+            else
+                _die "Option '${arg}' requires a parameter"
+            fi ;;
+        -c) if [ "${#}" -gt "1" ]; then
+                cert="$(printf "%s " "${@}" | awk '{print $2}')"
+                shift 2
+            else
+                _die "Option '${arg}' requires a parameter"
+            fi ;;
+        -*) _die "$(_basename "${0}"): unrecognized option '${arg}'" ;;
+    esac
+done
+
+exec 9> /tmp/"$(_basename "${0}")".lock #verify only one instance is running
+[ X"${LOGNAME}" = X"root" ] && chmod 666 /tmp/"$(_basename "${0}")".lock
+if ! flock -n 9; then
+    _die "$(_basename "${0}"): another instance is running"
+fi
+
+[ -z "${user}" ]   && user="guest"
+[ -z "${port}" ]   && port="$(($(od -An -N2 -i /dev/random|awk '{print $1}'|head -c 4) + 1025))"
+[ -z "${passwd}" ] && passwd="$(date +%s | sha256sum | base64 | head -c 8)"
+[ -f "${cert}" ]   && ssl_opts="--ssl --certificate=${cert}"
+
+if [ -z "${@}" ]; then
+    [ -d recovery ] && files="recovery" || files="$(pwd)"
+else
+    files="${*}"
+fi
+
+ips="$(ifconfig | grep "inet " | cut -d: -f2 | cut -d " " -f1)"
+ip="$(dig -4 +short myip.opendns.com @resolver1.opendns.com 2>/dev/null)"
+ips="${ips} ${ip} $(dig -4 -x "${ip}" | awk '/\.$/ {gsub(/\.$/,""); print $NF; exit;}')"
+
+printf "%s\\n" "Starting server ..."
+for addr in ${ips}; do
+    printf "%s\\n" "  address : http://${addr}:${port}"
+done
+printf "%s\\n"
+printf "%s\\n" "  username: ${user}"
+printf "%s\\n" "  password: ${passwd}"
+if [ -n "${ssl_opts}" ]; then
+    printf "%s\\n" "  ssl     : ${ssl_opts}"
+fi
+printf "%s\\n"
+printf "%s\\n" "  serving:  ${files}"
+printf "%s\\n"
+printf "%s\\n" "Run: $(_basename "${0}") stop, to stop sharing"
+
+if [ -d "${files}" ]; then
+    eval "${httpd}" -p "${port}" --username="${user}" \
+        --password="${passwd}" "${ssl_opts}" "${files}"/* >/dev/null 2>&1 &
+else
+    eval "${httpd}" -p "${port}" --username="${user}" \
+        --password="${passwd}" "${ssl_opts}" "${files}" >/dev/null 2>&1 &
+fi

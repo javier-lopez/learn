@@ -1,0 +1,907 @@
+#!/bin/sh
+#description: create static status pages
+#usage: staticus [options]
+
+#example:
+#$ staticus -c ~/.staticus.conf --modules "memory,swap,load" -o status.html
+
+###############################################################################
+############################## Configuration ##################################
+###############################################################################
+
+report_html="./staticus.html"
+report_txt="./staticus.txt"
+
+modules="memory,swap,load,storage,process,info"
+#modules="notification,memory,swap,load,storage,process,info"
+
+#thresholds
+module_memory_threshold="80"
+module_swap_threshold="80"
+module_load_threshold="4"
+module_storage_threshold="80"
+
+#partitions
+module_storage_partitions="/,/home"
+
+#processes
+module_process_list="init,rsyslogd,cron"
+
+module_notification_msg="Next maintenance window is programmed at Tuesday May 12th"
+
+#notifications
+#notify="true"
+notify_method="mailgun"
+notify_contacts="admin@example.com,contact@example.com"
+
+date_format="+%d-%m-%Y %H:%M (%Z)"
+theme="default"
+config_file="/etc/staticus.conf"
+###############################################################################
+
+themes="default"
+theme_default='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'
+
+_usage() {
+    printf "%s\\n" "Usage: ${progname} [options] -o staticus.html"
+    printf "%s\\n" "Create static status pages."
+    printf "\\n"
+    printf "%s\\n" "  -c, --config /etc/staticus.conf   read options from a configuration file"
+    printf "%s\\n" "  -m, --modules \"all\"               use defined modules"
+    printf "%s\\n" "  -o, --output-html staticus.html   save html  status output to this file"
+    printf "%s\\n" "  -O, --output-txt  staticus.txt    save plain status output to this file"
+    printf "%s\\n" "  --txt2html staticus.txt           convert a plain status output to a static html page"
+    printf "%s\\n" "  --theme default                   use specified html theme"
+    printf "%s\\n" "  --list-modules                    list available modules"
+    printf "%s\\n" "  --list-themes                     list available html themes"
+    printf "%s\\n" "  -v, --verbose                     verbose mode"
+    printf "%s\\n" "  -h, --help                        show this help message and exit"
+}
+
+_basename() {
+    [ -z "${1}" ] && return 1 || _basename__name="${1%%/}"
+    [ -z "${2}" ] || _basename__suffix="${2}"
+    case "${_basename__name}" in
+        /*|*/*) _basename__name="$(expr "${_basename__name}" : '.*/\([^/]*\)')" ;;
+    esac
+
+    if [ -n "${_basename__suffix}" ] && [ "${#_basename__name}" -gt "${#2}" ]; then
+        if [ X"$(printf "%s" "${_basename__name}" | cut -c"$((${#_basename__name} - ${#_basename__suffix} + 1))"-"${#_basename__name}")" \
+           = X"$(printf "%s" "${_basename__suffix}")" ]; then
+            _basename__name="$(printf "%s" "${_basename__name}" | cut -c1-"$((${#_basename__name} - ${#_basename__suffix}))")"
+        fi
+    fi
+
+    printf "%s" "${_basename__name}"
+}
+
+_die() {
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
+}
+
+_verbose() {
+    [ -z "${1}" ] && return 1
+    [ -n "${verbose}" ] && printf "%s\\n" "${*}"
+}
+
+_decode64() {
+    [ ! -t 0 ] && set -- "${@}" "$(cat)"
+    [ -z "${1}" ] && return 1
+    if command -v "base64" >/dev/null 2>&1; then
+        printf "%s\\n" "${@}" | base64 -d
+    elif command -v "openssl" >/dev/null 2>&1; then
+        printf "%s\\n" "${@}" | openssl enc -base64 -d
+    elif command -v "awk" >/dev/null 2>&1 && (command -v "uudecode" || command -v "busybox") >/dev/null 2>&1; then
+        if command -v "uudecode" >/dev/null 2>&1; then
+            uudecode__bin="uudecode"
+        elif command -v "busybox"  >/dev/null 2>&1; then
+            uudecode__bin="busybox uudecode"
+        fi
+        _decode64_awk() { [ ! -t 0 ] && set -- "${@}" "$(cat)"
+          [ -z "${1}" ] && return 1
+          printf "%s\\n" "${@}" | sed 's/=//g' | (
+            printf "begin 644 -\\n"; awk 'function _decode64_awk() {
+              inp=1; out=""; while (getline) { for(i=1; i<=length($0); i++) {
+                  c=substr(uu,index(b64,substr($0,i,1)),1);
+                  inp++; out=(out c); if (inp==61) {
+                    print "M" out; inp=1; out=""; }}}
+              if (length(out)) { printf "%c", (32+3*length(out)/4); print out; }}
+            BEGIN { b64="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+              uu="`!\"#$%&'\''()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_"
+              _decode64_awk(); exit; }'
+            printf "%s\\n%s\\n" '`' 'end' #'
+          ) | $uudecode__bin
+        }
+        printf "%s\\n" "${@}" | _decode64_awk
+    else
+        _decode64_sh() { [ ! -t 0 ] && set -- "${@}" "$(cat)"
+            _decode64_sh__b64='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+            _decode64_sh__n="0"; _decode64_sh__v="0"; _decode64_sh__args="$@"
+            while [ "${_decode64_sh__args}" ]; do #process char by char
+                _decode64_sh__char="${_decode64_sh__args%${_decode64_sh__args#?}}"
+                case "${_decode64_sh__char}" in
+                    '\n') continue ;;
+                     '=') _decode64_sh__v="$(($_decode64_sh__v << 6))" ;;
+                       *) _decode64_sh__char="${_decode64_sh__b64#*$_decode64_sh__char}"
+                          _decode64_sh__char="$((${#_decode64_sh__b64}-${#_decode64_sh__char}))"
+                          if [ "${_decode64_sh__char}" -eq "0" ]; then
+                            [ X"${_decode64_sh__args}" = X"${_decode64_sh__char}" ] &&\
+                                _decode64_sh__args='' || _decode64_sh__args="${_decode64_sh__args#?}"
+                            continue
+                          fi
+                          _decode64_sh__v="$(($_decode64_sh__v << 6 | $_decode64_sh__char-1))"
+                esac
+                _decode64_sh__n="$(($_decode64_sh__n+1))"
+                if [ "${_decode64_sh__n}" -eq "4" ]; then
+                    _decode64_sh__s="16"; while [ "${_decode64_sh__s}" -gt "-1" ]; do
+                        _decode64_sh__char="$(($_decode64_sh__v >> $_decode64_sh__s & 255))"
+                        printf \\$(($_decode64_sh__char/64*100+$_decode64_sh__char%64/8*10+$_decode64_sh__char%8))
+                        _decode64_sh__s="$(($_decode64_sh__s-8))"
+                    done
+                    _decode64_sh__v="0"; _decode64_sh__n="0"
+                fi
+                [ X"${_decode64_sh__args}" = X"${_decode64_sh__char}" ] &&\
+                    _decode64_sh__args='' || _decode64_sh__args="${_decode64_sh__args#?}"
+            done
+        }
+        printf "%s\\n" "${@}" | _decode64_sh
+    fi
+} # too hardcore for vim syntax`"
+
+_str2lower() {
+    [ -z "${1}" ] && return 1
+    printf "%s\\n" "${@}" | \
+    tr 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 'abcdefghijklmnopqrstuvwxyz'
+    # tr '[:upper:]' '[:lower:]'
+}
+
+_str2upper() {
+    [ -z "${1}" ] && return 1
+    printf "%s\\n" "${@}" | \
+        tr 'abcdefghijklmnopqrstuvwxyz' 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    # tr '[:upper:]' '[:lower:]'
+}
+
+_bytes2human() {
+    [ -z "${1}" ] && return 1
+    #is int?
+    case "${1%.*}" in
+        *[!0-9]*|"") return 1 ;;
+    esac
+
+    printf "%s" "${1}" | awk '{
+        split( "bytes Kb Mb Gb Tb Eb Pb Yb Zb" , v );
+        s=1; while($1>=1024) { $1/=1024; s++ }
+        printf("%.2f %s\n", $1, v[s])}' | sed 's:\.00 : :'
+}
+
+_loadconf() {
+    #$1 => config file
+    [ ! -f "${1}" ] && return 1
+    _loadconf__options=$(awk '! /export/ {if ($0 ~ "^.*=[^;&]*" && $0 !~ "&&" && $1 !~ "^#") print }' "${1}")
+    eval "${_loadconf__options}"
+}
+
+_escape_special_characters() {
+    #http://stackoverflow.com/questions/407523/escape-a-string-for-a-sed-replace-pattern
+    sed -e 's/[]\/$*.^|[]/\\&/g'
+}
+
+_failed_module() {
+    [ -z "${failed_modules}" ] && failed_modules="0"
+    failed_modules="$(($failed_modules+1))"
+}
+
+_module_notification() {
+    [ -z "${1}" ] && return 1
+    _verbose "notification module"
+    _staticus_report_notification "notification" "notification" "${*}"
+}
+
+_module_memory() {
+    # $1 => threshold
+    [ -z "${1}" ] && return 1
+    _verbose "memory module"
+
+    #https://bugzilla.redhat.com/show_bug.cgi?id=1253036
+    _mmemory__input="$(free -k | grep Mem)"
+
+    _mmemory__total="$(printf "%s" "${_mmemory__input}" | awk '{print $2}')"
+    _mmemory__used="$(printf  "%s" "${_mmemory__input}" | awk '{print $3}')"
+    _mmemory__used_percentage="$(printf "%s" "${_mmemory__input}" | awk '{printf "%.2f", $3/$2 * 100.0}' | cut -d\. -f1)"
+    _mmemory__threshold="$(printf "%s" "${_mmemory__total} ${1}"  | awk '{printf "%.2f", $1 * ($2/100)}' | cut -d\. -f1)"
+
+    _mmemory__description="$(printf "%s\\n%s\\n%s\\n" \
+        "* threshold $(_bytes2human "$(($_mmemory__threshold*1024))") (${1}%)" \
+        "* current   $(_bytes2human "$(($_mmemory__used*1024))") (${_mmemory__used_percentage}%)" \
+        "* total     $(_bytes2human "$(($_mmemory__total*1024))")")"
+
+    if [ "${_mmemory__used_percentage}" -ge "${1}" ]; then
+        _staticus_report_module "memory" "warning" "${_mmemory__description}"
+    else
+        _staticus_report_module "memory" "ok" "${_mmemory__description}"
+    fi
+}
+
+_module_swap() {
+    # $1 => threshold
+    [ -z "${1}" ] && return 1
+    _verbose "swap module"
+
+    #https://bugzilla.redhat.com/show_bug.cgi?id=1253036
+    _mswap__input="$(free -k | grep Swap)"
+
+    _mswap__total="$(printf "%s" "${_mswap__input}" | awk '{print $2}')"
+    _mswap__used="$(printf "%s" "${_mswap__input}"  | awk '{print $3}')"
+
+    [ X"${_mswap__total}" = X"0" ] && {
+        _staticus_report_module "swap" "error" \
+            "$(printf "%s\\n%s\\n" "* no swap configured" "  ${_mswap__input}")"
+        return 1
+    }
+
+    _mswap__used_percentage="$(printf "%s" "${_mswap__input}" | awk '{printf "%.2f", $3/$2 * 100.0}' | cut -d\. -f1)"
+    _mswap__threshold="$(printf "%s" "${_mswap__total} ${1}"  | awk '{printf "%.2f", $1 * ($2/100)}' | cut -d\. -f1)"
+
+    _mswap__description="$(printf "%s\\n%s\\n%s\\n" \
+        "* threshold $(_bytes2human "$(($_mswap__threshold*1024))") (${1}%)" \
+        "* current   $(_bytes2human "$(($_mswap__used*1024))") (${_mswap__used_percentage}%)" \
+        "* total     $(_bytes2human "$(($_mswap__total*1024))")")"
+
+    if [ "${_mswap__used_percentage}" -ge "${1}" ]; then
+        _staticus_report_module "swap" "warning" "${_mswap__description}"
+    else
+        _staticus_report_module "swap" "ok" "${_mswap__description}"
+    fi
+}
+
+_module_load() {
+    [ -z "${1}" ] && return 1
+    # $1 => threshold
+    _verbose "load module"
+
+    _mload__input="$(awk '{print $1}' /proc/loadavg 2>&1)" || {
+        _staticus_report_module "load" "error" "${_mload__input}"
+        return 1
+    }
+
+    _mload__used_percentage="$(printf "%s" "${_mload__input} ${1}" | awk '{printf "%.2f", ($1 * 100.0) / $2}' | cut -d\. -f1)"
+    _mload__description="$(printf "%s\\n%s\\n%s\\n" \
+        "* threshold ${1}" \
+        "* current   ${_mload__input} (${_mload__used_percentage}%)")"
+
+    if [ "${_mload__input%.*}" -ge "${1}" ]; then
+        _staticus_report_module "load" "warning" "${_mload__description}"
+    else
+        _staticus_report_module "load" "ok" "${_mload__description}"
+    fi
+}
+
+_module_storage() {
+    # $1 => threshold
+    # $2 => partitions
+    [ -z "${2}" ] && return 1
+    _verbose "storage module"
+
+    _mstorage__input="$(df -P 2>&1)" || {
+        _staticus_report_module "storage" "error" "${_mstorage__input}"
+        return 1
+    }
+
+    OLDIFS="${IFS}"
+    IFS=","; for partition in ${2}; do
+        _mstorage__partition="$(printf "%s" "${_mstorage__input}" | grep "${partition}$")"
+
+        if [ -z "${_mstorage__partition}" ]; then
+            _staticus_report_module "storage ${partition}" "error" "* partition ${partition} doesn't exists"
+            continue;
+        fi
+
+        _mstorage__total="$(printf "%s" "${_mstorage__partition}" | awk '{print $2}')"
+        _mstorage__used="$(printf "%s"  "${_mstorage__partition}" | awk '{print $3}')"
+        _mstorage__used_percentage="$(printf "%s" "${_mstorage__partition}" | awk '{gsub("%",""); print $5}')"
+        _mstorage__threshold="$(printf "%s" "${_mstorage__total} ${1}"  | awk '{printf "%.2f", $1 * ($2/100)}' | cut -d\. -f1)"
+
+        #df outputs numbers in Kb, convert them to bytes
+        _mstorage__used="$(($_mstorage__used*1024))"
+        _mstorage__total="$(($_mstorage__total*1024))"
+        _mstorage__threshold="$(($_mstorage__threshold*1024))"
+
+        _mstorage__description="$(printf "%s\\n%s\\n%s\\n" \
+            "* threshold $(_bytes2human "${_mstorage__threshold}") (${1}%)" \
+            "* current   $(_bytes2human "${_mstorage__used}") (${_mstorage__used_percentage}%)" \
+            "* total     $(_bytes2human "${_mstorage__total}")")"
+
+        if [ "${_mstorage__used_percentage}" -ge "${1}" ]; then
+            _staticus_report_module "storage ${partition}" "warning" "${_mstorage__description}"
+        else
+            _staticus_report_module "storage ${partition}" "ok" "${_mstorage__description}"
+        fi
+    done; IFS="${OLDIFS}"
+}
+
+_module_process() {
+    # $1 => processes
+    [ -z "${1}" ] && return 1
+    _verbose "process module"
+
+    _mprocess__input="$(ps aux 2>&1)" || {
+        _staticus_report_module "process" "error" "${_mprocess__input}"
+        return 1
+    }
+
+    OLDIFS="${IFS}"
+    IFS=","; for process in ${1}; do
+        _mprocess__name="$(printf "%s" "${_mprocess__input}"    | awk '/'"${process}"'/ {print; exit}')"
+        _mprocess__detailed="$(printf "%s" "${_mprocess__name}" | \
+            awk '{print "cpu:", $3 "%", "mem:", $4 "%s", "user:", $1, "cmd:", substr($0, index($0,$11)); exit}')"
+
+        _mprocess__description="$(printf "%s\\n" "* ${_mprocess__detailed}")"
+
+        if [ -z "${_mprocess__name}" ]; then
+            _mprocess__description="$(printf "%s\\n" "* process isn't running")"
+            _staticus_report_module "process ${process}" "warning" "${_mprocess__description}"
+        else
+            _staticus_report_module "process ${process}" "ok" "${_mprocess__description}"
+        fi
+    done; IFS="${OLDIFS}"
+}
+
+_module_info() {
+    _verbose "info module"
+
+    _minfo__uptime="$(uptime | awk '{sub(/,/," hours"); printf $3" "$4}')"
+    _minfo__description="$(printf "%s\\n%s\\n%s\\n" \
+        "* /etc/issue $(cat /etc/issue.net)" \
+        "* uname      $(uname -snvp)" \
+        "* uptime     ${_minfo__uptime}")"
+
+    _staticus_report_module "info" "info" "${_minfo__description}"
+}
+
+_staticus_report_title() {
+    [ -z "${1}" ] && return 1
+    printf "%s\\n" "# title: ${1}" > "${report_txt}"
+}
+
+_staticus_report_general_status() {
+    [ -z "${1}" ] && return 1
+
+    if [ "${1}" -lt "1" ]; then
+        sed -i "s/^# title:.*/&\n\n## status: ok\nEverything is running ok/" "${report_txt}"
+    else
+        sed -i "s/^# title:.*/&\n\n## status: error\nThere are ${1} issues/" "${report_txt}"
+    fi
+}
+
+_staticus_report_notification() {
+    #sed "# status:" and write after line
+    # $1 => memory|swap|load|...
+    # $2 => ok|warning|error|notification|...
+    # $3 => msg
+    [ -z "${2}" ] && return 1
+    printf "\\n%s\\n" "### ${1}: ${2}" >> "${report_txt}"
+    if [ -n "${3}" ]; then
+        printf "%s\\n" "${3}" >> "${report_txt}"
+    fi
+
+    if [ "$(_str2lower "${notify}")" = "true" ]; then
+        case "$(_str2lower "${2}")" in
+            error|warning) _staticus_notify "${1}" "$(_str2upper "${2}")" "${3}" ;;
+        esac
+    fi
+}
+
+_staticus_report_module() {
+    # $1 => memory|swap|load|...
+    # $2 => ok|warning|error|info|notification|...
+    # $3 => msg
+    [ -z "${2}" ] && return 1
+
+    printf "\\n%s\\n" "#### ${1}: ${2}" >> "${report_txt}"
+    if [ -n "${3}" ]; then
+        printf "%s\\n" "${3}" >> "${report_txt}"
+    fi
+
+    case "$(_str2lower "${2}")" in
+      error|warning) _failed_module
+          if [ "$(_str2lower "${notify}")" = "true" ]; then
+              _staticus_notify "${1}" "$(_str2upper "${2}")" "${3}"
+          fi
+          ;;
+    esac
+}
+
+_staticus_notify() {
+    # $1 => memory|swap|load|...
+    # $2 => ALERT|NOTIFICATION|CRITICAL|...
+    # $3 => msg
+    [ -z "${3}" ] && return 1
+
+    _staticus_notify_mailgun() {
+        if command -v "mailgun" >/dev/null; then
+            for contact in ${notify_contacts}; do
+                contact="$(printf "%s\\n" "${contact}" | sed "s:#%#:@:")"
+                mailgun --subject "${progname} - $(hostname -f): ${1} - ${2}" "${contact}" "$(
+                printf "+---Notification----------------------------+\\n"
+                printf "%b\\n" "${*}"
+                printf "+-------------------------------------------+\\n"
+                )" >/dev/null || return 1
+            done
+        else
+            printf "%b\\n" "mailgun is not available, install it to use this notification module" >&2
+            printf "%b\\n" "https://raw.githubusercontent.com/chilicuil/learn/master/sh/tools/mailgun" >&2
+            return 1
+        fi
+    }
+
+    _snotify__module="${1}"; shift
+    _snotify__type="${1}";   shift
+    printf "%b\\n%b\\n" "${_snotify__module} - ${_snotify__type}" "${*}" >&2
+    case "$(_str2lower "${notify_method}")" in
+        mailgun) _staticus_notify_"${notify_method}" "${_snotify__module}" "${_snotify__type}" "${*}" ;;
+              *) return 1;;
+    esac
+}
+
+_inflate_theme() {
+    # $1 => theme
+    # $2 => report_html
+    eval "_itheme__b64=\$theme_${1}"
+    _itheme__tmpdir="$(mktemp -d)" || return 1
+    ( cd "${_itheme__tmpdir}" && printf "%s" "${_itheme__b64}" | _decode64 | zcat | tar xvf - >/dev/null ) || \
+        { rm -rf  "${_itheme__tmpdir}"; return 1; }
+    for _itheme__template in "${_itheme__tmpdir}"/*; do
+        [ -f "${_itheme__template}" ] || return 1
+        mv "${_itheme__template}" "${2}" && rm -rf "${_itheme__tmpdir}"
+        return 0
+    done
+}
+
+_staticus_txt2html() {
+    [ -z "${3}" ] && return 1
+    _stxt2html__report_txt="${1}"
+    _stxt2html__report_html="${2}"
+    _stxt2html__theme="${3}"
+    _inflate_theme "${_stxt2html__theme}" "${_stxt2html__report_html}" || return 1
+    _stxt2html__report_txt_content="$(cat "${_stxt2html__report_txt}")"
+    _stxt2html__report_html_content="$(cat "${_stxt2html__report_html}")"
+
+    #title section
+    _stxt2html__title="$(printf "%s" "${_stxt2html__report_txt_content}" | \
+        awk '/^# title:/ {print substr($0, index($0,$3)); exit}' | \
+        _escape_special_characters)"
+    if [ -z "${_stxt2html__title}" ]; then
+        _verbose "txt2html: no title was found, skipping..."
+    else
+        _stxt2html__report_html_content="$(printf "%s" "${_stxt2html__report_html_content}" | \
+            sed "s/STATICUS_TITLE/${_stxt2html__title}/g")"
+    fi
+
+    #status section
+    _stxt2html__status="$(printf "%s" "${_stxt2html__report_txt_content}" | \
+        awk '/^## status:/ {print substr($0, index($0,$3)); exit}' | \
+        _escape_special_characters)"
+    _stxt2html__status_description="$(printf "%s" "${_stxt2html__report_txt_content}" | \
+        awk '/^## status:/ {getline;print;exit}' | _escape_special_characters)"
+    if [ -z "${_stxt2html__status}" ]; then
+        _verbose "txt2html: no status was found, skipping..."
+    else
+        case "${_stxt2html__status}" in
+            ok) _stxt2html__report_html_content="$(printf "%s" \
+                  "${_stxt2html__report_html_content}" | \
+                   sed "s/STATICUS_EVERYTHING_OK/${_stxt2html__status_description}/g")" ;;
+            error) _stxt2html__report_html_content="$(printf "%s" \
+                   "${_stxt2html__report_html_content}"   | \
+                   sed "s/STATICUS_FAILED_MODULES/${_stxt2html__status_description}/g")";;
+        esac
+    fi
+
+    #notification section
+    _stxt2html__notification="$(printf "%s" "${_stxt2html__report_txt_content}" | \
+        awk '/^### notification:/ {print substr($0, index($0,$3)); exit}' | \
+        _escape_special_characters)"
+    _stxt2html__notification_description="$(printf "%s" "${_stxt2html__report_txt_content}" | \
+        sed '1,/^### notification/d;/####/,$d' | sed '/^\s*$/d' | \
+        _escape_special_characters)"
+    if [ -z "${_stxt2html__notification}" ]; then
+        _verbose "txt2html: no notification was found, skipping..."
+    else
+        _stxt2html__report_html_content="$(printf "%s" \
+            "${_stxt2html__report_html_content}" | \
+            sed "s/STATICUS_NOTIFICATION/${_stxt2html__notification_description}/g")"
+    fi
+
+    #modules section
+    _stxt2html__modules="$(printf "%s" "${_stxt2html__report_txt_content}" | awk '/^#### /')"
+    if [ -z "${_stxt2html__modules}" ]; then
+        _verbose "txt2html: no modules were found, skipping..."
+    else
+        _stxt2html__report_html_content="$(printf "%s" \
+            "${_stxt2html__report_html_content}" | sed 's/STATICUS_MODULE_PLACEHOLDER//g')"
+        OLDIFS="${IFS}"; IFS='
+';          for _stxt2html__module in ${_stxt2html__modules}; do
+            _stxt2html__module_status="${_stxt2html__module##*:}"
+            _stxt2html__module_status="${_stxt2html__module##* }"
+            _stxt2html__module_escaped="$(printf "%s" "${_stxt2html__module}" | \
+                _escape_special_characters)"
+            _stxt2html__module_description="$(printf "%s" \
+                "${_stxt2html__report_txt_content}"    |  \
+                sed '1,/^'"${_stxt2html__module_escaped}"'/d;/####/,$d' | sed '/^\s*$/d')"
+            _stxt2html__module="$(printf "%s" "${_stxt2html__module}" | \
+                awk -F: '{gsub("^#### ","");print $1}' |  \
+                awk -F "" '{$1=toupper($1)}1' OFS=)"
+
+            #special info formatting
+            if [ "${_stxt2html__module}" = "Info" ]; then
+              _stxt2html__report_html_content="$(printf "%s" \
+              "${_stxt2html__report_html_content}" | sed 's/STATICUS_INFO_PLACEHOLDER//g')"
+              for _stxt2html__module_description_line in ${_stxt2html__module_description}; do
+                  _stxt2html__module_description_line="${_stxt2html__module_description_line#* }"
+                  _stxt2html__module_info_cmd="${_stxt2html__module_description_line%% *}"
+                  _stxt2html__module_info_description="${_stxt2html__module_description_line#* }"
+
+                  _stxt2html__report_html_content="$(printf "%s" \
+                      "${_stxt2html__report_html_content}"   |   \
+                      awk '/STATICUS_INFO_DESCRIPTION/ {print;print;next}; 1')"
+
+                  _stxt2html__report_html_content="$(printf "%s" \
+                      "${_stxt2html__report_html_content}"   |   \
+                      awk -v cmd="${_stxt2html__module_info_cmd}"\
+                      -v description="${_stxt2html__module_info_description}" \
+                      '/STATICUS_INFO_DESCRIPTION/ && !seen {
+                      gsub(/STATICUS_INFO_CMD/, cmd);
+                      gsub(/STATICUS_INFO_DESCRIPTION/, description);seen=1;print;next}; 1')"
+              done
+            else
+                _stxt2html__report_html_content="$(printf "%s" \
+                    "${_stxt2html__report_html_content}"   |   \
+                    awk '/module '"${_stxt2html__module_status}"'.*STATICUS_MODULE_DESCRIPTION/ {
+                    print;print;next}; 1')"
+                _stxt2html__report_html_content="$(printf "%s" \
+                    "${_stxt2html__report_html_content}"   |   \
+                    awk -v module="${_stxt2html__module}"      \
+                    -v description="${_stxt2html__module_description}" \
+                    '/module '"${_stxt2html__module_status}"'.*STATICUS_MODULE_DESCRIPTION/ && !seen {
+                    gsub(/STATICUS_MODULE_NAME/, module);
+                    gsub(/STATICUS_MODULE_DESCRIPTION/, description);seen=1;print;next}; 1')"
+            fi
+        done; IFS="${OLDIFS}"
+    fi
+
+    #contacts section
+    if [ -z "${notify_contacts}" ]; then
+        _verbose "txt2html: no contacts were found, skipping..."
+    else
+        _stxt2html__report_html_content="$(printf "%s" \
+            "${_stxt2html__report_html_content}" | sed 's/STATICUS_CONTACT_PLACEHOLDER//g')"
+        for _stxt2html__contact in ${notify_contacts}; do
+            _stxt2html__report_html_content="$(printf "%s" \
+                "${_stxt2html__report_html_content}"   |   \
+                awk '/mailto:STATICUS_CONTACT/ {print;print;next}; 1')"
+            _stxt2html__report_html_content="$(printf "%s" \
+                "${_stxt2html__report_html_content}"   |   \
+                awk -v contact="${_stxt2html__contact}"    \
+                '/mailto:STATICUS_CONTACT/ && !seen {
+                gsub(/STATICUS_CONTACT/, contact);seen=1;print;next}; 1')"
+        done
+    fi
+
+    #cleanup not used placeholders
+    _stxt2html__report_html_content="$(printf "%s" "${_stxt2html__report_html_content}" | \
+        sed '/STATICUS_/d')"
+    #update IDs
+    _stxt2html__report_html_content="$(printf "%s" "${_stxt2html__report_html_content}" | \
+        awk '/ID_/ {counter++; gsub(/ID_./, "ID_" counter ); print;next}; 1')"
+    #write final html report
+    printf "%s" "${_stxt2html__report_html_content}" > "${_stxt2html__report_html}"
+}
+
+_staticus() {
+    _staticus_report_title "Staticus - $(hostname -f) $(date "${date_format}")"
+    OLDIFS="${IFS}"
+    IFS=","; for module in $(_str2lower "${modules}"); do
+        case "${module}" in
+            notification) _module_"${module}" "${module_notification_msg}" ;;
+            memory)  _module_"${module}" "${module_memory_threshold}" ;;
+            swap)    _module_"${module}" "${module_swap_threshold}"   ;;
+            load)    _module_"${module}" "${module_load_threshold}"   ;;
+            storage) _module_"${module}" "${module_storage_threshold}" "${module_storage_partitions}" ;;
+            process) _module_"${module}" "${module_process_list}"     ;;
+            info)    _module_"${module}" ;;
+            *) printf "%s\\n" "module ${module} doesn't exists, skipping..." >&2 ;;
+        esac
+    done; IFS="${OLDIFS}"
+    _staticus_report_general_status "${failed_modules:-0}"         || return 1
+    _staticus_txt2html "${report_txt}" "${report_html}" "${theme}" || return 1
+    return "${failed_modules:-0}"
+}
+
+progname="$(_basename "${0}")"
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- "${@}" $(cat)
+fi
+
+[ "${#}" -eq "0" ] && _die
+
+for arg; do #parse options
+    case "${arg}" in
+        -h|--help) _usage && exit  ;;
+        -v|--verbose) verbose="on"; shift ;;
+        '-c'|'--config'|-c*|--config*)
+            case "${arg}" in
+                '-c'|'--config')
+                    if [ "${#}" -gt "1" ]; then
+                        case "${2}" in
+                            -*) _die "Option '${arg}' requires a parameter" ;;
+                        esac
+                        shift; user_config_file="${1}"; [ "${1}" ] && shift
+                    else
+                        _die "Option '${arg}' requires a parameter"
+                    fi
+                    ;;
+                -c*) user_config_file="${1#-c}"; shift ;;
+                --config*) user_config_file="${1#--config}"; shift ;;
+            esac
+            if [ -f "${user_config_file}" ]; then
+               [ -r "${user_config_file}" ] && config_file="${user_config_file}" || \
+                _die "Specified config file '${user_config_file}' isn't readable"
+            else
+                _die "Specified config file '${user_config_file}' doesn't exists"
+            fi
+            ;;
+        '-m'|'--modules'|-m*|--modules*)
+            case "${arg}" in
+                '-m'|'--modules')
+                    if [ "${#}" -gt "1" ]; then
+                        case "${2}" in
+                            -*) _die "Option '${arg}' requires a parameter" ;;
+                        esac
+                        shift; user_modules="${1}"; [ "${1}" ] && shift
+                    else
+                        _die "Option '${arg}' requires a parameter"
+                    fi
+                    ;;
+                -m*) user_modules="${1#-m}"; shift ;;
+                --modules*) user_modules="${1#--modules}"; shift ;;
+            esac
+            case "${user_modules}" in
+                all) : ;;
+                *) modules="${user_modules}"
+            esac
+            ;;
+        '-o'|'--output-html'|-o*|--output-html*)
+            case "${arg}" in
+                '-o'|'--output-html')
+                    if [ "${#}" -gt "1" ]; then
+                        case "${2}" in
+                            -*) _die "Option '${arg}' requires a parameter" ;;
+                        esac
+                        shift; user_page_html="${1}"; [ "${1}" ] && shift
+                    else
+                        _die "Option '${arg}' requires a parameter"
+                    fi
+                    ;;
+                -o*) user_page_html="${1#-o}"; shift ;;
+                --output-html*) user_page_html="${1#--output-html}"; shift ;;
+            esac
+            touch "${user_page_html}" >/dev/null 2>&1 || _die "Unable to create '${user_page_html}' output file"
+            [ -w "${user_page_html}" ] && rm -rf "${user_page_html}" || \
+                _die "Unable to write to '${user_page_html}' output file"
+            report_html="${user_page_html}"
+            ;;
+        '-O'|'--output-txt'|-O*|--output-txt*)
+            case "${arg}" in
+                '-O'|'--output-txt')
+                    if [ "${#}" -gt "1" ]; then
+                        case "${2}" in
+                            -*) _die "Option '${arg}' requires a parameter" ;;
+                        esac
+                        shift; user_page_txt="${1}"; [ "${1}" ] && shift
+                    else
+                        _die "Option '${arg}' requires a parameter"
+                    fi
+                    ;;
+                -O*) user_page_txt="${1#-O}"; shift ;;
+                --output-txt*) user_page_txt="${1#--output-txt}"; shift ;;
+            esac
+            touch "${user_page_txt}" >/dev/null 2>&1 || _die "Unable to create '${user_page_txt}' output file"
+            [ -w "${user_page_txt}" ] && rm -rf "${user_page_txt}" || \
+                _die "Unable to write to '${user_page_txt}' output file"
+            report_txt="${user_page_txt}"
+            ;;
+        --txt2html|--txt2html*)
+            case "${arg}" in
+                '--txt2html')
+                    if [ "${#}" -gt "1" ]; then
+                        case "${2}" in
+                            -*) _die "Option '${arg}' requires a parameter" ;;
+                        esac
+                        shift; user_txt2html="${1}"; [ "${1}" ] && shift
+                    else
+                        _die "Option '${arg}' requires a parameter"
+                    fi
+                    ;;
+                --txt2html*) user_txt2html="${1#--txt2html}"; shift ;;
+            esac
+            if [ -r "${user_txt2html}" ]; then
+               [ -f "${user_txt2html}" ] && report_txt="${user_txt2html}" || \
+                    _die "Specified ${progname} file '${user_txt2html}' doesn't exists"
+            else
+                _die "Specified ${progname} file '${user_config_file}' isn't readable"
+            fi
+            ;;
+        --theme|--theme*)
+            case "${arg}" in
+                '--theme')
+                    if [ "${#}" -gt "1" ]; then
+                        case "${2}" in
+                            -*) _die "Option '${arg}' requires a parameter" ;;
+                        esac
+                        shift; user_theme="${1}"; [ "${1}" ] && shift
+                    else
+                        _die "Option '${arg}' requires a parameter"
+                    fi
+                    ;;
+                --theme*) user_theme="${1#--theme}"; shift ;;
+            esac
+            if [ -z "$(printf "%s\\n" "${themes}" | tr ' ' '\n' | awk "/^$user_theme\$/")" ]; then
+                printf "%s\\n" "${progname}: '${user_theme}' is not a recognized theme, using default ..." >&2
+            fi
+            ;;
+        --list-modules) printf "%s\\n" "${modules}" | tr ',' '\n'; exit 0; ;;
+        --list-themes)  printf "%s\\n" "${themes}"  | tr ',' '\n'; exit 0; ;;
+        -*) _die "${progname}: unrecognized option '${arg}'" ;;
+    esac
+done
+
+_loadconf "${config_file}"
+if [ -z "${user_txt2html}" ]; then
+    _staticus
+else
+    _staticus_txt2html "${report_txt}" "${report_html}" "${theme}"
+fi
+
+# vim: set ts=4 sw=4 tw=0 ft=sh :

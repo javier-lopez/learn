@@ -1,0 +1,927 @@
+#Based on the GNU shtool test suite
+
+@begin{backup-dbs}
+backup-dbs -h ; test X"${?}"                           = X"0"
+printf "%s" '-h' | backup-dbs; test X"${?}"            = X"0"
+backup-dbs --help ; test X"${?}"                       = X"0"
+printf "%s" '--help' | backup-dbs; test X"${?}"        = X"0"
+backup-dbs --cui; test X"${?}"                         = X"1"
+printf "%s" '--cui' | backup-dbs; test X"${?}"         = X"1"
+test X"$(backup-dbs | head -1)"                        = X""
+test X"$(backup-dbs 2>&1 | head -1)"                   = X"Usage: backup-dbs [options] -u USER -p PASSWD [database]..."
+test X"$(backup-dbs -h | head -1)"                     = X"Usage: backup-dbs [options] -u USER -p PASSWD [database]..."
+test X"$(printf "%s" '-h' | backup-dbs | head -1)"     = X"Usage: backup-dbs [options] -u USER -p PASSWD [database]..."
+test X"$(backup-dbs --help | head -1)"                 = X"Usage: backup-dbs [options] -u USER -p PASSWD [database]..."
+test X"$(printf "%s" '--help' | backup-dbs | head -1)" = X"Usage: backup-dbs [options] -u USER -p PASSWD [database]..."
+test X"$(backup-dbs -cui  | head -1)"                  = X""
+test X"$(backup-dbs -cui 2>&1 | head -1)"              = X"backup-dbs: unrecognized option '-cui'"
+test X"$(backup-dbs -u  | head -1)"                    = X""
+test X"$(backup-dbs -u 2>&1 | head -1)"                = X"Option '-u' requires a parameter"
+test X"$(backup-dbs -p 2>&1 | head -1)"                = X"Option '-p' requires a parameter"
+test X"$(backup-dbs -c 2>&1 | head -1)"                = X"Option '-c' requires a parameter"
+test X"$(backup-dbs -o 2>&1 | head -1)"                = X"Option '-o' requires a parameter"
+test X"$(backup-dbs -u cui  | head -1)"                = X""
+test X"$(backup-dbs -u cui 2>&1 | head -1)"            = X"Usage: backup-dbs [options] -u USER -p PASSWD [database]..."
+test X"$(backup-dbs -p cui 2>&1 | head -1)"            = X"Usage: backup-dbs [options] -u USER -p PASSWD [database]..."
+test X"$(backup-dbs -c cui 2>&1 | head -1)"            = X"Configuration file 'cui' doesn't exists"
+@end
+
+@begin{backup-remote-rsync}
+backup-remote-rsync; test X"${?}"                                = X"1"
+backup-remote-rsync -h; test X"${?}"                             = X"0"
+printf "%s" '-h' | backup-remote-rsync; test X"${?}"             = X"0"
+backup-remote-rsync --help; test X"${?}"                         = X"0"
+printf "%s" '--help' | backup-remote-rsync; test X"${?}"         = X"0"
+backup-remote-rsync --cui; test X"${?}"                          = X"1"
+printf "%s" '--cui' | backup-remote-rsync; test X"${?}"          = X"1"
+test X"$(backup-remote-rsync    | head -1)"                      = X""
+test X"$(backup-remote-rsync 2>&1 | head -1)"                    = X"Usage: backup-remote-rsync -r DOMAIN[:/PATH] [OPTIONS] [LOCAL DIR|FILE ...]"
+test X"$(backup-remote-rsync -h | head -1)"                      = X"Usage: backup-remote-rsync -r DOMAIN[:/PATH] [OPTIONS] [LOCAL DIR|FILE ...]"
+test X"$(printf "%s" '-h' | backup-remote-rsync |head -1)"       = X"Usage: backup-remote-rsync -r DOMAIN[:/PATH] [OPTIONS] [LOCAL DIR|FILE ...]"
+test X"$(backup-remote-rsync --help |head -1)"                   = X"Usage: backup-remote-rsync -r DOMAIN[:/PATH] [OPTIONS] [LOCAL DIR|FILE ...]"
+test X"$(printf "%s" '--help' | backup-remote-rsync | head -1)"  = X"Usage: backup-remote-rsync -r DOMAIN[:/PATH] [OPTIONS] [LOCAL DIR|FILE ...]"
+test X"$(backup-remote-rsync -cui | head -1)"                    = X""
+test X"$(backup-remote-rsync -cui 2>&1|head -1)"                 = X"backup-remote-rsync: unrecognized option '-cui'"
+test X"$(printf "%s" '-cui' | backup-remote-rsync 2>&1|head -1)" = X"backup-remote-rsync: unrecognized option '-cui'"
+test X"$(backup-remote-rsync -v 2>&1|head -1)"                   = X"backup-remote-rsync: no remote server specified"
+test X"$(printf "%s" '-n' | backup-remote-rsync 2>&1|head -1)"   = X"backup-remote-rsync: no remote server specified"
+test X"$(backup-remote-rsync -u 2>&1|head -1)"                   = X"Option '-u' requires a parameter"
+test X"$(printf "%s" '-p' | backup-remote-rsync 2>&1|head -1)"   = X"Option '-p' requires a parameter"
+test X"$(backup-remote-rsync -i 2>&1|head -1)"                   = X"Option '-i' requires a parameter"
+test X"$(printf "%s" '-l' | backup-remote-rsync | head -1)"      = X""
+test X"$(printf "%s" '-l' | backup-remote-rsync 2>&1|head -1)"   = X"Option '-l' requires a parameter"
+@end
+
+@begin{bin-dpkg-rdeps}
+bin-dpkg-rdeps ; test X"${?}"                                  = X"1"
+bin-dpkg-rdeps -h; test X"${?}"                                = X"0"
+printf "%s" '-h' | bin-dpkg-rdeps; test X"${?}"                = X"0"
+bin-dpkg-rdeps --help; test X"${?}"                            = X"0"
+printf "%s" '--help' | bin-dpkg-rdeps --help; test X"${?}"     = X"0"
+bin-dpkg-rdeps --cui; test X"${?}"                             = X"1"
+printf "%s" '--cui' | bin-dpkg-rdeps --help; test X"${?}"      = X"0"
+test X"$(bin-dpkg-rdeps -h | head -1)"                         = X"Usage: bin-dpkg-rdeps binary ..."
+test X"$(printf "%s" '-h'  | bin-dpkg-rdeps | head -1)"        = X"Usage: bin-dpkg-rdeps binary ..."
+test X"$(bin-dpkg-rdeps --help | head -1)"                     = X"Usage: bin-dpkg-rdeps binary ..."
+test X"$(printf "%s" '--help' | bin-dpkg-rdeps | head -1)"     = X"Usage: bin-dpkg-rdeps binary ..."
+test X"$(bin-dpkg-rdeps --cui | head -1)"                      = X""
+test X"$(bin-dpkg-rdeps --cui 2>&1|head -1)"                   = X"bin-dpkg-rdeps: unrecognized option '--cui'"
+test X"$(printf "%s" '--cui' | bin-dpkg-rdeps 2>&1|head -1)"   = X"bin-dpkg-rdeps: unrecognized option '--cui'"
+test X"$(bin-dpkg-rdeps cui 2>&1|head -1)"                     = X""
+test X"$(printf "%s" 'cui' | bin-dpkg-rdeps cui 2>&1|head -1)" = X""
+test X"$(bin-dpkg-rdeps [ 2>&1|head -1)"                       = X"bin-dpkg-rdeps: not a dynamic executable '['"
+test X"$(printf "%s" '[' | bin-dpkg-rdeps | head -1)"          = X""
+test X"$(bin-dpkg-rdeps cui [ 2>&1|head -1)"                   = X"bin-dpkg-rdeps: not a dynamic executable '['"
+test X"$(printf "%s" 'cui [' | bin-dpkg-rdeps 2>&1|head -1)"   = X"bin-dpkg-rdeps: not a dynamic executable '['"
+test X"$(bin-dpkg-rdeps which [ 2>&1|wc -l)"                   = X"2"
+test X"$(printf "%s" 'which [' | bin-dpkg-rdeps 2>&1|wc -l)"   = X"2"
+#bin-dpkg-rdeps dpkg | grep ".*"
+@end
+
+@begin{cat-show}
+cat-show ; test X"${?}"                                = X"1"
+cat-show -h ; test X"${?}"                             = X"0"
+printf "%s" '-h' | cat-show; test X"${?}"              = X"0"
+cat-show --help ; test X"${?}"                         = X"0"
+printf "%s" '--help' | cat-show; test X"${?}"          = X"0"
+cat-show --cui; test X"${?}"                           = X"1"
+printf "%s" '--cui' | cat-show; test X"${?}"           = X"1"
+test X"$(cat-show | head -1)"                          = X""
+test X"$(cat-show 2>&1 | head -1)"                     = X"Usage: cat-show script"
+test X"$(cat-show -h |head -1)"                        = X"Usage: cat-show script"
+test X"$(printf "%s" '-h' | cat-show | head -1)"       = X"Usage: cat-show script"
+test X"$(cat-show --help  | head -1)"                  = X"Usage: cat-show script"
+test X"$(printf "%s" '--help' | cat-show | head -1)"   = X"Usage: cat-show script"
+test X"$(cat-show --cui | head -1)"                    = X""
+test X"$(cat-show --cui 2>&1 | head -1)"               = X"cat-show: unrecognized option '--cui'"
+test X"$(printf "%s" '--cui' | cat-show 2>&1|head -1)" = X"cat-show: unrecognized option '--cui'"
+test X"$(cat-show cui 2>&1|head -1)"                   = X"cat-show: 'cui' was not found in \$PATH"
+test X"$(printf "%s" 'cui' | cat-show 2>&1|head -1)"   = X"cat-show: 'cui' was not found in \$PATH"
+@end
+
+@begin{cconverter}
+cconverter ; test X"${?}"                                      = X"1"
+cconverter -h ; test X"${?}"                                   = X"0"
+printf "%s" '-h' | cconverter; test X"${?}"                    = X"0"
+cconverter --help ; test X"${?}"                               = X"0"
+cconverter --cui; test X"${?}"                                 = X"1"
+test X"$(cconverter | head -1)"                                = X""
+test X"$(cconverter 2>&1 | head -1)"                           = X"Usage: cconverter [options] int|float currency [to] currency"
+test X"$(printf "%s" '-h' | cconverter | head -1)"             = X"Usage: cconverter [options] int|float currency [to] currency"
+test X"$(printf "%s" '--help' | cconverter | head -1)"         = X"Usage: cconverter [options] int|float currency [to] currency"
+test X"$(printf "%s" '--cui'  | cconverter  | head -1)"        = X""
+test X"$(printf "%s" '--cui'  | cconverter 2>&1|head -1)"      = X"cconverter: unrecognized option '--cui'"
+test X"$(cconverter cui 2>&1  | head -1)"                      = X"cconverter: missing parameters"
+test X"$(cconverter cui cui 2>&1 | head -1)"                   = X"cconverter: missing parameters"
+test X"$(cconverter cui cui cui 2>&1 | head -1)"               = X"cconverter: invalid syntax 'cui cui cui'"
+test X"$(cconverter 1 usd mxn | awk '{print $1 $2 $3 $5}')"    = X"1USD=MXN"
+test X"$(cconverter 1 usd to mxn | awk '{print $1 $2 $3 $5}')" = X"1USD=MXN"
+test X"$(cconverter '1 usd to mxn' | awk '{print $1 $2 $3 $5}')" = X"1USD=MXN"
+@end
+
+@begin{compress}
+compress; test X"${?}"                                 = X"1"
+compress -h; test X"${?}"                              = X"0"
+printf "%s" '-h' | compress; test X"${?}"              = X"0"
+compress --help ; test X"${?}"                         = X"0"
+printf "%s" '--help' | compress; test X"${?}"          = X"0"
+compress --cui; test X"${?}"                           = X"1"
+printf "%s" '--cui' | compress; test X"${?}"           = X"1"
+test X"$(compress | head -1)"                          = X""
+test X"$(compress 2>&1 | head -1)"                     = X"Usage: compress [options] files ... file.[tar.gz,tar.bz2,zip...]"
+test X"$(compress -h | head -1)"                       = X"Usage: compress [options] files ... file.[tar.gz,tar.bz2,zip...]"
+test X"$(printf "%s" '-h' | compress | head -1)"       = X"Usage: compress [options] files ... file.[tar.gz,tar.bz2,zip...]"
+test X"$(compress --help  | head -1)"                  = X"Usage: compress [options] files ... file.[tar.gz,tar.bz2,zip...]"
+test X"$(printf "%s" '-v' | compress | head -1)"       = X""
+test X"$(printf "%s" '-v' | compress 2>&1|head -1)"    = X"compress: missing parameters"
+test X"$(printf "%s" '--cui' | compress 2>&1|head -1)" = X"compress: unrecognized option '--cui'"
+test X"$(compress -v cui 2>&1|head -1)"                = X"compress: missing parameters"
+test X"$(compress cui cui.tar 2>&1|head -1)"           = X"compress: 'cui' does not exist or is not readable"
+printf "%s" "o@o/" > cuicui && printf "%s" "\oVo" > cuakcuak
+compress cuicui cuicui.tar && test -f cuicui.tar
+printf "%s" 'c.tar.gz' | compress cuicui cuakcuak && test -f c.tar.gz
+rm cuicui cuakcuak && tar xf cuicui.tar && test -f cuicui && test X"$(cat cuicui)" = X"o@o/"
+zcat < c.tar.gz | tar xf - && test -f cuicui && test -f cuakcuak
+test X"$(cat cuicui)" = X"o@o/" && test X"$(cat cuakcuak)" = X"\oVo"
+@end
+
+@begin{cpb64}
+cpb64; test X"${?}"                                 = X"1"
+cpb64 -h; test X"${?}"                              = X"0"
+printf "%s" '-h' | cpb64; test X"${?}"              = X"0"
+printf "%s" '--help' | cpb64; test X"${?}"          = X"0"
+cpb64 --cui; test X"${?}"                           = X"1"
+test X"$(cpb64 | head -1 )"                         = X""
+test X"$(cpb64 2>&1 | head -1 )"                    = X"Usage: cpb64 [options] file ..."
+test X"$(cpb64 -p   | head -1 )"                    = X""
+test X"$(cpb64 -p 2>&1 | head -1 )"                 = X"cpb64: missing parameters"
+test X"$(cpb64 -h | head -1 )"                      = X"Usage: cpb64 [options] file ..."
+test X"$(printf "%s" '--help' | cpb64 | head -1)"   = X"Usage: cpb64 [options] file ..."
+test X"$(cpb64 --cui 2>&1|head -1)"                 = X"cpb64: unrecognized option '--cui'"
+printf "%s" "o@o/" > cui
+base64="$(cpb64 cui)" && rm cui && eval "${base64}" && test X"$(cat cui)" = X"o@o/"
+printf "%s" "\oVo" > cuak
+base64="$(cpb64 cui cuak)" && rm cui cuak && eval "$base64"
+test X"$(cat cui)" = X"o@o/" && test X"$(cat cuak)" = X"\oVo"
+@end
+
+@begin{crypt}
+crypt; test X"${?}"                                 = X"1"
+crypt a; test X"${?}"                               = X"1"
+crypt -h ; test X"${?}"                             = X"0"
+printf "%s" '-h' | crypt; test X"${?}"              = X"0"
+crypt --help ; test X"${?}"                         = X"0"
+printf "%s" '--help' | crypt; test X"${?}"          = X"0"
+crypt --cui; test X"${?}"                           = X"1"
+printf "%s" '--cui' | crypt; test X"${?}"           = X"1"
+test X"$(crypt)"                                    = X""
+test X"$(crypt 2>&1)"                               = X"Usage: crypt file ..."
+test X"$(crypt a)"                                  = X""
+test X"$(crypt a 2>&1)"                             = X"'a' doesn't exist"
+test X"$(crypt -h)"                                 = X"Usage: crypt file ..."
+test X"$(printf "%s" '-h' | crypt)"                 = X"Usage: crypt file ..."
+test X"$(crypt --help)"                             = X"Usage: crypt file ..."
+test X"$(printf "%s" '--help' | crypt)"             = X"Usage: crypt file ..."
+test X"$(crypt --cui | head -1)"                    = X""
+test X"$(crypt --cui 2>&1|head -1)"                 = X"crypt: unrecognized option '--cui'"
+test X"$(printf "%s" '--cui' | crypt 2>&1|head -1)" = X"crypt: unrecognized option '--cui'"
+test X"$(printf "%s" 'a' | crypt 2>&1)"             = X"'a' doesn't exist"
+test X"$(crypt a b 2>&1 | wc -l)"                   = X"2"
+printf "#!/bin/sh\\n" > a && printf "printf a" >> a
+crypt a & sleep 0.5 && xdotool type "pass" && xdotool key "Return" && sleep 0.5 && xdotool type "pass1" && xdotool key "Return"
+test ! -f a.crypt
+printf "%s" 'a' | crypt & sleep 0.5 && xdotool type "pass" && xdotool key "Return" && sleep 0.5 && xdotool type "pass" && xdotool key "Return" && sleep 1.3
+test -f a.crypt
+bash a.crypt > a.output & sleep 0.5 && xdotool type "pass1" && xdotool key "Return" && test X"$(cat a.output)" = X""
+bash a.crypt > a.output & sleep 0.5 && xdotool type "pass"  && xdotool key "Return" && sleep 0.5 && test X"$(cat a.output)" = X"a"
+#TODO 09-09-2014 15:10 >> fix bash dependency
+@end
+
+@begin{dcolors}
+dcolors; test X"${?}"                              = X"1"
+dcolors -h; test X"${?}"                           = X"0"
+printf "%s" '-h' | dcolors; test X"${?}"           = X"0"
+printf "%s" '--help' | dcolors; test X"${?}"       = X"0"
+dcolors --cui; test X"${?}"                        = X"1"
+dcolors cui; test X"${?}"                          = X"1"
+test X"$(dcolors | head -1 )"                      = X""
+test X"$(dcolors 2>&1 | head -1 )"                 = X"Usage: dcolors [options] image-file ..."
+test X"$(dcolors -h | head -1 )"                   = X"Usage: dcolors [options] image-file ..."
+test X"$(printf "%s" '--help' | dcolors|head -1)"  = X"Usage: dcolors [options] image-file ..."
+test X"$(dcolors --cui | head -1)"                 = X""
+test X"$(dcolors --cui 2>&1 | head -1)"            = X"dcolors: unrecognized option '--cui'"
+test X"$(printf "%s" '-d' | dcolors 2>&1|head -1)" = X"Option '-d' requires a parameter"
+test X"$(printf "%s" '-k' | dcolors 2>&1|head -1)" = X"Option '-k' requires a parameter"
+test X"$(dcolors -r 2>&1|head -1)"                 = X"Option '-r' requires a parameter"
+test X"$(dcolors -f 2>&1|head -1)"                 = X"Option '-f' requires a parameter"
+test X"$(dcolors -f cui | head -1)"                = X""
+test X"$(dcolors -f cui 2>&1|head -1)"             = X"Output valid formats are rgb|hex: 'cui'"
+test X"$(dcolors cui 2>&1|head -1)"                = X"Warning: 'cui' doesn't exist, skipping..."
+@end
+
+@begin{elastix-cli}
+elastix-cli; test X"${?}"                                  = X"1"
+elastix-cli -h ; test X"${?}"                              = X"1"
+printf "%s" '-h' | elastix-cli; test X"${?}"               = X"1"
+elastix-cli --help ; test X"${?}"                          = X"0"
+printf "%s" '--help' | elastix-cli; test X"${?}"           = X"0"
+elastix-cli --cui; test X"${?}"                            = X"1"
+printf "%s" '--cui' | elastix-cli; test X"${?}"            = X"1"
+test X"$(elastix-cli | head -1 )"                          = X""
+test X"$(elastix-cli 2>&1|head -1)"                        = X"Usage: elastix-cli [options] type args..."
+test X"$(elastix-cli --help | head -1)"                    = X"Usage: elastix-cli [options] type args..."
+test X"$(printf "%s" '--help' | elastix-cli | head -1)"    = X"Usage: elastix-cli [options] type args..."
+test X"$(elastix-cli -cui | head -1)"                      = X""
+test X"$(elastix-cli -cui 2>&1|head -1)"                   = X"elastix-cli: unrecognized option '-cui'"
+test X"$(printf "%s" '-cui' | elastix-cli 2>&1|head -1)"   = X"elastix-cli: unrecognized option '-cui'"
+test X"$(elastix-cli -h 2>&1 | head -1)"                   = X"Option '-h' requires a Host string"
+test X"$(printf "%s" '-h' | elastix-cli 2>&1 | head -1)"   = X"Option '-h' requires a Host string"
+test X"$(elastix-cli -c 2>&1|head -1)"                     = X"Option '-c' requires a FILE parameter"
+test X"$(printf "%s" '-c o@o' | elastix-cli 2>&1|head -1)" = X"'o@o' doesn't exist"
+test X"$(elastix-cli -p 2>&1|head -1)"                     = X"Option '-p' requires a Password string"
+@end
+
+@begin{exec-wrapper}
+exec-wrapper; test X"${?}"                              = X"1"
+exec-wrapper -h; test X"${?}"                           = X"0"
+printf "%s" '-h' | exec-wrapper; test X"${?}"           = X"0"
+printf "%s" '--help' | exec-wrapper; test X"${?}"       = X"0"
+exec-wrapper --cui; test X"${?}"                        = X"1"
+exec-wrapper cui; test X"${?}"                          = X"1"
+test X"$(exec-wrapper | head -1 )"                      = X""
+test X"$(exec-wrapper 2>&1 | head -1 )"                 = X"Usage: exec-wrapper [options] script|executable [wrapper-name]"
+test X"$(exec-wrapper -h | head -1 )"                   = X"Usage: exec-wrapper [options] script|executable [wrapper-name]"
+test X"$(printf "%s" '--help' | exec-wrapper|head -1)"  = X"Usage: exec-wrapper [options] script|executable [wrapper-name]"
+test X"$(exec-wrapper --cui | head -1)"                 = X""
+test X"$(exec-wrapper --cui 2>&1|head -1)"              = X"Illegal option '--cui'"
+test X"$(printf "%s" '-A' | exec-wrapper | head -1)"    = X""
+test X"$(printf "%s" '-A' | exec-wrapper 2>&1|head -1)" = X"Missing arguments"
+test X"$(printf "%s" '-E' | exec-wrapper 2>&1|head -1)" = X"Missing arguments"
+test X"$(printf "%s" '-s' | exec-wrapper 2>&1|head -1)" = X"Missing arguments"
+test X"$(printf "%s" '-q' | exec-wrapper 2>&1|head -1)" = X"Missing arguments"
+test X"$(exec-wrapper -A -E | head -1)"                 = X""
+test X"$(exec-wrapper -A -E 2>&1|head -1)"              = X"Missing arguments"
+test X"$(exec-wrapper -A -E -s 2>&1|head -1)"           = X"Missing arguments"
+test X"$(exec-wrapper -d | head -1)"                    = X""
+test X"$(exec-wrapper -d  | head -1)"                   = X""
+test X"$(exec-wrapper -d 2>&1 | head -1)"               = X"No arg for -d option"
+test X"$(exec-wrapper -m 2>&1 | head -1)"               = X"No arg for -m option"
+test X"$(exec-wrapper cui 2>&1| head -1)"               = X"ERROR: Executable 'cui' not found in \$PATH"
+exec-wrapper -s sh | grep "autogenerated" >/dev/null 2>&1
+exec-wrapper sh | grep "Wrapper successfully generated and installed" >/dev/null 2>&1
+test -f "./sh" && test -u "./sh"
+test X"$(ls -lah sh | awk '{print $1}')"                = X"-rwsr-x---"
+test X"$(exec-wrapper sh 2>&1)"                         = X"ERROR: File './sh' already exists"
+exec-wrapper sh; test X"${?}"                           = X"1"
+rm -rf sh && exec-wrapper -A sh | grep "Wrapper successfully generated and installed" >/dev/null 2>&1
+test X"$(ls -lah sh | awk '{print $1}')"                = X"-rwsr-xr-x"
+rm -rf sh && exec-wrapper -d cui sh | grep "Wrapper successfully generated and installed" >/dev/null 2>&1
+test -f "cui/sh" && test -u "cui/sh"
+rm -rf cui && exec-wrapper -d cui -m 777 sh | grep "Wrapper successfully generated and installed" >/dev/null 2>&1
+test X"$(ls -lah cui/sh | awk '{print $1}')"            = X"-rwxrwxrwx"
+rm -rf sh && exec-wrapper -a ls sh | grep "Wrapper successfully generated and installed" >/dev/null 2>&1
+@end
+
+@begin{extract}
+extract; test X"${?}"                                       = X"1"
+extract -h; test X"${?}"                                    = X"0"
+printf "%s" '-h' | extract; test X"${?}"                    = X"0"
+extract -v; test X"${?}"                                    = X"1"
+printf "%s" '-v' | extract; test X"${?}"                    = X"1"
+extract --help ; test X"${?}"                               = X"0"
+printf "%s" '--help' | extract; test X"${?}"                = X"0"
+extract --cui; test X"${?}"                                 = X"1"
+printf "%s" '--cui' | extract; test X"${?}"                 = X"1"
+test X"$(extract | head -1)"                                = X""
+test X"$(extract 2>&1 | head -1)"                           = X"Usage: extract [options] files ..."
+test X"$(extract -h | head -1)"                             = X"Usage: extract [options] files ..."
+test X"$(printf "%s" '-h' | extract | head -1)"             = X"Usage: extract [options] files ..."
+test X"$(extract -v | head -1)"                             = X""
+test X"$(extract -v 2>&1|head -1)"                          = X"Usage: extract [options] files ..."
+test X"$(printf "%s" '-v' | extract  2>&1|head -1)"         = X"Usage: extract [options] files ..."
+test X"$(extract --help | head -1)"                         = X"Usage: extract [options] files ..."
+test X"$(printf "%s" '--help' | extract | head -1)"         = X"Usage: extract [options] files ..."
+test X"$(extract --cui | head -1)"                          = X""
+test X"$(extract --cui 2>&1|head -1)"                       = X"extract: unrecognized option '--cui'"
+test X"$(printf "%s" '--cui' | extract 2>&1|head -1)"       = X"extract: unrecognized option '--cui'"
+test X"$(extract cui cui.tar | head -1)"                    = X""
+test X"$(extract cui cui.tar 2>&1|head -1)"                 = X"extract: 'cui' does not exist or is not readable"
+test X"$(printf "%s" 'cui cui.tar' | extract 2>&1|head -1)" = X"extract: 'cui' does not exist or is not readable"
+test X"$(extract cui cui.tar 2>&1|wc -l)"                   = X"2"
+test X"$(printf "%s" 'cui cui.tar' | extract 2>&1|wc -l)"   = X"2"
+printf "%s" "o@o/" > cuicui && printf "%s" "\oVo" > cuakcuak && printf "%s" "oOo" > waa
+tar cf waa.tar waa && tar cf - cuicui cuakcuak  | gzip > c.tar.gz
+rm cuicui cuakcuak waa && extract waa.tar && test -f waa && test X"$(cat waa)" = X"oOo"
+rm waa && printf "%s" "c.tar.gz" | extract waa.tar && test -f cuicui && test -f cuakcuak && test -f waa
+test X"$(cat cuicui)" = X"o@o/" && test X"$(cat cuakcuak)" = X"\oVo" && test X"$(cat waa)" = X"oOo"
+@end
+
+@begin{fix}
+fix; test X"${?}"                                 = X"1"
+fix -h; test X"${?}"                              = X"0"
+printf "%s" '-h' | fix; test X"${?}"              = X"0"
+fix -s; test X"${?}"                              = X"1"
+printf "%s" '-s' | fix; test X"${?}"              = X"1"
+fix --help; test X"${?}"                          = X"0"
+printf "%s" '--help' | fix; test X"${?}"          = X"0"
+test X"$(fix | head -1)"                          = X""
+test X"$(fix 2>&1 | head -1)"                     = X"Usage: fix [options] module"
+test X"$(fix -h | head -1)"                       = X"Usage: fix [options] module"
+test X"$(printf "%s" '-h' | fix | head -1)"       = X"Usage: fix [options] module"
+test X"$(fix -cui | head -1)"                     = X""
+test X"$(fix -cui 2>&1|head -1)"                  = X"fix: unrecognized option '-cui'"
+test X"$(printf "%s" '-cui' | fix  2>&1|head -1)" = X"fix: unrecognized option '-cui'"
+test X"$(fix --help | head -1)"                   = X"Usage: fix [options] module"
+test X"$(printf "%s" '--help' | fix | head -1)"   = X"Usage: fix [options] module"
+@end
+
+@begin{fu-search}
+fu-search; test X"${?}"                                 = X"1"
+fu-search -h; test X"${?}"                              = X"0"
+printf "%s" '-h' | fu-search; test X"${?}"              = X"0"
+fu-search -c; test X"${?}"                              = X"1"
+printf "%s" '-c' | fu-search; test X"${?}"              = X"1"
+fu-search -c grep; test X"${?}"                         = X"0"
+printf "%s" '-c grep' | fu-search; test X"${?}"         = X"0"
+fu-search -cui; test X"${?}"                            = X"1"
+printf "%s" '-cui' | fu-search; test X"${?}"            = X"1"
+fu-search --help; test X"${?}"                          = X"0"
+printf "%s" '--help' | fu-search; test X"${?}"          = X"0"
+test X"$(fu-search | head -1)"                          = X""
+test X"$(fu-search 2>&1 | head -1)"                     = X"Usage: fu-search [options] pattern ..."
+test X"$(fu-search -h   | head -1)"                     = X"Usage: fu-search [options] pattern ..."
+test X"$(printf "%s" '-h' | fu-search | head -1)"       = X"Usage: fu-search [options] pattern ..."
+test X"$(fu-search -c | head -1)"                       = X""
+test X"$(fu-search -c 2>&1|head -1)"                    = X"Usage: fu-search [options] pattern ..."
+test X"$(printf "%s" '-c' | fu-search 2>&1 | head -1)"  = X"Usage: fu-search [options] pattern ..."
+test X"$(fu-search --help | head -1)"                   = X"Usage: fu-search [options] pattern ..."
+test X"$(printf "%s" '--help' | fu-search  | head -1)"  = X"Usage: fu-search [options] pattern ..."
+test X"$(fu-search -cui | head -1)"                     = X""
+test X"$(fu-search -cui 2>&1|head -1)"                  = X"fu-search: unrecognized option '-cui'"
+test X"$(printf "%s" '-cui' | fu-search  2>&1|head -1)" = X"fu-search: unrecognized option '-cui'"
+@end
+
+@begin{fuck}
+#review tests after rewriting fuck
+#fuck; test X"${?}"                                 = X"1"
+fuck -h; test X"${?}"                              = X"0"
+printf "%s" '-h' | fuck; test X"${?}"              = X"0"
+fuck --help; test X"${?}"                          = X"0"
+printf "%s" '--help' | fuck; test X"${?}"          = X"0"
+fuck --cui; test X"${?}"                           = X"1"
+printf "%s" '--cui' | fuck; test X"${?}"           = X"1"
+#test X"$(fuck | head -1)"                          = X""
+#test X"$(fuck 2>&1 | head -1)"                     = X"Usage: fuck [you|off] [program ...]"
+test X"$(fuck -h   | head -1)"                     = X"Usage: fuck [you|off] [program ...]"
+test X"$(printf "%s" '-h' | fuck | head -1)"       = X"Usage: fuck [you|off] [program ...]"
+test X"$(fuck --help | head -1)"                   = X"Usage: fuck [you|off] [program ...]"
+test X"$(printf "%s" '--help' | fuck | head -1)"   = X"Usage: fuck [you|off] [program ...]"
+test X"$(fuck --cui | head -1)"                    = X""
+test X"$(fuck --cui 2>&1|head -1)"                 = X"fuck: unrecognized option '--cui'"
+test X"$(printf "%s" '--cui' | fuck 2>&1|head -1)" = X"fuck: unrecognized option '--cui'"
+killall top ;:
+test X"$(fuck top         | head -1)"              = X""
+test X"$(fuck top     2>&1| head -1)"              = X"(；￣Д￣) .oO('top' isn't running ...)"
+test X"$(fuck you top 2>&1| head -1)"              = X"(；￣Д￣) .oO('top' isn't running ...)"
+test X"$(fuck off top 2>&1| head -1)"              = X"(；￣Д￣) .oO('top' isn't running ...)"
+test X"$(fuck top top 2>&1| wc -l)"                = X"2"
+top -b 2>&1 >/dev/null & : && sleep 0.1 && pgrep -x top
+test X"$(fuck top | head -1)"                      = X"ヽ(\`Д´)ﾉ⌒ doʇ"
+sleep 0.2 && test X"$(pgrep -x top)"               = X""
+top -b 2>&1 >/dev/null & : && sleep 0.1 && pgrep -x top
+fuck you top; test X"${?}"                         = X"0"
+sleep 0.2 && test X"$(pgrep -x top)"               = X""
+top -b 2>&1 >/dev/null & :
+telnet  2>&1 >/dev/null & :
+test X"$(fuck you telnet top | head -1)"            = X"ヽ(\`Д´)ﾉ⌒ ʇǝ𝗎|ǝʇ"
+sleep 0.2 && test X"$(pgrep -x top)" = X"" && test X"$(pgrep -x dmenu)" = X""
+@end
+
+@begin{governator}
+governator; test X"${?}" = X"$(test -f /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor && printf "0" || printf "1")"
+governator -h; test X"${?}"                                     = X"0"
+printf "%s" "--help" | governator; test X"${?}"                 = X"0"
+test X"$(governator -h|head -1)"                                = X"Usage: governator get"
+test X"$(printf "%s" '-h' | governator | head -1)"              = X"Usage: governator get"
+test X"$(governator s|head -1)"                                 = X""
+test X"$(printf "%s" 's' | governator | head -1)"               = X""
+test X"$(printf "%s" 's' | governator 2>&1 | head -1)"          = X"Usage: governator get"
+test X"$(governator set  | head -1)"                            = X""
+test X"$(governator set 2>&1 | head -1)"                        = X"Usage: governator get"
+test X"$(governator set cui | head -1)"                         = X""
+test X"$(governator set cui 2>&1 | head -1)"                    = X"Usage: governator get"
+test X"$(governator|awk '{print $1}')"                          = X"cat"
+test X"$(governator g|awk '{print $1}')"                        = X"cat"
+test X"$(printf "%s" 'g' | governator |awk '{print $1}')"       = X"cat"
+test X"$(governator get|awk '{print $1}')"                      = X"cat"
+test X"$(printf "%s" 'get' | governator |awk '{print $1}')"     = X"cat"
+test X"$(governator get cui|awk '{print $1}')"                  = X"cat"
+test X"$(printf "%s" 'get cui' | governator |awk '{print $1}')" = X"cat"
+@end
+
+@begin{howdoi}
+howdoi; test X"${?}"                                  = X"1"
+howdoi -h ; test X"${?}"                              = X"0"
+printf "%s" '-h' | howdoi; test X"${?}"               = X"0"
+howdoi --help ; test X"${?}"                          = X"0"
+printf "%s" '--help' | howdoi; test X"${?}"           = X"0"
+howdoi --cui; test X"${?}"                            = X"1"
+printf "%s" '--cui' | howdoi; test X"${?}"            = X"1"
+test X"$(howdoi | head -1)"                           = X""
+test X"$(howdoi 2>&1 | head -1)"                      = X"Usage: howdoi [options] query ..."
+test X"$(howdoi -h   | head -1)"                      = X"Usage: howdoi [options] query ..."
+test X"$(printf "%s" '-h' | howdoi | head -1)"        = X"Usage: howdoi [options] query ..."
+test X"$(howdoi --help | head -1)"                    = X"Usage: howdoi [options] query ..."
+test X"$(printf "%s" '--help' | howdoi | head -1)"    = X"Usage: howdoi [options] query ..."
+test X"$(howdoi -cui | head -1)"                      = X""
+test X"$(howdoi -cui 2>&1|head -1)"                   = X"howdoi: unrecognized option '-cui'"
+test X"$(printf "%s" '-cui' | howdoi 2>&1|head -1)"   = X"howdoi: unrecognized option '-cui'"
+test X"$(howdoi -n | head -1)"                        = X""
+test X"$(howdoi -n 2>&1|head -1)"                     = X"Option '-n' requires a parameter"
+test X"$(printf "%s" '-n' | howdoi 2>&1|head -1)"     = X"Option '-n' requires a parameter"
+test X"$(howdoi -n cui | head -1)"                    = X""
+test X"$(howdoi -n cui 2>&1|head -1)"                 = X"Option '-n' requires a number: 'cui'"
+test X"$(printf "%s" '-n cui' | howdoi 2>&1|head -1)" = X"Option '-n' requires a number: 'cui'"
+test X"$(howdoi XaMTWGfu89iQpJk6 | head -1)"          = X"howdoi: No results"
+test X"$(howdoi -C)"                                  = X"Cache cleared successfully"
+test ! -d ~/.cache/howdoi
+test X"$(howdoi XaMTWGfu89iQpJk6 | head -1)"          = X"howdoi: No results"
+test -d ~/.cache/howdoi
+@end
+
+@begin{im}
+im -h; test X"${?}"                             = X"0"
+printf "%s" '-h' | im; test X"${?}"             = X"0"
+im -u; test X"${?}"                             = X"0"
+printf "%s" '-u' | im; test X"${?}"             = X"0"
+im --help ; test X"${?}"                        = X"0"
+printf "%s" '--help' | im; test X"${?}"         = X"0"
+im --cui; test X"${?}"                          = X"1"
+printf "%s" '--cui' | im; test X"${?}"          = X"1"
+test X"$(im -h | head -1)"                      = X"Usage: im [options] string ..."
+test X"$(printf "%s" '-h' | im | head -1)"      = X"Usage: im [options] string ..."
+test X"$(im --help | head -1)"                  = X"Usage: im [options] string ..."
+test X"$(printf "%s" '--help' | im | head -1)"  = X"Usage: im [options] string ..."
+test X"$(im -cui | head -1)"                    = X""
+test X"$(im -cui 2>&1 | head -1)"               = X"im: unrecognized option '-cui'"
+test X"$(printf "%s" '-cui' | im 2>&1|head -1)" = X"im: unrecognized option '-cui'"
+@end
+
+@begin{lp-g9n-team}
+lp-g9n-team -h; test X"${?}"                             = X"0"
+printf "%s" '-h' | lp-g9n-team; test X"${?}"             = X"0"
+lp-g9n-team -u; test X"${?}"                             = X"1"
+printf "%s" '-u' | lp-g9n-team; test X"${?}"             = X"1"
+lp-g9n-team --help ; test X"${?}"                        = X"0"
+printf "%s" '--help' | lp-g9n-team; test X"${?}"         = X"0"
+test X"$(lp-g9n-team -h | head -1)"                      = X"Usage: lp-g9n-team [options] [lp-group]"
+test X"$(printf "%s" '-h' | lp-g9n-team | head -1)"      = X"Usage: lp-g9n-team [options] [lp-group]"
+test X"$(lp-g9n-team --help | head -1)"                  = X"Usage: lp-g9n-team [options] [lp-group]"
+test X"$(printf "%s" '--help' | lp-g9n-team | head -1)"  = X"Usage: lp-g9n-team [options] [lp-group]"
+test X"$(lp-g9n-team -cui | head -1)"                    = X""
+test X"$(lp-g9n-team -cui 2>&1 | head -1)"               = X"lp-g9n-team: unrecognized option '-cui'"
+test X"$(printf "%s" '-cui' | lp-g9n-team 2>&1|head -1)" = X"lp-g9n-team: unrecognized option '-cui'"
+@end
+
+@begin{mailgun}
+mailgun;  test X"${?}"                                       = X"1"
+mailgun -h; test X"${?}"                                     = X"0"
+printf "%s" '-h' | mailgun; test X"${?}"                     = X"0"
+mailgun --help ; test X"${?}"                                = X"0"
+printf "%s" '--help' | mailgun; test X"${?}"                 = X"0"
+mailgun --cui; test X"${?}"                                  = X"1"
+printf "%s" '--cui' | mailgun; test X"${?}"                  = X"1"
+test X"$(mailgun  | head -1)"                                = X""
+test X"$(mailgun 2>&1 | head -1)"                            = X"Usage: mailgun [options] to@address.tld message ..."
+test X"$(mailgun -h   | head -1)"                            = X"Usage: mailgun [options] to@address.tld message ..."
+test X"$(printf "%s" '-h' | mailgun | head -1)"              = X"Usage: mailgun [options] to@address.tld message ..."
+test X"$(mailgun --help   | head -1)"                        = X"Usage: mailgun [options] to@address.tld message ..."
+test X"$(printf "%s" '--help' | mailgun | head -1)"          = X"Usage: mailgun [options] to@address.tld message ..."
+test X"$(mailgun --cui | head -1)"                           = X""
+test X"$(mailgun --cui 2>&1|head -1)"                        = X"mailgun: unrecognized option '--cui'"
+test X"$(printf "%s" '--cui' | mailgun 2>&1|head -1)"        = X"mailgun: unrecognized option '--cui'"
+test X"$(mailgun cui | head -1)"                             = X""
+test X"$(mailgun cui 2>&1|head -1)"                          = X"Usage: mailgun [options] to@address.tld message ..."
+test X"$(printf "%s" 'cui cuak' | mailgun 2>&1|head -1)"     = X"mailgun: Invalid email address: 'cui'"
+test X"$(printf "%s" 'cui@cui cuak' | mailgun 2>&1|head -1)" = X"mailgun: Invalid email address: 'cui@cui'"
+test X"$(mailgun -a | head -1)"                              = X""
+test X"$(mailgun -a 2>&1|head -1)"                           = X"Option '-a' requires a parameter"
+test X"$(printf "%s" '--api' | mailgun 2>&1|head -1)"        = X"Option '--api' requires a parameter"
+test X"$(mailgun -f 2>&1|head -1)"                           = X"Option '-f' requires a parameter"
+test X"$(printf "%s" '--from' | mailgun 2>&1|head -1)"       = X"Option '--from' requires a parameter"
+test X"$(mailgun -s 2>&1|head -1)"                           = X"Option '-s' requires a parameter"
+test X"$(printf "%s" '--subject' | mailgun 2>&1|head -1)"    = X"Option '--subject' requires a parameter"
+test X"$(mailgun -c 2>&1|head -1)"                           = X"Option '-c' requires a parameter"
+test X"$(printf "%s" '--config' | mailgun 2>&1|head -1)"     = X"Option '--config' requires a parameter"
+@end
+
+@begin{mkpass}
+mkpass -h; test X"${?}"                            = X"0"
+printf "%s" '-h' | mkpass; test X"${?}"            = X"0"
+mkpass -c; test X"${?}"                            = X"1"
+printf "%s" '-c' | mkpass; test X"${?}"            = X"1"
+mkpass --help ; test X"${?}"                       = X"0"
+printf "%s" '--help' | mkpass; test X"${?}"        = X"0"
+test X"$(mkpass -h   | head -1)"                   = X"Usage: mkpass [length]"
+test X"$(printf "%s" '-h' | mkpass | head -1)"     = X"Usage: mkpass [length]"
+test X"$(mkpass --help | head -1)"                 = X"Usage: mkpass [length]"
+test X"$(printf "%s" '--help' | mkpass | head -1)" = X"Usage: mkpass [length]"
+test X"$(mkpass -c | head -1)"                     = X""
+test X"$(mkpass -c 2>&1|head -1)"                  = X"mkpass: unrecognized option '-c'"
+test X"$(printf "%s" '-c' | mkpass 2>&1|head -1)"  = X"mkpass: unrecognized option '-c'"
+test X"$(mkpass cui | head -1)"                    = X""
+test X"$(mkpass cui 2>&1 | head -1)"               = X"Argument requires a number: 'cui'"
+pass=$(mkpass)     && test X"${#pass}" = X"8"
+pass=$(mkpass 1)   && test X"${#pass}" = X"1"
+pass=$(mkpass 16)  && test X"${#pass}" = X"16"
+pass=$(mkpass 100) && test X"${#pass}" = X"100"
+pass=$(mkpass 0)   ;  test X"${#pass}" = X"0"
+@end
+
+@begin{mvs}
+mvs;  test X"${?}"                                = X"1"
+mvs -h; test X"${?}"                              = X"0"
+printf "%s" '-h' | mvs; test X"${?}"              = X"0"
+mvs --help ; test X"${?}"                         = X"0"
+printf "%s" '--help' | mvs; test X"${?}"          = X"0"
+mvs --cui; test X"${?}"                           = X"1"
+printf "%s" '--cui' | mvs; test X"${?}"           = X"1"
+test X"$(mvs | head -1)"                          = X""
+test X"$(mvs 2>&1 | head -1)"                     = X"Usage: mvs [options] file ..."
+test X"$(mvs -h   | head -1)"                     = X"Usage: mvs [options] file ..."
+test X"$(printf "%s" '-h' | mvs | head -1)"       = X"Usage: mvs [options] file ..."
+test X"$(mvs --help | head -1)"                   = X"Usage: mvs [options] file ..."
+test X"$(printf "%s" '--help' | mvs | head -1)"   = X"Usage: mvs [options] file ..."
+test X"$(mvs --cui | head -1)"                    = X""
+test X"$(mvs --cui 2>&1|head -1)"                 = X"mvs: unrecognized option '--cui'"
+test X"$(printf "%s" '--cui' | mvs 2>&1|head -1)" = X"mvs: unrecognized option '--cui'"
+@end
+
+@begin{pianocat}
+pianocat -h; test X"${?}"                = X"0"
+pianocat --help; test X"${?}"            = X"0"
+pianocat --cui; test X"${?}"             = X"1"
+test X"$(pianocat -h | head -1 )"        = X"Usage: pianocat [options]"
+test X"$(pianocat --help | head -1 )"    = X"Usage: pianocat [options]"
+test X"$(pianocat --cui | head -1)"      = X""
+test X"$(pianocat --cui 2>&1 | head -1)" = X"pianocat: unrecognized option '--cui'"
+test X"$(pianocat -b | head -1)"         = X""
+test X"$(pianocat -b 2>&1|head -1)"      = X"Option '-b' requires a parameter"
+test X"$(pianocat -s 2>&1|head -1)"      = X"Option '-s' requires a parameter"
+test X"$(pianocat -d 2>&1|head -1)"      = X"Option '-d' requires a parameter"
+test X"$(pianocat -c 2>&1|head -1)"      = X"Option '-c' requires a parameter"
+test X"$(pianocat -f 2>&1|head -1)"      = X"Option '-f' requires a parameter"
+@end
+
+@begin{pxe}
+pxe -h; test X"${?}"                              = X"0"
+printf "%s" '-h' | pxe; test X"${?}"              = X"0"
+pxe --help ; test X"${?}"                         = X"0"
+printf "%s" '--help' | pxe; test X"${?}"          = X"0"
+pxe --cui; test X"${?}"                           = X"1"
+printf "%s" '--cui' | pxe; test X"${?}"           = X"1"
+test X"$(pxe -h | head -1)"                       = X"Usage: pxe [options] [dir]"
+test X"$(printf "%s" '-h' | pxe | head -1)"       = X"Usage: pxe [options] [dir]"
+test X"$(pxe --help | head -1)"                   = X"Usage: pxe [options] [dir]"
+test X"$(printf "%s" '--help' | pxe | head -1)"   = X"Usage: pxe [options] [dir]"
+test X"$(pxe --cui | head -1)"                    = X""
+test X"$(pxe --cui 2>&1|head -1)"                 = X"pxe: unrecognized option '--cui'"
+test X"$(printf "%s" '--cui' | pxe 2>&1|head -1)" = X"pxe: unrecognized option '--cui'"
+pxe && test -d pxe_setup && test -f pxe_setup/menu.c32
+pxe cui && test -d cui && test -f cui/menu.c32
+@end
+
+@begin{setup}
+setup; test X"${?}"                                   = X"1"
+setup -h; test X"${?}"                                = X"0"
+printf "%s" '-h' | setup; test X"${?}"                = X"0"
+setup --help ; test X"${?}"                           = X"0"
+printf "%s" '--help' | setup; test X"${?}"            = X"0"
+setup --cui; test X"${?}"                             = X"1"
+printf "%s" '--cui' | setup; test X"${?}"             = X"1"
+test X"$(setup  | head -1)"                           = X""
+test X"$(setup 2>&1 | head -1)"                       = X"Usage: setup module"
+test X"$(setup -h   | head -1)"                       = X"Usage: setup module"
+test X"$(printf "%s" '-h' | setup | head -1)"         = X"Usage: setup module"
+test X"$(setup --help | head -1)"                     = X"Usage: setup module"
+test X"$(printf "%s" '--help' | setup | head -1)"     = X"Usage: setup module"
+test X"$(setup --cui | head -1)"                      = X""
+test X"$(setup --cui 2>&1|head -1)"                   = X"setup: unrecognized option '--cui'"
+test X"$(printf "%s" '--cui' | setup 2>&1 | head -1)" = X"setup: unrecognized option '--cui'"
+@end
+
+@begin{share-backup}
+#TODO 25-09-2014 23:09 >> because of being used over ssh, stdin gets blocked
+#so reading from pipes is disabled till I figure out a solution
+PATH=$PATH:/sbin/:../../../python
+share-backup -h; test X"${?}"              = X"0"
+share-backup --help ; test X"${?}"         = X"0"
+share-backup --cui; test X"${?}"           = X"1"
+share-backup stop; test X"${?}"            = X"1"
+test X"$(share-backup -h | head -1)"       = X"Usage: share-backup [options] [stop] [directory|file]"
+test X"$(share-backup --help | head -1)"   = X"Usage: share-backup [options] [stop] [directory|file]"
+test X"$(share-backup --cui  | head -1)"   = X""
+test X"$(share-backup --cui 2>&1|head -1)" = X"share-backup: unrecognized option '--cui'"
+test X"$(share-backup -u | head -1)"       = X""
+test X"$(share-backup -u 2>&1|head -1)"    = X"Option '-u' requires a parameter"
+test X"$(share-backup -p 2>&1|head -1)"    = X"Option '-p' requires a parameter"
+test X"$(share-backup -P 2>&1|head -1)"    = X"Option '-P' requires a parameter"
+test X"$(share-backup -c 2>&1|head -1)"    = X"Option '-c' requires a parameter"
+test X"$(share-backup stop)"               = X""
+test X"$(share-backup stop 2>&1)"          = X"No instance found"
+mkdir foo && printf "%s" "o@o" > foo/cui
+share-backup -u cui -p 6230 -P cui foo; test X"${?}" = X"0"
+sleep 1
+test X"$(pgrep -f 'share-backup -u cui'|wc -l)"     = X"1"
+sleep 1
+test X"$(curl -s --digest -u cui:cui http://127.0.0.1:6230/cui)" = X"o@o"
+share-backup stop; test X"${?}"        = X"0"
+test X"$(pgrep -f 'share-backup -u cui' | wc -l)" = X"0"
+share-backup stop; test X"${?}"        = X"1"
+share-backup foo > cui; test X"${?}"   = X"0"
+address="$(grep address cui | awk '{print $3; exit}')"
+passwd="$(grep password cui | awk '{print $2; exit}')"
+sleep 1
+test X"$(curl -s --digest -u guest:$passwd $address/cui)" = X"o@o"
+share-backup stop; test X"${?}"             = X"0"
+test X"$(pgrep -f '/share-backup' | wc -l)" = X"0"
+@end
+
+@begin{shellshock}
+#TODO 28-09-2014 14:52 >> is there any way to test this?
+@end
+
+@begin{startx}
+#TODO 28-09-2014 14:52 >> is there any way to test this?
+@end
+
+@begin{staticus}
+staticus -h; test X"${?}"                = X"0"
+staticus --help; test X"${?}"            = X"0"
+staticus --cui; test X"${?}"             = X"1"
+staticus; test X"${?}"                   = X"1"
+test X"$(staticus 2>&1 | head -1)"       = X"Usage: staticus [options] -o staticus.html"
+test X"$(staticus -h | head -1 )"        = X"Usage: staticus [options] -o staticus.html"
+test X"$(staticus --help | head -1 )"    = X"Usage: staticus [options] -o staticus.html"
+test X"$(staticus --cui | head -1)"      = X""
+test X"$(staticus --cui 2>&1 | head -1)" = X"staticus: unrecognized option '--cui'"
+test X"$(staticus -c | head -1)"         = X""
+test X"$(staticus -c 2>&1|head -1)"      = X"Option '-c' requires a parameter"
+test X"$(staticus -c file |head -1)"     = X""
+test X"$(staticus -c file 2>&1|head -1)" = X"Specified config file 'file' doesn't exists"
+test X"$(staticus -m 2>&1|head -1)"      = X"Option '-m' requires a parameter"
+test X"$(staticus -o 2>&1|head -1)"      = X"Option '-o' requires a parameter"
+test X"$(staticus -O 2>&1|head -1)"      = X"Option '-O' requires a parameter"
+test X"$(staticus --txt2html 2>&1|head -1)" = X"Option '--txt2html' requires a parameter"
+test X"$(staticus --theme 2>&1|head -1)"    = X"Option '--theme' requires a parameter"
+test X"$(staticus --list-modules 2>&1|head -1)" = X"memory"
+test X"$(staticus --list-themes 2>&1|head -1)"  = X"default"
+staticus go; test -f ./staticus.html  && test -f ./staticus.txt
+grep "####" ./staticus.txt >/dev/null && grep "Modules" ./staticus.html >/dev/null
+rm -rf staticus.*
+staticus -o waa.html -O cui.txt; test -f ./waa.html && test -f ./cui.txt
+grep "####" ./cui.txt >/dev/null && grep "Modules" ./waa.html >/dev/null
+rm -rf cui.txt waa.html
+staticus -o waa.html -O cui.txt -m "swap"; test -f ./waa.html && test -f ./cui.txt
+grep "####" ./cui.txt >/dev/null && grep "Modules" ./waa.html >/dev/null
+test X"$(grep "^#### " ./cui.txt  | wc -l)" = X"1"
+test X"$(grep "ID_"  ./waa.html | wc -l)"   = X"1"
+staticus -o waa.html -O cui.txt -mmemory,load; test -f ./waa.html && test -f ./cui.txt
+grep "####" ./cui.txt >/dev/null && grep "Modules" ./waa.html >/dev/null
+grep "load" ./cui.txt >/dev/null && grep "Memory"  ./waa.html >/dev/null
+test X"$(grep "^#### " ./cui.txt  | wc -l)" = X"2"
+test X"$(grep "ID_"  ./waa.html | wc -l)"   = X"2"
+rm -rf cui.txt waa.html
+printf "%s\\n" 'modules="notification,memory,load,info"' > conf
+staticus -c conf; test -f ./staticus.html  && test -f ./staticus.txt
+test X"$(grep "^### " ./staticus.txt  | wc -l)"      = X"1"
+test X"$(grep "maintenance" ./staticus.html | wc -l)" = X"1"
+test X"$(grep "^#### " ./staticus.txt  | wc -l)"     = X"3"
+test X"$(grep "ID_"  ./staticus.html   | wc -l)"     = X"2"
+test X"$(grep "Info" ./staticus.html   | wc -l)"     = X"1"
+rm -rf staticus.*
+@end
+
+@begin{test-case-format}
+test-case-format;  test X"${?}"                       = X"1"
+test-case-format -h;  test X"${?}"                    = X"0"
+printf "%s" '-h' | test-case-format; test X"${?}"     = X"0"
+test-case-format --help;  test X"${?}"                = X"0"
+printf "%s" '--help' | test-case-format; test X"${?}" = X"0"
+test-case-format --cui;  test X"${?}"                 = X"1"
+printf "%s" '--cui' | test-case-format; test X"${?}"  = X"1"
+test X"$(test-case-format | head -1)"                 = X""
+test X"$(test-case-format 2>&1   | head -1)"          = X"Usage: test-case-format testcase ..."
+test X"$(test-case-format -h     | head -1)"          = X"Usage: test-case-format testcase ..."
+test X"$(test-case-format --help | head -1)"          = X"Usage: test-case-format testcase ..."
+test X"$(test-case-format --cui  | head -1)"          = X""
+test X"$(test-case-format --cui 2>&1|head -1)"        = X"test-case-format: unrecognized option '--cui'"
+@end
+
+@begin{translate}
+translate; test X"${?}"                                 = X"1"
+translate -h ; test X"${?}"                             = X"0"
+printf "%s" '-h' | translate; test X"${?}"              = X"0"
+translate --help ; test X"${?}"                         = X"0"
+printf "%s" '--help' | translate; test X"${?}"          = X"0"
+translate --cui; test X"${?}"                           = X"1"
+printf "%s" '--cui'   | translate; test X"${?}"         = X"1"
+test X"$(translate | head -1)"                          = X""
+test X"$(translate 2>&1 | head -1)"                     = X"Usage: translate [-sl-tl] [options] string ..."
+test X"$(translate -h | head -1)"                       = X"Usage: translate [-sl-tl] [options] string ..."
+test X"$(printf "%s" '-h' | translate | head -1)"       = X"Usage: translate [-sl-tl] [options] string ..."
+test X"$(translate --help | head -1)"                   = X"Usage: translate [-sl-tl] [options] string ..."
+test X"$(printf "%s" '--help' | translate | head -1)"   = X"Usage: translate [-sl-tl] [options] string ..."
+test X"$(translate --cui  | head -1)"                   = X""
+test X"$(printf "%s" '--cui' | translate 2>&1|head -1)" = X"translate: unrecognized option '--cui'"
+test X"$(translate hola mundo |head -1)"                = X"Hello World"
+test X"$(translate -en-es hello world | head -1)"       = X"Hola Mundo"
+@end
+
+@begin{trash}
+trash;  test X"${?}"                                = X"1"
+trash -h; test X"${?}"                              = X"0"
+printf "%s" '-h' | trash; test X"${?}"              = X"0"
+trash --help ; test X"${?}"                         = X"0"
+printf "%s" '--help' | trash; test X"${?}"          = X"0"
+trash --cui; test X"${?}"                           = X"1"
+printf "%s" '--cui' | trash; test X"${?}"           = X"1"
+test X"$(trash | head -1)"                          = X""
+test X"$(trash 2>&1 | head -1)"                     = X"rm: missing operand"
+test X"$(trash -h   | head -1)"                     = X"Usage: trash [options] file ..."
+test X"$(printf "%s" '--help' | trash | head -1)"   = X"Usage: rm [OPTION]... FILE..."
+test X"$(trash --cui | head -1)"                    = X""
+test X"$(trash --cui 2>&1|head -1)"                 = X"rm: unrecognized option '--cui'"
+test X"$(printf "%s" '--cui' | trash 2>&1|head -1)" = X"rm: unrecognized option '--cui'"
+printf "%s" "1" > XaMTWGfu89iQpJk6
+trash XaMTWGfu89iQpJk6
+test X"$(basename "$(trash -l | grep XaMTWGfu89iQpJk6)")" = X"XaMTWGfu89iQpJk6"
+test X"$(basename "$(trash -l XaMTWGfu89iQpJk6)")"        = X"XaMTWGfu89iQpJk6"
+printf "%s" "2" > XaMTWGfu89iQpJk6
+trash XaMTWGfu89iQpJk6
+test X"$(trash -l XaMTWGfu89iQpJk6|wc -l)" = X"2"
+trash -yu XaMTWGfu89iQpJk6
+test X"$(cat XaMTWGfu89iQpJk6)"            = X"2"
+test X"$(cat XaMTWGfu89iQpJk6*.saved)"     = X"1"
+trash XaMTWGfu89iQpJk6*
+test X"$(trash -l XaMTWGfu89iQpJk6|wc -l)" = X"2"
+trash -cy XaMTWGfu89iQpJk6.*saved
+test X"$(trash -l XaMTWGfu89iQpJk6|wc -l)" = X"1"
+trash -yc XaMTWGfu89iQpJk6
+test X"$(trash -l XaMTWGfu89iQpJk6|wc -l)" = X"0"
+printf "%s" "1" > XaMTWGfu89iQpJk6
+trash -rf XaMTWGfu89iQpJk6
+test X"$(trash -l XaMTWGfu89iQpJk6|wc -l)" = X"0"
+mkdir XaMTWGfu89iQpJk6
+trash XaMTWGfu89iQpJk6
+test X"$(trash -l XaMTWGfu89iQpJk6|wc -l)" = X"1"
+trash -cy XaMTWGfu89iQpJk6
+test X"$(trash -l XaMTWGfu89iQpJk6|wc -l)" = X"0"
+mkdir foo && mkdir foo/bar && mkdir foo/bar/rar
+printf "%s" "1" > foo/XaMTWGfu89iQpJk6
+printf "%s" "2" > foo/bar/XaMTWGfu89iQpJk6
+printf "%s" "3" > foo/bar/rar/XaMTWGfu89iQpJk6
+trash foo/XaMTWGfu89iQpJk6 foo/bar/XaMTWGfu89iQpJk6 foo/bar/rar/XaMTWGfu89iQpJk6
+test X"$(trash -l XaMTWGfu89iQpJk6|wc -l)"    = X"3"
+trash -uy XaMTWGfu89iQpJk6
+test X"$(cat foo/XaMTWGfu89iQpJk6)"         = X"1"
+test X"$(cat foo/bar/XaMTWGfu89iQpJk6)"     = X"2"
+test X"$(cat foo/bar/rar/XaMTWGfu89iQpJk6)" = X"3"
+@end
+
+@begin{uimg}
+uimg; test X"${?}"                                 = X"1"
+uimg -h ; test X"${?}"                             = X"0"
+printf "%s" '-h' | uimg; test X"${?}"              = X"0"
+uimg --help ; test X"${?}"                         = X"0"
+printf "%s" '--help' | uimg; test X"${?}"          = X"0"
+uimg --cui; test X"${?}"                           = X"1"
+printf "%s" '--cui' | uimg; test X"${?}"           = X"1"
+uimg -l; test X"${?}"                              = X"0"
+uimg --list-sites; test X"${?}"                    = X"0"
+uimg cui; test X"${?}"                             = X"1"
+test X"$(uimg      | head -1)"                     = X""
+test X"$(uimg 2>&1 | head -1)"                     = X"Usage: uimg image.[png|jpg] ..."
+test X"$(uimg -h    | head -1)"                    = X"Usage: uimg image.[png|jpg] ..."
+test X"$(printf "%s" '--help' | uimg | head -1)"   = X"Usage: uimg image.[png|jpg] ..."
+test X"$(uimg --cui 2>&1|head -1)"                 = X"uimg: unrecognized option '--cui'"
+test X"$(printf "%s" '--cui' | uimg 2>&1|head -1)" = X"uimg: unrecognized option '--cui'"
+test X"$(uimg cui 2>&1|head -1)"                   = X"'cui' doesn't exist"
+touch cui
+test X"$(uimg cui 2>&1|head -1)"                   = X"'cui' is not a valid image file"
+test X"$(uimg cui cuakcuak 2>&1|wc -l)"            = X"2"
+b64_1line="iVBORw0KGgoAAAANSUhEUgAAACAAAAAgAQAAAABbAUdZAAAABGdBTUEAAYagMeiWXwAAAFtJREFU"
+b64_2line="eJwtzLEJAzAMBdHr0gSySiALejRvkBU8gsGNCmFFB1Hx4IovqurSpIRszqklUwbnUzRXEuIRsiG/"
+b64_3line="SyY9G0JzJSVei9qynm9qyjBpLp0pYW7pbzBl8L8fEIdJL9AvFMkAAAAASUVORK5CYII="
+printf "%s\\n%s\\n%s\\n" "${b64_1line}${b64_2line}${b64_3line}" | base64 --decode > wb.png
+test -f wb.png
+url="$(uimg wb.png)" && rm -rf wb.png && wget "${url}" -O wb.png
+test X"$(base64 wb.png 2>&1 | head -1)"   = X"${b64_1line}"
+test X"$(uimg wb.png wb.png 2>&1 |wc -l)" = X"2"
+@end
+
+@begin{update-cd}
+#TODO 28-09-2014 14:52 >> is there any way to test this?
+@end
+
+@begin{ussh}
+#TODO 28-09-2014 14:52 >> is there any way to test this?
+@end
+
+@begin{vim-show}
+vim-show; test X"${?}"                                 = X"1"
+vim-show -h ; test X"${?}"                             = X"0"
+printf "%s" '-h' | vim-show; test X"${?}"              = X"0"
+vim-show --help ; test X"${?}"                         = X"0"
+printf "%s" '--help' | vim-show; test X"${?}"          = X"0"
+vim-show --cui; test X"${?}"                           = X"1"
+printf "%s" '--cui'  | vim-show; test X"${?}"          = X"1"
+test X"$(vim-show | head -1)"                          = X""
+test X"$(vim-show 2>&1 | head -1)"                     = X"Usage: vim-show script"
+test X"$(vim-show -h | head -1)"                       = X"Usage: vim-show script"
+test X"$(printf "%s" '--help' | vim-show | head -1)"   = X"Usage: vim-show script"
+test X"$(vim-show --cui | head -1)"                    = X""
+test X"$(vim-show --cui 2>&1|head -1)"                 = X"vim-show: unrecognized option '--cui'"
+test X"$(printf "%s" '--cui' | vim-show 2>&1|head -1)" = X"vim-show: unrecognized option '--cui'"
+test X"$(vim-show cui 2>&1|head -1)"                   = X"vim-show: 'cui' was not found in \$PATH"
+test X"$(printf "%s" 'cui' | vim-show 2>&1|head -1)"   = X"vim-show: 'cui' was not found in \$PATH"
+@end
+
+@begin{wcd}
+#TODO 28-09-2014 14:52 >> is there any way to test this?
+@end
+
+@begin{weather}
+weather  -h; test X"${?}"                 = X"0"
+printf "%s" '-h' | weather; test X"${?}"  = X"0"
+weather --help; test X"${?}"              = X"0"
+weather --cui; test X"${?}"               = X"1"
+test X"$(weather -h | head -1)"           = X"Usage: weather [options]"
+test X"$(printf "%s" '--help' | weather | head -1)" = X"Usage: weather [options]"
+test X"$(weather --cui 2>&1|head -1)"     = X"weather: unrecognized option '--cui'"
+@end
+
+@begin{wget-finder}
+wget-finder; test X"${?}"                     = X"1"
+wget-finder  -h; test X"${?}"                 = X"0"
+printf "%s" '-h' | wget-finder; test X"${?}"  = X"0"
+wget-finder --help; test X"${?}"              = X"0"
+wget-finder --cui; test X"${?}"               = X"2"
+wget-finder --search-engine cui; test X"${?}" = X"1"
+wget-finder cui; test X"${?}"                 = X"4"
+wget-finder socat-1.7.2.0.tar.gz:cui; test X"${?}" = X"1"
+test X"$(wget-finder | head -1)"              = X""
+test X"$(wget-finder 2>&1 | head -1)"         = X"Usage: wget-finder [OPTION]... FILE:CHECKSUM..."
+test X"$(wget-finder -h | head -1)"           = X"Usage: wget-finder [OPTION]... FILE:CHECKSUM..."
+test X"$(printf "%s" '--help' | wget-finder | head -1)" = X"Usage: wget-finder [OPTION]... FILE:CHECKSUM..."
+test X"$(wget-finder --cui 2>&1|head -1)"     = X"wget: unrecognized option '--cui'"
+test X"$(wget-finder --search-engine cui | head -1)"    = X""
+test X"$(wget-finder --search-engine cui 2>&1|head -1)" = X"wget-finder: 'cui' is not a recognized search engine"
+wget-finder google.com && test -f "index.html"
+wget-finder http://google.com -Otest2  && test -f "test2"
+wget-finder http://google.com -O test3 && test -f "test3"
+wget-finder socat-1.7.2.0.tar.gz:cui; test X"${?}" = X"1"
+
+test "$(wget-finder --search-engine google   --list-links libssh2-1.3.0.tar.gz:6425331899ccf1015f1ed79448cb4709 | wc -l)" -gt "0"
+test "$(wget -V|awk -F. '{print $1 $2; exit}'|awk '{print $3}')" -gt 113 && test "$(wget-finder --search-engine ftplike  --list-links libssh2-1.3.0.tar.gz:6425331899ccf1015f1ed79448cb4709 | wc -l)" -gt "0" || :
+
+test X"$(wget-finder socat-1.7.2.0.tar.gz:cui  | head -1)" = X""
+test X"$(wget-finder socat-1.7.2.0.tar.gz:cui 2>&1 | head -1)" = X"Warning: 'socat-1.7.2.0.tar.gz:cui' is an invalid FILE:CHECKSUM pair, skipping..."
+wget-finder socat-1.7.2.0.tar.gz:0565dd58800e4c50534c61bbb453b771; test -f "socat-1.7.2.0.tar.gz"
+test X"$(openssl dgst -md5 socat-1.7.2.0.tar.gz | awk '{print $2}')" = X"0565dd58800e4c50534c61bbb453b771"
+rm -rf socat-1.7.2.0.tar.gz
+wget-finder socat-1.7.2.0.tar.gz:32181b08aa91309ee368e1e36a2cb337eedc425a && test -f "socat-1.7.2.0.tar.gz"
+test X"$(openssl dgst -md5 socat-1.7.2.0.tar.gz | awk '{print $2}')" = X"0565dd58800e4c50534c61bbb453b771"
+rm -rf socat-1.7.2.0.tar.gz
+wget-finder socat-1.7.2.0.tar.gz:e5214ad56b43fef00761e391417b5020d07f973113b398b6ddcc47bde771ffae && test -f "socat-1.7.2.0.tar.gz"
+test X"$(openssl dgst -md5 socat-1.7.2.0.tar.gz | awk '{print $2}')" = X"0565dd58800e4c50534c61bbb453b771"
+rm -rf socat-1.7.2.0.tar.gz
+wget-finder socat-1.7.2.0.tar.gz:80727255f5a83ab2be449bed66e65d1c2acd9d880a8672f52ab4cc48950d49a73fac13219a2ad7b30bafe3f04c82288735877a55ae1f008c19470ccd3b8f2806 && test -f "socat-1.7.2.0.tar.gz"
+test X"$(openssl dgst -md5 socat-1.7.2.0.tar.gz | awk '{print $2}')" = X"0565dd58800e4c50534c61bbb453b771"
+wget-finder --search-engine google -O libssh.tar.gz libssh2-1.3.0.tar.gz:6425331899ccf1015f1ed79448cb4709; test -f libssh.tar.gz
+test X"$(openssl dgst -md5 libssh.tar.gz | awk '{print $2}')" = X"6425331899ccf1015f1ed79448cb4709"
+rm -rf *.tar.gz
+wget-finder libssh2-1.3.0.tar.gz:6425331899ccf1015f1ed79448cb4709 socat-1.7.2.0.tar.gz:0565dd58800e4c50534c61bbb453b771
+test -f libssh2-1.3.0.tar.gz && test -f socat-1.7.2.0.tar.gz
+rm -rf *.tar.gz
+wget-finder -O file libssh2-1.3.0.tar.gz:6425331899ccf1015f1ed79448cb4709 socat-1.7.2.0.tar.gz:0565dd58800e4c50534c61bbb453b771
+test -f file && test ! -f libssh2-1.3.0.tar.gz && test ! -f socat-1.7.2.0.tar.gz
+@end
+
+@begin{whats}
+whats; test X"${?}"                                 = X"1"
+whats -h ; test X"${?}"                             = X"0"
+printf "%s" '-h' | whats; test X"${?}"              = X"0"
+whats --help ; test X"${?}"                         = X"0"
+printf "%s" '--help' | whats; test X"${?}"          = X"0"
+whats --cui; test X"${?}"                           = X"1"
+printf "%s" '--cui' | whats; test X"${?}"           = X"1"
+test X"$(whats | head -1)"                          = X""
+test X"$(whats 2>&1 | head -1)"                     = X"Usage: whats word ..."
+test X"$(whats -h | head -1)"                       = X"Usage: whats word ..."
+test X"$(printf "%s" '--help' | whats | head -1)"   = X"Usage: whats word ..."
+test X"$(whats --cui | head -1)"                    = X""
+test X"$(whats --cui 2>&1|head -1)"                 = X"whats: unrecognized option '--cui'"
+@end
+
+# vim: set ts=8 sw=4 tw=0 ft=sh :

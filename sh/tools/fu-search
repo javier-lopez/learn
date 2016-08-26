@@ -1,0 +1,71 @@
+#!/bin/sh
+#description: search in the awesome commandlinefu.com site
+#usage: fu-search command
+
+#example: fu-search grep
+#one liner with grep
+#another one liner
+#...
+
+BLUE="$(printf "\\033[0;34m")"
+DEFAULT="$(printf "\\033[0;39m")"
+RED="$(printf "\\033[0;31m")"
+BROWN="$(printf "\\033[0;33m")"
+CYAN="$(printf "\\033[0;36m")"
+DARK_GREY="$(printf "\\033[1;30m")"
+GREEN="$(printf "\\033[0;32m")"
+LIGHT_BLUE="$(printf "\\033[1;34m")"
+LIGHT_CYAN="$(printf "\\033[1;36m")"
+LIGHT_GREEN="$(printf "\\033[1;32m")"
+LIGHT_GREY="$(printf "\\033[0;37m")"
+LIGHT_PURPLE="$(printf "\\033[1;35m")"
+LIGHT_RED="$(printf "\\033[1;31m")"
+PURPLE="$(printf "\\033[1;35m")"
+WHITE="$(printf "\\033[1;37m")"
+YELLOW="$(printf "\\033[0;33m")"
+
+_usage() {
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] pattern ..."
+    printf "%s\\n" "Look for related commands in commandlinefu.com."
+    printf "\\n"
+    printf "%s\\n" "  -c           colorize output"
+    printf "%s\\n" "  -h, --help   show this help message and exit"
+}
+
+_die() {
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
+}
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- "${@}" $(cat)
+fi
+
+[ "${#}" -eq "0" ] && _die
+
+PATTERN="${*}"
+
+for arg; do #parse options
+    case "${arg}" in
+        -h|--help) _usage && exit ;;
+        -c) CFLAG="true"; shift; PATTERN="${*}";;
+        -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${arg}'" ;;
+    esac
+done
+
+[ -z "${PATTERN}" ] && _die
+
+if ! command -v "curl" >/dev/null 2>&1; then
+    printf "%s\\n" "install 'curl' to run this program" >&2
+    exit 1
+fi
+
+if [ -z "${CFLAG}" ]; then
+    curl -s "http://www.commandlinefu.com/commands/matching/${PATTERN}/$(printf "%s" "${PATTERN}" | base64)/plaintext/sort-by-votes" |\
+    grep --invert-match "commandlinefu.com by David Winterbottom"
+else
+    curl -s "http://www.commandlinefu.com/commands/matching/${PATTERN}/$(printf "%s" "${PATTERN}" | base64)/plaintext/sort-by-votes" |\
+    grep --invert-match "commandlinefu.com by David Winterbottom" | sed -e " s:^#.*:${PURPLE}&${DEFAULT}:g" \
+    -e " s:[^#].*:${LIGHT_GREEN}&${DEFAULT}:g" -e "/#/!s/\<${PATTERN}\>/${YELLOW}&${LIGHT_GREEN}/g"
+fi

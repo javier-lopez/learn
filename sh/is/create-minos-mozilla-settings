@@ -1,0 +1,71 @@
+#!/bin/sh
+#create default minos settings for mozilla
+#usage: create-minos-default-mozilla-setting
+
+#example create-minos-default-mozilla-setting
+#a mozilla-orig/ directory is generated with minos settings
+
+trap _cleanup 15 #trap ctrl-c
+#trap _cleanup SIGINT SIGTERM #trap ctrl-c
+
+_cmd() {
+    #print current command, exits on fail
+    [ -z "${1}" ] && return 0
+
+    printf "%s " "[$] ${@}"
+    printf "\\n"
+    eval "${@}"
+
+    _cmd__status="${?}"
+    [ X"${_cmd__status}" != X"0" ] && exit "${_cmd__status}" || return
+}
+
+_cleanup() {
+    stty echo
+    printf "\\n"
+    printf "%s\\n" "[+] cleanup ..."
+    _cmd rm -rf mozilla-orig
+
+    [ -z ${1} ] && exit
+}
+
+_create_minos_default_mozilla_settings() {
+    [ -d mozilla-orig ] && _cmd rm -rf mozilla-orig
+    _cmd cp -r ~/.mozilla mozilla-orig
+    _cmd mkdir mozilla-orig/tmp
+    (cd mozilla-orig/firefox/*.default && \
+    _cmd mv addons.sqlite extensions.ini gm_scripts prefs.js useragentswitcher \
+         addons.sqlite-journal extensions.rdf jetpack search-metadata.json \
+         words.dic chrome fastdial localstore.rdf searchplugins extensions \
+         fftmp mimeTypes.rdf search.sqlite ../../tmp/)
+    _cmd rm -rf mozilla-orig/firefox/*.default/*
+    rm -rf mozilla-orig/firefox/Crash*
+    rm -rf mozilla-orig/.mozilla
+    _cmd "mkdir 'mozilla-orig/firefox/Crash Reports/'"
+    _cmd mv mozilla-orig/tmp/* mozilla-orig/firefox/*.default/
+    _cmd rm -rf mozilla-orig/tmp
+    #remove these entries
+    _cmd "sed -i '/browser.download.lastDir/d' mozilla-orig/firefox/*.default/prefs.js"
+    _cmd "sed -i '/browser.open.lastDir/d' mozilla-orig/firefox/*.default/prefs.js"
+    _cmd "sed -i '/extensions.chmfox.lastPosition.chm/d' mozilla-orig/firefox/*.default/prefs.js"
+    _cmd "sed -i '/extensions.lastpass/d' mozilla-orig/firefox/*.default/prefs.js"
+    _cmd "sed -i '/extensions.cck2wizard/d' mozilla-orig/firefox/*.default/prefs.js"
+    _cmd "sed -i '/extensions.goaruna/d' mozilla-orig/firefox/*.default/prefs.js"
+    _cmd "sed -i '/print.print_to_filename/d' mozilla-orig/firefox/*.default/prefs.js"
+    _cmd "sed -i '/extensions.lessspamplease.userprefix/d' mozilla-orig/firefox/*.default/prefs.js"
+    _cmd "sed -i '/extensions.bloodyvikings/d' mozilla-orig/firefox/*.default/prefs.js"
+    _cmd "sed -i '/app.update.lastUpdateTime/d' mozilla-orig/firefox/*.default/prefs.js"
+    _cmd "sed -i '/datareporting.sessions/d' mozilla-orig/firefox/*.default/prefs.js"
+    _cmd "sed -i '/extensions.allaboutlocationbar/d' mozilla-orig/firefox/*.default/prefs.js"
+    _cmd "sed -i '/services.sync/d' mozilla-orig/firefox/*.default/prefs.js"
+    _cmd "sed -i '/extensions.ui.lastCategory/d' mozilla-orig/firefox/*.default/prefs.js"
+    #_cmd "sed -i '/capability.policy.maonoscript.sites/d' mozilla-orig/firefox/*.default/prefs.js"
+
+    #default noscript entries
+    sed -i -e "/capability.policy.maonoscript.sites/ s;,.*;, \"addons.mozilla.org afx.ms ajax.aspnetcdn.com cdnjs.cloudflare.com code.jquery.com firstdata.com firstdata.lv flashgot.net gfx.ms google.com googleapis.com googlevideo.com gstatic.com hotmail.com informaction.com live.com live.net maone.net minos.io mootools.net mozilla.net msn.com noscript.net outlook.com passport.com passport.net passportimages.com paypal.com paypalobjects.com persona.org prototypejs.org securecode.com securesuite.net sfx.ms tinymce.cachefly.net vjs.zendcdn.net wlxrs.com yahoo.com yahooapis.com yandex.st yimg.com youtube.com ytimg.com about: about:addons about:blank about:blocked about:certerror about:config about:crashes about:home about:memory about:neterror about:plugins about:privatebrowsing about:sessionrestore about:srcdoc about:support blob: chrome: http://afx.ms http://firstdata.com http://firstdata.lv http://flashgot.net http://gfx.ms http://google.com http://googleapis.com http://googlevideo.com http://gstatic.com http://hotmail.com http://informaction.com http://live.com http://live.net http://maone.net http://minos.io http://mootools.net http://mozilla.net http://msn.com http://noscript.net http://outlook.com http://passport.com http://passport.net http://passportimages.com http://paypal.com http://paypalobjects.com http://persona.org http://prototypejs.org http://securecode.com http://securesuite.net http://sfx.ms http://wlxrs.com http://yahoo.com http://yahooapis.com http://yandex.st http://yimg.com http://youtube.com http://ytimg.com https://afx.ms https://firstdata.com https://firstdata.lv https://flashgot.net https://gfx.ms https://google.com https://googleapis.com https://googlevideo.com https://gstatic.com https://hotmail.com https://informaction.com https://live.com https://live.net https://maone.net https://minos.io https://mootools.net https://mozilla.net https://msn.com https://noscript.net https://outlook.com https://passport.com https://passport.net https://passportimages.com https://paypal.com https://paypalobjects.com https://persona.org https://prototypejs.org https://securecode.com https://securesuite.net https://sfx.ms https://wlxrs.com https://yahoo.com https://yahooapis.com https://yandex.st https://yimg.com https://youtube.com https://ytimg.com moz-safe-about: resource:\")\;;" mozilla-orig/firefox/*.default/prefs.js
+
+    _cmd "find mozilla-orig/firefox/*.default/ -type f | xargs sed -i -e \"s/$(whoami)/muser/g\""; :
+    printf "%s\\n" "[+] New mozilla profile generated at: mozilla-orig/"
+}
+
+_create_minos_default_mozilla_settings

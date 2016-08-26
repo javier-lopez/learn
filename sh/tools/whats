@@ -1,0 +1,51 @@
+#!/bin/sh
+#description: define words using wikipedia over dns
+#usage: whats word
+
+#example: whats dns
+#Domain Name System, internet system used...
+
+_usage() {
+    printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') word ..."
+    printf "%s\\n" "Define words using wikipedia over dns, https://dgl.cx/wikipedia-dns."
+}
+
+_die() {
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
+}
+
+#https://dgl.cx/wikipedia-dns
+_whats() {
+    [ -z "${1}" ] && return 1
+    [ -z "${2}" ] && _whats__more_than_one="1"
+
+    for _whats__word; do
+        _whats__response="$(dig +short txt ${_whats__word}.wp.dg.cx)"
+        printf "%s\\n" "${_whats__response}"
+        if [ -z "${_whats__more_than_one}" ]; then
+            printf "\\n%s\\n\\n" ":::::::::::::::::::::::::::::::::::::::::::::::::"
+        fi
+    done
+}
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- "${@}" $(cat)
+fi
+
+[ "${#}" -eq "0" ] && _die
+
+for arg; do #parse options
+    case "${arg}" in
+        -h|--help) _usage && exit ;;
+        -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${arg}'" ;;
+    esac
+done
+
+if ! command -v "dig" >/dev/null 2>&1; then
+    printf "%s\\n" "install 'dig' to run this program" >&2
+    exit 1
+fi
+
+_whats "${@}"

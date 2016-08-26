@@ -1,0 +1,40 @@
+#!/bin/sh
+#description: show code of scripting utilities located in the system PATH
+#usage: cat-show script
+
+#example: cat-show cat-show
+#this
+#code
+#...
+
+_usage() {
+    printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') script"
+}
+
+_die() {
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
+}
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- "${@}" $(cat)
+fi
+
+[ "${#}" -eq "0" ] && _die
+
+for arg; do #parse options
+    case "${arg}" in
+        -h|--help) _usage && exit ;;
+        -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${arg}'" ;;
+    esac
+done
+
+script="${1}"
+
+if command -v "${script}" >/dev/null 2>&1; then
+    less "$(command -v "${script}" 2>/dev/null)"
+else
+    printf "$(expr "${0}" : '.*/\([^/]*\)'): %s\\n" "'${script}' was not found in \$PATH" >&2
+    exit 1
+fi

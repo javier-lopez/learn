@@ -1,0 +1,137 @@
+#!/bin/sh
+#description: currency converter
+#usage: cconverter INT CURRENCY [to] CURRENCY
+
+#example: cconverter 15 USD to MXN
+#15 USD = 247.9785 MXN
+
+_usage() {
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] int|float currency [to] currency"
+    printf "%s\\n" "Currency converter."
+    printf "\\n"
+    printf "%s\\n" "  -q, --quiet     quiet mode, the default is verbose mode"
+    printf "%s\\n" "  -h, --help      show this help message and exit"
+}
+
+_die() {
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
+}
+
+_is_number() {
+    #http://www.unix.com/shell-programming-and-scripting/172070-help-scripting-command.html
+    case "${1}" in
+        ""|"."|*[!0-9.]*) return 1 ;;
+    esac
+}
+
+_notify() {
+    #output messages through the notification system, prints to
+    #stdout in the worst escenario
+    [ -z "${1}" ] && return 1
+    if [ X"${TERM}" = X"linux" ] || [ -z "${TERM}" ]; then
+        kill -9 $(pgrep notify-osd) >/dev/null 2>&1
+        if ! DISPLAY=${DISPLAY:-:0} notify-send -t 1000 "${1}" "${3}"; then
+            if command -v "gxmessage" 2>/dev/null; then
+                font="Monaco 9"
+                DISPLAY=${DISPLAY:-:0} gxmessage "${font:+-fn "$font"}" "${1}" "ok"
+            elif command -v "xmessage" 2>/dev/null; then
+                font="fixed"
+                DISPLAY=${DISPLAY:-:0}  xmessage "${font:+-fn "$font"}" "${1}" "ok"
+            fi
+        fi
+    else
+        printf "%s\\n" "${2}"
+    fi
+    case "${3}" in
+        *clipboard*)
+            #dumping xclip's stdout to the bitbucket works around xclip's
+            #failure to properly daemonize
+            #https://sourceforge.net/p/xclip/patches/9/
+            printf "%s" "${2}" 2>/dev/null | xclip -selection clipboard -i >/dev/null 2>&1 || \
+            printf "%s" "${2}" 2>/dev/null | xsel -bi 2>/dev/null || \
+            printf "%s" "${2}" 2>/dev/null | pbcopy 2>/dev/null   || :
+            ;;
+    esac
+}
+
+_cconverter() {
+    #TODO 04-11-2015 12:53 >> add more currency apis
+    [ -z "${1}" ] && return 1
+
+    _cconverter_google() {
+        wget --tries=1 --timeout=2 -q -O- \
+        "http://www.google.com/finance/converter?a=${1}&from=${2}&to=${3}" \
+        2>/dev/null | sed '/res/!d;s/<[^>]*>//g'
+    }
+
+    _cconverter_yahoo() {
+        _cconverter__yahoo_rate="$(wget --tries=1 --timeout=2 -q -O- \
+        "http://download.finance.yahoo.com/d/quotes.csv?s=${2}${3}=X&f=b&e=.csv" 2>/dev/null)"
+        if [ -z "${_cconverter__yahoo_rate}" ] || [ "${_cconverter__yahoo_rate}" = "N/A"  ]; then
+            return 1
+        fi
+        _cconverter__yahoo_result="$(awk "BEGIN {printf(\"%.4f\", ${1}*${_cconverter__yahoo_rate}); exit}")"
+        printf "%s" "${1} ${2} = ${_cconverter__yahoo_result%.0000} ${3}"
+    }
+
+    _cconverter_webservicex() {
+        _cconverter__webservicex_rate="$(wget --tries=1 --timeout=2 -q -O- \
+        "http://www.webservicex.net/CurrencyConvertor.asmx/ConversionRate?FromCurrency=${2}&ToCurrency=${3}" | \
+        awk 'END {gsub(/<[^>]*>/, "");print $0}')"
+        [ -z "${_cconverter__webservicex_rate}" ] && return 1
+        _cconverter__webservicex_result="$(awk "BEGIN {printf(\"%.4f\", ${1}*${_cconverter__webservicex_rate}); exit}")"
+        printf "%s" "${1} ${2} = ${_cconverter__webservicex_result%.0000} ${3}"
+    }
+
+    for _cconverter__1st_word; do break; done
+    case "${_cconverter__1st_word}" in #if invalid input use 1 as base
+        *[!0-9.,]*) _cconverter__input="$(printf "%s" "${@}" | sed "s:${_cconverter__1st_word}:1:")" ;;
+        *) _cconverter__input="${@}" ;;
+    esac
+
+    _cconverter__input="$(printf "%s" "${_cconverter__input}" | \
+        tr 'abcdefghijklmnopqrstuvwxyz' 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' | sed 's:TO::')"
+    for api in google yahoo webservicex; do
+        if [ -z "${_cconverter__result}" ]; then
+           _cconverter__result="$(_cconverter_"${api}" ${_cconverter__input})"
+       else
+           break
+       fi
+    done
+
+    if [ -z "${_cconverter__result}" ];then
+       [ -z "${QFLAG}" ] && _cconverter__result="Money currency api timeout" || return 1
+    else
+        _cconverter__clipboard_text="Copied to clipboard!"
+    fi
+
+    _notify "${_cconverter__result}" "${_cconverter__result}" "${_cconverter__clipboard_text}"
+}
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- "${@}" $(cat)
+fi
+
+#split manually args by spaces
+set -- ${@}
+
+for arg; do #parse options
+    case "${arg}" in
+        -h|--help)  _usage && exit ;;
+        -q|--quiet) QFLAG="true" && shift ;;
+        -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${arg}'" ;;
+    esac
+done
+
+[ -z "${1}" ] && _die
+[ -z "${3}" ] && _die "$(expr "${0}" : '.*/\([^/]*\)'): missing parameters"
+_is_number "${1}" || _die "$(expr "${0}" : '.*/\([^/]*\)'): invalid syntax '${@}'"
+
+if ! command -v "wget" >/dev/null 2>&1; then
+    _notify "%s\\n" "install 'wget' to run this program" >&2
+    exit 1
+fi
+
+_cconverter "${@}"

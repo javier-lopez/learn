@@ -1,0 +1,84 @@
+#!/bin/sh
+#description: create cvs files with geolocalization data of launchpad groups
+#usage: lp-g9n-team [options] [lp group]
+
+#example: lp-g9n-team ubuntumembers
+#Outputing data to "lp-g9n-team.csv"
+#Member,City,Latitude,Longitude
+#ivarela,Madrid,40.4167754,-3.7037902
+#..
+
+#http://viajemotu.wordpress.com/2013/11/14/launchpad-maps/
+
+_usage() {
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] [lp-group]"
+    printf "%s\\n" "Create CVS files with geolocalization data of launchpad groups."
+    printf "\\n"
+    printf "%s\\n" "  -h,--help   show this message and exits"
+    printf "\\n"
+    printf "%s\\n" "  lp-group    launchpad group to query, 'ubuntumembers' by default"
+}
+
+_die() {
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
+}
+
+_whereis() {
+    [ -z "${1}" ] && return 1
+    [ -n "${2}" ] && return 1
+    if ! command -v "${1}" >/dev/null 2>&1; then
+        return 1
+    fi
+}
+
+_internetavailable() {
+    #check for internet connection, returns 0 on success, 1 otherwise
+    wget --tries=3 --timeout=5 http://www.google.com \
+        -O /tmp/index.google > /dev/null 2>&1
+
+    if [ -s /tmp/index.google ]; then
+        rm /tmp/index.google
+        return 0
+    else
+        rm /tmp/index.google
+        return 1
+    fi
+}
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- "${@}" $(cat)
+fi
+
+for arg; do #parse options
+    case "${arg}" in
+        -h|--help) _usage && exit ;;
+        -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${arg}'" ;;
+    esac
+done
+
+[ ! -z "${1}" ] && team="${1}" || team="ubuntumembers"
+
+_whereis python || _die "install 'python' to run this program, $ sudo apt-get install python"
+_whereis wget   || _die "install 'wget' to run this program, $ sudo apt-get install wget"
+
+if ! $(printf "%s" "from launchpadlib.launchpad import Launchpad" | python >/dev/null 2>&1); then
+    _die "install 'launchpadlib' to run this program, $ sudo apt-get install python-launchpadlib"
+fi
+
+if ! $(printf "%s" "from geopy import geocoders" | python >/dev/null 2>&1); then
+    _die "install 'geopy' to run this program, $ sudo apt-get install python-pip && sudo pip install geopy"
+fi
+
+if ! _internetavailable; then
+    _die "you must have an active internet connection to run this program"
+fi
+
+[ -f /tmp/lp-g9n.py ] || wget \
+    https://raw.github.com/chilicuil/learn/master/python/lp-g9n \
+    -O /tmp/lp-g9n.py >/dev/null 2>&1
+[ -f /tmp/lp-g9n.py ] && printf "%s\\n" \
+    "Outputing data to \"lp-g9n-team.csv\"" || \
+    _die "lp-g9n-team: failed to connect to launchpad, verify your connection"
+python /tmp/lp-g9n.py "${team}" | tee lp-g9n-team.csv

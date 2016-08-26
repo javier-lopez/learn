@@ -1,0 +1,40 @@
+#!/bin/sh
+#description: set and retrieve cpu governator on linux systems
+#usage: governator [get|set]
+
+#example: governator set performance
+#no output, it however sets the best governator for performance
+
+#https://bbs.archlinux.org/viewtopic.php?pid=431775#p431775
+_usage() {
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') get"
+    printf "%s\\n" "       $(expr "${0}" : '.*/\([^/]*\)') set powersave|conservative|ondemand|performance"
+}
+
+_exec() {
+    _exec__status="${?}"
+    if [ X"${_exec__status}" != X"0" ]; then
+        exit "${_exec__status}"
+    fi
+    printf "%s" "${*}: "
+    ${@}
+}
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- "${@}" $(cat)
+fi
+
+case "${1}" in
+    -h|--help) _usage && exit ;;
+    g*) _exec "cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor" ;;
+    s*)
+        case "${2}" in
+            powersave|conservative|ondemand|performance)
+                printf "%s\\n" "echo ${2} > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor"
+                sudo sh -c "printf %s '${2}'  > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor" ;;
+            *) _usage >&2 && exit 1 ;;
+        esac
+        ;;
+    *) _exec "cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor" ;;
+esac

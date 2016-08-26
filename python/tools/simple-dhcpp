@@ -1,0 +1,110 @@
+#!/usr/bin/env python
+
+##################################################################
+# Copyright (c) 2012, Sergej Srepfler <sergej.srepfler@gmail.com>
+# February 2012 - September 2012
+# Version 0.2.8, Last change on Sep 25, 2012
+# This software is distributed under the terms of BSD license.
+##################################################################
+
+import sys,os,time,socket,IN
+from optparse import OptionParser
+
+if __name__ == "__main__":
+    parser = OptionParser(description='%prog - a simple DHCP ping client', usage='%prog [options]')
+    parser.add_option("-i", "--interface", dest="interface", action="store", help='network interface to use (default all interfaces).')
+    parser.add_option("-r", "--remoteport", dest="rport", action="store", help='remote port to try (default 67).')
+    parser.add_option("-l", "--localport", dest="lport", action="store", help='local port to bind (default 68).')
+    parser.add_option("-b", "--broadcast", dest="broadcast", action="store", help='broadcast ip mask (default 255.255.255.255).')
+    parser.add_option("-t", "--timeout", dest="timeout", action="store", help='number of seconds to wait for a reply (default 10).')
+    parser.add_option("-n", "--number", dest="number", action="store", help='number of pings to try (default 1).')
+    parser.add_option("-w", "--wait", dest="wait", action="store", help='number of seconds to wait between a try and the next one (default 0).')
+
+    (options, args) = parser.parse_args()
+
+    #if not (args or options.interface):
+        #parser.print_help()
+        #exit(1)
+
+    if not os.geteuid()==0:
+        sys.exit(os.path.basename(__file__) + ": root permitions are necessary to run this program (raw sockets)")
+
+    if options.interface:
+        interface = options.interface
+    else:
+        interface = '' # Symbolic name meaning all available interfaces
+
+    if options.rport:
+        rport = int(options.rport)
+    else:
+        rport = int('67')
+
+    if options.lport:
+        lport = int(options.lport)
+    else:
+        lport = int('68')
+
+    if options.broadcast:
+        broadcast = options.broadcast
+    else:
+        broadcast = '255.255.255.255'
+
+    if options.timeout:
+        timeout = int(options.timeout)
+    else:
+        timeout = int('10')
+
+    if options.number:
+        number = int(options.number)
+    else:
+        number = int('1')
+
+    if options.wait:
+        wait = int(options.wait)
+    else:
+        wait = int('0')
+
+    MSG_SIZE=2048
+
+    for x in range(0, number):
+        ###########################################################
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        # socket is in blocking mode, so let's add a timeout
+        s.settimeout(3)
+        # Bind to Device
+        s.setsockopt(socket.SOL_SOCKET,IN.SO_BINDTODEVICE,interface+'\0')
+        # Enable ReuseAddr & Broadcast
+        s.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
+        s.setsockopt(socket.SOL_SOCKET,socket.SO_BROADCAST,1)
+        # Bind to Address
+        s.bind(('',lport))
+        ##########################################################
+        # Create DHCP-Discovery
+        MAC="E83935BDAB2A"
+        msg="0101060029104a2e0004800000000000000000000000000000000000"+MAC+"0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000063825363350101371801020305060b0c0d0f1011122b363c438081828384858687390204ec611100000000003030323132383130344132455d0200005e030102013c20505845436c69656e743a417263683a30303030303a554e44493a303032303031ff0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+        # send data
+        s.sendto(msg.decode("hex"),(broadcast,rport))
+        s.close()
+        # Receive response
+
+        rs=socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        rs.settimeout(timeout)
+        rs.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        rs.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        #rs.setsockopt(socket.SOL_SOCKET,IN.SO_BINDTODEVICE,interface+'\0')
+        rs.bind(('',lport))
+        #while True:
+        msg,addr = rs.recvfrom(MSG_SIZE)
+        print "Answer from "+addr[0]
+        #received = rs.recvfrom(MSG_SIZE)
+        # Process response
+        # Normally - this is the end.
+        ###########################################################
+        # And close the connection
+        rs.close()
+        if wait > 0:
+            time.sleep(wait)
+
+######################################################
+# History
+# 0.2.8 - May 31, 2017 - DHCP initial version

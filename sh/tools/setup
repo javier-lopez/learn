@@ -1,0 +1,71 @@
+#!/bin/sh
+#description: setup custom tasks
+#usage: setup [autocp|script]
+
+#example: setup script /path/file
+#chmod +x dmenu-killall
+#sudo cp dmenu-killall /usr/local/bin
+
+#Don't forget to update _usage when adding new functions
+_usage() {
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') module"
+    printf "%s\\n" "Setup my common tasks."
+    printf "\\n"
+    printf "%s\\n" "Modules:"
+    printf "%s\\n" "  autocp   cp custom autocomplete file"
+    printf "%s\\n" "  script   cp custom script to the path system"
+}
+
+_die() {
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
+}
+
+_exec() {
+    #print current command, exits on fail
+    [ -z "${1}" ] && return 0
+
+    printf "%s " "${@}"
+    printf "\\n"
+    eval "${@}"
+
+    _exec__status="${?}"
+    [ X"${_exec__status}" != X"0" ] && exit "${_exec__status}" || return
+}
+
+_script() {
+    [ -z "${1}" ] && _die "$(expr "${0}" : '.*/\([^/]*\)'): Missing argument, looking for a .sh|.py|.rb|etc script"
+
+    for file; do
+        _exec chmod +x "${file}"
+        _exec sudo cp -- "${file}" /usr/local/bin
+    done
+}
+
+_autocp() {
+    [ -n "${1}" ] || _die "$(expr "${0}" : '.*/\([^/]*\)'): Missing parameter, looking for an .autocp file"
+
+    for file; do
+        if [ -d /usr/share/bash-completion/completions/ ]; then
+            _exec sudo cp -- "${file}" /usr/share/bash-completion/completions/
+        elif [ -d /etc/bash_completion.d/ ]; then
+            _exec sudo cp -- "${file}" /etc/bash_completion.d/
+        fi
+    done
+}
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- "${@}" $(cat)
+fi
+
+if [ X"${#}" != X"0" ]; then
+    case "${1}" in
+        -h|--help) _usage && exit ;;
+        script)    shift; _script "${@}" ;;
+        autocp)    shift; _autocp "${@}" ;;
+        *)         _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${1}'" ;;
+    esac
+else
+    _die
+fi

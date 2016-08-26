@@ -1,0 +1,123 @@
+#!/bin/sh
+
+mails="m#%#javier.io"
+from="No reply <no-reply@javier.io>"
+
+subject="Monthly Bedrock Linux IRC Meeting reminder [DATE_NEXT_MEETING] -> ETA_TILL_NEXT_MEETING"
+msg="Next Bedrock Linux IRC meeting is around the corner!
+
+Prepare yourself and join the conversation at:
+
+    #bedrock at irc.freenode.net
+    https://webchat.freenode.net/?channels=bedrock
+
+https://www.reddit.com/r/bedrocklinux/comments/436gjw/monthly_irc_meetings_on_the_last_sunday_of_every/"
+
+_basename() {
+    [ -z "${1}" ] && return 1 || _basename__name="${1%%/}"
+    [ -z "${2}" ] || _basename__suffix="${2}"
+    case "${_basename__name}" in
+        /*|*/*) _basename__name="$(expr "${_basename__name}" : '.*/\([^/]*\)')" ;;
+    esac
+
+    if [ -n "${_basename__suffix}" ] && [ "${#_basename__name}" -gt "${#2}" ]; then
+        if [ X"$(printf "%s" "${_basename__name}" | cut -c"$((${#_basename__name} - ${#_basename__suffix} + 1))"-"${#_basename__name}")" \
+           = X"$(printf "%s" "${_basename__suffix}")" ]; then
+            _basename__name="$(printf "%s" "${_basename__name}" | cut -c1-"$((${#_basename__name} - ${#_basename__suffix}))")"
+        fi
+    fi
+
+    printf "%s" "${_basename__name}"
+}
+
+_last_sundays() {
+    for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
+        printf "%s/%02d/%s %s:%s\\n" "$(date +%Y)" "${i}" \
+            "$(ncal -h -m"${i}" | head -2 | tail -1 | awk '{print $NF}')" "12" "00"
+    done
+}
+
+_send_mails() {
+    for mail in ${mails}; do
+        #https://raw.githubusercontent.com/chilicuil/learn/master/sh/tools/mailgun
+        mail="$(printf "%s\\n" "${mail}" | sed "s:#%#:@:")"
+        mailgun --from "${from}" --subject "${subject}" "${mail}" "${msg}"
+    done
+}
+
+_pretty_date_eta() {
+    [ -z "${1}" ] && return 1
+    printf "%s\\n" "${1}" | grep -v "[^0-9]" >/dev/null || return 1;
+
+    _pdeta__num="${1}"
+    _pdeta__min="0"; _pdeta__hour="0"; _pdeta__day="0"
+
+    if [ "${_pdeta__num}" -gt "59" ]; then
+        _pdeta__sec="$((${_pdeta__num} % 60))"
+        _pdeta__num="$((${_pdeta__num} / 60))"
+        if [ "${_pdeta__num}" -gt "59" ]; then
+            _pdeta__min="$((${_pdeta__num} % 60))"
+            _pdeta__num="$((${_pdeta__num} / 60))"
+            if [ "${_pdeta__num}" -gt "23" ]; then
+                _pdeta__hour="$((${_pdeta__num} % 24))"
+                _pdeta__day="$((${_pdeta__num} / 24))"
+            else
+                _pdeta__hour="${_pdeta__num}"
+            fi
+        else
+            _pdeta__min="${_pdeta__num}"
+        fi
+    else
+        _pdeta__sec="${_pdeta__num}"
+    fi
+
+    [ "${_pdeta__day}"  -gt "0" ] && printf "%s day(s) " "${_pdeta__day}"
+    [ "${_pdeta__hour}" -gt "0" ] && printf "%s hr(s) "  "${_pdeta__hour}"
+    [ "${_pdeta__min}"  -gt "0" ] && printf "%s min(s)"  "${_pdeta__min}"
+    printf "\\n"
+}
+
+progname="$(_basename "${0}")"
+dates="$(_last_sundays)"
+current_date="$(TZ=America/New_York date "+%Y/%m/%d %H:%M")"
+
+OLDIFS="${IFS}"; IFS='
+'
+for date in ${dates}; do
+    date_in_secs="$(TZ=America/New_York date -d "${date}" +"%s")"
+    current_date_in_secs="$(TZ=America/New_York date -d "${current_date}" +"%s")"
+    diff_in_secs="$(($date_in_secs - $current_date_in_secs))"
+    subject="$(printf "%s" "${subject}" | sed "s,DATE_NEXT_MEETING,$date,")"
+
+    if [ "${date_in_secs}" -gt "${current_date_in_secs}" ]; then
+                            #1 day and 10 mins
+        if [ "${diff_in_secs}" -le "87000" ] && [ "${diff_in_secs}" -gt "4200" ]; then
+            if [ X"$(cat /tmp/"${progname}" 2>/dev/null)" = X"" ]; then
+                subject="$(printf "%s" "${subject}" | sed "s,ETA_TILL_NEXT_MEETING,TOMORROW,")"
+                _send_mails
+                printf "hour" > /tmp/"${progname}"
+                exit
+            fi
+        fi
+                              #1 hour + 10 min
+        if [ "${diff_in_secs}" -le "4200" ] && [ "${diff_in_secs}" -gt "600" ]; then
+            if [ X"$(cat /tmp/"${progname}" 2>/dev/null)" = X"hour" ]; then
+                subject="$(printf "%s" "${subject}" | sed "s,ETA_TILL_NEXT_MEETING,in $(_pretty_date_eta "${diff_in_secs}")!,")"
+                _send_mails
+                printf "now" > /tmp/"${progname}"
+                exit
+            fi
+        fi
+                                 #10 min
+        if [ "${diff_in_secs}" -le "600" ]; then
+            if [ X"$(cat /tmp/"${progname}" 2>/dev/null)" = X"now" ]; then
+                subject="$(printf "%s" "${subject}" | sed "s,ETA_TILL_NEXT_MEETING, NOW!,")"
+                _send_mails
+                 > /tmp/"${progname}"
+                exit
+            fi
+        fi
+
+        break
+    fi
+done

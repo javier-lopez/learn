@@ -1,0 +1,359 @@
+#!/bin/sh
+#description: browse upnp-av based media servers
+#usage: simple-dlna-browser [options] [pattern]
+
+#example:
+#$ simple-dlna-browser "Video file"
+#http://192.168.1.254:8200/MediaItems/22.mp4
+
+_usage() {
+    printf "%s\\n" "Usage: ${progname} [options] [pattern]"
+    printf "%s\\n" "Query dlna media servers."
+    printf "\\n"
+    printf "%s\\n" "  -L, --list-servers       list available dlna media servers, require 'socat'"
+    printf "%s\\n" "  -l, --list-media [ID]    list multimedia resources"
+    printf "%s\\n" "  -s, --server IP[:PORT]   specify media server"
+    printf "%s\\n" "  -p, --port   PORT        specify media server port, default 8200"
+    printf "%s\\n" "  -v                       verbose mode"
+    printf "%s\\n" "  -h, --help               show this help message and exit"
+    printf "\\n"
+    printf "%s\\n" "Examples:"
+    printf "\\n"
+    printf "%s\\n" "  $ ${progname} video1"
+    printf "%s\\n" "  http://192.168.1.254:8200/MediaItems/22.mp4"
+    printf "\\n"
+    printf "%s\\n" "  $ ${progname} -s 192.168.1.254:8200 -v video"
+    printf "%s\\n" "  http://192.168.1.254:8200/MediaItems/22.mp4 - video1"
+    printf "%s\\n" "  http://192.168.1.254:8200/MediaItems/23.mp4 - Other video file"
+    printf "%s\\n" "  http://192.168.1.254:8200/MediaItems/24.mp4 - Yet another video file"
+    printf "\\n"
+    printf "%s\\n" "  Search pattern in all detected media servers, require 'socat' or specify"
+    printf "%s\\n" "  a media server IP (-s|--server) and port (-p|--port)"
+    printf "\\n"
+    printf "%s\\n" "  $ ${progname} -l -v"
+    printf "%s\\n" "  http://192.168.1.111:8200/Desc.xml (Multimedia)"
+    printf "%s\\n" "     File1 - 64\$0"
+    printf "%s\\n" "     File2 - 64\$1"
+    printf "%s\\n" "     Folder/ - 64\$2"
+    printf "\\n"
+    printf "%s\\n" "  $ ${progname} -l '64\$2'"
+    printf "%s\\n" "  http://192.168.1.111:8200/Desc.xml (Multimedia)"
+    printf "%s\\n" "     File1"
+    printf "%s\\n" "     File2"
+    printf "%s\\n" "     File3"
+    printf "\\n"
+    printf "%s\\n" "  $ ${progname} -L"
+    printf "%s\\n" "  http://192.168.1.254:8200/rootDesc.xml (MiniDLNA)"
+    printf "%s\\n" "  http://192.168.1.111:8200/Desc.xml (Multimedia)"
+}
+
+_basename() {
+    [ -z "${1}" ] && return 1 || _basename__name="${1}" && _basename__retval=""
+    [ -z "${2}" ] || _basename__suffix="${2}"
+    case "${_basename__name}" in
+        /*|*/*) _basename__name="${_basename__name##*/}"
+    esac
+    [ -n "${_basename__suffix}" ] && [ "${#_basename__name}" -gt "${#2}" ] && \
+        _basename__name="${_basename__name%$_basename__suffix}"
+    _basename__retval="${_basename__name}"
+}
+
+_die() {
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
+}
+
+_false() {
+    return 1
+}
+
+_is_int() {
+    case "${1}" in
+        *[!0-9]*|"") return 1 ;;
+    esac
+}
+
+_is_ip4() {
+    case "${*}" in
+        ""|*[!0-9.]*|*[!0-9]) return 1 ;;
+    esac
+
+    OLDIFS="${IFS}"
+    IFS="."
+    set -- $@
+    IFS="${OLDIFS}"
+
+    [ "${#}" -eq "4" ] && \
+        [ "${1:-666}" -le "255" ] && [ "${2:-666}" -le "255" ] && \
+        [ "${3:-666}" -le "255" ] && [ "${4:-666}" -le "254" ]
+}
+
+_is_url() {
+    case "${1}" in
+        http://*) return 0 ;;
+    esac
+    return 1
+}
+
+_check_valid() {
+    [ -z "${1}" ] && return 0
+    _cvalid__tests="${2}"
+    while [ "${_cvalid__tests}" ]; do
+        _cvalid__test="${_cvalid__tests%%,*}"
+        case "${_cvalid__test}" in
+            http_url) _is_url "${1}" && return 0 ;;
+                  ip) _is_ip4 "${1}" && return 0 ;;
+                port) _is_int "${1}" && return 0 ;;
+        esac
+        [ X"${_cvalid__tests}" = X"${_cvalid__test}" ] && \
+            _cvalid__tests='' || _cvalid__tests="${_cvalid__tests#*,}"
+    done
+    return 1
+}
+
+_list_servers() {
+    command -v "socat" >/dev/null 2>&1 || return 127
+    _lservers__query='M-SEARCH * HTTP/1.1\r
+Host: 239.255.255.250:1900\r
+Man: "ssdp:discover"\r
+ST: urn:schemas-upnp-org:device:MediaServer:1\r
+MX: 3.\r
+User-Agent: gupnp-av-cp GSSDP/0.12.1\r\n'
+
+    case "${1}" in
+        verbose) _lservers__awk_filter='{print}' ;;
+        *)       _lservers__awk_filter='/LOCATION/ {print $2}' ;;
+    esac
+
+    _lservers__results="$(printf "%b" "${_lservers__query}"| \
+        socat -T1 STDIO UDP4-DATAGRAM:239.255.255.250:1900 | \
+        tr -d '\r' | awk "${_lservers__awk_filter}")"
+
+    for _lservers__result in $(printf "%s" "${_lservers__results}" | \
+        awk '/http/' | ${sed} 's,.*http:,http:,'); do
+        _lservers__friendly_name="$(printf "%s"  \
+            "$(curl -s  "${_lservers__result}" 2>/dev/null  || \
+            wget -q -O- "${_lservers__result}" 2>/dev/null)" | \
+            ${sed} 's:</:\n:g' | \
+            awk '/<friendlyName/ {gsub(/.*<friendlyName>/,""); print}')"
+        _lservers__results="$(printf "%s" "${_lservers__results}"  | \
+            ${sed} "s,${_lservers__result},${_lservers__result} (${_lservers__friendly_name}),")"
+    done
+
+    printf "%s\\n" "${_lservers__results}"
+}
+
+_init_http_headers() {
+    user_agent='User-Agent: gupnp-av-cp GUPnP/0.18.1 DLNADOC/1.50'
+    accept='Accept: '
+    content_type='Content-Type: text/xml; charset="utf-8"'
+    soap_action='SOAPAction: "urn:schemas-upnp-org:service:ContentDirectory:1#Browse"'
+    accept_language='Accept-Language: en-us;q=1, en;q=0.5'
+    accept_encoding='Accept-Encoding: gzip'
+}
+
+_tree_format_output()
+{
+    ${sed} '1i\\' | ${sed} -e 's;^;├── ;' -e 's;│   \([^│]\);├── \1;g' -e '1s;.*;┬;'
+    #simpler alternative
+    #${sed} 's:^:   :'
+}
+
+_filter_files() {
+    ${sed} 's:/dc:\n:g'   | \
+        awk '/title/ {if ($0 ~ "&lt;$") {if ($0 ~ "container") print $0 "/"; else print}}' | \
+        ${sed} 's:&lt;::g;s:.*;::;s:"::g' | _tree_format_output
+}
+
+_filter_files_with_ids() {
+    ${sed} 's:id=:\n:g' | ${sed} 's:/dc.*::' | \
+        awk '/dc:title/ {{if ($0 ~ "childCount") print $0 "/"; else print}}' | \
+        awk '{print $0 , "-", $1}' | ${sed} 's:&lt;::g;s:.*;::;s:"::g' | \
+        _tree_format_output
+}
+
+_filter_urls() {
+    ${sed} 's:id=:\n:g' | awk '/dc:title/' | ${sed} 's,.*http://,http://,g;s,&lt.*,,g' #|\
+        #skip picture previews
+        #${sed} 's:/Thumbnails/:/MediaItems/:'
+}
+
+_filter_urls_with_title() {
+    ${sed} 's:id=:\n:g' | awk '/dc:title/' | \
+        ${sed} 's,.*;dc:title&gt;,,;s:&lt;: :g;s: /res.*::' | \
+        ${sed} 's:\(^.* /dc\:title\)\(.*\):\2 - \1:' | \
+        ${sed} 's,.*http://,http://,;s, /dc:title,,'
+    #${sed} 's:id=:\n:g' | awk '/dc:title/' | \
+        #${sed} 's,.*;dc:title&gt;,,;s:&lt;: :g;s: /res.*::' |  \
+        #awk '{print $0, "-", $1}' |  ${sed} 's,.*http://,http://,'
+}
+
+_fetch_data() {
+    if command -v "curl" >/dev/null 2>&1; then
+        curl -H "${user_agent}"      \
+             -H "${accept}"          \
+             -H "${content_type}"    \
+             -H "${soap_action}"     \
+             -H "${accept_language}" \
+             -H "${accept_encoding}" \
+             -X POST -d "${soap_envelope}" -s "${1}/ctl/ContentDir"
+
+    elif wget --help 2>&1 | grep post-data >/dev/null 2>&1; then
+        wget --header="${user_agent}"      \
+             --header="${accept}"          \
+             --header="${content_type}"    \
+             --header="${soap_action}"     \
+             --header="${accept_language}" \
+             --header="${accept_encoding}" \
+             --post-data="${soap_envelope}" -q -O- "${1}/ctl/ContentDir"
+
+    elif command -v "nc" >/dev/null 2>&1; then
+        _fmedia__envelope_len="$(printf "%s\\n" "${soap_envelope}" | wc -c)"
+        _fmedia__server="${1#http://}"
+        header="POST /ctl/ContentDir HTTP/1.1\r\n"
+        header="${header}${user_agent}\r\n"
+        header="${header}${accept}\r\n"
+        header="${header}Host: ${_fmedia__server}\r\n"
+        header="${header}${content_type}\r\n"
+        header="${header}Content-Length: ${_fmedia__envelope_len}\r\n"
+        header="${header}${soap_action}\r\n"
+        header="${header}${accept_language}\r\n"
+        header="${header}${accept_encoding}\r\n\r\n\r\n"
+        header="${header}${soap_envelope}"
+
+        printf "%b" "${header}" | \
+            nc "${_fmedia__server%:*}" "${_fmedia__server#*:}"
+        unset header
+    else
+        _die "install either 'curl', 'wget' or 'netcat' to browse content"
+    fi
+}
+
+_list_media() {
+    if [ -z "${1}" ]; then
+        _lmedia__servers="$(_list_servers)"
+        [ "${_lmedia__servers}" ] || return 127
+    else
+        _lmedia__servers="${1}:${2}"
+        shift && shift
+    fi
+    _lmedia__verbose="${3}"
+    shift && shift && shift
+
+    _init_http_headers
+    soap_envelope='<?xml version="1.0"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"><s:Body><u:Browse xmlns:u="urn:schemas-upnp-org:service:ContentDirectory:1"><ObjectID>'"${@:-0}"'</ObjectID><BrowseFlag>BrowseDirectChildren</BrowseFlag><Filter>@childCount</Filter><StartingIndex>0</StartingIndex><RequestedCount>10000</RequestedCount><SortCriteria></SortCriteria></u:Browse></s:Body></s:Envelope>'
+
+    for _lmedia__server in $(printf "%s" "${_lmedia__servers}" | \
+        awk '{print $1}'|cut -d'/' -f1-3); do
+        printf "%s" "${_lmedia__servers}" | awk '/'"${_lmedia__server#http://}"'/'
+        #_fetch_data "${_lmedia__server}"  | _filter_files_with_ids
+        _fetch_data "${_lmedia__server}"  | ( \
+            [ -z  "${_lmedia__verbose}" ] &&  \
+            _filter_files                  || \
+            _filter_files_with_ids)
+    done
+}
+
+_search_media() {
+    if [ -z "${1}" ]; then
+        _smedia__servers="$(_list_servers)"
+        [ "${_smedia__servers}" ] || return 127
+    else
+        _smedia__servers="${1}:${2}"
+    fi
+    _smedia__verbose="${3}"
+    shift && shift && shift
+
+    _init_http_headers
+    soap_action='SOAPAction: "urn:schemas-upnp-org:service:ContentDirectory:1#Search"'
+    soap_envelope='<?xml version="1.0" encoding="UTF-8" ?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"><s:Body><u:Search xmlns:u="urn:schemas-upnp-org:service:ContentDirectory:1"><ContainerID>0</ContainerID><SearchCriteria>(dc:title contains "'"${@}"'")</SearchCriteria><Filter>*</Filter><StartingIndex>0</StartingIndex><RequestedCount>100</RequestedCount><SortCriteria>+dc:title</SortCriteria></u:Search></s:Body></s:Envelope>'
+
+    for _smedia__server in $(printf "%s" "${_smedia__servers}" | \
+        awk '{print $1}'|cut -d'/' -f1-3); do
+        _fetch_data "${_smedia__server}" | ( \
+            [ -z  "${_smedia__verbose}" ] && \
+            _filter_urls                  || \
+            _filter_urls_with_title)
+    done
+}
+
+_basename "${0}"; progname="${_basename__retval}"
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- "${@}" $(cat)
+fi
+
+[ "${#}" -eq "0" ] && _die
+
+for arg; do #parse options
+    case "${arg}" in
+        -L|--list-servers) list_servers_option="1"; shift ;;
+        -l|--list-media)   list_media_option="1"  ; shift ;;
+        '-s'|'--server')
+            if [ "${#}" -gt "1" ]; then
+                case "${2}" in
+                    -*) _die "Option '${arg}' requires a parameter" ;;
+                esac
+                shift; server="${1}"; [ "${1}" ] && shift
+            else
+                _die "Option '${arg}' requires a parameter"
+            fi
+            ;;
+        -s*) server="${1#-s}"; shift ;;
+        --server*) server="${1#--server}"; shift ;;
+        '-p'|'--port')
+            if [ "${#}" -gt "1" ]; then
+                case "${2}" in
+                    -*) _die "Option '${arg}' requires a parameter"
+                esac
+                shift; port="${1}"; [ "${1}" ] && shift
+            else
+                _die "Option '${arg}' requires a parameter"
+            fi
+            ;;
+        -p*) port="${1#-p}"; shift ;;
+        --port*) port="${1#--port}"; shift ;;
+        -v*) verbose_lvl="verbose" ; shift ;;
+        -h|--help) _usage && exit ;;
+        -*) _die "${progname}: unrecognized option '${arg}'" ;;
+    esac
+done
+
+### validate options ###
+_check_valid "${server}" ip,http_url || _die "Invalid server IP: '${server}'"
+_check_valid "${port}"   port        || _die "Invalid port: '${port}'"
+[ "${server}" ] && server="http://${server#http://}"
+if _is_int "${server##*:}"; then
+    port="${server##*:}"
+    server="${server%:$port}"
+else
+    port="${port:-8200}"
+fi
+########################
+
+#gnu sed have some issues managing non ascii characters
+(busybox --list | grep sed) >/dev/null 2>&1 && sed="busybox sed" || sed="sed"
+
+if [ "${list_servers_option}" ]; then
+    _list_servers "${verbose_lvl}" || {
+        case "${?}" in
+            127) _die "Option '${arg}', requires the 'socat' program" ;;
+        esac
+    }
+elif [ "${list_media_option}" ]; then
+    _list_media "${server}" "${port}" "${verbose_lvl}" "${@}" || {
+        case "${?}" in
+            127) _die "Specify a dlna media server" \
+                      "or install 'socat' to enable autodetection." ;;
+              *) _die "No dlna media server found at: ${server}:${port}"
+        esac
+    }
+else
+    _search_media "${server}" "${port}" "${verbose_lvl}" "${@}" || {
+        case "${?}" in
+            127) _die "Specify a dlna media server" \
+                      "or install 'socat' to enable autodetection." ;;
+              *) _die "No result found for \"${@}\""
+        esac
+    }
+fi

@@ -1,0 +1,68 @@
+#!/bin/sh
+#description: encrypt and password-protect execution of any script
+#usage: crypt script
+
+#example: crypt script
+#creates script.crypt
+
+_basename() {
+    [ -z "${1}" ] && return 1 || _bbasename__name="${1}"
+    [ -z "${2}" ] || _bbasename__suffix="${2}"
+    case "${_bbasename__name}" in
+        /*|*/*) _bbasename__name="${_bbasename__name##*/}"
+    esac
+
+    if [ -n "${_bbasename__suffix}" ] && [ "${#_bbasename__name}" -gt "${#2}" ]; then
+        _bbasename__name="${_bbasename__name%$_bbasename__suffix}"
+    fi
+
+    printf "%s" "${_bbasename__name}"
+}
+
+_false() {
+    return 1
+}
+
+_crypt() {
+    for _crypt__file; do
+        if [ -f "${_crypt__file}" ] ; then
+            _crypt__file_output="${_crypt__file}".crypt
+            _crypt__header='eval "$((dd if=${0} bs=1 skip=XX|gpg -d)2>/dev/null)"; exit;'
+            _crypt__header_size="$(printf "%s\\n" "${_crypt__header}"|wc -c)"
+
+            _crypt__header="$(printf "%s\\n" "${_crypt__header}" | sed s:XX:"${_crypt__header_size}":)"
+            gpg -c < "${_crypt__file}" > /tmp/"$(_basename "${_crypt__file_output}")"
+            if [ "${?}" -eq 0 ]; then
+                printf "%s\\n" "${_crypt__header}" > "${_crypt__file_output}"
+                cat /tmp/"$(_basename "${_crypt__file_output}")" >> "${_crypt__file_output}"
+                chmod +x "${_crypt__file_output}"
+                rm -rf /tmp/"$(_basename "${_crypt__file_output}")"
+            fi
+        else
+            printf "%s\\n" "'${_crypt__file}' doesn't exist" >&2 && _false
+        fi
+    done
+}
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- "${@}" $(cat)
+fi
+
+[ "${#}" -eq "0" ] && printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') file ..." >&2 && exit 1
+
+for arg; do #parse options
+    case "${arg}" in
+        -h|--help) printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') file ..." && exit ;;
+        -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${arg}'" >&2;
+            printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') file ..." >&2
+            exit 1 ;;
+    esac
+done
+
+if ! command -v "gpg" >/dev/null 2>&1; then
+    printf "%s\\n" "install 'gnupg' to run this program" >&2
+    exit 1
+fi
+
+_crypt "${@}"

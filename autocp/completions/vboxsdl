@@ -1,0 +1,53 @@
+_vboxsdl()
+{
+    if ! command -v "vboxsdl" >/dev/null 2>&1; then
+        return
+    fi
+
+    local cur prev words cword
+    _init_completion || return
+
+    number_of_words="${#COMP_WORDS[@]}"
+
+    #=======================================================
+    #                  General options
+    #=======================================================
+    OPTS="--startvm --hda --fda --cdrom --boot --memory
+          --vram --fullscreen --fullscreenresize
+          --fixedmode --nofstoggle --noresize --nohostkey
+          --nohostkeys --nograbonclick --detecthostkey
+          --hostkey --termacpi --vrdp --discardstate
+          --securelabel --seclabelfnt --seclabelsiz
+          --seclabelofs --seclabelfgcol --seclabelbgcol
+          --norawr0 --rawr0 --norawr3 --rawr3 --nopatm
+          --patm --nocsam --csam --nohwvirtex --hwvirtex"
+
+    #=======================================================
+    #                   Nested options
+    #=======================================================
+    case "${prev}" in
+        --startvm)
+            OLDIFS="$IFS"
+            IFS=$'\n'
+            COMPREPLY=($(compgen -W "$(vboxmanage list vms | cut -d\" -f2)" -- $cur))
+            IFS="$OLDIFS"
+            return 0
+            ;;
+        --hda|--fda|--cdrom|--seclabelfnt)
+            COMPREPLY=($(compgen -A file -- $cur))
+            return 0
+            ;;
+        --boot)
+            COMPREPLY=($(compgen -W "a c d n" -- $cur))
+            return 0
+            ;;
+    esac
+
+    if [[ "$cur" == -* ]]; then
+        # relevant options completion
+        COMPREPLY=($(compgen -W "$OPTS" -- $cur))
+    fi
+} &&
+complete -F _vboxsdl VBoxSDL vboxsdl
+
+# vim: set ts=8 sw=4 tw=80 ft=sh :

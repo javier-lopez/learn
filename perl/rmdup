@@ -1,0 +1,966 @@
+#!/usr/bin/perl
+
+#------------------------------------------------------------
+# Originally named Dupseek (and destroy)
+# A command-line interactive perl program
+# to find and remove duplicate files
+#------------------------------------------------------------
+# Copyright Antonio Bellezza 2003
+# mail: antonio@beautylabs.net
+#------------------------------------------------------------
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of version 2 of the GNU General Public License
+# as published by the Free Software Foundation;
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#------------------------------------------------------------
+
+#------------------------------------------------------------
+# package Finder
+#------------------------------------------------------------
+package Finder;
+
+#------------------------------------------------------------
+# dupfinder: find duplicate files
+#------------------------------------------------------------
+
+use strict;
+use warnings;
+use File::Find;
+# use Finder::Group;
+
+#----------------------------------------
+# new ( dir, ... )
+# Create new finder
+#----------------------------------------
+sub new {
+    my $class = shift;
+    my $self = {
+        dirs     => [ @_ ],
+        waiting   => [],
+        terminal => [],
+        minSize => undef,
+        maxSize => undef
+    };
+    return bless $self, $class;
+}
+
+
+#----------------------------------------
+# setMinSize ( size )
+#----------------------------------------
+sub setMinSize {
+    my $self = shift;
+    my ( $size ) = @_;
+    $self -> { minSize } = $size;
+}
+
+#----------------------------------------
+# setMaxSize ( size )
+#----------------------------------------
+sub setMaxSize {
+    my $self = shift;
+    my ( $size ) = @_;
+    $self -> { maxSize } = $size;
+}
+
+#----------------------------------------
+# terminal()
+# return terminal groups
+#----------------------------------------
+sub terminal {
+    my $self = shift;
+    return @{ $self -> { terminal } };
+}
+
+#----------------------------------------
+# waiting()
+# return waiting groups
+#----------------------------------------
+sub waiting {
+    my $self = shift;
+    return @{ $self -> { waiting } };
+}
+
+#----------------------------------------
+# readDirs ()
+# Find all files and setup finder
+#----------------------------------------
+sub readDirs {
+    my $self = shift;
+    my $group = Finder::Group -> new();
+    my %seen_dirs = ();
+    my $process = sub {
+        my $mins = $self -> { minSize };
+        my $maxs = $self -> { maxSize };
+        my ( $dev, $node ) = lstat;
+        if ( -d _ ) {
+            my $sd_key = "$dev:$node";
+            if ( exists $seen_dirs { $sd_key } ) {
+                die "$seen_dirs{$sd_key} and $File::Find::name are the same directory. Refusing to proceed\n";
+            } else {
+                $seen_dirs { $sd_key } = $File::Find::name;
+                return;
+            }
+        }
+        if ( -f _ && ! -l _ ) {
+            return if defined $mins and -s _ < $mins;
+            return if defined $maxs and -s _ > $maxs;
+            $group -> add( $File::Find::name );
+            return;
+        }
+    };
+    find( $process,
+        @{$self->{dirs}} );
+    $self -> {waiting} = [ $group ];
+}
+
+
+#----------------------------------------
+# iterate( [ n ] )
+# Perform one or n iterations
+# and add groups to terminal
+#----------------------------------------
+sub iterate {
+    my $self = shift;
+    my $n = shift || 1;
+
+    my @group = @{ $self -> {waiting} };
+    my @newGroup;
+
+    for (1..$n) {
+        @newGroup = ();
+        for ( @group ) {
+            # Partition the group and position properly
+            # the resulting subgroups
+            my @split = $_ -> partition();
+            for (@split) {
+                if ( $_ -> isTerminal ) {
+                    $self -> addTerminal( $_ );
+                } else {
+                    push @newGroup, $_;
+                }
+            }
+        }
+        @group = @newGroup;
+    }
+
+    $self -> {waiting} = \@newGroup;
+return @{ $self -> {terminal} };
+}
+
+#----------------------------------------
+# setTerminalAction( sub { code } )
+# Set action to perform on terminal groups
+#----------------------------------------
+sub setTerminalAction {
+    my $self = shift;
+    my ($code) = @_;
+    $self -> {terminalAction} = $code;
+}
+
+#----------------------------------------
+# addTerminal( group, ... )
+# the group has been found to be terminal
+# process it
+#----------------------------------------
+sub addTerminal {
+    my $self = shift;
+    my $sub = $self -> {terminalAction};
+    if ($sub) {
+        $sub -> ( $self, @_ );
+    } else {
+        push @{ $self -> {terminal} }, @_;
+    }
+}
+
+#----------------------------------------
+# processWaiting( code )
+# execute code -> ( $group )
+# for all waiting groups
+# if the outcome is false, put back into the waiting list
+#----------------------------------------
+sub processWaiting {
+    my $self = shift;
+    my ($sub) = @_;
+    my @newWaiting = ();
+    for my $group ($self -> waiting) {
+        unless ( $sub -> ( $group ) ) {
+            push @newWaiting, $group;
+        }
+    }
+    $self -> {waiting} = \@newWaiting;
+}
+
+1;
+
+#------------------------------------------------------------
+# package Finder::Group
+#------------------------------------------------------------
+package Finder::Group;
+
+#------------------------------------------------------------
+# Finder::Group
+#------------------------------------------------------------
+# Group of files which might be the same
+#------------------------------------------------------------
+
+use strict;
+
+# use Finder::Hasher;
+
+#----------------------------------------
+# new( [ group [ , newkey => val ] ] )
+#----------------------------------------
+sub new {
+    my $class = shift;
+    my ($parent, %key) = @_;
+    my $self = bless { files => [] }, $class;
+    if ($parent) {
+        $self -> {keys} = { %{ $parent -> {keys} }, %key };
+        $self -> {hasher} = $parent -> hasher -> next( $self );
+    } else {
+        $self -> {keys} = {};
+        $self -> {hasher} = Finder::Hasher -> new();
+    };
+    return $self;
+}
+
+#----------------------------------------
+# hasher()
+# return hasher
+#----------------------------------------
+sub hasher { shift -> {hasher} }
+
+#----------------------------------------
+# files()
+# return file list
+#----------------------------------------
+sub files {
+    my $self = shift;
+    return @{ $self -> {files} };
+}
+
+#----------------------------------------
+# remove (filename)
+# remove filename from group
+#----------------------------------------
+sub remove {
+    my $self = shift;
+    my ($file) = @_;
+    $self -> {files} = grep { $_ ne $file } @{ $self -> {files} };
+}
+
+#----------------------------------------
+# progress()
+# return hashing progress string
+#----------------------------------------
+sub progress {
+    my $self = shift;
+    my $hasher = $self -> hasher or return "";
+    return $hasher -> progress;
+}
+
+#----------------------------------------
+# isTerminal()
+# return 1 if the group is terminal
+# undef otherwise
+#----------------------------------------
+sub isTerminal {
+    my $self = shift;
+    return $self -> files() <= 1 || ! defined( $self -> hasher );
+}
+
+#----------------------------------------
+# <keyName>()
+# autoload tries to return the corresponding key value
+# ex. $group->size() returns $group->{keys}{size}
+#----------------------------------------
+sub AUTOLOAD {
+    my $self = shift;
+    my $par = $Finder::Group::AUTOLOAD;
+    my @par = split '::', $par;
+    return $self -> {keys} {pop @par};
+}
+
+#----------------------------------------
+# add( file, ... )
+#----------------------------------------
+sub add {
+    my $self = shift;
+    push @{ $self -> {files} }, @_;
+}
+
+#----------------------------------------
+# process( file )
+# return hash applied to file
+#----------------------------------------
+sub process {
+    my $self = shift;
+    my ($fileName) = @_;
+    return $self -> hasher -> process( $fileName );
+}
+
+#----------------------------------------
+# partition()
+# execute a discrimination step
+# return list of groups
+#----------------------------------------
+sub partition {
+    my $self = shift;
+
+    my %bucket = ();
+
+    for ($self -> files) {
+        my $hash = $self -> process( $_ );
+        push @{ $bucket {$hash} ||= [] }, $_;
+    }
+
+    my @result = ();
+
+    for (keys %bucket) {
+        my %key;
+        my $name = $self -> hasher -> name;
+        $key{ $name } = $_ if $name;
+        my $newGroup = ref($self) -> new( $self, %key );
+        $newGroup -> add( @{ $bucket{$_} } );
+        push @result, $newGroup;
+    }
+
+    return @result;
+}
+
+
+1;
+
+#------------------------------------------------------------
+# package Finder::Hasher
+#------------------------------------------------------------
+package Finder::Hasher;
+
+
+#------------------------------------------------------------
+# Finder::Hasher
+# objects computing hash values for files
+#------------------------------------------------------------
+
+use strict;
+
+
+#----------------------------------------
+# new()
+#----------------------------------------
+sub new {
+    Finder::Hasher::Size -> new();
+}
+
+
+
+
+
+#------------------------------------------------------------
+# Finder::Hasher::Size
+# compute file size
+#------------------------------------------------------------
+
+package Finder::Hasher::Size;
+
+#----------------------------------------
+# new()
+#----------------------------------------
+sub new {
+    bless {}, __PACKAGE__;
+}
+
+#----------------------------------------
+# process( filename )
+#----------------------------------------
+sub process {
+    my $self = shift;
+    size( @_ );
+
+}
+
+#----------------------------------------
+# name()
+# Return the name (the hash is meaningful)
+#----------------------------------------
+sub name { 'size' }
+
+#----------------------------------------
+# next( [ group ] )
+# return next hasher
+# return undef if hasher was terminal
+#----------------------------------------
+sub next {
+    my $self = shift;
+    my ($group) = @_;
+
+    my $size = $group -> size;
+    return undef if ($size==0);
+
+    Finder::Hasher::Sample -> new( $size );
+}
+
+#----------------------------------------
+# clone()
+# return an identical twin
+#----------------------------------------
+sub clone {
+    my $self = shift;
+    return bless %$self, ref $self;
+}
+
+#----------------------------------------
+# progress()
+# return a string indicating progress
+#----------------------------------------
+sub progress {
+    return "Size computed";
+}
+
+#----------------------------------------
+# size ( filename )
+# Find file size
+#----------------------------------------
+sub size {
+    my $fname = shift;
+    return (stat ($_))[7];
+}
+
+#------------------------------------------------------------
+# Finder::Hasher::Sample
+# Read samples from the file
+#------------------------------------------------------------
+
+package Finder::Hasher::Sample;
+
+use IO::File;
+# use Finder::Looper;
+# use Finder::Group;
+
+use constant MINREADSIZE  => 1024;
+use constant MAXREADSIZE  => 1024 * 1024;
+use constant BLOCK        => 4096;
+use constant MAXOPENFILES => 64;
+
+our %handle = ();
+our $handles = 0;
+
+#----------------------------------------
+# new( size )
+#----------------------------------------
+sub new {
+    my $class = shift;
+    my ($size) = @_;
+
+    my $iterator = Finder::Looper -> new( $size, MINREADSIZE, MAXREADSIZE );
+
+    my ($start, $length) = $iterator -> next()
+        or return undef;
+
+    bless { iterator => $iterator,
+        start => $start,
+        length => $length
+    }, $class;
+}
+
+#----------------------------------------
+# next( [ group ] )
+# return next hasher
+# return undef if hasher was terminal
+#----------------------------------------
+sub next {
+    my $self = shift;
+
+    my $iterator = $self -> {iterator} -> clone();
+
+    my ($start, $length) = $iterator -> next()
+        or return undef;
+
+    bless { iterator => $iterator,
+        start => $start,
+        length => $length
+    }, ref $self;
+}
+
+#----------------------------------------
+# name()
+# Return undef (the hash is not meaningful)
+#----------------------------------------
+sub name { undef }
+
+#----------------------------------------
+# process( filename )
+#----------------------------------------
+sub process {
+    my $self = shift;
+    my ($file) = @_;
+    sample( $file, $self -> {start}, $self -> {length} );
+}
+
+#----------------------------------------
+# clone()
+# return an identical twin
+#----------------------------------------
+sub clone {
+    my $self = shift;
+    my $clone = bless %$self, ref $self;
+    $clone -> {iterator} = $clone -> {iterator} -> clone();
+    return $clone;
+}
+
+#----------------------------------------
+# progress()
+# return a string indicating progress
+#----------------------------------------
+sub progress {
+    my $self = shift;
+    my $iterator = $self -> {iterator};
+    my $prog = $iterator -> {progress} / $iterator -> {size};
+    return (100 * $prog) . "% read";
+}
+
+
+#----------------------------------------
+# function
+#----------------------------------------
+# fileHandle( filename )
+# return fileHandle or undef
+#----------------------------------------
+sub fileHandle {
+    my ($fileName) = @_;
+    my $handle = $handle{$fileName};
+    return $handle if $handle;
+
+    if ($handles >= MAXOPENFILES ) {
+        closeHandle( (keys %handle)[ rand $handles ] );
+    }
+
+    $handle = IO::File -> new();
+    $handle -> open("<$fileName") || return undef;
+    $handle{$fileName} = $handle;
+    $handles++;
+
+    return $handle;
+}
+
+#----------------------------------------
+# function
+#----------------------------------------
+# closeHandle( filename )
+# close handle
+#----------------------------------------
+sub closeHandle {
+    for (@_) {
+        delete $handle{$_};
+        $handles--;
+    }
+}
+
+
+{
+    # $error is a counter to provide ever-changing names
+    # as hash when incurring in hashing errors
+    my $error = 0;
+
+#----------------------------------------
+# sample ( filename, [ start [, length ] ] )
+#----------------------------------------
+    sub sample {
+        my ($fname, $start, $length) = @_;
+        $start ||= 0;
+
+        my $res;
+
+        # Return a consecutive error code if unable to open file
+        my $handle = fileHandle( $fname ) || return "Error " . $error++;
+        $handle -> seek( $start, 0 );
+
+        if ($length) {
+            $handle -> read( $res, $length );
+        } else {
+            $res = '';
+            my $buffer;
+            while ( $handle -> read( $buffer, BLOCK ) ) {
+                $res .= $buffer;
+            }
+        }
+
+        return $res;
+    }
+}
+
+
+1;
+
+#------------------------------------------------------------
+# package Finder::Looper
+#------------------------------------------------------------
+package Finder::Looper;
+
+#------------------------------------------------------------
+# Finder::Looper
+#------------------------------------------------------------
+# Iterator providing starting points and lengths
+# for interlaced reads
+#------------------------------------------------------------
+
+use strict;
+use constant STEP => 2; # Increase factor
+
+
+#----------------------------------------
+# new( size [, minsize [, maxsize ]] )
+#----------------------------------------
+sub new {
+    my $class = shift;
+    my ( $size, $minsize, $maxsize ) = @_;
+    $minsize ||= 1;
+    $maxsize ||= 2**16;
+    bless {
+        size     => $size,
+        minsize  => $minsize,
+        maxsize  => $maxsize,
+        readsize => $minsize,
+        oldsize  => 0,
+        i        => 0,
+        gap      => 1 << nextLog2( $size ),
+        progress => 0
+    }, $class;
+}
+
+#----------------------------------------
+# clone()
+# return a clone of the looper
+#----------------------------------------
+sub clone {
+    my $self = shift;
+    bless { %$self }, ref $self;
+}
+
+#----------------------------------------
+# next()
+# return ( start, length )
+# return () if the iteration is over
+#----------------------------------------
+sub next {
+    my $self = shift;
+
+    if ( $self -> {i} * $self -> {gap} >= $self -> {size} ) {
+
+        if ( $self -> {readsize} >= $self -> {gap} ) {
+            return ();
+        }
+
+        $self -> {i} = 0;
+        $self -> {oldsize} = $self -> {readsize};
+        $self -> {gap} >>= 1;
+        $self -> {readsize} *= STEP;
+        $self -> {readsize} = $self -> {gap}
+        if ($self -> {readsize} > $self -> {gap});
+        $self -> {readsize} = $self -> {maxsize}
+        if ($self -> {readsize} > $self -> {maxsize});
+    }
+
+    my $offset = ( $self -> {i} % 2 ) ? 0 : $self -> {oldsize};
+
+    my $start  = $self -> {i} * $self -> {gap} + $offset;
+    my $length = $self -> {readsize} - $offset;
+    $length    = $self -> {size} - $start
+    if $start + $length > $self -> {size};
+
+    $self -> {i} ++;
+
+    if ( $length <= 0 ) {
+        return $self -> next();
+    } else {
+        $self -> {progress} += $length;
+        return ( $start, $length );
+    }
+}
+
+#----------------------------------------
+# function
+#----------------------------------------
+# nextLog2( positive integer )
+# return exponent of nearest power of 2
+# not less than integer
+# Warning: returns at most the biggest power of
+# two expressed by an integer
+#----------------------------------------
+sub nextLog2 {
+    my $i = shift;
+    my $pow = 1;
+    my $exp = 0;
+    while ( $pow < $i && $pow > 0 ) {
+        $pow <<= 1;
+        $exp++;
+    }
+    return $exp;
+}
+
+
+
+1;
+
+
+package main;
+
+use strict;
+use Getopt::Std;
+# use Finder;
+
+my %opt;
+my %fmt;
+
+# Whether symbolic links can be created on the system
+my $hasSymlinks = eval 'symlink("",""); use File::Spec; 1';
+
+# Initial default values
+my $last_cmd_string = 'continue';
+my $last_cmd= 'c';
+
+#----------------------------------------
+# readOption()
+# read a command and return chomped string
+#----------------------------------------
+sub readOption {
+    chomp ( $_ = <STDIN> );
+    $_ =~ s/^\s+|\s+$//g;
+    $_;
+}
+
+sub terminal {
+    my $self = shift;
+    for ( @_ ) {
+        if ($_ -> files > 1) {
+            processGroup( $_ );
+        }
+    }
+}
+
+#----------------------------------------
+# processGroup
+# interactively process a group
+# return false if the group needs further processing
+#----------------------------------------
+sub processGroup {
+    my $group = shift;
+    my $size = $group -> size;
+
+    # Print header if interactive or batch and indicated in format
+    if ($fmt{h} || ! $opt{b}) {
+        #print $group -> progress, "\n" unless $opt{b};
+        print ( $group -> isTerminal ? "Duplicate " : "Possibly duplicate " );
+        print "files of size $size bytes:\n";
+    }
+
+    while (1) {
+        my @file = $group -> files;
+
+        $opt{b} = 'delete' if $opt{b} eq 'kill';
+
+        if ( $opt{b} eq 'report' ) {
+            for ( 0 .. $#file ) {
+                next if ( $fmt{d} && ! $_ );
+                my $file = $file[$_];
+                $file = quotemeta($file) if $fmt{e};
+                print "$file\n";
+            }
+            print "\n" if $fmt{n};
+            return 1;
+        }
+
+        my $input;
+
+        # Interact with user unless in batch mode
+        unless ( $opt{b} ) {
+            for (0..$#file) {
+                printf "[ %2d ] %s\n", $_, $file[$_];
+            }
+
+            print "\n",
+            "[return] $last_cmd_string [c] continue [q] quit the program\n",
+            "[k0...k$#file] keep one file and remove the rest\n";
+
+            # Read acceptable input
+            my %option = ( ( map { ( "k$_" => 1 ) } (0..$#file) ),
+                ( map { ( $_    => 1 ) } ('', 'k', 'l', 'c', 'q', 'Q') ) );
+
+            if ( $hasSymlinks ) {
+                print "[l0...l$#file] keep one file and substitute the rest with symbolic links\n";
+                $option{"l$_"} = 1 for (0..$#file);
+            }
+
+            print "\n> ";
+            until ( $option{ $input = readOption } ) {
+                print "Wrong option '$input', try again\n> ";
+            }
+
+            print "\n" unless $opt{b};
+
+            # Dispatch action according to command
+            if ($input eq '') {
+                $input=$last_cmd;
+                if ($input eq 'c') {
+                    return $group -> isTerminal;
+                }
+            } elsif ($input eq 'c') {
+                $last_cmd=$input;
+                $last_cmd_string='continue';
+                return $group -> isTerminal;
+            } elsif ($input =~ m/^(k|l)$/) { $input .= "0";}
+        }
+
+        $last_cmd=$input; $last_cmd_string=$input;
+        if ($opt{b} eq 'delete' || $opt{b} eq 'link' || $input =~ m/(k|l)([0-9]+)/) {
+            my $ok = 1;
+
+            my ( $cmd, $index ) = ( $1, $2 );
+            $index = 0 if $opt{b};
+            $cmd = 'l' if $opt{b} eq 'link';
+            $cmd = 'k' if $opt{b} eq 'delete';
+
+            for (0..$#file) {
+                my $delendum = $file [$_];
+                if ($_ == $index) {
+                    print STDERR "Keeping $delendum\n";
+                    next;
+                }
+                print STDERR "Unlinking $delendum: ";
+                if ( unlink $delendum ) {
+                    print STDERR "done\n";
+                } else {
+                    $ok = 0;
+                    print STDERR "ERROR: $!\nskipping file $delendum in elaboration\n";
+                    $group -> remove( $delendum );
+                }
+                if ($cmd eq 'l') {
+                    print STDERR "Making symbolic link from $delendum to $file[$index]: ";
+                    if ( symlink File::Spec -> rel2abs( $file[$index] ), $delendum ) {
+                        print STDERR "done\n";
+                    } else {
+                        $ok = 0;
+                        print STDERR "ERROR: $!\nskipping file $delendum in elaboration\n";
+                        $group -> remove( $delendum );
+                    }
+                }
+            }
+            return 1 if $ok || $opt{b};
+            next;
+        } elsif ($input eq 'q') {
+            exit 0;
+        } elsif ($input eq 'Q') {
+            exit 0;
+        }
+    }
+    return 1;
+}
+
+getopts('hb:f:m:M:',\%opt);
+
+$opt{b} ||= '';
+if ( $opt{b} eq 'report' ) {
+    my $format = $opt{f};
+    $format = 'full' unless defined $format;
+    $format = { full   => 'hn',
+        simple => 'n',
+        xargs  => 'dne' } -> { $format } || $format;
+    %fmt = ( map ( ( $_ => 1 ), split ( //, $format ) ) );
+    $fmt{s} = 1 unless $fmt{e};
+} else {
+    %fmt = ();
+}
+
+if ($opt{h} || !@ARGV) {
+    print <<END;
+Usage $0 [-h] [ -m <min_size> ] [ -M <max_size> ] [-b <batch_mode>] [-f <format>] <directory> ...
+Recursively scan one or more directories for duplicate files.
+
+  -h Print this help message and exit
+  -m <min_size> Ignore files smaller than min_size
+  -M <max_size> Ignore files larger than max_size
+     both options accept k, m and g modifiers for kilo, mega, and gigabytes. Default is bytes
+  -b <batch_mode> Automatically perform actions, without prompting the user interactively.
+     report: Print a report on the duplicates found.
+             The format defaults to 'full' but can be specified by -f format
+     delete: Keep the first file of every group of duplicates and delete the rest
+     kill:   Equivalent to 'delete'
+     link:   Like delete, but substitute duplicates with symbolic links to the first file
+  -f <format> Output format for report batch mode.
+     format can be expressed in mnemonic or by a sequence of flag characters.
+
+     mnemonic form can be one of
+     full   = hn   For humans to read
+     simple = n    For automatic parsing
+     xargs  = dne  The output can be piped through xargs for advanced removal or other processing
+
+     Flags can be multiple of
+     d (duplicates): Skip the first file in any group
+     h (header)    : Print some information on each group
+     n (newline)   : Separate groups with a newline
+     s (simple)    : Print filenames
+     e (escape)    : Escape special characters in file names
+
+
+SAMPLE USAGE:
+- Interactive search:
+  $0 dir1 dir2
+- Same as above for files of size at least 1 kilobyte:
+  $0 -m 1k dir1 dir2
+- Same as above for files of size at most half a gigabyte:
+  $0 -M .5g dir1 dir2
+- Keep only one copy of duplicate files:
+  $0 -b kill dir1 dir2
+- Substitute duplicates with symbolic links:
+  $0 -b link dir1 dir2
+- Use backtick expansion to move duplicates to /trash:
+  mv `$0 -b report -f de dir1 dir2` /trash
+- As above, but with xargs:
+  $0 -b report -f xargs dir1 dir2 | xargs -i mv {} /trash
+
+Pressing Ctrl-C during interactive processing, will present partial results.
+END
+    exit(0);
+}
+
+$opt{b} = 1 if $opt{o};
+
+# Check and adjust min and max size
+for my $o ( 'm', 'M' ) {
+    if ( $opt{$o} ) {
+        if ( $opt{$o} =~ m/^([0-9.]+)([kmg])?$/i ) {
+            $opt{$o} = 0 + $1;
+            if ( $2 ) {
+                $opt{$o} *= { k => 1<<10, m => 1<<20, g => 1<<30 } -> { lc $2 };
+            }
+        } else {
+            die "Invalid size $opt{$o}\n";
+        }
+    }
+}
+
+my $finder = Finder -> new( @ARGV );
+$finder -> setTerminalAction( \&terminal );
+$finder -> setMinSize ( $opt{m} ) if ( $opt{m} );
+$finder -> setMaxSize ( $opt{M} ) if ( $opt{M} );
+$finder -> readDirs();
+
+my $nextTerminal = 0;
+my $step = 0;
+
+my $interrupted = 0;
+
+$SIG{INT} = sub { $interrupted++ } unless $opt{b};
+
+my @w;
+while ( @w = $finder -> waiting ) {
+    if ($interrupted) {
+        $finder -> processWaiting( \&processGroup );
+}
+$interrupted = 0;
+$finder -> iterate();
+}

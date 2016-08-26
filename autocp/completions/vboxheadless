@@ -1,0 +1,45 @@
+_vboxheadless()
+{
+    if ! command -v "vboxheadless" >/dev/null 2>&1; then
+        return
+    fi
+
+    local cur prev words cword
+    _init_completion || return
+
+    number_of_words=${#COMP_WORDS[@]}
+
+    #=======================================================
+    #                  General options
+    #=======================================================
+    OPTS="-s -startvm --startvm -v -vrde --vrde
+          -e -vrdeproperty --vrdeproperty -c -capture
+          --capture -w --width -h --height -r --bitrate -f
+          --filename"
+
+    #=======================================================
+    #                   Nested options
+    #=======================================================
+    vrde_opts="on off config"
+
+    case "${prev}" in
+        -s|-startvm|--startvm)
+            OLDIFS="${IFS}"
+            IFS=$'\n'
+            COMPREPLY=($(compgen -W "$(vboxmanage list vms | cut -d\" -f2)" -- $cur))
+            IFS="${OLDIFS}"
+            return 0
+            ;;
+        -v|-vrde|--vrde)
+            COMPREPLY=($(compgen -W "${vrde_opts}" -- ${cur}))
+            return 0
+            ;;
+    esac
+
+    case "${cur}" in
+        -*) COMPREPLY=($(compgen -W "${OPTS}" -- ${cur})) ;;
+    esac
+} &&
+complete -F _vboxheadless VBoxHeadless vboxheadless
+
+# vim: set ts=8 sw=4 tw=80 ft=sh :

@@ -1,0 +1,92 @@
+#!/bin/sh
+#simple script to update firefox nightly when the integrated updater doesn't work
+
+trap _cleanup 0 15 #trap ctrl-c
+#trap _cleanup SIGINT SIGTERM #trap ctrl-c
+
+_cmd() {
+    [ -z "${1}" ] && return 0
+
+    printf "%s " "    $ ${@}"
+    printf "\\n"
+    eval "${@}"
+
+    _cmd__status="${?}"
+    [ X"${_cmd__status}" != X"0" ] && exit "${_cmd__status}" || return
+}
+
+_die() {
+    [ -z "${1}" ] && return 1
+    printf "%b\\n" "$(expr "${0}" : '.*/\([^/]*\)'): ${*}" >&2
+    exit 1
+}
+
+_cleanup() {
+    stty echo
+    printf "\\n"
+    printf "%s\\n" "[+] cleanup ..."
+    _cmd rm /tmp/firefox*bz2
+
+    [ -z ${1} ] && exit
+}
+
+_notify() {
+    [ -z "${1}" ] && return 1
+    if [ X"${TERM}" = X"linux" ] || [ -z "${TERM}" ]; then
+        kill -9 $(pgrep notify-osd) >/dev/null 2>&1
+        if ! DISPLAY=${DISPLAY:-:0} notify-send -t 1000 "${1}"  "${2}"; then
+            if command -v "gxmessage" 2>/dev/null; then
+                font="Monaco 9"
+                gxmessage "${font:+-fn "$font"}" "${1} ${2}" "ok"
+            else
+                font="fixed"
+                xmessage "${font:+-fn "$font"}" "${1} ${2}" "ok"
+            fi
+        fi
+    else
+        if [ -z "${2}" ]; then
+            printf "%s\\n" "${1}"
+        else
+            printf "%s: %s\\n" "${1}" "${2}"
+        fi
+    fi
+}
+
+_arch() {
+    if [ -z "${MACHTYPE}" ]; then
+        _arch__arch="$(uname -m)"
+    else
+        _arch__arch="$(printf "%s" "${MACHTYPE}" | cut -d- -f1)"
+    fi
+
+    case "${_arch__arch}" in
+        x86_64) _arch__arch="64" ;;
+        i686)   _arch__arch="32" ;;
+        *)      return 1 ;;
+    esac
+
+    printf "%s" "${_arch__arch}"
+}
+
+_update_firefox() {
+    _update_firefox__arch="$(_arch)"
+    [ -d "${HOME}/.bin/firefox${_update_firefox__arch}" ] && _cmd mkdir -p "${HOME}/.bin/firefox${_update_firefox__arch}"
+    case "${_update_firefox__arch}" in
+        32) nightly="$(curl http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-trunk/ 2>&1 \
+                | grep -o -E 'href="([^"#]+)"' | cut -d'"' -f2 | grep "linux-i686.tar.bz2")" ;;
+        64) nightly="$(curl http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-trunk/ 2>&1 \
+                | grep -o -E 'href="([^"#]+)"' | cut -d'"' -f2 | grep "linux-x86_64.tar.bz2")" ;;
+    esac
+    _cmd wget -c http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-trunk/"${nightly}" -O /tmp/firefox.tar.bz2
+    _cmd "bzcat < /tmp/firefox.tar.bz2 | tar xf -C /tmp -"
+    _cmd rm -rf /tmp/firefox-* "${HOME}/.bin/firefox.old"
+    _cmd mv "${HOME}/.bin/firefox${_update_firefox__arch}" "${HOME}/.bin/firefox.old"
+    _cmd mv /tmp/firefox "${HOME}/.bin/firefox${_update_firefox__arch}"
+    _notify "[+]  Done" "restart firefox to apply the update"
+}
+
+if ! command -v "curl" >/dev/null 2>&1; then
+    _die "you need to install 'curl' to run this program"
+fi
+
+_update_firefox

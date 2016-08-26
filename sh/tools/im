@@ -1,0 +1,104 @@
+#!/bin/sh
+#description: send and watch messages in your "ke estas haciendo?" in mononeurona.org
+#usage: im "string"
+
+_usage() {
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] string ..."
+    printf "%s\\n" "Send and watch messages in your \"ke estas haciendo?\" in mononeurona.org."
+    printf "\\n"
+    printf "%s\\n" "Positional arguments:"
+    printf "%s\\n" "  string        message"
+    printf "\\n"
+    printf "%s\\n" "Optional arguments:"
+    printf "%s\\n" "  -u           display last messages"
+    printf "%s\\n" "  -h, --help   show this help message and exit"
+}
+
+_die() {
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
+}
+
+_notify() {
+    [ -z "${1}" ] && return 1
+    if [ X"${TERM}" = X"linux" ] || [ -z "${TERM}" ]; then
+        kill -9 $(pgrep notify-osd) >/dev/null 2>&1
+        if ! DISPLAY=${DISPLAY:-:0} notify-send -t 1000 "${1}"  "${2}"; then
+            if command -v "gxmessage" 2>/dev/null; then
+                font="Monaco 9"
+                DISPLAY=${DISPLAY:-:0} gxmessage "${font:+-fn "$font"}" "${1} ${2}" "ok"
+            elif command -v "xmessage" 2>/dev/null; then
+                font="fixed"
+                DISPLAY=${DISPLAY:-:0}  xmessage "${font:+-fn "$font"}" "${1} ${2}" "ok"
+            fi
+        fi
+    else
+        if [ -z "${2}" ]; then
+            printf "%s\\n" "${1}"
+        else
+            printf "%s: %s\\n" "${1}" "${2}"
+        fi
+    fi
+}
+
+if ! command -v "html2text" >/dev/null 2>&1; then
+    _notify "install 'html2text' to run this program"
+    exit 1
+elif ! command -v "curl" >/dev/null 2>&1; then
+    _notify "install 'curl' to run this program"
+    exit 1
+fi
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- "${@}" $(cat)
+fi
+
+if [ ! -z "${1}" ]; then
+    case "${1}" in
+        u|up|update|-u|-up|-update|--update)
+            curl --max-time 2 --connect-timeout 5 -s http://mononeurona.org/waydings/addwayd | html2text
+            exit ;;
+        -h|--help) _usage && exit ;;
+        -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${1}'" ;;
+    esac
+fi
+
+# ============ Settings =============
+#Avoid writing user/password every time
+MNron=""
+MNpwd=""
+MNtask="${*}"
+# ===================================
+
+if [ -z "${MNron}" ]; then
+    printf "%s" "User: "
+    read MNron
+fi
+
+if [ -z "${MNpwd}" ]; then
+    printf "%s" "Password: "
+    read MNpwd
+fi
+
+if [ -z "${MNtask}" ]; then
+    printf "%s" "k estas haciendo?: "
+    read MNtask
+fi
+
+curl -s -c /tmp/MNc \
+    -d "_method=POST&data[User][email]=${MNron}&data[User][pwd]=${MNpwd}" \
+    http://mononeurona.org/users/login > /tmp/MN.log
+
+SIZE_log="$(du /tmp/MN.log| awk '{print $1}')"
+
+if [ "${SIZE_log}" -gt "0" ]; then
+    printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): user or password incorrect"
+    exit 0
+fi
+
+curl -s -b /tmp/MNc  \
+    -d "_method=POST&data[Wayding][task]=${MNtask}" \
+    http://mononeurona.org/waydings/addwayd | html2text
+
+rm /tmp/MN.log

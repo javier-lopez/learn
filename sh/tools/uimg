@@ -1,0 +1,232 @@
+#!/bin/sh
+#description: upload images to internet
+#usage: uimg img.png
+
+#example: uimg img.png
+#http://i.imgur.com/image.png
+
+version="2016.04.03-13:25"
+
+#TODO 04-11-2015 12:53 >> add more image sharing sites
+sites="imgur uploadpie"
+
+_usage() {
+    printf "%s\\n" "Usage: ${progname} image.[png|jpg] ..."
+    printf "%s\\n" "Upload images to internet"
+    printf "\\n"
+    printf "%b\\n" "  -h, --help         show this help message and exit"
+    printf "%s\\n" "  -s, --site         prefer a site"
+    printf "%s\\n" "  -l, --list-sites   list supported sites"
+}
+
+_die() {
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
+}
+
+_shuf() {
+    #shuffle input
+    awk 'BEGIN{srand()}{print rand()"\t"$0}' "${@}" | sort | cut -f2-
+}
+
+_false() {
+    return 1
+}
+
+_basename() {
+    [ -z "${1}" ] && return 1 || _basename__name="${1}"
+    [ -z "${2}" ] || _basename__suffix="${2}"
+    case "${_basename__name}" in
+        /*|*/*) _basename__name="${_basename__name##*/}"
+    esac
+
+    if [ -n "${_basename__suffix}" ] && [ "${#_basename__name}" -gt "${#2}" ]; then
+        _basename__name="${_basename__name%$_basename__suffix}"
+    fi
+
+    printf "%s" "${_basename__name}"
+}
+
+_notify() {
+    #output messages through the notification system, prints to
+    #stdout in the worst escenario
+    [ -z "${1}" ] && return 1
+    if [ X"${TERM}" = X"linux" ] || [ -z "${TERM}" ]; then
+        kill -9 $(pgrep notify-osd) >/dev/null 2>&1
+        if ! DISPLAY=${DISPLAY:-:0} notify-send -t 1000 "${1}" "${3}"; then
+            if command -v "gxmessage" 2>/dev/null; then
+                font="Monaco 9"
+                DISPLAY=${DISPLAY:-:0} gxmessage "${font:+-fn "$font"}" "${1}" "ok"
+            elif command -v "xmessage" 2>/dev/null; then
+                font="fixed"
+                DISPLAY=${DISPLAY:-:0}  xmessage "${font:+-fn "$font"}" "${1}" "ok"
+            fi
+        fi
+    else
+        printf "%s\\n" "${2}"
+    fi
+    case "${3}" in
+        *clipboard*)
+            #dumping xclip's stdout to the bitbucket works around xclip's
+            #failure to properly daemonize: https://sourceforge.net/p/xclip/patches/9/
+            printf "%s" "${2}" 2>/dev/null | xclip -selection clipboard -i >/dev/null 2>&1 || \
+            printf "%s" "${2}" 2>/dev/null | xsel -bi 2>/dev/null || \
+            printf "%s" "${2}" 2>/dev/null | pbcopy 2>/dev/null   || :
+            ;;
+    esac
+}
+
+_validate() {
+    case "${1}" in
+        site) if [ -z "${2}" ]; then
+                  printf "%s\\n" "${progname}: supported sites are"
+                  exec "${0}" --list-sites
+              elif [ -z "$(printf "%s\\n" "${sites}" | tr ' ' '\n' | awk "/^$2\$/")" ]; then
+                  printf "%s\\n" "${progname}: '${2}' is not a supported site" >&2
+                  exit 1
+              fi
+              ;;
+        img) case "${2}" in
+                *.jpg|*.JPG|*.jpeg|*.png|*.PNG) return 0 ;;
+                *) return 1 ;;
+             esac ;;
+        *)   return 1 ;;
+    esac
+}
+
+_update() {
+    _u__current_file="$(cd "$(dirname "${0}")" && pwd)/$(basename "${0}")"
+    _u__current_version_long="$(awk -F\" \
+        '/^version=/{print $2;exit}' "${_u__current_file}" 2>/dev/null)"
+    _u__current_version="$(printf "%s" "${_u__current_version_long}" | awk \
+        '{gsub(/[\.:]/,"");gsub(/-/,"");print;exit}' 2>/dev/null)"
+    [ -z "${_u__current_version}" ] && printf "%s\\n%s\\n%s\\n"            \
+        "ERROR: Failed to detect current version, please update manually"  \
+        "${progname}         = ${_u__current_file}"                        \
+        "${progname} version = ${_u__current_version}" >&2 && return 1
+
+    _u__error_msg="$(curl -s  \
+    https://raw.githubusercontent.com/chilicuil/learn/master/sh/tools/uimg \
+    > "/tmp/${progname}.${$}" 2>&1)" || { printf "%s\\n%s\\n" \
+        "ERROR: Failed to fetch update, please try later or update manually" \
+        "${_u__error_msg}" >&2; return 1; }
+
+    _u__update_version_long="$(awk -F\" \
+        '/^version=/{print $2;exit}' "/tmp/${progname}.${$}" 2>/dev/null)"
+    _u__update_version="$(printf "%s" "${_u__update_version_long}" | awk \
+        '{gsub(/[\.:]/,"");gsub(/-/,"");print;exit}' 2>/dev/null)"
+    [ -z "${_u__update_version}" ] && _u__update_version="0"
+
+    if [ "${_u__current_version}" -lt "${_u__update_version}" ]; then
+        printf "%s %s\\n" "Updating from version" \
+            "${_u__current_version_long} to ${_u__update_version_long} ..."
+        chmod +x "/tmp/${progname}.${$}"
+        if ! mv -f "/tmp/${progname}.${$}" "${_u__current_file}" 2>/dev/null; then
+            printf "%s\\n" "ERROR: no write permissions on ${_u__current_file}" >&2
+            printf "%s\\n" "INFO : trying with sudo ..." >&2
+            if command -v "sudo" >/dev/null 2>&1; then
+                sudo mv "/tmp/${progname}.${$}" "${_u__current_file}" || return 1
+            else
+                printf "%s\\n" "ERROR: sudo isn't available, exiting ..." >&2
+                rm -rf "/tmp/${progname}.${$}"; return 1
+            fi
+        fi
+        printf "%s %s\\n" "${progname} is up-to-date (${_u__update_version_long})"
+        return 0
+    fi
+    printf "%s %s\\n" "${progname} is up-to-date (${_u__current_version_long})"
+    rm -rf "/tmp/${progname}.${$}"
+}
+
+_uimg() {
+    [ -z "${1}" ] && return 1
+
+    _uimg_imgur() {
+        _uimgur__response="$(curl --compressed  --retry "3" -fsSL \
+            -H "Authorization: Client-ID ea6c0ef2987808e"         \
+            -F "image=@${1}" https://api.imgur.com/3/image.xml)"
+        _uimgur__response="$(printf "%s" "${_uimgur__response}" | \
+            egrep -o "<link>(.)*</link>" | egrep -o "http://i.imgur.com/[^<]*")"
+
+        if [ -z "${_uimgur__response}" ];then
+            printf "%s\\n" "https://api.imgur.com/3/image.xml api timeout" >&2
+            return 1
+        else
+            printf "%s" "${_uimgur__response}"
+        fi
+    }
+
+    _uimg_uploadpie() {
+        _uuploadpie__agent="Mozilla/5.0 (X11; Linux x86_64; rv:26.0) Gecko/20100101 Firefox/26.0"
+        _uuploadpie__max_file_size="3145728"
+        _uuploadpie__duration="3145728"
+        _uuploadpie__response="$(curl -s  -A "${_uuploadpie__agent}" \
+            --form uploadedfile=@"${1}" --form upload=1              \
+            --form MAX_FILE_SIZE="${_uuploadpie__max_file_size}"     \
+            --form expire="${_uuploadpie__duration}" http://uploadpie.com)"
+        _uuploadpie__response="$(printf "%s" "${_uuploadpie__response}" | \
+            grep 'id="uploaded"' | cut -d'"' -f6)"
+
+        if [ -z "${_uuploadpie__response}" ];then
+            printf "%s\\n" "http://uploadpie.com api timeout" >&2
+            return 1
+        else
+            printf "%s" "${_uuploadpie__response}"
+        fi
+    }
+
+    for _uimg__img; do
+        if [ -f "${_uimg__img}" ] ; then
+            if _validate img "${_uimg__img}"; then
+                for api in $(printf "%s" "${sites}" | \
+                    tr ' ' '\n' | _shuf | tr '\n' ' '); do
+                    if [ -z "${_uimg__response}" ]; then
+                        _uimg__response="$(_uimg_"${api}" "${_uimg__img}")"
+                    else
+                        break
+                    fi
+                done
+                if [ -z "${_uimg__response}" ];then
+                    _uimg__response="Api timeout"
+                else
+                    _uimg__clipboard_text="Copied to clipboard!"
+                fi
+                _notify "${_uimg__response}" "${_uimg__response}" "${_uimg__clipboard_text}"
+            else
+                printf "%s\\n" "'${_uimg__img}' is not a valid image file" >&2
+            fi
+        else
+            printf "%s\\n" "'${_uimg__img}' doesn't exist" >&2
+            _false
+        fi
+    done
+}
+
+progname="$(_basename "${0}")"
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- "${@}" $(cat)
+fi
+
+[ "${#}" -eq "0" ] && _die
+
+for arg in "${@}"; do #parse options
+    case "${arg}" in
+        -h|--help) _usage && exit ;;
+        -U|--update) _update; exit "${?}" ;;
+        '-s'|'--site') shift; site="${1}"; [ -n "${1}" ] && shift
+                  _validate site "${site}" && sites="${site}";;
+        -s*) site="${1#-s}"; shift
+            _validate site "${site}" && sites="${site}" ;;
+        -l|--list-sites) printf "%s\\n" "${sites}" | tr ' ' '\n'; exit 0; ;;
+        -*) _die "${progname}: unrecognized option '${arg}'" ;;
+    esac
+done
+
+if ! command -v "curl" >/dev/null 2>&1; then
+    printf "%s\\n" "install 'curl' to run this program" >&2
+    exit 1
+fi
+
+_uimg "${@}"

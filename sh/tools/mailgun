@@ -1,0 +1,123 @@
+#!/bin/sh
+#description: send emails using the mailgun api
+#usage: mailgun [options] to@domain.tld "message"
+
+#these vars can be specified at ./.mailgun, ~/.mailgun or /etc/mailgun
+from="No reply <noreply@$(hostname -f)>"
+subject="Automated mail from $(hostname -f)"
+to=""
+api="" #mailgun api, required
+
+_usage() {
+    printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') [options] to@address.tld message ..."
+    printf "%s\\n" "Send emails using mailgun infraestructure."
+    printf "%s\\n"
+    printf "%s\\n" "  -a, --api       mailgun api"
+    printf "%s\\n" "  -f, --from      from header"
+    printf "%s\\n" "  -s, --subject   subject header"
+    printf "%s\\n" "  -c, --config    use FILE instead of ~/.mailgun"
+    printf "%s\\n" "  -h, --help      show this help message and exit"
+}
+
+_die() {
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
+}
+
+_validmail() {
+    [ -z "${1}" ] && return 1
+
+    case "${1}" in
+        *@*.*) return 0 ;;
+        *)     return 1 ;;
+    esac
+}
+
+_loadconf() {
+    [ ! -e "${1}" ] && return 1
+    _loadconf__options=$(awk '! /export/ {if ($0 ~ "^.*=[^;&]*" && $0 !~ "&&" && $1 !~ "^#") print }' "${1}" 2>/dev/null)
+    eval "${_loadconf__options}"
+}
+
+_mailgun() {
+    [ -z "${5}" ] && return 1
+
+    _mailgun__api="${1}";     shift
+    _mailgun__from="${1}";    shift
+    _mailgun__to="${1}";      shift
+    _mailgun__subject="${1}"; shift
+    _mailgun__msg="${*}"
+    curl -s --user "${_mailgun__api}" \
+         -G https://api.mailgun.net/v2/correo.io/messages \
+         -F from="${_mailgun__from}" -F to="${_mailgun__to}" \
+         -F subject="${_mailgun__subject}" -F text="${_mailgun__msg}"
+}
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- "${@}" $(cat)
+fi
+
+[ "${#}" -eq "0" ] && _die
+
+for arg; do #parse options
+    case "${arg}" in
+        -a|--api) if [ "${#}" -gt "1" ]; then
+                     shift; api="${1}"; shift
+                  else
+                     _die "Option '${arg}' requires a parameter"
+                  fi ;;
+        -f|--from)if [ "${#}" -gt "1" ]; then
+                     shift; from="${1}"; shift
+                  else
+                     _die "Option '${arg}' requires a parameter"
+                  fi ;;
+        -s|--subject)if [ "${#}" -gt "1" ]; then
+                        shift; subject="${1}"; shift
+                     else
+                        _die "Option '${arg}' requires a parameter"
+                     fi ;;
+        -c|--config) if [ "${#}" -gt "1" ]; then
+                        shift; config="${1}"; shift
+                     else
+                        _die "Option '${arg}' requires a parameter"
+                     fi ;;
+        -h|--help) _usage && exit ;;
+        -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${arg}'" ;;
+    esac
+done
+
+[ "${#}" -lt "2" ] && _die
+
+to="${1}"; shift
+msg="${*}"
+
+if ! _validmail "${from}"; then
+    _die "$(expr "${0}" : '.*/\([^/]*\)'): Invalid email address: '${from}'"
+elif ! _validmail "${to}"; then
+    _die "$(expr "${0}" : '.*/\([^/]*\)'): Invalid email address: '${to}'"
+fi
+
+#TODO 01-10-2014 12:50 >> no source options when they had already been provided
+                         #through the cli interface
+if [ -z "${config}" ]; then
+    if [ -f ./.mailgun ]; then
+        _loadconf ./.mailgun
+    elif [ -f ~/.mailgun ]; then
+        _loadconf ~/.mailgun
+    elif [ -f /etc/mailgun ]; then
+        _loadconf /etc/mailgun
+    fi
+else
+    [ ! -e "${config}" ] && _die "'${config}' doesn't exist"
+    _loadconf "${config}"
+fi
+
+[ "${#api}" -ne "40" ] && \
+    _die "Specify a valid mailgun api and try again (the api is 40 characters long)"
+
+if ! command -v "curl" >/dev/null 2>&1; then
+    _die "install 'curl' to run this program"
+fi
+
+_mailgun "${api}" "${from}" "${to}" "${subject}" "${msg}"

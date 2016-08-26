@@ -1,0 +1,64 @@
+#!/usr/bin/env python
+
+import sys, time, random
+from os.path import expanduser, basename
+from launchpadlib.launchpad import Launchpad
+from geopy import geocoders
+
+if __name__ == "__main__":
+    def lookup(city, geocoder):
+        if city in cache.keys():
+            return cache[city]
+        else:
+            time.sleep(1)
+            places = geocoder.geocode(city, exactly_one=False)
+            it = iter(places) #I'm a little bit confused with lists
+            holder, (lat, lng) = it.next()
+            cache[city] = str(lat) + "," + str(lng)
+            return cache[city]
+
+    def random_with_N_digits(n):
+        range_start = 10**(n-1)
+        range_end   = (10**n)-1
+        return random.randint(range_start, range_end)
+
+    def randcoordinates(coordinates):
+        lat, lng = coordinates.split(",")
+        d,c      = lat.split(".")
+        d        = int(d) + random.randint(-2,1)
+        c        = random_with_N_digits(len(c))
+        lat      = str(d) + "." + str(c)
+
+        d,c      = lng.split(".")
+        d        = int(d) + random.randint(-1,2)
+        c        = random_with_N_digits(len(c))
+        lng      = str(d) + "." + str(c)
+
+        rcoordinates = str(lat) + "," + str(lng)
+        return rcoordinates
+
+    if len(sys.argv) > 1:
+        team = sys.argv[1]
+    else:
+        team = 'ubuntumembers'
+    
+    home      = expanduser("~")
+    cachedir  = home + "/.launchpadlib/cache/"
+    launchpad = Launchpad.login_anonymously('just testing', 'production', cachedir)
+    people    = launchpad.people
+    group     = people[team]
+    members   = group.members
+    cache     = {}
+
+    google  = geocoders.GoogleV3()
+
+    print "Member,City,Latitude,Longitude"
+    for member in members:
+      if member.time_zone != None:
+        name=member.display_name
+        name=name.replace('"', '')
+        city=basename(member.time_zone)
+        coordinates = lookup(city.encode('utf-8'), google)
+        #randomize a litle bit to avoid melting members on the same city
+        coordinates = randcoordinates(coordinates)
+        print name.encode('utf-8') + "," + city.encode('utf-8') + "," + coordinates

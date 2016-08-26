@@ -1,0 +1,306 @@
+#!/bin/sh
+#description: search and download files matching a checksum from internet(http/https/ftp)
+#usage: wget-finder --other-wget-options file:checksum
+
+#example: wget-finder socat-1.7.2.0.tar.gz:0565dd58800e4c50534c61bbb453b771
+#socat-1.7.2.0.tar.gz
+
+#TODO 27-02-2015 08:23 >> try to match checksums without downloading files (Content-MD5, md5sum.txt, etc)
+search_engines="google ftplike"
+checksums="md5 sha1 sha256 sha512"
+
+_usage() {
+    printf "%s\\n" "Usage: ${progname} [OPTION]... FILE:CHECKSUM..."
+    printf "%s\\n" "A wrapper around the wget non-interactive network retriever."
+    printf "\\n"
+    printf "%s\\n" "  --clean-cache          remove temporal files"
+    printf "%s\\n" "  --search-engine        prefer a search engine"
+    printf "%s\\n" "  --list-search-engine   list supported search engines"
+    printf "%s\\n" "  --list-checksum        list supported checksums functions"
+    printf "%s\\n" "  --list-links           print links and exit"
+    printf "%s\\n" "  -h, --help             show this and wget help message and exit"
+    printf "%s\\n" "-----------------------------------------------------------------"
+    exec wget "${@}"
+}
+
+_basename() {
+    [ -z "${1}" ] && return 1 || _basename__name="${1}"
+    [ -z "${2}" ] || _basename__suffix="${2}"
+    case "${_basename__name}" in
+        /*|*/*) _basename__name="${_basename__name##*/}"
+    esac
+
+    if [ -n "${_basename__suffix}" ] && [ "${#_basename__name}" -gt "${#2}" ]; then
+        _basename__name="${_basename__name%$_basename__suffix}"
+    fi
+
+    printf "%s" "${_basename__name}"
+}
+
+_dirname() {
+    [ -z "${1}" ] && return 1
+    case "${1}" in
+        /*|*/*) #http://www.linuxselfhelp.com/gnu/autoconf/html_chapter/autoconf_10.html
+            _dirname__dir=$(expr "x${1}" : 'x\(.*\)/[^/]*' \| '.'      : '.')
+            printf "%s\\n" "${_dirname__dir}"
+            ;;
+        *) printf "%s\\n" ".";;
+    esac
+}
+
+_shuf() {
+    awk 'BEGIN{srand()}{print rand()"\t"$0}' | sort | cut -f2-
+}
+
+_checksum_type() {
+    case "${#1}" in
+        32) printf "md5"    ;;
+        40) printf "sha1"   ;;
+        64) printf "sha256" ;;
+       128) printf "sha512" ;;
+         *) return 1 ;;
+    esac
+}
+
+_checksum() {
+    [ -z "${1}" ] && return 1
+    if [ -z "${2}" ]; then
+        case "${1}" in
+            md5)
+                [ -z "${md5bin}" ] || return 0
+                if echo | md5sum >/dev/null 2>&1; then
+                    md5bin="md5sum"; return 0
+                elif echo | md5 -r >/dev/null 2>&1; then
+                    md5bin="md5"; return 0
+                elif echo | openssl dgst -md5 >/dev/null 2>&1; then
+                    md5bin="openssl"; return 0
+                else
+                    return 1
+                fi
+                ;;
+            sha1|sha256|sha512)
+                [ -z "${shabin}" ] || return 0
+                if echo | shasum -a "${1#sha}" >/dev/null 2>&1; then
+                    shabin="shasum"; return 0
+                elif echo | openssl dgst -"${1}" >/dev/null 2>&1; then
+                    shabin="openssl"; return 0
+                else
+                    return 1
+                fi
+                ;;
+            *)  return 1 ;;
+        esac
+    else
+        case "${1}" in
+            md5)
+                [ -z "${md5bin}" ] && _checksum "${1}"
+                case "${md5bin}" in
+                     md5sum) md5sum "${2}" | awk '{print $1}' ;;
+                        md5) md5 -r "${2}" | awk '{print $1}' ;;
+                    openssl) openssl  dgst -"${1}" "${2}" | awk '{print $2}' ;;
+                          *) return 1 ;;
+                esac
+                ;;
+            sha1|sha256|sha512)
+                [ -z "${shabin}" ] && _checksum "${1}"
+                case "${shabin}" in
+                     shasum) shasum -a "${1#sha}" "${2}" | awk '{print $1}' ;;
+                    openssl) openssl dgst -"${1}" "${2}" | awk '{print $2}' ;;
+                          *) return 1 ;;
+                esac
+                ;;
+            *) return 1 ;;
+        esac
+    fi
+}
+
+_cat() {
+    [ -z "${1}" ] && return 1
+    [ -z "${global_output}" ] && output="$(_basename "${1}")"
+    [ -z "${quiet}" ] && printf "%s\\n" "${output}"
+    if [ -z "${global_output}" ]; then
+        cat "${1}" >  "${output}"
+    else
+        cat "${1}" >> "${output}"
+    fi
+}
+
+_get_links() {
+    [ -z "${2}" ] && return 1
+
+    _get_links_google() {
+        _get_links_google__query="Index of \"${1}.\" -filewatcher"
+        wget -q -U "Mozilla/5.0" "http://www.google.com/search?q=${_get_links_google__query}" -O- | \
+            awk 'match($0,/(http|https|ftp):\/\/.*\/&/) {if(NR!=1){$0=substr($0,RSTART,RLENGTH); print substr($0,1,length($0)-1)}}' | \
+            awk 'NF' | _shuf
+    }
+
+    #_get_links_filemare() {
+        ##//relevance/10/10 #more pages
+        ##//relevance/20/10
+        ##//relevance/30/10
+        #_get_links_filemare__query="${1}"
+        #wget -q -U "Mozilla/5.0" \
+            #"http://filemare.com/en/search/${_get_links_filemare__query}" -O- | \
+            #awk 'match($0,/>(http|https|ftp):\/\/.*</) {print substr($0,RSTART,RLENGTH)}' | \
+            #awk '{gsub(/>/,""); gsub(/</,"/"); print}' | _shuf
+    #}
+
+    _get_links_ftplike() {
+        _get_links_ftplike__query="${1}"
+        wget -q -U "Mozilla/5.0" \
+            "http://ftplike.com/index.aspx?q=${_get_links_ftplike__query}&t=Files&s=all&e=&a=&f=0&m=SIMPLE&c=20" -O- | \
+            awk 'match($0,/open (http|https|ftp):\/\/.* /) {print substr($0,RSTART,RLENGTH)}' | \
+            awk "{gsub(/$_get_links_ftplike__query\"/,\"\"); print \$2}" | _shuf
+    }
+
+    case "${1}" in
+        google|ftplike) _get_links_"${1}" "${2}" ;;
+        *) return 1 ;;
+    esac
+}
+
+_wget_finder() {
+    _drop_current_archive() {
+        if [ X"${_wget_finder__archives}" = X"${_wget_finder__archive}" ]; then
+            _wget_finder__archives=''
+        else
+            _wget_finder__archives="${_wget_finder__archives#*/}"
+        fi
+    }
+
+    _drop_current_engine() {
+        if [ X"${_wget_finder__engines}" = X"${_wget_finder__engine}" ]; then
+            _wget_finder__engines=''
+        else
+            _wget_finder__engines="${_wget_finder__engines#*/}"
+        fi
+    }
+
+    _wget_finder__archives="${*}"
+    while [ "${_wget_finder__archives}" ]; do
+        _wget_finder__archive="${_wget_finder__archives%%/*}"
+        _wget_finder__file="${_wget_finder__archive%:*}"
+        _wget_finder__checksum="${_wget_finder__archive#*:}"
+        _wget_finder__checktype="$(_checksum_type "${_wget_finder__checksum}")"
+
+        if [ -z "${_wget_finder__checktype}" ]; then
+            printf "%s\\n" "Warning: '${_wget_finder__archive}' is an invalid FILE:CHECKSUM pair, skipping..." >&2
+            _drop_current_archive; _wget_finder__status="1"; continue
+        elif ! _checksum "${_wget_finder__checktype}"; then
+            printf "%s\\n" "Warning: there is no way to calculate a '${_wget_finder__checktype}' checksum in your system, skipping..." >&2
+            _drop_current_archive; _wget_finder__status="1"; continue
+        fi
+
+        if [ -z "${only_links}" ] && \
+           [ -f "/tmp/${progname}.${_wget_finder__file}/${_wget_finder__file}" ]; then
+            if [ X"$(_checksum "${_wget_finder__checktype}" "/tmp/${progname}.${_wget_finder__file}/${_wget_finder__file}")" = \
+                 X"${_wget_finder__checksum}" ]; then
+                _cat /tmp/"${progname}.${_wget_finder__file}/${_wget_finder__file}"
+                _drop_current_archive; continue
+            fi
+        fi
+
+        #shuffle default search engines
+        _wget_finder__engines=$(printf "%s" "${search_engines}" | tr ' ' '\n' | _shuf | tr '\n' '/')
+        if [ "${search_engine}" ]; then
+            [ "${only_links}" ] && _wget_finder__engines="${search_engine}" || \
+                #promote user defined search engine to the first place, remove it from the default array
+                _wget_finder__engines="${search_engine}/$(printf "%s" "${_wget_finder__engines}" \
+                    | awk "{gsub(/$search_engine/,\"\"); print \$0}")"
+        fi
+
+        #fix formating, remove '//' from the search engine array
+        _wget_finder__engines="$(printf "%s" "${_wget_finder__engines}" | awk '{gsub(/\/\//,"/"); print $0}')"
+
+        while [ "${_wget_finder__engines}" ]; do
+            _wget_finder__engine="${_wget_finder__engines%%/*}"
+            _wget_finder__links="$(_get_links "${_wget_finder__engine}" "${_wget_finder__file}")"
+            if [ -z "${_wget_finder__links}" ]; then
+                _drop_current_engine; _wget_finder__status="1"; continue
+            elif [ "${only_links}" ]; then
+                printf "%s\\n" "${_wget_finder__links}" | awk '{print $0"'"${_wget_finder__file}"'"}'
+                _drop_current_engine; continue
+            fi
+
+            [ -d /tmp/"${progname}.${_wget_finder__file}" ] || mkdir /tmp/"${progname}.${_wget_finder__file}"
+            for _wget_finder__link in ${_wget_finder__links}; do
+                rm -rf "/tmp/${progname}.${_wget_finder__file}/${_wget_finder__file}"
+                case "${_wget_finder__link}" in
+                    https:*) cert_option="--no-check-certificate" ;;
+                        *)   cert_option="" ;;
+                esac
+                wget -q ${cert_option} ${extra_args} "${_wget_finder__link}${_wget_finder__file}" \
+                     -O "/tmp/${progname}.${_wget_finder__file}/${_wget_finder__file}"
+                [ X"$(_checksum "${_wget_finder__checktype}" "/tmp/${progname}.${_wget_finder__file}/${_wget_finder__file}")" = \
+                  X"${_wget_finder__checksum}" ] && {
+                    _cat /tmp/"${progname}.${_wget_finder__file}/${_wget_finder__file}"; break 2; }
+            done
+            _drop_current_engine
+        done
+        _drop_current_archive
+    done
+    [ "${_wget_finder__status}" ] && return "${_wget_finder__status}" || return 0
+}
+
+progname="$(_basename "${0}")"
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add it to the end of $@
+    set -- "${@}" $(cat)
+fi
+
+[ "${#}" -eq "0" ] && _usage >&2
+
+if ! command -v "wget" >/dev/null 2>&1; then
+    printf "%s\\n" "install 'wget' to run this program" >&2
+    exit 1
+fi
+
+for arg; do #parse options
+    case "${arg}" in
+        -h|--help) _usage "${arg}"   ;;
+        -q|--quiet) quiet="1"; shift ;;
+        --clean-cache)
+            rm -rf "/tmp/${progname}".* && [ -z "${quiet}" ] && \
+                printf "%s\\n" "Cache cleared successfully"
+            exit "${?}"
+            ;;
+        --search-engine)
+            shift; search_engine="${1}"; [ -n "${1}" ] && shift
+            if [ -z "${search_engine}" ]; then
+                printf "%s\\n" "${progname}: available search engines are"
+                exec "${0}" --list-search-engine
+            elif [ -z "$(printf "%s\\n" "${search_engines}" | tr ' ' '\n' | awk "/^$search_engine\$/")" ]; then
+                printf "%s\\n" "${progname}: '${search_engine}' is not a recognized search engine" >&2
+                exit 1
+            fi
+            ;;
+        --list-search-engine) printf "%s\\n" "${search_engines}" | tr ' ' '\n'; exit 0; ;;
+        --list-checksum) printf "%s\\n" "${checksums}" | tr ' ' '\n'; exit 0; ;;
+        --list-links) only_links="1"; shift ;;
+        -O)  shift; output="${1}"; shift; global_output="1" ;;
+        -O*) output="${1#-O}"; shift; global_output="1"     ;;
+        *)  [ "${arg}" != "${1}" ] && continue
+            archive="$(printf "%s" "${1}" | awk '!/\/\// {if ($0 ~ ":" ) print }')"
+            if [ -z "${archive}" ]; then
+                extra_args="${extra_args} ${1}"
+            else
+                archives="${archives}${1}/"
+            fi
+            [ "${1}" ] && shift ;;
+    esac
+
+done
+
+if [ -z "${archives}" ]; then
+    if [ -d "$(_dirname "${output}")" ]; then
+        exec wget -O "${output}" ${extra_args}
+    else
+        exec wget ${extra_args}
+    fi
+fi
+
+[ -f "${output}" ] && rm -rf "${output}"
+
+_wget_finder "${archives}"

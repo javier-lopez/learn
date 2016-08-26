@@ -1,0 +1,225 @@
+#!/bin/sh
+#description: translate string
+#usage: translate [sl-tl] [options] string
+
+#example: translate -en-es "hello world"
+#hola mundo
+#example: translate -es "hola mundo"
+#hello world
+#example: translate -pt-es "oi mundo"
+#hola mundo
+#example: translate "hola mundo"
+#hello world
+
+VERSION="2016.05.16-01:22"
+
+progname="$(expr "${0}" : '.*/\([^/]*\)')"
+
+#TODO 18-12-2015 13:32 >> add more translation apis, eg, mymemory
+#https://github.com/soimort/translate-shell/issues/94#issuecomment-165433715
+#https://github.com/soimort/translate-shell/issues/123#issuecomment-218647599
+py_google_tk_script="$(cat << 'E=O=F'
+import re
+import sys
+import ctypes
+try:
+    import urllib2 as request
+except:
+    from urllib import request
+
+
+def get_d1():
+    req = request.Request(url='http://translate.google.com/', headers={'User-Agent': 'Mozilla/5.0'})
+    t = request.urlopen(req).read().decode('utf8')
+    a, b, h = re.search(r"TKK=eval\(\'\(\(function\(\){var a\\x3d(\-?\d+);var b\\x3d(\-?\d+);return (\d+)", t).groups()
+    return int(h), ctypes.c_int32(int(a) + int(b)).value
+b, d1 = get_d1()
+
+
+def RL(a, b):
+    for c in range(0, len(b)-2, 3):
+        d = b[c+2]
+        d = ord(d) - 87 if d >= 'a' else int(d)
+        xa = ctypes.c_uint32(a).value
+        d = xa >> d if b[c+1] == '+' else xa << d
+        a = a + d & 4294967295 if b[c] == '+' else a ^ d
+    return ctypes.c_int32(a).value
+
+
+def calc_tk(a):
+    if sys.version_info >= (3,):
+        d = a.encode('utf-8')
+    else:
+        d = map(ord, a)
+    a = b
+    for di in d:
+        a = RL(a + di, "+-a^+6")
+    a = RL(a, "+-3^+b+-f")
+    a = ctypes.c_int32(a ^ d1).value
+    a = a if a >= 0 else ((a & 2147483647) + 2147483648)
+    a %= pow(10, 6)
+    return '%d.%d' % (a, a ^ b)
+
+if __name__ == '__main__':
+    text = ' '.join(sys.argv[1:])
+    print(calc_tk(text))
+E=O=F
+)"
+
+_usage() {
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [-sl-tl] [options] string ..."
+    printf "%s\\n" "Translate strings using google online translator."
+    printf "\\n"
+    printf "%s\\n" "  sl   source language (auto by default)"
+    printf "%s\\n" "  tl   target language (english by default)"
+    printf "\\n"
+    printf "%b\\n" "  -U, --update   update this programa to latest version"
+    printf "%s\\n" "  -h, --help     show this help message and exit"
+}
+
+_die() {
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
+}
+
+_notify() {
+    #output messages through the notification system, prints to
+    #stdout in the worst escenario
+    [ -z "${1}" ] && return 1
+    if [ X"${TERM}" = X"linux" ] || [ -z "${TERM}" ]; then
+        kill -9 $(pgrep notify-osd) >/dev/null 2>&1
+        if ! DISPLAY=${DISPLAY:-:0} notify-send -t 1000 "${1}" "${3}"; then
+            if command -v "gxmessage" 2>/dev/null; then
+                font="Monaco 9"
+                DISPLAY=${DISPLAY:-:0} gxmessage "${font:+-fn "$font"}" "${1}" "ok"
+            elif command -v "xmessage" 2>/dev/null; then
+                font="fixed"
+                DISPLAY=${DISPLAY:-:0}  xmessage "${font:+-fn "$font"}" "${1}" "ok"
+            fi
+        fi
+    else
+        printf "%s\\n" "${2}"
+    fi
+    case "${3}" in
+        *clipboard*)
+            #dumping xclip's stdout to the bitbucket works around xclip's
+            #failure to properly daemonize
+            #https://sourceforge.net/p/xclip/patches/9/
+            printf "%s" "${2}" 2>/dev/null | xclip -selection clipboard -i >/dev/null 2>&1 || \
+            printf "%s" "${2}" 2>/dev/null | xsel -bi 2>/dev/null || \
+            printf "%s" "${2}" 2>/dev/null | pbcopy 2>/dev/null   || :
+            ;;
+    esac
+}
+
+_tk() {
+    if command -v "python" >/dev/null 2>&1; then
+        printf "%s\\n" "${py_google_tk_script}" > /tmp/_tk.py
+        python /tmp/_tk.py "${*}"
+        rm -rf /tmp/_tk.py
+    else
+        #TODO 18-12-2015 12:36 >> additional tk implementations
+        :
+    fi
+}
+
+_translate() {
+    [ -z "${1}" ] && return 1
+    #https://github.com/soimort/translate-shell/commit/ec44b14a0d368949e0ad7cca1b90c30997392b11
+    _translate__phrase="${*}"
+    _translate__page="$(curl -s -i \
+        --user-agent "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/602.1 (KHTML, like Gecko) Version/8.0 Safari/602.1 Epiphany/3.18.2" \
+        -d "sl=${sl}"  -d "tl=${tl}" -d "client=t" -d "ie=UTF-8" \
+        -d "oe=UTF-8" -d tk="$(_tk "${_translate__phrase}")"     \
+        --data-urlencode "text=${_translate__phrase}"            \
+        http://translate.google.com/translate_a/t)"
+    _translate__result="$(printf "%s" "${_translate__page}" | tail -1 | \
+                          cut -d\" -f2)"
+    if [ -z "${_translate__result}" ];then
+       _translate__result="Translation api timeout"
+    else
+        _translate__clipboard_text="Copied to clipboard!"
+    fi
+    _notify "${_translate__result}" "${_translate__result}" \
+            "${_translate__clipboard_text}"
+}
+
+_update() {
+    _u__current_file="$(cd "$(dirname "${0}")" && pwd)/$(basename "${0}")"
+    _u__current_version_long="$(awk -F\" \
+        '/VERSION=/{print $2;exit}' "${_u__current_file}" 2>/dev/null)"
+    _u__current_version="$(printf "%s" "${_u__current_version_long}" | awk \
+        '{gsub(/[\.:]/,"");gsub(/-/,"");print;exit}' 2>/dev/null)"
+    [ -z "${_u__current_version}" ] && printf "%s\\n%s\\n%s\\n"    \
+        "ERROR: Failed to detect current version, please update manually" \
+        "${progname}         = ${_u__current_file}"                 \
+        "${progname} version = ${_u__current_version}" >&2 && return 1
+
+    command -v "wget" >/dev/null 2>&1 || command -v "curl" >/dev/null 2>&1 || { \
+    printf "%s\\n" "ERROR: Install either 'wget' or 'curl' to update within the program" >&2
+    return 1; }
+
+    _u__error_msg="$(wget -q -O- --no-check-certificate \
+    https://raw.githubusercontent.com/chilicuil/learn/master/sh/tools/translate \
+        > "/tmp/${progname}.${$}" 2>&1 || curl -s  \
+    https://raw.githubusercontent.com/chilicuil/learn/master/sh/tools/translate \
+    > "/tmp/${progname}.${$}" 2>&1)"   || { printf "%s\\n%s\\n" \
+        "ERROR: Failed to fetch update, please try later or update manually" \
+        "${_u__error_msg}" >&2; return 1; }
+
+    _u__update_version_long="$(awk -F\" \
+        '/VERSION=/{print $2;exit}' "/tmp/${progname}.${$}" 2>/dev/null)"
+    _u__update_version="$(printf "%s" "${_u__update_version_long}" | awk \
+        '{gsub(/[\.:]/,"");gsub(/-/,"");print;exit}' 2>/dev/null)"
+    [ -z "${_u__update_version}" ] && _u__update_version="0"
+
+    if [ "${_u__current_version}" -lt "${_u__update_version}" ]; then
+        printf "%s %s\\n" "Updating from version" \
+            "${_u__current_version_long} to ${_u__update_version_long} ..."
+        chmod +x "/tmp/${progname}.${$}"
+        if ! mv -f "/tmp/${progname}.${$}" "${_u__current_file}" 2>/dev/null; then
+            printf "%s\\n" "ERROR: no write permissions on ${_u__current_file}" >&2
+            printf "%s\\n" "INFO : trying with sudo ..." >&2
+            if command -v "sudo" >/dev/null 2>&1; then
+                sudo mv "/tmp/${progname}.${$}" "${_u__current_file}" || return 1
+            else
+                printf "%s\\n" "ERROR: sudo isn't available, exiting ..." >&2
+                rm -rf "/tmp/${progname}.${$}"; return 1
+            fi
+        fi
+        printf "%s %s\\n" "${progname} is up-to-date (${_u__update_version_long})"
+        return 0
+    fi
+    printf "%s %s\\n" "${progname} is up-to-date (${_u__current_version_long})"
+    rm -rf "/tmp/${progname}.${$}"
+}
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- "${@}" $(cat)
+fi
+
+[ "${#}" -eq "0" ] && _die
+
+case "${1}" in
+    -h|--help)   _usage && exit ;;
+    -U|--update) _update; exit "${?}" ;;
+    --*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${1}'" ;;
+    -*) sl="$(printf "%s" "${1}" | cut -d'-' -f2)"
+        tl="$(printf "%s" "${1}" | cut -d'-' -f3)"
+        if [ -z "${sl}" ] && [ -z "${tl}" ]; then
+            #maybe returning an error message is better
+            sl="auto"; tl="en";
+        elif [ -n "${sl}" ] && [ -z "${tl}" ]; then
+            tl="en";
+        fi
+        shift ;;
+    *)  sl="auto"; tl="en"; ;;
+esac
+
+if ! command -v "curl" >/dev/null 2>&1; then
+    printf "%s\\n" "install 'curl' to run this program" >&2
+    exit 1
+fi
+
+_translate "${@}"

@@ -1,0 +1,353 @@
+_vboxmanage()
+{
+    if ! command -v "vboxmanage" >/dev/null 2>&1; then
+        return
+    fi
+
+    local cur prev words cword
+    _init_completion || return
+
+    number_of_words="${#COMP_WORDS[@]}"
+
+    #=======================================================
+    #                  General options
+    #=======================================================
+    COMMANDS="list showvminfo registervm unregistervm
+              createvm modifyvm clonevm import export
+              startvm controlvm discardstate adoptstate
+              snapshot closemedium storageattach
+              storagectl bandwidthctl showhdinfo createhd
+              modifyhd clonehd convertfromraw getextradata
+              setextradata setproperty usbfilter sharedfolder
+              guestproperty guestcontrol debugvm metrics
+              hostonlyif dhcpserver extpack"
+
+    OPTS="-q --nologo -v --version"
+
+    #=======================================================
+    #                   1st level nested options
+    #=======================================================
+    list_opts="--long -l vms runningvms ostypes hostdvds hostfloppies
+              bridgedifs hostonlyifs dhcpservers hostinfo hostcpuids
+              hddbackends hdds dvds floppies usbhost usbfilters
+              systemproperties extpacks"
+    #the IFS for this options will be set to \n
+    #showvminfo_opts=$(echo -e "\n--details\n--log\n--machinereadable")
+    #unregistervm_opts=$(echo -e "\n--delete")
+    createvm_opts="--name --ostype --register --basefolder --uuid"
+    #modifyvm_opts=$(echo -e "\n--name\n--ostype\n--memory\n--pagefusion\
+                  #\n--vram\n--acpi\n--pciattach\n--ioapic\n--pae\n--hpet\
+                  #\n--hwvirtex\n--hwvirtexexcl\n--nestedpaging\n--largepages\
+                  #\n--vtxvpid\n--synthcpu\n--cpuidset\n--cpuidremove\
+                  #\n--cpuidremoveall\n--hardwareuuid\n--cpus\n--cpuhotplug\
+                  #\n--plugcpu\n--unplugcpu\n--cpuexecutioncap\n--rtcuseutc\
+                  #\n--monitorcount\n--accelerate3d\n--accelerate2dvideo\
+                  #\n--firmware\n--chipset\n--bioslogofadein\n--bioslogofadeout\
+                  #\n--bioslogodisplaytime\n--bioslogoimagepath\n--biosbootmenu\
+                  #\n--biossystemtimeoffset\n--biospxedebug\n--boot1\n--boot2\
+                  #\n--boot3\n--boot4\n--nic1\n\--nic2\n--nic3\n--nic4\
+                  #\n--nictype1\n--nictype2\n--nictype3\n--nictype4\
+                  #\n--cableconnected1\n--cableconnected2\n--cableconnected3\
+                  #\n--cableconnected4\n--nictrace1\n--nictrace2\n--nictrace3\
+                  #\n--nictrace4\n--nictracefile1\n--nictracefile2\n--nictracefile3\
+                  #\n--nictracefile4\n--nicproperty1\n--nicproperty2\
+                  #\n--nicproperty3\n--nicproperty4\n--nicspeed1\n--nicspeed2\
+                  #\n--nicspeed3\n--nicspeed4\n--nicbootprio1\n--nicbootprio2\
+                  #\n--nicbootprio3\n--nicbootprio4\n--nicpromisc1\n--nicpromisc2\
+                  #\n--nicpromisc3\n--nicpromisc4\n--nicbandwidthgroup1\
+                  #\n--nicbandwidthgroup2\n--nicbandwidthgroup3\n--nicbandwidthgroup4\
+                  #\n--bridgeadapter1\n--bridgeadapter2\n--bridgeadapter3\
+                  #\n--bridgeadapter4\n--hostonlyadapter1\n--hostonlyadapter2\
+                  #\n--hostonlyadapter3\n--hostonlyadapter4\n--intnet1\n--intnet2\
+                  #\n--intnet3\n--intnet4\n--natnet1\n--natnet2\n--natnet3\
+                  #\n--natnet4\n--nicgenericdrv1\n--nicgenericdrv2\n--nicgenericdrv3\
+                  #\n--nicgenericdrv4\n--natsettings1\n--natsettings2\n--natsettings3\
+                  #\n--natsettings4\n--natpf1\n--natpf2\n--natpf3\n--natpf4\
+                  #\n--nattftpprefix1\n--nattftpprefix2\n--nattftpprefix3\
+                  #\n--nattftpprefix4\n--nattftpfile1\n--nattftpfile2\n--nattftpfile3\
+                  #\n--nattftpfile4\n--nattftpserver1\n--nattftpserver2\n--nattftpserver3\
+                  #\n--nattftpserver4\n--natbindip1\n--natbindip2\n--natbindip3\
+                  #\n--natbindip4\n--natdnspassdomain1\n--natdnspassdomain2\
+                  #\n--natdnspassdomain3\n--natdnspassdomain4\n--natdnsproxy1\
+                  #\n--natdnsproxy2\n--natdnsproxy3\n--natdnsproxy4\n--natdnshostresolver1\
+                  #\n--natdnshostresolver2\n--natdnshostresolver3\n--natdnshostresolver4\
+                  #\n--nataliasmode1\n--nataliasmode2\n--nataliasmode3\n--nataliasmode4\
+                  #\n--macaddress1\n--macaddress2\n--macaddress3\n--macaddress4\n--mouse\
+                  #\n--keyboard\n--uart1\n--uart2\n--uart3\n--uart4\n--uartmode1\n--uartmode2\
+                  #\n--uartmode3\n--uartmode4\n--guestmemoryballoon\n--gueststatisticsinterval\
+                  #\n--audio\n--audiocontroller\n--clipboard\n--vrdp\n--vrdeextpack\
+                  #\n--vrdeproperty\n--vrdeport\n--vrdeaddress\n--vrdeauthtype\n--vrdeatuhlibrary\
+                  #\n--vrdemulticon\n--vrdereusecon\n--vrdevideochannel\n--vrdevideochannelquality\
+                  #\n--usb\n--usbehci\n--snapshotfolder\n--teleporter\n--teleporterport\
+                  #\n--teleporteraddress\n--teleporterpassword")
+    #clonevm_opts=$(echo -e "\n--snapshot\n--mode\n--options\n--name\n--basefolder\
+                 #\n--uuid\n--register")
+    import_opts="-n --dry-run --options"
+    #export_opts=$(echo -e "\n--output\n-o\n--legacy09\n--manifest\n--vsys\n--product\
+                #\n--producturl\n--vendor\n--vendorurl\n--version\n--eula\n--eulafile")
+    #startvm_opts=$(echo -e "\n--type")
+    #controlvm_opts=$(echo -e "\npause\nresume\nreset\npoweroff\nsavestate\nacpipowerbutton\
+                   #\nacpisleepbutton\nkeyboardputscancode\nsetlinkstate1\nsetlinkstate2\
+                   #\nsetlinkstate3\nsetlinkstate4\nnic1\nnic2\nnic3\nnic4\nnictrace1\
+                   #\nnictrace2\nnictrace3\nnictrace4\nnictracefile1\nnictracefile2\
+                   #\nnictracefile3\nnictracefile4\nnicproperty1\nnicproperty2\
+                   #\nnicproperty3\nnicproperty4\nnatpf1\nnatpf2\nnatpf3\natpf4\
+                   #\nguestmemoryballoon\ngueststatisticsinterval\nusbattach\nusbdetach\
+                   #\nvrde\nvrdeport\nvrdeproperty\nvrdevideochannelquality\nsetvideomodehint\
+                   #\nscreenshotpng\nteleport\nplugcpu\nunplugcpu\ncpuexecutioncap")
+    #snapshot_opts=$(echo -e "\ntake\ndelete\nrestore\nrestorecurrent\nedit\nlist\nshowvminfo")
+    closemedium_opts="disk dvd floppy --delete"
+    #storageattach_opts=$(echo -e "\n--storagectl\n--port\n--device\n--type\n--medium\n--mtype\
+                       #\n--comment\n--setuuid\n--setparentuuid\n--passthrough\n--tempeject\
+                       #\n--nonrotational\n--bandwidthgroup\n--forceunmount\n--server\
+                       #\n--target\n--tport\n--lun\n--encodedlun\n--username\n--password\n--intnet")
+    #storagectl_opts=$(echo -e "\n--name\n--add\n--controller\n--sataideemulation1\n--sataideemulation2\
+                    #\n--sataideemulation3\n--sataideemulation4\n--sataportcount\nhostiocache\
+                    #\n--bootable\n--remove")
+    #bandwidthctl_opts=$(echo -e "\n--name\n--add\n--limit\n--delete")
+    createhd_opts="--filename --size --sizebyte --format --variant"
+    modifyhd_opts="--type --autoreset --compact --resize --resizebyte"
+    clonehd_opts="--format --variant --existing"
+    convertfromraw_opts="--format --variant --uuid"
+    #getextradata_opts=$(echo -e "\nglobal")
+    #setextradata_opts=$(echo -e "\nglobal")
+    addiscsidisk_opts="--server --target --port --lun --encodedlun --username --password --type\
+                        --intnet2"
+    setproperty_opts="machinefolder vrdpauthlibrary websrvauthlibrary vrdeextpack loghistorycount"
+    usbfilter_opts="add modify remove"
+    sharedfolder_opts="add remove" 
+    guestproperty_opts="get enumerate set wait"
+    metrics_opts="list setup query enable disable collect"
+    hostonlyif_opts="ipconfig create remove"
+    dhcpserver_opts="add modify remove"
+    extpack_opts="install uninstall cleanup"
+    #=======================================================
+    #=======================================================
+
+    case "${prev}" in
+        list)
+            COMPREPLY=( $( compgen -W "$list_opts" -- $cur ))
+            return 0
+            ;;
+        showvminfo)
+            OLDIFS="$IFS"
+            IFS=$'\n'
+            COMPREPLY=( $( compgen -W "$(vboxmanage list vms | cut -d\" -f2)" -- $cur ))
+            #COMPREPLY=( $( compgen -W "$(vboxmanage list vms | cut -d\" -f2) $showvminfo_opts" -- $cur ))
+            IFS="$OLDIFS"
+            return 0
+            ;;
+        registervm)
+	    _filedir
+            #COMPREPLY=($(compgen -A file -- $cur))
+            return 0
+            ;;
+        unregistervm)
+            OLDIFS="$IFS"
+            IFS=$'\n'
+            COMPREPLY=( $( compgen -W "$(vboxmanage list vms | cut -d\" -f2)" -- $cur ))
+            #COMPREPLY=( $( compgen -W "$(vboxmanage list vms | cut -d\" -f2) $unregistervm_opts" -- $cur ))
+            IFS="$OLDIFS"
+            return 0
+            ;;
+        createvm)
+            COMPREPLY=( $( compgen -W "$createvm_opts" -- $cur ))
+            return 0
+            ;;
+        modifyvm)
+            OLDIFS="$IFS"
+            IFS=$'\n'
+            COMPREPLY=( $( compgen -W "$(vboxmanage list vms | cut -d\" -f2)" -- $cur ))
+            #COMPREPLY=( $( compgen -W "$(vboxmanage list vms | cut -d\" -f2) $modifyvm_opts" -- $cur ))
+            IFS="$OLDIFS"
+            return 0
+            ;;
+        clonevm)
+            OLDIFS="$IFS"
+            IFS=$'\n'
+            COMPREPLY=( $( compgen -W "$(vboxmanage list vms | cut -d\" -f2)" -- $cur ))
+            #COMPREPLY=( $( compgen -W "$(vboxmanage list vms | cut -d\" -f2) $clonevm_opts" -- $cur ))
+            IFS="$OLDIFS"
+            return 0
+            ;;
+        import)
+            COMPREPLY=( $( compgen -W "$import_opts" -A file -- $cur ))
+            return 0
+            ;;
+        export)
+            OLDIFS="$IFS"
+            IFS=$'\n'
+            COMPREPLY=( $( compgen -W "$(vboxmanage list vms | cut -d\" -f2)" -- $cur ))
+            #COMPREPLY=( $( compgen -W "$(vboxmanage list vms | cut -d\" -f2) $export_opts" -- $cur ))
+            IFS="$OLDIFS"
+            return 0
+            ;;
+        startvm)
+            OLDIFS="$IFS"
+            IFS=$'\n'
+            COMPREPLY=( $( compgen -W "$(vboxmanage list vms | cut -d\" -f2)" -- $cur ))
+            #COMPREPLY=( $( compgen -W "$(vboxmanage list vms | cut -d\" -f2) $startvm_opts" -- $cur ))
+            IFS="$OLDIFS"
+            return 0
+            ;;
+        controlvm)
+            OLDIFS="$IFS"
+            IFS=$'\n'
+            COMPREPLY=( $( compgen -W "$(vboxmanage list vms | cut -d\" -f2)" -- $cur ))
+            #COMPREPLY=( $( compgen -W "$(vboxmanage list vms | cut -d\" -f2) $controlvm_opts" -- $cur ))
+            IFS="$OLDIFS"
+            return 0
+            ;;
+        discardstate)
+            OLDIFS="$IFS"
+            IFS=$'\n'
+            COMPREPLY=( $( compgen -W "$(vboxmanage list vms | cut -d\" -f2)" -- $cur ))
+            IFS="$OLDIFS"
+            return 0
+            ;;
+        adoptstate)
+            OLDIFS="$IFS"
+            IFS=$'\n'
+            COMPREPLY=( $( compgen -W "$(vboxmanage list vms | cut -d\" -f2)" -A file -- $cur ))
+            IFS="$OLDIFS"
+            return 0
+            ;;
+        snapshot)
+            OLDIFS="$IFS"
+            IFS=$'\n'
+            COMPREPLY=( $( compgen -W "$(vboxmanage list vms | cut -d\" -f2)" -- $cur ))
+            #COMPREPLY=( $( compgen -W "$(vboxmanage list vms | cut -d\" -f2) $snapshot_opts" -- $cur ))
+            IFS="$OLDIFS"
+            return 0
+            ;;
+        closemedium)
+            COMPREPLY=( $( compgen -W "$closemedium_opts" -- $cur ))
+            return 0
+            ;;
+        storageattach)
+            OLDIFS="$IFS"
+            IFS=$'\n'
+            COMPREPLY=( $( compgen -W "$(vboxmanage list vms | cut -d\" -f2)" -- $cur ))
+            #COMPREPLY=( $( compgen -W "$(vboxmanage list vms | cut -d\" -f2) $storageattach_opts" -- $cur ))
+            IFS="$OLDIFS"
+            return 0
+            ;;
+        storagectl)
+            OLDIFS="$IFS"
+            IFS=$'\n'
+            COMPREPLY=( $( compgen -W "$(vboxmanage list vms | cut -d\" -f2)" -- $cur ))
+            #COMPREPLY=( $( compgen -W "$(vboxmanage list vms | cut -d\" -f2) $storagectl_opts" -- $cur ))
+            IFS="$OLDIFS"
+            return 0
+            ;;
+        bandwidthctl)
+            OLDIFS="$IFS"
+            IFS=$'\n'
+            COMPREPLY=( $( compgen -W "$(vboxmanage list vms | cut -d\" -f2)" -- $cur ))
+            #COMPREPLY=( $( compgen -W "$(vboxmanage list vms | cut -d\" -f2) $bandwidthctl_opts" -- $cur ))
+            IFS="$OLDIFS"
+            return 0
+            ;;
+        showhdinfo)
+            COMPREPLY=($(compgen -A file -- $cur))
+            return 0
+            ;;
+        createhd)
+            COMPREPLY=( $( compgen -W "$createhd_opts" -- $cur ))
+            return 0
+            ;;
+        modifyhd)
+            OLDIFS="$IFS"
+            IFS=$'\n'
+            COMPREPLY=( $( compgen -W "$modifyhd_opts" -A file -- $cur ))
+            IFS="$OLDIFS"
+            return 0
+            ;;
+        clonehd)
+            OLDIFS="$IFS"
+            IFS=$'\n'
+            COMPREPLY=( $( compgen -W "$clonehd_opts" -A file -- $cur ))
+            IFS="$OLDIFS"
+            return 0
+            ;;
+        convertfromraw)
+            OLDIFS="$IFS"
+            IFS=$'\n'
+            COMPREPLY=( $( compgen -W "$convertfromraw_opts" -A file -- $cur ))
+            IFS="$OLDIFS"
+            return 0
+            ;;
+        getextradata)
+            OLDIFS="$IFS"
+            IFS=$'\n'
+            COMPREPLY=( $( compgen -W "$(vboxmanage list vms | cut -d\" -f2)" -- $cur ))
+            #COMPREPLY=( $( compgen -W "$(vboxmanage list vms | cut -d\" -f2) $getextradata_opts" -- $cur ))
+            IFS="$OLDIFS"
+            return 0
+            ;;
+        setextradata)
+            OLDIFS="$IFS"
+            IFS=$'\n'
+            COMPREPLY=( $( compgen -W "$(vboxmanage list vms | cut -d\" -f2)" -- $cur ))
+            #COMPREPLY=( $( compgen -W "$(vboxmanage list vms | cut -d\" -f2) $setextradata_opts" -- $cur ))
+            IFS="$OLDIFS"
+            return 0
+            ;;
+        setproperty)
+            COMPREPLY=( $( compgen -W "$setproperty_opts" -- $cur ))
+            return 0
+            ;;
+        usbfilter)
+            COMPREPLY=( $( compgen -W "$usbfilter_opts" -- $cur ))
+            return 0
+            ;;
+        sharedfolder)
+            COMPREPLY=( $( compgen -W "$sharedfolder_opts" -- $cur ))
+            return 0
+            ;;
+        guestproperty)
+            COMPREPLY=( $( compgen -W "$guestproperty_opts" -- $cur ))
+            return 0
+            ;;
+        guestcontrol)
+            OLDIFS="$IFS"
+            IFS=$'\n'
+            COMPREPLY=( $( compgen -W "$(vboxmanage list vms | cut -d\" -f2)" -- $cur ))
+            IFS="$OLDIFS"
+            return 0
+            ;;
+        debugvm)
+            OLDIFS="$IFS"
+            IFS=$'\n'
+            COMPREPLY=( $( compgen -W "$(vboxmanage list vms | cut -d\" -f2)" -- $cur ))
+            IFS="$OLDIFS"
+            return 0
+            ;;
+        metrics)
+            COMPREPLY=( $( compgen -W "$metrics_opts" -- $cur ))
+            return 0
+            ;;
+        hostonlyif)
+            COMPREPLY=( $( compgen -W "$hostonlyif_opts" -- $cur ))
+            return 0
+            ;;
+        dhcpserver)
+            COMPREPLY=( $( compgen -W "$dhcpserver_opts" -- $cur ))
+            return 0
+            ;;
+        extpack)
+            COMPREPLY=( $( compgen -W "$extpack_opts" -- $cur ))
+            return 0
+            ;;
+    esac
+
+    if [[ "$cur" == -* ]]; then
+        # relevant options completion
+        COMPREPLY=( $( compgen -W "$OPTS" -- $cur ) )
+    else
+        COMPREPLY=( $( compgen -W "$COMMANDS" -- $cur ) )
+    fi
+} &&
+complete -F _vboxmanage VBoxManage vboxmanage
+
+# vim: set ts=8 sw=4 tw=80 ft=sh :

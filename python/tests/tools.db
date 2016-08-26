@@ -1,0 +1,53 @@
+#Based on the GNU shtool test suite
+
+#just enough tests to ensure third party scripts
+#with dependencies in external websites work
+
+@begin{eix}
+eix -h ; test X"${?}"                           = X"0"
+eix --help ; test X"${?}"                       = X"0"
+eix --cui; test X"${?}"                         = X"1"
+test X"$(eix | head -1)"                        = X""
+test X"$(eix 2>&1 | head -1)"                   = X"Too few arguments: 0 recieved. At least one is necessary."
+test X"$(eix -h | head -1)"                     = X"Usage: eix [OPTIONS] EXPRESSION"
+test X"$(eix --help | head -1)"                 = X"Usage: eix [OPTIONS] EXPRESSION"
+test X"$(eix -cui  | head -1)"                  = X""
+test X"$(eix -cui 2>&1 | head -1)"              = X"eix: Invalid argument. option -c not recognized"
+test X"$(eix --deep  | head -1)"                = X""
+test X"$(eix --deep 2>&1 | head -1)"            = X"E: You must give at least one search pattern"
+test X"$(eix --exact  | head -1)"               = X""
+test X"$(eix --exact 2>&1 | head -1)"           = X"E: You must give at least one search pattern"
+test X"$(eix --exact  | head -1)"               = X""
+test X"$(eix --exact 2>&1 | head -1)"           = X"E: You must give at least one search pattern"
+test X"$(eix -a dash | awk '{print $1; exit}')" = X"dash"
+test X"$(eix -v | awk -F: '{print $1; exit}')"  = X"eix version is"
+test X"$(eix --version | awk -F: '{print $1; exit}')" = X"eix version is"
+test X"$(eix --exact vim-nox | head -1 | sed -r "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[m|K]//g")" = X"Package: vim-nox"
+test X"$(eix --exact vim- )" = X""
+test "$(eix vim-g   | awk '/^$/ {i++} END{print i+0}')" -gt "1"
+test "$(eix --exact vim-g | awk '/^$/ {i++} END{print i+0}')" -eq "0"
+test "$(eix vim-nox | awk '/^$/ {i++} END{print i+0}')" -eq "0"
+@end
+
+#@begin{pastebin}
+#pastebin -h ; test X"${?}"                 = X"0"
+#pastebin --help ; test X"${?}"             = X"0"
+#pastebin --cui; test X"${?}"               = X"2"
+#test X"$(pastebin -h | head -1)"           = X"Usage: pastebin [options]"
+#test X"$(pastebin --help | head -1)"       = X"Usage: pastebin [options]"
+#test X"$(pastebin --cui  | head -1)"       = X""
+#test X"$(pastebin --cui 2>&1 | tail -1)"   = X"pastebin: error: no such option: --cui"
+#test X"$(pastebin --lexer  | head -1)"     = X""
+#test X"$(pastebin --lexer 2>&1 | tail -1)" = X"pastebin: error: --lexer option requires an argument"
+#test X"$(pastebin -t 2>&1 | tail -1)"      = X"pastebin: error: -t option requires an argument"
+#test X"$(pastebin -k 2>&1 | tail -1)"      = X"pastebin: error: -k option requires an argument"
+#echo "o@o" > cui; wget --no-check-certificate -q -O- "$(cat cui | pastebin | egrep "https://pastee.org/[a-Z0-9]+")" | grep 'o@o' >/dev/null
+#wget --no-check-certificate -q -O- "$(pastebin cui | egrep "https://pastee.org/[a-Z0-9]+")" | grep 'o@o' >/dev/null
+#@end
+
+@begin{youtube-dl}
+youtube-dl --socket-timeout 3 --retries 3 http://www.youtube.com/watch?v=9uDgJ9_H0gg -o youtube.flv
+test -f youtube.flv
+@end
+
+# vim: set ts=8 sw=4 tw=0 ft=sh :

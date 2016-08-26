@@ -1,0 +1,247 @@
+#!/bin/sh
+#description: backup available databases
+#usage: backup-dbs [options] -u USER -p PASSWD [database]...
+
+#example: backup-dbs -u root -p passwd
+#local backups are generated in the current directory
+#example: backup-dbs -u root -p passwd db
+#db local backups is generated in the current directory
+
+#these vars can be specified at ./.backup-dbs, ~/.backup-dbs or /etc/backup-dbs
+database=""
+user=""
+passwd=""
+compression=""
+backup_dir=""
+
+_usage() {
+    printf "%s\\n" "Usage: ${progname} [options] -u USER -p PASSWD [database]..."
+    printf "%s\\n" "Dump available databases."
+    printf "\\n"
+    printf "%s\\n" "Required arguments:"
+    printf "%s\\n" "  -u user          db user"
+    printf "%s\\n" "  -p passwd        db passwd"
+    printf "\\n"
+    printf "%s\\n" "Optional arguments:"
+    printf "%s\\n" "  -d [mysql]       database          [mysql]"
+    printf "%s\\n" "  -o dir           dir to save dumps [./]"
+    printf "%s\\n" "  -z [gz,bz2,xz]   compress          [gzip]"
+    printf "%s\\n" "  -c config file   read options from a configuration file"
+    printf "%s\\n" "  -l               list available databases"
+    printf "%s\\n" "  -v               verbose mode"
+    printf "%s\\n" "  -h, --help       show this help message and exit"
+}
+
+_basename() {
+    #alternative basename portable version, faster! but with possible drawbacks
+    [ -z "${1}" ] && return 1 || _basename__name="${1}" && _basename__retval=""
+    [ -z "${2}" ] || _basename__suffix="${2}"
+    case "${_basename__name}" in
+        /*|*/*) _basename__name="${_basename__name##*/}"
+    esac
+    [ -n "${_basename__suffix}" ] && [ "${#_basename__name}" -gt "${#2}" ] && \
+        _basename__name="${_basename__name%$_basename__suffix}"
+    _basename__retval="${_basename__name}"
+    #printf "%s" "${_basename__name}"
+}
+
+_die() {
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
+}
+
+_printtime() {
+    #format seconds to a pretty string
+    [ -z "${1}" ] && return 1
+    printf "%s\\n" "${1}" | grep -v "[^0-9]" >/dev/null || return 1;
+
+    _printtime__num="${1}"
+    _printtime__min="0"
+    _printtime__hour="0"
+    _printtime__day="0"
+    if [ "${_printtime__num}" -gt "59" ]; then
+        _printtime__sec="$((${_printtime__num} % 60))"
+        _printtime__num="$((${_printtime__num} / 60))"
+        if [ "${_printtime__num}" -gt "59" ]; then
+            _printtime__min="$((${_printtime__num} % 60))"
+            _printtime__num="$((${_printtime__num} / 60))"
+            if [ "${_printtime__num}" -gt "23" ]; then
+                _printtime__hour="$((${_printtime__num} % 24))"
+                _printtime__day="$((${_printtime__num} / 24))"
+            else
+                _printtime__hour="${_printtime__num}"
+            fi
+        else
+            _printtime__min="${_printtime__num}"
+        fi
+    else
+        _printtime__sec="${_printtime__num}"
+    fi
+    printf "%s\\n" "${_printtime__day}d ${_printtime__hour}h ${_printtime__min}m ${_printtime__sec}s"
+}
+
+_loadconf() {
+    [ ! -f "${1}" ] && return 1
+    _loadconf__options=$(awk '! /export/ {if ($0 ~ "^.*=[^;&]*" && $0 !~ "&&" && $1 !~ "^#") print }' "${1}")
+    eval "${_loadconf__options}"
+}
+
+_mysql() {
+    _mysql_list() {
+        mysql -u"${user}" -p"${passwd}" -Bse 'show databases'
+    }
+
+    _mysql_backup() {
+        [ "${verbose}" ] && _mysql__start_time="$(date +%s)"
+        #http://dba.stackexchange.com/questions/19532/safest-way-to-perform-mysqldump-on-a-live-system-with-active-reads-and-writes
+        mysql -u"${user}" -p"${passwd}" -Ae"FLUSH TABLES WITH READ LOCK; SELECT SLEEP(86400)" >/dev/null 2>&1 &
+        sleep 5
+
+        _mysql__sleep_id="$(mysql -u"${user}" -p"${passwd}" -ANe"SHOW PROCESSLIST" | awk '/SELECT SLEEP.86400./ {print $1}')"
+        [ -z "${_mysql__sleep_id}" ] || printf "%s\\n" "KILL ${_mysql__sleep_id};" > "${backup_dir}"/kill_sleep.sql 2>/dev/null
+
+        if [ "${@}" ]; then
+            for _mysql__db; do
+                [ "${verbose}" ] && printf "%s " "${_mysql__db}"
+                mysqldump -u"${user}" -p"${passwd}" --single-transaction --routines \
+                --triggers "${_mysql__db}" | $compression_bin > "${backup_dir}"/"${_mysql__db}".sql"${compression_suffix}"
+                _mysql__status="${?}"
+                [ "${verbose}" ] && printf "\\n"
+            done
+        else
+            _mysql__dbs="$(_mysql_list)"
+            for _mysql__db in $_mysql__dbs; do
+                [ "${verbose}" ] && printf "%s " "${_mysql__db}"
+                mysqldump -u"${user}" -p"${passwd}" --single-transaction --routines \
+                --triggers "${_mysql__db}" | $compression_bin > "${backup_dir}"/"${_mysql__db}".sql"${compression_suffix}"
+                _mysql__status="${?}"
+                [ "${verbose}" ] && printf "\\n"
+            done
+        fi
+
+        [ -z "${_mysql__sleep_id}" ] || mysql -u"${user}" -p"${passwd}" -A < "${backup_dir}"/kill_sleep.sql
+        mysql -u"${user}" -p"${passwd}" -Ae"UNLOCK TABLES;"
+        rm -rf -- "${backup_dir}"/kill_sleep.sql
+
+        [ "${verbose}" ] && _mysql__end_time="$(date +%s)"
+        [ "${verbose}" ] && _mysql__diff_time="$((${_mysql__end_time} - ${_mysql__start_time}))"
+        [ "${verbose}" ] && printf "%s\\n" \
+        "$(date +"%d-%m-%Y"):$(_printtime ${_mysql__diff_time})" | tee -a "${backup_dir}"/time.txt
+        return "${_mysql__status}"
+    }
+
+    if ! command -v "mysql" >/dev/null; then
+        printf "%s\\n" "${progname}: there are no mysql dbs on this host" >&2; return 1
+    elif ! command -v "mysqldump" >/dev/null; then
+        printf "%s\\n" "${progname}: mysqldump is not available!" >&2; return 1
+    fi
+
+    if ! mysql -u"${user}" -p${passwd} -ANe"SHOW PROCESSLIST" > /dev/null 2>&1; then
+        printf "%s\\n" "${progname}: invalid db credentials (user=${user}, passwd=${passwd}" >&2; return 1
+    fi
+
+    case "${compression}" in
+        gz*)  compression_bin="gzip";  compression_suffix=".gz"  ;;
+        bz2*) compression_bin="bzip2"; compression_suffix=".bz2" ;;
+        xz*)  compression_bin="xz";    compression_suffix=".xz"  ;;
+        *)    compression_bin="cat" ;;
+    esac
+
+    [ "${list}" ] && _mysql_list && return "${?}"
+    _mysql_backup "${@}"
+}
+
+_basename "${0}"; progname="${_basename__retval}"
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- "${@}" $(cat)
+fi
+
+for arg; do #parse options
+    case "${arg}" in
+        -h|--help) _usage && exit ;;
+        -l) list="true"; shift ;;
+        -v) verbose="true"; shift ;;
+        '-z')
+            if [ "${#}" -gt "1" ]; then
+                shift; compression="${1}"; [ "${1}" ] && shift
+            else
+                compression="gz"; [ "${1}" ] && shift
+            fi ;;
+        -z*) arg=${arg#?}; arg=${arg#?}; compression="${arg}"; shift ;;
+        '-d')
+            if [ "${#}" -gt "1" ]; then
+                shift; database="${1}"; [ "${1}" ] && shift
+            else
+                database="mysql"; [ "${1}" ] && shift
+            fi ;;
+        -d*) arg=${arg#?}; arg=${arg#?}; database="${arg}"; shift ;;
+        '-u')
+            if [ "${#}" -gt "1" ]; then
+                shift; user="${1}"; [ "${1}" ] && shift
+            else
+                _die "Option '${arg}' requires a parameter"
+            fi ;;
+        -u*) arg=${arg#?}; arg=${arg#?}; user="${arg}"; shift ;;
+        '-p')
+            if [ "${#}" -gt "1" ]; then
+                shift; passwd="${1}"; [ "${1}" ] && shift
+            else
+                _die "Option '${arg}' requires a parameter"
+            fi ;;
+        -p*) arg=${arg#?}; arg=${arg#?}; passwd="${arg}"; shift ;;
+        -o) if [ "${#}" -gt "1" ]; then
+                shift; backup_dir="${1}"; [ "${1}" ] && shift
+            else
+                _die "Option '${arg}' requires a parameter"
+            fi ;;
+        -c) if [ "${#}" -gt "1" ]; then
+                config_file="$(printf "%s " "${@}" | awk '{print $2}')"
+                shift 2
+            else
+                _die "Option '${arg}' requires a parameter"
+            fi ;;
+        -*) _die "${progname}: unrecognized option '${arg}'" ;;
+    esac
+done
+
+if [ -z "${config_file}" ]; then
+    if [ -f ./.backup-dbs ]; then
+        _loadconf ./.backup-dbs
+    elif [ -f ~/.backup-dbs ]; then
+        _loadconf ~/.backup-dbs
+    elif [ -f /etc/backup-dbs ]; then
+        _loadconf /etc/backup-dbs
+    fi
+else
+    [ ! -f "${config_file}" ] && _die "Configuration file '${config_file}' doesn't exists"
+    _loadconf "${config_file}"
+fi
+
+[ -z "${passwd}" ] && [ -z "${user}" ] && _die
+case "${database}" in
+    ''|mysql) database="mysql" ;;
+    *) _die "database '${database}' unsupported" ;;
+esac
+[ -z "${backup_dir}" ] && backup_dir="$(pwd)"
+if ! mkdir -p "${backup_dir}"/.backup-dbs >/dev/null 2>&1; then
+    printf "-- Warning: %s\\n" "\`${backup_dir}' is not writable, using \`/tmp' to save the backups instead" >&2
+    backup_dir="/tmp"
+else
+    rm -rf -- "${backup_dir}"/.backup-dbs
+fi
+
+if [ -z "${database}" ] || [ -z "${user}" ] || [ -z "${passwd}" ] || [ -z "${backup_dir}" ]; then
+    _die
+fi
+
+exec 9>/tmp/"${progname}".lock #http://mywiki.wooledge.org/BashFAQ/045
+[ X"${LOGNAME}" = X"root" ] && chmod 666 /tmp/"${progname}".lock
+if ! flock -n 9  ; then
+    printf "%s\\n" "${progname}: another instance is running";
+    exit 1
+fi
+
+case "${database}" in
+    mysql) _mysql "${@}" ;;
+esac

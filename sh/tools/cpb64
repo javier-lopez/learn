@@ -1,0 +1,149 @@
+#!/bin/sh
+#description: helper to copy files through systems without scp
+#             http://rrr.thetruth.de/2009/04/remote-copy-without-scp/
+#usage: cpb64 file[s]
+
+#example: cpb64 ~/.bashrc
+#output-to-copy
+#to-a-remote-shell
+#...
+
+decodestr="$(
+cat - <<'EOF'
+_decode64() { #decode a base64 string
+    [ ! -t 0 ] && set -- "${@}" "$(cat)"
+    [ -z "${1}" ] && return 1
+    if command -v "base64" >/dev/null 2>&1; then
+        printf "%s\\n" "${@}" | base64 -d
+    elif command -v "openssl" >/dev/null 2>&1; then
+        printf "%s\\n" "${@}" | openssl enc -base64 -d
+    elif command -v "awk" >/dev/null 2>&1 && (command -v "uudecode" || command -v "busybox") >/dev/null 2>&1; then
+        if command -v "uudecode" >/dev/null 2>&1; then
+            uudecode__bin="uudecode"
+        elif command -v "busybox"  >/dev/null 2>&1; then
+            uudecode__bin="busybox uudecode"
+        fi
+        _decode64_awk() { [ ! -t 0 ] && set -- "${@}" "$(cat)"
+          [ -z "${1}" ] && return 1
+          printf "%s\\n" "${@}" | sed 's/=//g' | (
+            printf "begin 644 -\\n"; awk 'function _decode64_awk() {
+              inp=1; out=""; while (getline) { for(i=1; i<=length($0); i++) {
+                  c=substr(uu,index(b64,substr($0,i,1)),1);
+                  inp++; out=(out c); if (inp==61) {
+                    print "M" out; inp=1; out=""; }}}
+              if (length(out)) { printf "%c", (32+3*length(out)/4); print out; }}
+            BEGIN { b64="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+              uu="`!\"#$%&'\''()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_"
+              _decode64_awk(); exit; }'
+            printf "%s\\n%s\\n" '`' 'end' #'
+          ) | $uudecode__bin
+        }
+        printf "%s\\n" "${@}" | _decode64_awk
+    else
+        _decode64_sh() { [ ! -t 0 ] && set -- "${@}" "$(cat)"
+            _decode64_sh__b64='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+            _decode64_sh__n="0"; _decode64_sh__v="0"; _decode64_sh__args="$@"
+            while [ "${_decode64_sh__args}" ]; do #process char by char
+                _decode64_sh__char="${_decode64_sh__args%${_decode64_sh__args#?}}"
+                case "${_decode64_sh__char}" in
+                    '\n') continue ;;
+                     '=') _decode64_sh__v="$(($_decode64_sh__v << 6))" ;;
+                       *) _decode64_sh__char="${_decode64_sh__b64#*$_decode64_sh__char}"
+                          _decode64_sh__char="$((${#_decode64_sh__b64}-${#_decode64_sh__char}))"
+                          if [ "${_decode64_sh__char}" -eq "0" ]; then
+                            [ X"${_decode64_sh__args}" = X"${_decode64_sh__char}" ] &&\
+                                _decode64_sh__args='' || _decode64_sh__args="${_decode64_sh__args#?}"
+                            continue
+                          fi
+                          _decode64_sh__v="$(($_decode64_sh__v << 6 | $_decode64_sh__char-1))"
+                esac
+                _decode64_sh__n="$(($_decode64_sh__n+1))"
+                if [ "${_decode64_sh__n}" -eq "4" ]; then
+                    _decode64_sh__s="16"; while [ "${_decode64_sh__s}" -gt "-1" ]; do
+                        _decode64_sh__char="$(($_decode64_sh__v >> $_decode64_sh__s & 255))"
+                        printf \\$(($_decode64_sh__char/64*100+$_decode64_sh__char%64/8*10+$_decode64_sh__char%8))
+                        _decode64_sh__s="$(($_decode64_sh__s-8))"
+                    done
+                    _decode64_sh__v="0"; _decode64_sh__n="0"
+                fi
+                [ X"${_decode64_sh__args}" = X"${_decode64_sh__char}" ] &&\
+                    _decode64_sh__args='' || _decode64_sh__args="${_decode64_sh__args#?}"
+            done
+        }
+        printf "%s\\n" "${@}" | _decode64_sh
+    fi
+}
+EOF
+)" #'
+
+_usage() {
+    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] file ..."
+    printf "%s\\n" "Copy files using base64."
+    printf "\\n"
+    printf "%s\\n" "  -p, --portable   produce extra portable output, useful"
+    printf "%s\\n" "                   when base64|openssl are not installed"
+    printf "%s\\n" "                   in the target system"
+    printf "%s\\n" "  -h, --help       show this help message and exit"
+}
+
+_die() {
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
+}
+
+_cpb64() {
+    for file; do
+        [ ! -r "${file}" ] && {
+            printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): '${file}' does not exist or is not readable" >&2; exit 1; }
+    done
+
+    if command -v "base64" >/dev/null 2>&1; then
+        str="$(tar cf - "${@}" | gzip | base64)"
+    elif command -v "openssl" >/dev/null 2>&1; then
+        str="$(tar cf - "${@}" | gzip | openssl enc -base64)"
+    else
+        printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unable to encode files, install either base64 or openssl to continue" >&2
+        exit 1
+    fi
+
+    line1="cat<<E=O=F | openssl enc -base64 -d | zcat | tar xvf -"
+    line1p="cat<<E=O=F | _decode64 | zcat | tar xvf -"
+    line2="${str}"
+    line3="E=O=F"
+
+    if [ -z "${portable}" ]; then
+        cmd="${line1}"'\n'"${line2}"'\n'"${line3}"'\n'
+        decodestr=""
+    else
+        cmd='\n'"${line1p}"'\n'"${line2}"'\n'"${line3}"'\n'
+    fi
+
+    if command -v "xclip" >/dev/null 2>&1; then
+        if [ ! -t 1 ] || [ -z "${DISPLAY}" ]; then
+            printf "%s%b" "${decodestr}" "${cmd}"
+        else
+            printf "%s%b" "${decodestr}" "${cmd}" | xclip -selection clipboard; xclip -o -selection clipboard 2>/dev/null || \
+            printf "%s%b" "${decodestr}" "${cmd}"
+        fi
+    else
+        printf "%s%b" "${decodestr}" "${cmd}"
+    fi
+}
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- "${@}" $(cat)
+fi
+
+[ "${#}" -eq "0" ] && _die
+
+for arg; do #parse options
+    case "${arg}" in
+        -h|--help) _usage && exit ;;
+        -p|--portable) portable="true"; shift
+            [ -z "${1}" ] && _die "$(expr "${0}" : '.*/\([^/]*\)'): missing parameters" ;;
+        -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${arg}'" ;;
+    esac
+done
+
+_cpb64 "${@}"

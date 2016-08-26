@@ -1,0 +1,239 @@
+#!/bin/sh
+#create default minos core settings
+#usage: create-minos-default-core-setting
+
+#example create-minos-default-core-setting
+#a ${1}/ directory is generated with minimal minos settings
+
+trap _cleanup 15 #trap ctrl-c
+#trap _cleanup SIGINT SIGTERM #trap ctrl-c
+
+file_header="This file is part of the minos-core-settings package"
+
+_usage() {
+    printf "%b\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [directory]"
+    printf "%b\\n" "minos core settings creator."
+    printf "\\n"
+    printf "%s\\n" "  -h, --help   show this help message and exit"
+}
+
+_cmd() {
+    [ -z "${1}" ] && return 0
+
+    printf "%s " "[$] ${@}"
+    printf "\\n"
+    eval "${@}"
+
+    _cmd__status="${?}"
+    [ X"${_cmd__status}" != X"0" ] && exit "${_cmd__status}" || return
+}
+
+_cleanup() {
+    stty echo
+    printf "\\n"
+    printf "%s\\n" "[+] cleanup ..."
+    _cmd rm -rf "${target_directory}"
+
+    [ -z ${1} ] && exit
+}
+
+_create_minos_default_core_settings() {
+    #$1 => target directory
+    [ -z "${1}" ] && return 1
+
+    [ -d "${1}" ] && _cmd rm -rf "${1}"
+    _cmd mkdir -p "${1}"
+
+    #echo
+    #_cmd cp ~/.minos/autostart "${1}"/etc.minos.autostart
+    #_cmd "sed -i 's:^#!/bin/sh:#!bin/sh\n\n#${file_header}' ${1}/etc.minos.autostart"
+
+    echo
+    _cmd "printf \"%s\\n\\n\" \"#${file_header}\" > \"${1}\"/etc##profile.d##minos-bash.sh"
+    _cmd "sed -n '/^#===/,/^#}1/p;/^#}1/q' ${HOME}/.bashrc | head -n -1 >> ${1}/etc##profile.d##minos-bash.sh"
+    _cmd "sed -n '/{2/,/^#}2/p;/^#}2/q' ${HOME}/.bashrc  | head -n -1 | sed 1d >> ${1}/etc##profile.d##minos-bash.sh"
+    _cmd "echo >> ${1}/etc##profile.d##minos-bash.sh"
+    _cmd "sed -n '/{3/,/^#}3/p;/^#}3/q' ${HOME}/.bashrc | head -n -1 | sed 1d >> ${1}/etc##profile.d##minos-bash.sh"
+    _cmd "sed -i '/^export PATH/d' ${1}/etc##profile.d##minos-bash.sh"
+    _cmd "sed -i 's:^#export PATH:export PATH:' ${1}/etc##profile.d##minos-bash.sh"
+    _cmd "sed -i '/GPGKEY/d' ${1}/etc##profile.d##minos-bash.sh"
+    _cmd "sed -i '/^#gpg/d' ${1}/etc##profile.d##minos-bash.sh"
+    _cmd "sed -i '/^#random vars/d' ${1}/etc##profile.d##minos-bash.sh"
+    _cmd "sed -i '/LC_ALL/d' ${1}/etc##profile.d##minos-bash.sh"
+
+    echo
+    _cmd "printf \"%s\\n\\n\" \"#${file_header}\" > \"${1}\"/etc##skel##.aliases"
+    _cmd "sed -n '/^\[/,/xdg-open/p;/xdg-open/q' ${HOME}/.aliases >> ${1}/etc##skel##.aliases"
+    _cmd "sed -n '/(gpg -d/p' ${HOME}/.aliases >> ${1}/etc##skel##.aliases"
+    _cmd "echo >> ${1}/etc##skel##.aliases"
+    _cmd "sed -n '/eix.exact=/p' ${HOME}/.aliases >> ${1}/etc##skel##.aliases"
+    _cmd "echo >> ${1}/etc##skel##.aliases"
+    _cmd "echo '# vim: set ts=8 sw=4 tw=0 ft=conf :' >> ${1}/etc##skel##.aliases"
+
+    echo
+    _cmd "printf \"%s\\n\\n\" \"#${file_header}\" > \"${1}\"/etc##skel##.bash_profile"
+    _cmd "cat ${HOME}/.bash_profile >> ${1}/etc##skel##.bash_profile"
+
+    echo
+    _cmd "printf \"%s\\n\\n\" \"#${file_header}\" > \"${1}\"/etc##skel##.profile.d##shundle.sh"
+    _cmd "printf \"%s\\n\\n\" \"#http://github.com/chilicuil/shundle\" >> \"${1}\"/etc##skel##.profile.d##shundle.sh"
+    _cmd "sed -n '/shundle/,\$p' ${HOME}/.bashrc >> ${1}/etc##skel##.profile.d##shundle.sh"
+
+    echo
+    _cmd "printf \"%s\\n\\n\" \"#${file_header}\" > \"${1}\"/etc##skel##.tmux.conf"
+    _cmd "cat ${HOME}/.tmux.conf >> ${1}/etc##skel##.tmux.conf"
+
+    echo
+    _cmd "printf \"%s\\n\\n\" \"\\\"${file_header}\" > \"${1}\"/etc##skel##.vimrc"
+    _cmd "cat ${HOME}/.vimrc >> ${1}/etc##skel##.vimrc"
+
+    echo
+    _cmd "printf \"%s\\n\\n\" \"#${file_header}\" > \"${1}\"/etc##ssh##ssh_config"
+    _cmd "sed -n '/^Host \*$/,/^$/p;/^$/q' ${HOME}/.ssh/config >> ${1}/etc##ssh##ssh_config"
+
+    echo
+    _cmd "printf \"%s\\n\\n\" \"#${file_header}\" > \"${1}\"/etc##sudoers.d##minos-core"
+    _cmd "printf \"%s\\n\" \"Defaults	insults,timestamp_timeout=60\" >> \"${1}\"/etc##sudoers.d##minos-core"
+    _cmd "echo >> ${1}/etc##sudoers.d##minos-core"
+    _cmd "printf \"%s\\n\" \"Cmnd_Alias MINOS_SESSION=/usr/sbin/pm-suspend,/usr/sbin/pm-hibernate,/sbin/shutdown\" >> \"${1}\"/etc##sudoers.d##minos-core"
+    _cmd "printf \"%s\\n\" \"Cmnd_Alias MINOS_BACKUP=/usr/bin/backup_remote_rsync\" >> \"${1}\"/etc##sudoers.d##minos-core"
+    _cmd "printf \"%s\\n\" \"Cmnd_Alias WAKEUP=/usr/sbin/rtcwake\" >> \"${1}\"/etc##sudoers.d##minos-core"
+    _cmd "echo >> ${1}/etc##sudoers.d##minos-core"
+    _cmd "printf \"%s\\n\" \"#Members of the sudo group can use these commands without passwd\" >> \"${1}\"/etc##sudoers.d##minos-core"
+    _cmd "printf \"%s\\n\" \"%sudo ALL=(root) NOPASSWD:MINOS_SESSION,MINOS_BACKUP\" >> \"${1}\"/etc##sudoers.d##minos-core"
+    _cmd "printf \"%s\\n\" \"%sudo ALL=(root) NOPASSWD:WAKEUP\" >> \"${1}\"/etc##sudoers.d##minos-core"
+
+    echo
+    _cmd "printf \"%s\\n\\n\" \"Minos LTS \n \l\" > \"${1}\"/etc##issue"
+
+    echo
+    _cmd "printf \"%s\\n\\n\" \"Minos LTS\" > \"${1}\"/etc##issue.net"
+
+    echo
+    cat > "${1}"/etc##update-motd.d##00-header <<'EOF'
+#!/bin/sh
+. /etc/os-release 2>/dev/null
+if [ -z "$VERSION_ID" ]; then
+    printf "\\nWelcome to Minos (%s %s %s)\\n\\n" "$(uname -o)" "$(uname -r)" "$(uname -m)"
+else
+    printf "\\nWelcome to Minos %s LTS (%s %s %s)\\n\\n" "$VERSION_ID" "$(uname -o)" "$(uname -r)" "$(uname -m)"
+fi
+EOF
+    _cmd "chmod +x ${1}/etc##update-motd.d##00-header"
+
+    echo
+    _cmd "printf \"%s\\n\\n\" \"#!/bin/sh\" > \"${1}\"/etc##update-motd.d##10-help-text"
+    _cmd "printf \"%s\\n\" \":\" >> \"${1}\"/etc##update-motd.d##10-help-text"
+    _cmd "chmod +x ${1}/etc##update-motd.d##10-help-text"
+
+    echo
+    cat > "${1}"/etc##update-motd.d##10-minos-sysinfo <<'EOF'
+#!/bin/sh
+#show system information
+
+[ -x /etc/update-motd.d/50-landscape-sysinfo ] && exit
+
+load=`awk '{print $1}' /proc/loadavg`
+df_output=`df -h`
+root_usage=`printf "%s" "${df_output}" | awk '/\/$/ {print $(NF-1);exit}'`
+home_usage=`printf "%s" "${df_output}" | awk '/\/home$/ {print $(NF-1);exit}'`
+memory_output=`free -m`
+memory_usage=`printf "%s" "${memory_output}" | awk '/Mem:/ {total=$2} /buffers\/cache/ { used=$3 } END { printf("%3.1f%%", used/total*100)}'`
+swap_usage=`printf "%s" "${memory_output}" |awk '/Swap/ {printf("%3.1f%%", "exit !$2;$3/$2*100")}'`
+#users=`users | wc -w`
+uptime=`uptime | awk '{sub(/,/," hours"); printf $3" "$4}'`
+#ps_output=`ps aux`
+#processes=`printf "%s" "${ps_output}" | wc -l`
+#top_process=`printf "%s\\n" "${ps_output}" | awk '{print $2, $4"%", $11}' | sort -k2rn | awk '{print $3, $2;exit}'`
+#ip=`ifconfig $(route | grep default | awk '{ print $8 }') | grep "inet addr" | awk -F: '{print $2}' | awk '{print $1}'`
+
+printf "%s\\n\\n" "System information as of: `date`"
+printf "System load:\t%s\tSystem uptime:\t%s\n" "$load" "$uptime"
+printf "Memory usage:\t%s\tSwap usage:\t%s\n" "$memory_usage" "$swap_usage"
+printf "Usage on /:\t%s\tUsage on /home:\t%s\n" "$root_usage" "$home_usage"
+#printf "Processes:\t%s\tTop process:\t%s\n" "$processes" "$top_process"
+printf "\\n"
+EOF
+    _cmd "chmod +x ${1}/etc##update-motd.d##10-minos-sysinfo"
+
+    echo
+    _cmd "touch ${1}/etc##legal"
+
+    echo
+    _cmd "printf \"%s\\n\\n\" \"// ${file_header}\" > \"${1}\"/etc##apt##apt.conf.d##05disable-recommends"
+    _cmd "printf \"%s\\n\" \"APT::Install-Recommends \\\"false\\\";\" >> \"${1}\"/etc##apt##apt.conf.d##05disable-recommends"
+
+    echo
+    _cmd "printf \"%s\\n\\n\" \"// ${file_header}\" > \"${1}\"/etc##apt##apt.conf.d##05disable-suggests"
+    _cmd "printf \"%s\\n\" \"APT::Install-Suggests \\\"false\\\";\" >> \"${1}\"/etc##apt##apt.conf.d##05disable-suggests"
+
+    echo
+    _cmd "printf \"%s\\n\\n\" \";${file_header}\" > \"${1}\"/etc##gitconfig"
+    _cmd "cat ~/.gitconfig                        >>    ${1}/etc##gitconfig"
+    _cmd "sed -i '/^\[user\]$/,/^$/d'                   ${1}/etc##gitconfig"
+    _cmd "sed -i '/^\[github\]$/,/^$/d'                 ${1}/etc##gitconfig"
+
+    echo
+    printf "%s\\n" "[+] New minos core settings generated at: ${1}/"
+
+    cat > "${1}/README.md" << 'E=O=F'
+## About
+
+This repository provides minimal settings which gives to minos its identity. It's intend to be installed in all environments, even those without graphic interface. Some of the changes affect:
+
+- Skel default files:
+ - `.bash_profile`: add gpg-agent/tmux autolaunchers
+ - `.aliases`: replace cd, rm and other core system applications with minos wrappers
+ - `.profile.d/shundle.sh`: shundle integration
+ - `.tmux.conf`: tmux/tundle integration
+ - `.vimrc`: vim configuration
+
+- Sudo settings:
+ - turn on sudo insults
+ - set a longer (1hr) timeout
+ - bypass password authentication for shutdown/hibernate/wakeup
+
+- Ssh:
+ - connection sharing, improve performance and general resiliance
+
+- Bash
+ - autocompletion enhancement
+ - 'vi' as default readline mode
+
+- Motd
+ - modify message of the day and other personality files
+
+## Quick start
+
+### On Ubuntu (only LTS releases)
+
+1. Set up the minos archive:
+
+   ```
+   $ sudo add-apt-repository ppa:minos-archive/main
+   ```
+
+2. Install:
+
+   ```
+   $ sudo apt-get update && sudo apt-get install minos-core-settings
+   ```
+
+3. Enjoy ☺!
+
+## Feedback
+
+Please drop me an [email](mailto:m@javier.io) with your suggestions or open [an issue](https://github.com/minos-org/bash-minos-settings/issues) with your comments.
+E=O=F
+}
+
+for arg; do #parse options
+    case "${arg}" in
+        -h|--help) _usage && exit ;;
+        -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${arg}'" >&2
+            _usage >&2; exit 1 ;;
+        *) target_directory="${arg}"
+    esac
+done; target_directory="${target_directory:-minos-core-settings}"
+
+_create_minos_default_core_settings "${target_directory}"

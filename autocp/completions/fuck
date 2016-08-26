@@ -1,0 +1,28 @@
+_fuck()
+{
+    if ! command -v "fuck" >/dev/null 2>&1; then
+        return
+    fi
+
+    #defining local vars
+    local cur prev words cword
+    _init_completion || return
+
+    #cur="${COMP_WORDS[COMP_CWORD]}"
+    #prev="${COMP_WORDS[COMP_CWORD-1]}"
+
+    case "${prev}" in
+        fuck) COMPREPLY=($(compgen -W "you" -- ${cur})); return ;;
+    esac
+
+    #general options
+    case "${cur}" in
+        *) COMPREPLY=($(compgen -W "$(command ps axo command= | sed \
+            -e "s: .*::; s:.*/::; s/:$//;"  -e "s:^[[(-]::; s:[])]$::"\
+            -e "s:^<defunct>$::" | grep "[^0-9]" | grep -v ":" | tr '\n' ' ')" -- ${cur}))
+            ;;
+    esac
+} &&
+complete -F _fuck fuck
+
+# vim: set ts=8 sw=4 tw=0 ft=sh :
