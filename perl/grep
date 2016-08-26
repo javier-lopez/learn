@@ -1,0 +1,23 @@
+#!/usr/bin/perl
+#description: find patterns in files
+#usage: grep PATTERN FILE ...
+
+#example: grep pattern file
+#pattern line
+#...
+
+use strict;
+use warnings;
+use File::Basename;
+
+sub _grep {
+    my ($pattern, @files) = @_;
+    foreach (@files) {
+        open (FILE, $_);
+        while (my $line = <FILE>) {
+            if ($line =~ m/$pattern/) { print $line };
+        }
+    }
+}
+
+_grep @ARGV;

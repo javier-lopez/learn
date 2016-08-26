@@ -1,0 +1,36 @@
+#!/usr/bin/perl
+#description: perl simple cat implementation
+#usage: cat script ...
+
+#example: cat file
+#content...
+
+use strict;
+use warnings;
+use File::Basename;
+
+my $progname = basename(__FILE__);
+
+sub _print_file {
+    my $file = shift;
+    open (FILE, $file);
+    #while (my $line = <FILE>) {
+        #print $line;
+    #}
+    while (<FILE>) { #perl way
+        print $_;
+    }
+}
+
+sub _cat {
+    #while (my $file = shift) {
+        #print STDERR "$progname: $_: Is a directory\n" if (-d $_);
+        #_print_file $file;
+    #}
+    foreach (@_) { #perl way
+        print STDERR "$progname: $_: Is a directory\n" if (-d $_);
+        _print_file $_;
+    }
+}
+
+_cat @ARGV;
