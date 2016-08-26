@@ -29,21 +29,21 @@ test "$(eix --exact vim-g | awk '/^$/ {i++} END{print i+0}')" -eq "0"
 test "$(eix vim-nox | awk '/^$/ {i++} END{print i+0}')" -eq "0"
 @end
 
-@begin{pastebin}
-pastebin -h ; test X"${?}"                 = X"0"
-pastebin --help ; test X"${?}"             = X"0"
-pastebin --cui; test X"${?}"               = X"2"
-test X"$(pastebin -h | head -1)"           = X"Usage: pastebin [options]"
-test X"$(pastebin --help | head -1)"       = X"Usage: pastebin [options]"
-test X"$(pastebin --cui  | head -1)"       = X""
-test X"$(pastebin --cui 2>&1 | tail -1)"   = X"pastebin: error: no such option: --cui"
-test X"$(pastebin --lexer  | head -1)"     = X""
-test X"$(pastebin --lexer 2>&1 | tail -1)" = X"pastebin: error: --lexer option requires an argument"
-test X"$(pastebin -t 2>&1 | tail -1)"      = X"pastebin: error: -t option requires an argument"
-test X"$(pastebin -k 2>&1 | tail -1)"      = X"pastebin: error: -k option requires an argument"
-echo "o@o" > cui; wget --no-check-certificate -q -O- "$(cat cui | pastebin | egrep "https://pastee.org/[a-Z0-9]+")" | grep 'o@o' >/dev/null
-wget --no-check-certificate -q -O- "$(pastebin cui | egrep "https://pastee.org/[a-Z0-9]+")" | grep 'o@o' >/dev/null
-@end
+#@begin{pastebin}
+#pastebin -h ; test X"${?}"                 = X"0"
+#pastebin --help ; test X"${?}"             = X"0"
+#pastebin --cui; test X"${?}"               = X"2"
+#test X"$(pastebin -h | head -1)"           = X"Usage: pastebin [options]"
+#test X"$(pastebin --help | head -1)"       = X"Usage: pastebin [options]"
+#test X"$(pastebin --cui  | head -1)"       = X""
+#test X"$(pastebin --cui 2>&1 | tail -1)"   = X"pastebin: error: no such option: --cui"
+#test X"$(pastebin --lexer  | head -1)"     = X""
+#test X"$(pastebin --lexer 2>&1 | tail -1)" = X"pastebin: error: --lexer option requires an argument"
+#test X"$(pastebin -t 2>&1 | tail -1)"      = X"pastebin: error: -t option requires an argument"
+#test X"$(pastebin -k 2>&1 | tail -1)"      = X"pastebin: error: -k option requires an argument"
+#echo "o@o" > cui; wget --no-check-certificate -q -O- "$(cat cui | pastebin | egrep "https://pastee.org/[a-Z0-9]+")" | grep 'o@o' >/dev/null
+#wget --no-check-certificate -q -O- "$(pastebin cui | egrep "https://pastee.org/[a-Z0-9]+")" | grep 'o@o' >/dev/null
+#@end
 
 @begin{youtube-dl}
 youtube-dl --socket-timeout 3 --retries 3 http://www.youtube.com/watch?v=9uDgJ9_H0gg -o youtube.flv
