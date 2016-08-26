@@ -1,0 +1,42 @@
+#!/usr/bin/env python
+import random
+
+phrase   = "methinks it is like a weasel"
+alphabet = 'abcdefghijklmnopqrstuvwxyz '
+
+def monkey(len):
+    i=0;
+    monkey_phrase = ""
+    while i < len:
+        monkey_phrase+=random.choice(alphabet)
+        i+=1
+    return monkey_phrase
+
+def evaluate(monkey_phrase, phrase):
+    score=0;
+    for i in range(len(monkey_phrase)):
+        if monkey_phrase[i] == phrase[i]:
+            score+=1
+    if score > 0:
+        score = (score*100) / len(phrase)
+    return score
+
+def main():
+    i = 1;
+    best_phrase = ""
+    best_score  = 0
+    while True:
+        monkey_phrase = monkey(28)
+        score         = evaluate(monkey_phrase, phrase)
+        if score == 100:
+            print("monkey wrote it and only took %d tries!" % i)
+            return 0
+        else:
+            if best_score < score:
+                best_score  = score
+                best_phrase = monkey_phrase
+            if (i % 1000 == 0):
+                print("%10d - best score so far against '%s' is '%s' (%d%%), current '%s' (%d%%)" % (i, phrase, best_phrase, best_score, monkey_phrase, score))
+        i = i+1;
+
+main()
