@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/bin/perl
 
 #------------------------------------------------------------
 # Originally named Dupseek (and destroy)
@@ -27,6 +27,7 @@ package Finder;
 #------------------------------------------------------------
 
 use strict;
+use warnings;
 use File::Find;
 # use Finder::Group;
 
