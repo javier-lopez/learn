@@ -67,8 +67,8 @@ _create_minos_default_desktop_settings() {
         _cmd "cat ~/.minos/config >> ${1}/etc##minos##config"
         _cmd "sed -i '/HOME/d' ${1}/etc##minos##config"
         _cmd "sed -i '/connman/d' ${1}/etc##minos##config"
-        _cmd "sed -i '/^m-battery-config/d' ${1}/etc##minos##config"
-        _cmd "sed -i 's:^#m-battery-config:m-battery-config:' ${1}/etc##minos##config"
+        #_cmd "sed -i '/^m-battery-config/d' ${1}/etc##minos##config"
+        #_cmd "sed -i 's:^#m-battery-config:m-battery-config:' ${1}/etc##minos##config"
         _cmd "sed -i 's:^#wallpaper:wallpaper:' ${1}/etc##minos##config"
         _cmd "sed -i 's:^#lock-wallpaper:lock-wallpaper:' ${1}/etc##minos##config"
     fi
@@ -223,8 +223,10 @@ _create_minos_default_desktop_settings() {
         echo
         _cmd "printf \"%s\\n\\n\" \"#${file_header}\" > \"${1}\"/etc##slim.conf"
         _cmd "cat ~/.slim.conf                        >>    ${1}/etc##slim.conf"
-        _cmd "sed -i 's:$(whoami):muser:g'                  ${1}/etc##slim.conf"
+        _cmd "sed -i 's:^default_user.*:default_user        muser:g' ${1}/etc##slim.conf"
     fi
+
+    _cmd "find ${1} -type f -exec sed -i '/local_changes$/d' {} +"
 
     printf "\\n%s\\n" "[+] New minos desktop settings generated at: ${1}/"
     [ "${total_errors}" -gt "0" ] && printf "%s\\n" "[-] "${total_errors}" errors were found, see above to find more details" && return 1 || :
