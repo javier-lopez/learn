@@ -160,6 +160,17 @@ test X"$(crontab -l | grep test_lib.db | wc -l )" = X"1"
 crontab -l | grep -v test_lib.db | crontab
 @end
 
+@begin{_filesize_in_bytes}
+_filesize_in_bytes; test X"${?}"       = X"1"
+_filesize_in_bytes a.out; test X"${?}" = X"1"
+echo a > a.out
+test X"$(_filesize_in_bytes a.out)"    = X"2"
+echo aaa > a.out
+test X"$(_filesize_in_bytes a.out)"    = X"4"
+mkdir a.dir
+test X"$(_filesize_in_bytes a.dir)"    = X"4096"
+@end
+
 @begin{_getfirstvalue}
 _getfirstvalue; test X"${?}" = X"1"
 var="$(_getfirstvalue "$ZDQxZDhjZDk4ZjAw" first)"
