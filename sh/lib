@@ -717,10 +717,10 @@ _mkdir_p() { #portable mkdir -p function
                     :
                 else
                     printf "%s\\n" "_mkdir_p: Can't enter ${_mkdir_p__subdir} while creating ${_mkdir_p__dir}"
-                    exit 1
+                    return 1
                 fi
             else
-                exit 1
+                return 1
             fi
         done
         )
