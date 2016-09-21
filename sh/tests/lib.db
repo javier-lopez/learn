@@ -312,20 +312,20 @@ test X"$(_printfs ls dir)"        = X"[+] ls dir"
 test X"$(_printfs "ls > result")" = X"[+] ls > result"
 @end
 
-@begin{_printtime}
-_printtime; test X"${?}"        = X"1"
-_printtime string; test X"${?}" = X"1"
-test X"$(_printtime 1)"         = X"0d 0h 0m 1s"
-test X"$(_printtime 1 2)"       = X"0d 0h 0m 1s"
-test X"$(_printtime 60)"        = X"0d 0h 1m 0s"
-test X"$(_printtime 61)"        = X"0d 0h 1m 1s"
-test X"$(_printtime 3600)"      = X"0d 1h 0m 0s"
-test X"$(_printtime 3660)"      = X"0d 1h 1m 0s"
-test X"$(_printtime 3661)"      = X"0d 1h 1m 1s"
-test X"$(_printtime 86400)"     = X"1d 0h 0m 0s"
-test X"$(_printtime 90000)"     = X"1d 1h 0m 0s"
-test X"$(_printtime 90060)"     = X"1d 1h 1m 0s"
-test X"$(_printtime 90061)"     = X"1d 1h 1m 1s"
+@begin{_seconds2human}
+_seconds2human; test X"${?}"        = X"1"
+_seconds2human string; test X"${?}" = X"1"
+test X"$(_seconds2human 1)"         = X"0d 0h 0m 1s"
+test X"$(_seconds2human 1 2)"       = X"0d 0h 0m 1s"
+test X"$(_seconds2human 60)"        = X"0d 0h 1m 0s"
+test X"$(_seconds2human 61)"        = X"0d 0h 1m 1s"
+test X"$(_seconds2human 3600)"      = X"0d 1h 0m 0s"
+test X"$(_seconds2human 3660)"      = X"0d 1h 1m 0s"
+test X"$(_seconds2human 3661)"      = X"0d 1h 1m 1s"
+test X"$(_seconds2human 86400)"     = X"1d 0h 0m 0s"
+test X"$(_seconds2human 90000)"     = X"1d 1h 0m 0s"
+test X"$(_seconds2human 90060)"     = X"1d 1h 1m 0s"
+test X"$(_seconds2human 90061)"     = X"1d 1h 1m 1s"
 @end
 
 @begin{_privport}
