@@ -834,38 +834,38 @@ _printfs() { #print step
 #_printfs "Subtitle"
 #=================================================================
 
-_printtime() { #format seconds to a pretty string
+_seconds2human() { #format seconds to a pretty human string
     [ -z "${1}" ] && return 1
     printf "%s\\n" "${1}" | grep -v "[^0-9]" >/dev/null || return 1;
 
-    _printtime__num="${1}"
-    _printtime__min="0"
-    _printtime__hour="0"
-    _printtime__day="0"
-    if [ "${_printtime__num}" -gt "59" ]; then
-        _printtime__sec="$((${_printtime__num} % 60))"
-        _printtime__num="$((${_printtime__num} / 60))"
-        if [ "${_printtime__num}" -gt "59" ]; then
-            _printtime__min="$((${_printtime__num} % 60))"
-            _printtime__num="$((${_printtime__num} / 60))"
-            if [ "${_printtime__num}" -gt "23" ]; then
-                _printtime__hour="$((${_printtime__num} % 24))"
-                _printtime__day="$((${_printtime__num} / 24))"
+    _s2h__num="${1}"
+    _s2h__min="0"
+    _s2h__hour="0"
+    _s2h__day="0"
+    if [ "${_s2h__num}" -gt "59" ]; then
+        _s2h__sec="$((${_s2h__num} % 60))"
+        _s2h__num="$((${_s2h__num} / 60))"
+        if [ "${_s2h__num}" -gt "59" ]; then
+            _s2h__min="$((${_s2h__num} % 60))"
+            _s2h__num="$((${_s2h__num} / 60))"
+            if [ "${_s2h__num}" -gt "23" ]; then
+                _s2h__hour="$((${_s2h__num} % 24))"
+                _s2h__day="$((${_s2h__num} / 24))"
             else
-                _printtime__hour="${_printtime__num}"
+                _s2h__hour="${_s2h__num}"
             fi
         else
-            _printtime__min="${_printtime__num}"
+            _s2h__min="${_s2h__num}"
         fi
     else
-        _printtime__sec="${_printtime__num}"
+        _s2h__sec="${_s2h__num}"
     fi
     printf "%s\\n" \
-    "${_printtime__day}d ${_printtime__hour}h ${_printtime__min}m ${_printtime__sec}s"
+    "${_s2h__day}d ${_s2h__hour}h ${_s2h__min}m ${_s2h__sec}s"
 }
 #==================================================== Example ====
 #SECONDS="12345"
-#_printtime "${SECONDS}" #prints "0d 3h 25m 49s"
+#_seconds2human "${SECONDS}" #prints "0d 3h 25m 49s"
 #=================================================================
 
 _privport() {
