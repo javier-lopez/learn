@@ -47,7 +47,7 @@ _compress() {
         [ ! -r "${_compress__file}" ] && {
             printf "%s\\n" \
             "$(_basename "${0}"): '${_compress__file}' does not exist or is not readable" >&2
-            exit 1; }
+            return 1; }
         _compress__files="${_compress__file}|${_compress__files}"
     done
 
