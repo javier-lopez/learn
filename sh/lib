@@ -725,7 +725,6 @@ _mkdir_p() { #portable mkdir -p function
         done
         )
     done
-    unset _mkdir_p__dir
 }
 #==================================================== Example ====
 #_mkdir_p "foo/bar/daa" #creates the directory hier
