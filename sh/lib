@@ -624,6 +624,59 @@ _getuuid() { #returns a uuid or 1 on failure
 #_getuuid /dev/sda1 #print "793e9a6d-d545-46f0-ac9c-49071c450b62"
 #=================================================================
 
+_human2seconds() {
+    #translate human date format to seconds
+    [ -z "${1}" ] && return 1
+    _h2s__string="$(printf "%s" "${*}" | tr \
+        'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 'abcdefghijklmnopqrstuvwxyz')"
+    _h2s__string="$(printf "%s" ""${_h2s__string} | sed 's:[ -]::g;')"
+
+    _h2s__partial_secs="0"; _h2s__total_secs="0"; _h2s__valid_input="";
+    #read char by char
+    while [ "${_h2s__string}" ]; do
+        _h2s__1stchar="${_h2s__string#?}"
+        _h2s__1stchar="${_h2s__string%$_h2s__1stchar}"
+        case "${_h2s__1stchar}" in
+            m|M) if [ X"${_h2s__waiting_digit}" = X"0" ]; then
+                    _h2s__partial_secs="$(($_h2s__partial_secs * 60))"
+                    _h2s__total_secs="$(($_h2s__total_secs + _h2s__partial_secs))"
+                    _h2s__partial_secs="0"; _h2s__waiting_digit="1"
+                fi
+                ;;
+            h|H) if [ X"${_h2s__waiting_digit}" = X"0" ]; then
+                    _h2s__partial_secs="$(($_h2s__partial_secs * 3600))"
+                    _h2s__total_secs="$(($_h2s__total_secs + _h2s__partial_secs))"
+                    _h2s__partial_secs="0"; _h2s__waiting_digit="1"
+                fi
+                ;;
+            d|D) if [ X"${_h2s__waiting_digit}" = X"0" ]; then
+                    _h2s__partial_secs="$(($_h2s__partial_secs * 86400))"
+                    _h2s__total_secs="$(($_h2s__total_secs + _h2s__partial_secs))"
+                    _h2s__partial_secs="0"; _h2s__waiting_digit="1"
+                fi
+                ;;
+            s|S) _h2s__waiting_digit="1" ;;
+            0|1|2|3|4|5|6|7|8|9)
+                _h2s__partial_secs="${_h2s__partial_secs}${_h2s__1stchar}"
+                _h2s__partial_secs="${_h2s__partial_secs##0}"
+                _h2s__waiting_digit="0"; _h2s__valid_input="0"
+                ;;
+        esac
+        [ X"${_h2s__string}" = X"${_h2s__1stchar}" ] && \
+            _h2s__string='' || _h2s__string="${_h2s__string#?}"
+    done
+
+    if [ X"${_h2s__valid_input}" = X"0" ]; then
+        _h2s__total_secs="$(($_h2s__total_secs + $_h2s__partial_secs))"
+        printf "%s\\n" "${_h2s__total_secs}"
+    else
+        return 1
+    fi
+}
+#==================================================== Example ====
+#_human2seconds "3 minutes and 30 seconds" #print "210"
+#=================================================================
+
 _internet() {
     #check for internet connection, return 0 on success, 1 otherwise
     wget --tries=3 --timeout=5 http://www.google.com -O /tmp/index.google > /dev/null 2>&1
@@ -665,7 +718,7 @@ _lastchar() { #return last char of a string
     [ -z "${1}" ] && return 1
     for i; do :; done
     _1stchar__substr="${i%?}"
-    printf "%s\\n" "${i#$_1stchar__substr}"
+    printf "%s" "${i#$_1stchar__substr}"
 }
 #==================================================== Example ====
 #_lastchar test #print 't'
