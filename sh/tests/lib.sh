@@ -30,9 +30,9 @@ if [ -n "${FUNCTIONS_WITHOUT_TESTS}" ]; then
 fi
 
 #move to a tmp subdirectory
-rm -rf test.sd >/dev/null 2>&1
-mkdir test.sd || exit 1
-cd test.sd    || exit 1
+rm -rf test.sd || (sleep 1; rm -rf test.sd)
+mkdir test.sd  || exit 1
+cd test.sd     || exit 1
 
 failed="0"
 passed="0"
