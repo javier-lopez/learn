@@ -629,7 +629,7 @@ _human2seconds() {
     [ -z "${1}" ] && return 1
     _h2s__string="$(printf "%s" "${*}" | tr \
         'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 'abcdefghijklmnopqrstuvwxyz')"
-    _h2s__string="$(printf "%s" ""${_h2s__string} | sed 's:[ -]::g;')"
+    _h2s__string="$(printf "%\\n" ""${_h2s__string} | sed 's:[ -]::g;')"
 
     _h2s__partial_secs="0"; _h2s__total_secs="0"; _h2s__valid_input="";
     #read char by char
