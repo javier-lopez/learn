@@ -204,6 +204,31 @@ drive="$(mount | grep "/ " | cut -d" " -f1)"
 test X"$(readlink -f /dev/disk/by-uuid/$(_getuuid "${drive}"))" = X"${drive}"
 @end
 
+@begin{_human2seconds}
+_human2seconds; test X"${?}" = X"1"
+_human2seconds string; test X"${?}"    = X"1"
+_human2seconds -1; test X"${?}"        = X"0"
+test X"$(_human2seconds string)"       = X""
+test X"$(_human2seconds -1)"           = X"1"
+test X"$(_human2seconds 0)"            = X"0"
+test X"$(_human2seconds 1)"            = X"1"
+test X"$(_human2seconds 1s)"           = X"1"
+test X"$(_human2seconds 2sec)"         = X"2"
+test X"$(_human2seconds 3 sec)"        = X"3"
+test X"$(_human2seconds 4 seconds)"    = X"4"
+test X"$(_human2seconds 3m)"           = X"180"
+test X"$(_human2seconds 3m:4s)"        = X"184"
+test X"$(_human2seconds 3 min and 4)"  = X"184"
+test X"$(_human2seconds 3 min and 4s)" = X"184"
+test X"$(_human2seconds 3minutes and 4)" = X"184"
+test X"$(_human2seconds 3 minutes and 4 seconds)" = X"184"
+test X"$(_human2seconds 1h 7m)"        = X"4020"
+test X"$(_human2seconds 1h:7m:12s)"    = X"4032"
+test X"$(_human2seconds 1 hour:7minutes:12s)" = X"4032"
+test X"$(_human2seconds 2d 1h 7m 12s)"        = X"176832"
+test X"$(_human2seconds 2 days 1h 7m 12)"     = X"176832"
+@end
+
 @begin{_internet}
 ping -c 1 google.com; pv="${?}"; true
 _internet; iv="${?}"; true
