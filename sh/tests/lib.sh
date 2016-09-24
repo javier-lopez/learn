@@ -41,7 +41,7 @@ ran="0"
 printf "%s\\n\\n" "Info - running ${lib} tests:"
 
 for function in ${FUNCTIONS_WITH_TESTS}; do
-    rm -rf ./* >/dev/null 2>&1
+    rm -rf ./* || (sleep 1; rm -rf ./*)
     printf "%s\\n" "${function} ........................" | awk '{ printf("%s ", substr($0, 0, 25)); }'
     printf "%s\\n" ". ../${lib}" > run.sh
     sed -e "/^@begin{$function}/,/^@end/p" -e '1,$d' ../${lib_db} |\
