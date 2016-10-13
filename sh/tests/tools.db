@@ -724,6 +724,7 @@ translate -h ; test X"${?}"                             = X"0"
 printf "%s" '-h' | translate; test X"${?}"              = X"0"
 translate --help ; test X"${?}"                         = X"0"
 printf "%s" '--help' | translate; test X"${?}"          = X"0"
+translate --translation-api cui;  test X"${?}"          = X"1"
 translate --cui; test X"${?}"                           = X"1"
 printf "%s" '--cui'   | translate; test X"${?}"         = X"1"
 test X"$(translate | head -1)"                          = X""
@@ -734,8 +735,11 @@ test X"$(translate --help | head -1)"                   = X"Usage: translate [-s
 test X"$(printf "%s" '--help' | translate | head -1)"   = X"Usage: translate [-sl-tl] [options] string ..."
 test X"$(translate --cui  | head -1)"                   = X""
 test X"$(printf "%s" '--cui' | translate 2>&1|head -1)" = X"translate: unrecognized option '--cui'"
-test X"$(translate hola mundo |head -1)"                = X"Hello World"
-test X"$(translate -en-es hello world | head -1)"       = X"Hola Mundo"
+test X"$(translate --translation-api | head -1)"        = X"translate: available apis"
+test X"$(translate --translation-api cui | head -1)"    = X""
+test X"$(translate --translation-api cui 2>&1|head -1)" = X"translate: 'cui' is not a recognized translation api"
+test X"$(translate --translation-api google hola mundo)"         = X"Hello World"
+test X"$(translate --translation-api google -en-es hello world)" = X"Hola Mundo"
 @end
 
 @begin{trash}
