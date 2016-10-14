@@ -146,7 +146,8 @@ _uimg() {
             -H "Authorization: Client-ID ea6c0ef2987808e"         \
             -F "image=@${1}" https://api.imgur.com/3/image.xml)"
         _uimgur__response="$(printf "%s" "${_uimgur__response}" | \
-            egrep -o "<link>(.)*</link>" | egrep -o "http://i.imgur.com/[^<]*")"
+            egrep -o "<link>(.)*</link>" 2>/dev/null |            \
+            egrep -o "http://i.imgur.com/[^<]*" 2>/dev/null)"
 
         if [ -z "${_uimgur__response}" ];then
             printf "%s\\n" "https://api.imgur.com/3/image.xml api timeout" >&2
@@ -165,7 +166,7 @@ _uimg() {
             --form MAX_FILE_SIZE="${_uuploadpie__max_file_size}"     \
             --form expire="${_uuploadpie__duration}" http://uploadpie.com)"
         _uuploadpie__response="$(printf "%s" "${_uuploadpie__response}" | \
-            grep 'id="uploaded"' | cut -d'"' -f6)"
+            grep 'id="uploaded"' 2>/dev/null | cut -d'"' -f6)"
 
         if [ -z "${_uuploadpie__response}" ];then
             printf "%s\\n" "http://uploadpie.com api timeout" >&2

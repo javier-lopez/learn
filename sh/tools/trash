@@ -5,9 +5,10 @@
 #Inspired by 'Wicked Cool Shell Scripts: 101 Scripts for Linux, Mac OS X, and Unix Systems'
 
 trash_dir="${HOME}"/.local/share/Trash
+progname="$(expr "${0}" : '.*/\([^/]*\)')"
 
 _usage() {
-    printf "%b\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] file ..."
+    printf "%b\\n" "Usage: ${progname} [options] file ..."
     printf "%b\\n" "rm wrapper compatible with nautilus|pcmanfm file managers."
     printf "\\n"
     printf "%b\\n" "  -l [pattern]   list archived files, use -ll or -lll to increase verbosity"
@@ -17,7 +18,7 @@ _usage() {
     printf "%b\\n" "  -f             force to remove files, \`rm' is executed directly"
     printf "%b\\n" "  -h             shows this message, use --help to see \`rm' help"
     printf "\\n"
-    printf "%b\\n" "$(expr "${0}" : '.*/\([^/]*\)') deletes directories and files without distintion, an -r option is not provided"
+    printf "%b\\n" "${progname} deletes directories and files without distintion, an -r option is not provided"
 }
 
 _str2lower() {
@@ -130,7 +131,7 @@ _list() {
 _archive() {
     # Make sure that the $trash_dir exists
     if [ ! -w "${HOME}" ]; then
-        printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)') failed: can't create ${trash_dir} in ${HOME}" >&2
+        printf "%s\\n" "${progname} failed: can't create ${trash_dir} in ${HOME}" >&2
         exit 1
     fi
 
