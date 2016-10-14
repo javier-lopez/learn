@@ -8,8 +8,10 @@ subject="Automated mail from $(hostname -f)"
 to=""
 api="" #mailgun api, required
 
+progname="$(expr "${0}" : '.*/\([^/]*\)')"
+
 _usage() {
-    printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') [options] to@address.tld message ..."
+    printf "Usage: %s\\n" "${progname} [options] to@address.tld message ..."
     printf "%s\\n" "Send emails using mailgun infraestructure."
     printf "%s\\n"
     printf "%s\\n" "  -a, --api       mailgun api"
@@ -60,7 +62,7 @@ fi
 
 [ "${#}" -eq "0" ] && _die
 
-for arg; do #parse options
+for arg in "${@}"; do #parse options
     case "${arg}" in
         -a|--api) if [ "${#}" -gt "1" ]; then
                      shift; api="${1}"; shift
@@ -69,6 +71,7 @@ for arg; do #parse options
                   fi ;;
         -f|--from)if [ "${#}" -gt "1" ]; then
                      shift; from="${1}"; shift
+                    _validmail "${from}" || _die "${progname}: Invalid email address: '${from}'"
                   else
                      _die "Option '${arg}' requires a parameter"
                   fi ;;
@@ -83,20 +86,15 @@ for arg; do #parse options
                         _die "Option '${arg}' requires a parameter"
                      fi ;;
         -h|--help) _usage && exit ;;
-        -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${arg}'" ;;
+        -*) _die "${progname}: unrecognized option '${arg}'" ;;
     esac
 done
 
 [ "${#}" -lt "2" ] && _die
 
 to="${1}"; shift
+_validmail "${to}" || _die "${progname}: Invalid email address: '${to}'"
 msg="${*}"
-
-if ! _validmail "${from}"; then
-    _die "$(expr "${0}" : '.*/\([^/]*\)'): Invalid email address: '${from}'"
-elif ! _validmail "${to}"; then
-    _die "$(expr "${0}" : '.*/\([^/]*\)'): Invalid email address: '${to}'"
-fi
 
 #TODO 01-10-2014 12:50 >> no source options when they had already been provided
                          #through the cli interface

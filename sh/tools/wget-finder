@@ -2,11 +2,11 @@
 #description: search and download files matching a checksum from internet(http/https/ftp)
 #usage: wget-finder --other-wget-options file:checksum
 
-#example: wget-finder socat-1.7.2.0.tar.gz:0565dd58800e4c50534c61bbb453b771
-#socat-1.7.2.0.tar.gz
+#example: wget-finder libssh2-1.3.0.tar.gz:6425331899ccf1015f1ed79448cb4709
+#libssh2-1.3.0.tar.gz
 
 #TODO 27-02-2015 08:23 >> try to match checksums without downloading files (Content-MD5, md5sum.txt, etc)
-search_engines="google ftplike"
+search_engines="google ftplike mmnt"
 checksums="md5 sha1 sha256 sha512"
 
 _usage() {
@@ -50,6 +50,10 @@ _dirname() {
 
 _shuf() {
     awk 'BEGIN{srand()}{print rand()"\t"$0}' | sort | cut -f2-
+}
+
+_uniq() {
+    awk 'a !~ $0; {a=$0}'
 }
 
 _checksum_type() {
@@ -132,7 +136,7 @@ _get_links() {
         _get_links_google__query="Index of \"${1}.\" -filewatcher"
         wget -q -U "Mozilla/5.0" "http://www.google.com/search?q=${_get_links_google__query}" -O- | \
             awk 'match($0,/(http|https|ftp):\/\/.*\/&/) {if(NR!=1){$0=substr($0,RSTART,RLENGTH); print substr($0,1,length($0)-1)}}' | \
-            awk 'NF' | _shuf
+            awk 'NF' | _shuf | _uniq
     }
 
     #_get_links_filemare() {
@@ -143,19 +147,26 @@ _get_links() {
         #wget -q -U "Mozilla/5.0" \
             #"http://filemare.com/en/search/${_get_links_filemare__query}" -O- | \
             #awk 'match($0,/>(http|https|ftp):\/\/.*</) {print substr($0,RSTART,RLENGTH)}' | \
-            #awk '{gsub(/>/,""); gsub(/</,"/"); print}' | _shuf
+            #awk '{gsub(/>/,""); gsub(/</,"/"); print}' | _shuf | _uniq
     #}
 
     _get_links_ftplike() {
-        _get_links_ftplike__query="${1}"
-        wget -q -U "Mozilla/5.0" \
-            "http://ftplike.com/index.aspx?q=${_get_links_ftplike__query}&t=Files&s=all&e=&a=&f=0&m=SIMPLE&c=20" -O- | \
+        _get_links_ftplike__query="index.aspx?q=${1}&t=Files&s=all&e=&a=&f=0&m=SIMPLE&c=20"
+        wget -q -U "Mozilla/5.0" "http://ftplike.com/${_get_links_ftplike__query}" -O- | \
             awk 'match($0,/open (http|https|ftp):\/\/.* /) {print substr($0,RSTART,RLENGTH)}' | \
-            awk "{gsub(/$_get_links_ftplike__query\"/,\"\"); print \$2}" | _shuf
+            awk "{gsub(/$_get_links_ftplike__query\"/,\"\"); print \$2}" | _shuf | _uniq
+    }
+
+    _get_links_mmnt() {
+        _get_links_mmnt__query="int/get?st=${1}&cn=&in=f"
+         wget -q -U Mozilla/5.0 "http://www.mmnt.ru/${_get_links_mmnt__query}" -O- | \
+             awk 'match($0,/(http|https|ftp):\/\/.* target/) {print substr($0,RSTART,RLENGTH)}' | \
+             awk '{gsub(/" target/,""); print;}' | \
+             awk -F'/[^/]*$' '{print $1"/"}' | _shuf | _uniq
     }
 
     case "${1}" in
-        google|ftplike) _get_links_"${1}" "${2}" ;;
+        google|ftplike|mmnt) _get_links_"${1}" "${2}" ;;
         *) return 1 ;;
     esac
 }
@@ -211,7 +222,8 @@ _wget_finder() {
         fi
 
         #fix formating, remove '//' from the search engine array
-        _wget_finder__engines="$(printf "%s" "${_wget_finder__engines}" | awk '{gsub(/\/\//,"/"); print $0}')"
+        _wget_finder__engines="$(printf "%s\\n" "${_wget_finder__engines}" | \
+                                 awk '{gsub(/\/\//,"/"); print $0}')"
 
         while [ "${_wget_finder__engines}" ]; do
             _wget_finder__engine="${_wget_finder__engines%%/*}"
@@ -230,7 +242,8 @@ _wget_finder() {
                     https:*) cert_option="--no-check-certificate" ;;
                         *)   cert_option="" ;;
                 esac
-                wget -q ${cert_option} ${extra_args} "${_wget_finder__link}${_wget_finder__file}" \
+                wget -q ${cert_option} ${extra_args} -t1 -T3 \
+                    "${_wget_finder__link}${_wget_finder__file}" \
                      -O "/tmp/${progname}.${_wget_finder__file}/${_wget_finder__file}"
                 [ X"$(_checksum "${_wget_finder__checktype}" "/tmp/${progname}.${_wget_finder__file}/${_wget_finder__file}")" = \
                   X"${_wget_finder__checksum}" ] && {
@@ -257,7 +270,7 @@ if ! command -v "wget" >/dev/null 2>&1; then
     exit 1
 fi
 
-for arg; do #parse options
+for arg in "${@}"; do #parse options
     case "${arg}" in
         -h|--help) _usage "${arg}"   ;;
         -q|--quiet) quiet="1"; shift ;;

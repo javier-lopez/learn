@@ -5,10 +5,16 @@
 #example: cconverter 15 USD to MXN
 #15 USD = 247.9785 MXN
 
+VERSION="2016.09.28-23:46"
+
+converter_apis="google yahoo webservicex"
+progname="$(expr "${0}" : '.*/\([^/]*\)')"
+
 _usage() {
-    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] int|float currency [to] currency"
+    printf "%s\\n" "Usage: ${progname} [options] int|float currency [to] currency"
     printf "%s\\n" "Currency converter."
     printf "\\n"
+    printf "%b\\n" "  -U, --update    update this program to latest version"
     printf "%s\\n" "  -q, --quiet     quiet mode, the default is verbose mode"
     printf "%s\\n" "  -h, --help      show this help message and exit"
 }
@@ -55,6 +61,56 @@ _notify() {
     esac
 }
 
+_update() {
+    _u__current_file="$(cd "$(dirname "${0}")" && pwd)/$(basename "${0}")"
+    _u__current_version_long="$(awk -F\" \
+        '/VERSION=/{print $2;exit}' "${_u__current_file}" 2>/dev/null)"
+    _u__current_version="$(printf "%s" "${_u__current_version_long}" | awk \
+        '{gsub(/[\.:]/,"");gsub(/-/,"");print;exit}' 2>/dev/null)"
+    [ -z "${_u__current_version}" ] && printf "%s\\n%s\\n%s\\n"    \
+        "ERROR: Failed to detect current version, please update manually" \
+        "${progname}         = ${_u__current_file}"                 \
+        "${progname} version = ${_u__current_version}" >&2 && return 1
+
+    command -v "wget" >/dev/null 2>&1 || command -v "curl" >/dev/null 2>&1 || { \
+    printf "%s\\n" "ERROR: Install either 'wget' or 'curl' to update within the program" >&2
+    return 1; }
+
+    _u__error_msg="$(wget -q -O- --no-check-certificate \
+    https://raw.githubusercontent.com/chilicuil/learn/master/sh/tools/cconverter \
+        > "/tmp/${progname}.${$}" 2>&1 || curl -s  \
+    https://raw.githubusercontent.com/chilicuil/learn/master/sh/tools/cconverter \
+    > "/tmp/${progname}.${$}" 2>&1)"   || { printf "%s\\n%s\\n" \
+        "ERROR: Failed to fetch update, please try later or update manually" \
+        "${_u__error_msg}" >&2; return 1; }
+
+    _u__update_version_long="$(awk -F\" \
+        '/VERSION=/{print $2;exit}' "/tmp/${progname}.${$}" 2>/dev/null)"
+    _u__update_version="$(printf "%s" "${_u__update_version_long}" | awk \
+        '{gsub(/[\.:]/,"");gsub(/-/,"");print;exit}' 2>/dev/null)"
+    [ -z "${_u__update_version}" ] && _u__update_version="0"
+
+    if [ "${_u__current_version}" -lt "${_u__update_version}" ]; then
+        printf "%s %s\\n" "Updating from version" \
+            "${_u__current_version_long} to ${_u__update_version_long} ..."
+        chmod +x "/tmp/${progname}.${$}"
+        if ! mv -f "/tmp/${progname}.${$}" "${_u__current_file}" 2>/dev/null; then
+            printf "%s\\n" "ERROR: no write permissions on ${_u__current_file}" >&2
+            printf "%s\\n" "INFO : trying with sudo ..." >&2
+            if command -v "sudo" >/dev/null 2>&1; then
+                sudo mv "/tmp/${progname}.${$}" "${_u__current_file}" || return 1
+            else
+                printf "%s\\n" "ERROR: sudo isn't available, exiting ..." >&2
+                rm -rf "/tmp/${progname}.${$}"; return 1
+            fi
+        fi
+        printf "%s %s\\n" "${progname} is up-to-date (${_u__update_version_long})"
+        return 0
+    fi
+    printf "%s %s\\n" "${progname} is up-to-date (${_u__current_version_long})"
+    rm -rf "/tmp/${progname}.${$}"
+}
+
 _cconverter() {
     #TODO 04-11-2015 12:53 >> add more currency apis
     [ -z "${1}" ] && return 1
@@ -84,7 +140,7 @@ _cconverter() {
         printf "%s" "${1} ${2} = ${_cconverter__webservicex_result%.0000} ${3}"
     }
 
-    for _cconverter__1st_word; do break; done
+    for _cconverter__1st_word in "${@}"; do break; done
     case "${_cconverter__1st_word}" in #if invalid input use 1 as base
         *[!0-9.,]*) _cconverter__input="$(printf "%s" "${@}" | sed "s:${_cconverter__1st_word}:1:")" ;;
         *) _cconverter__input="${@}" ;;
@@ -92,7 +148,7 @@ _cconverter() {
 
     _cconverter__input="$(printf "%s" "${_cconverter__input}" | \
         tr 'abcdefghijklmnopqrstuvwxyz' 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' | sed 's:TO::')"
-    for api in google yahoo webservicex; do
+    for api in $converter_apis; do
         if [ -z "${_cconverter__result}" ]; then
            _cconverter__result="$(_cconverter_"${api}" ${_cconverter__input})"
        else
@@ -117,17 +173,18 @@ fi
 #split manually args by spaces
 set -- ${@}
 
-for arg; do #parse options
+for arg in "${@}"; do #parse options
     case "${arg}" in
         -h|--help)  _usage && exit ;;
         -q|--quiet) QFLAG="true" && shift ;;
-        -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${arg}'" ;;
+        -U|--update) _update; exit "${?}" ;;
+        -*) _die "${progname}: unrecognized option '${arg}'" ;;
     esac
 done
 
 [ -z "${1}" ] && _die
-[ -z "${3}" ] && _die "$(expr "${0}" : '.*/\([^/]*\)'): missing parameters"
-_is_number "${1}" || _die "$(expr "${0}" : '.*/\([^/]*\)'): invalid syntax '${@}'"
+[ -z "${3}" ] && _die "${progname}: missing parameters"
+_is_number "${1}" || _die "${progname}: invalid syntax '${@}'"
 
 if ! command -v "wget" >/dev/null 2>&1; then
     _notify "%s\\n" "install 'wget' to run this program" >&2

@@ -753,7 +753,8 @@ printf "%s" '--cui' | trash; test X"${?}"           = X"1"
 test X"$(trash | head -1)"                          = X""
 test X"$(trash 2>&1 | head -1)"                     = X"rm: missing operand"
 test X"$(trash -h   | head -1)"                     = X"Usage: trash [options] file ..."
-test X"$(printf "%s" '--help' | trash | head -1)"   = X"Usage: rm [OPTION]... FILE..."
+#gnu rm help messages change from release to release
+test X"$(printf "%s" '--help' | trash | head -1 | awk '{print $1}')"  = X"Usage:"
 test X"$(trash --cui | head -1)"                    = X""
 test X"$(trash --cui 2>&1|head -1)"                 = X"rm: unrecognized option '--cui'"
 test X"$(printf "%s" '--cui' | trash 2>&1|head -1)" = X"rm: unrecognized option '--cui'"
@@ -873,7 +874,7 @@ wget-finder --help; test X"${?}"              = X"0"
 wget-finder --cui; test X"${?}"               = X"2"
 wget-finder --search-engine cui; test X"${?}" = X"1"
 wget-finder cui; test X"${?}"                 = X"4"
-wget-finder socat-1.7.2.0.tar.gz:cui; test X"${?}" = X"1"
+wget-finder libssh2-1.3.0.tar.gz:cui; test X"${?}" = X"1"
 test X"$(wget-finder | head -1)"              = X""
 test X"$(wget-finder 2>&1 | head -1)"         = X"Usage: wget-finder [OPTION]... FILE:CHECKSUM..."
 test X"$(wget-finder -h | head -1)"           = X"Usage: wget-finder [OPTION]... FILE:CHECKSUM..."
@@ -884,32 +885,33 @@ test X"$(wget-finder --search-engine cui 2>&1|head -1)" = X"wget-finder: 'cui' i
 wget-finder google.com && test -f "index.html"
 wget-finder http://google.com -Otest2  && test -f "test2"
 wget-finder http://google.com -O test3 && test -f "test3"
-wget-finder socat-1.7.2.0.tar.gz:cui; test X"${?}" = X"1"
+wget-finder libssh2-1.3.0.tar.gz:cui; test X"${?}" = X"1"
 
 test "$(wget-finder --search-engine google   --list-links libssh2-1.3.0.tar.gz:6425331899ccf1015f1ed79448cb4709 | wc -l)" -gt "0"
-test "$(wget -V|awk -F. '{print $1 $2; exit}'|awk '{print $3}')" -gt 113 && test "$(wget-finder --search-engine ftplike  --list-links libssh2-1.3.0.tar.gz:6425331899ccf1015f1ed79448cb4709 | wc -l)" -gt "0" || :
+test "$(wget -V|awk -F. '{print $1 $2; exit}'|awk '{print $3}')" -gt 113 && test "$(wget-finder --search-engine ftplike  --list-links libssh2-1.3.0.tar.gz:6425331899ccf1015f1ed79448cb4709 | wc -l)" -gt "0"
+test "$(wget -V|awk -F. '{print $1 $2; exit}'|awk '{print $3}')" -gt 113 && test "$(wget-finder --search-engine mmnt  --list-links libssh2-1.3.0.tar.gz:6425331899ccf1015f1ed79448cb4709 | wc -l)" -gt "0"
 
-test X"$(wget-finder socat-1.7.2.0.tar.gz:cui  | head -1)" = X""
-test X"$(wget-finder socat-1.7.2.0.tar.gz:cui 2>&1 | head -1)" = X"Warning: 'socat-1.7.2.0.tar.gz:cui' is an invalid FILE:CHECKSUM pair, skipping..."
-wget-finder socat-1.7.2.0.tar.gz:0565dd58800e4c50534c61bbb453b771; test -f "socat-1.7.2.0.tar.gz"
-test X"$(openssl dgst -md5 socat-1.7.2.0.tar.gz | awk '{print $2}')" = X"0565dd58800e4c50534c61bbb453b771"
-rm -rf socat-1.7.2.0.tar.gz
-wget-finder socat-1.7.2.0.tar.gz:32181b08aa91309ee368e1e36a2cb337eedc425a && test -f "socat-1.7.2.0.tar.gz"
-test X"$(openssl dgst -md5 socat-1.7.2.0.tar.gz | awk '{print $2}')" = X"0565dd58800e4c50534c61bbb453b771"
-rm -rf socat-1.7.2.0.tar.gz
-wget-finder socat-1.7.2.0.tar.gz:e5214ad56b43fef00761e391417b5020d07f973113b398b6ddcc47bde771ffae && test -f "socat-1.7.2.0.tar.gz"
-test X"$(openssl dgst -md5 socat-1.7.2.0.tar.gz | awk '{print $2}')" = X"0565dd58800e4c50534c61bbb453b771"
-rm -rf socat-1.7.2.0.tar.gz
-wget-finder socat-1.7.2.0.tar.gz:80727255f5a83ab2be449bed66e65d1c2acd9d880a8672f52ab4cc48950d49a73fac13219a2ad7b30bafe3f04c82288735877a55ae1f008c19470ccd3b8f2806 && test -f "socat-1.7.2.0.tar.gz"
-test X"$(openssl dgst -md5 socat-1.7.2.0.tar.gz | awk '{print $2}')" = X"0565dd58800e4c50534c61bbb453b771"
+test X"$(wget-finder libssh2-1.3.0.tar.gz:cui  | head -1)" = X""
+test X"$(wget-finder libssh2-1.3.0.tar.gz:cui 2>&1 | head -1)" = X"Warning: 'libssh2-1.3.0.tar.gz:cui' is an invalid FILE:CHECKSUM pair, skipping..."
+wget-finder libssh2-1.3.0.tar.gz:6425331899ccf1015f1ed79448cb4709; test -f "libssh2-1.3.0.tar.gz"
+test X"$(openssl dgst -md5 libssh2-1.3.0.tar.gz | awk '{print $2}')" = X"6425331899ccf1015f1ed79448cb4709"
+rm -rf libssh2-1.3.0.tar.gz
+wget-finder libssh2-1.3.0.tar.gz:d342e06abe38a29b1bbb9c58d50dd093eab0bee9 && test -f "libssh2-1.3.0.tar.gz"
+test X"$(openssl dgst -md5 libssh2-1.3.0.tar.gz | awk '{print $2}')" = X"6425331899ccf1015f1ed79448cb4709"
+rm -rf libssh2-1.3.0.tar.gz
+wget-finder libssh2-1.3.0.tar.gz:9de377854202f033bfb57ce4f95194a2b1283d45fb243b5e7dca30e058f40f9c && test -f "libssh2-1.3.0.tar.gz"
+test X"$(openssl dgst -md5 libssh2-1.3.0.tar.gz | awk '{print $2}')" = X"6425331899ccf1015f1ed79448cb4709"
+rm -rf libssh2-1.3.0.tar.gz
+wget-finder libssh2-1.3.0.tar.gz:e2f5f8175ff5b950766328d106c6c420e08ec04f325d862ddfb03fc4535e1ce16b8d76390aad322659d9abe60f054ca9bc12b52f96dbf10e4f992832ac8554a7 && test -f "libssh2-1.3.0.tar.gz"
+test X"$(openssl dgst -md5 libssh2-1.3.0.tar.gz | awk '{print $2}')" = X"6425331899ccf1015f1ed79448cb4709"
 wget-finder --search-engine google -O libssh.tar.gz libssh2-1.3.0.tar.gz:6425331899ccf1015f1ed79448cb4709; test -f libssh.tar.gz
 test X"$(openssl dgst -md5 libssh.tar.gz | awk '{print $2}')" = X"6425331899ccf1015f1ed79448cb4709"
 rm -rf *.tar.gz
-wget-finder libssh2-1.3.0.tar.gz:6425331899ccf1015f1ed79448cb4709 socat-1.7.2.0.tar.gz:0565dd58800e4c50534c61bbb453b771
-test -f libssh2-1.3.0.tar.gz && test -f socat-1.7.2.0.tar.gz
+wget-finder libssh2-1.3.0.tar.gz:6425331899ccf1015f1ed79448cb4709 libssh2-1.4.0.tar.gz:ee670161d8c5dff93ae84a3f34f15669
+test -f libssh2-1.3.0.tar.gz && test -f libssh2-1.4.0.tar.gz
 rm -rf *.tar.gz
-wget-finder -O file libssh2-1.3.0.tar.gz:6425331899ccf1015f1ed79448cb4709 socat-1.7.2.0.tar.gz:0565dd58800e4c50534c61bbb453b771
-test -f file && test ! -f libssh2-1.3.0.tar.gz && test ! -f socat-1.7.2.0.tar.gz
+wget-finder -O file libssh2-1.3.0.tar.gz:6425331899ccf1015f1ed79448cb4709 libssh2-1.4.0.tar.gz:ee670161d8c5dff93ae84a3f34f15669
+test -f file && test ! -f libssh2-1.3.0.tar.gz && test ! -f libssh2-1.4.0.tar.gz
 @end
 
 @begin{whats}
