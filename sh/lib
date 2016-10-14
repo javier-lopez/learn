@@ -624,12 +624,11 @@ _getuuid() { #returns a uuid or 1 on failure
 #_getuuid /dev/sda1 #print "793e9a6d-d545-46f0-ac9c-49071c450b62"
 #=================================================================
 
-_human2seconds() {
-    #translate human date format to seconds
+_human2seconds() { #translate human date format to seconds
     [ -z "${1}" ] && return 1
     _h2s__string="$(printf "%s" "${*}" | tr \
         'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 'abcdefghijklmnopqrstuvwxyz')"
-    _h2s__string="$(printf "%\\n" ""${_h2s__string} | sed 's:[ -]::g;')"
+    _h2s__string="$(printf "%s\\n" ""${_h2s__string} | sed 's:[ -]::g;')"
 
     _h2s__partial_secs="0"; _h2s__total_secs="0"; _h2s__valid_input="";
     #read char by char
