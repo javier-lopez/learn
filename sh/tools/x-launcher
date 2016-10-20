@@ -1,0 +1,217 @@
+#!/bin/sh
+#description: launch app on ephemeral X servers, based on
+#https://github.com/jordansissel/xdotool/blob/master/t/ephemeral-x.sh
+
+#example: $ x-launcher -w openbox-session firefox
+#open firefox inside openbox inside an ephemeral X server (xephyr by default)
+
+progname="$(expr "${0}" : '.*/\([^/]*\)')"
+xserver="Xephyr"
+wm=""
+displayn="-1"
+
+_usage() {
+    printf "%s\\n" "Usage: ${progname} [OPTION] CMD ..."
+    printf "%s\\n" "Ephemeral X launcher."
+    printf "%s\\n"
+    printf "%s\\n" "  -x, --xserver   X server (and args) to run, default '${xserver}'"
+    printf "%s\\n" "  -w, --wm        window manager to use inside ephemeral X server, default 'none'"
+    printf "%s\\n" "  -q, --quiet     quiet mode"
+    printf "%s\\n" "  -h, --help      show this message and exit"
+    printf "%s\\n"
+    printf "%s\\n" "Examples:"
+    printf "%s\\n"
+    printf "%s\\n" "  ${progname} xterm"
+    printf "%s\\n" "  ${progname} -x Xvfb -w openbox-session firefox"
+    printf "%s\\n" "  ${progname} -x 'Xephyr -screen 1280x720' -w openbox-session firefox http://domain.tld"
+}
+
+_die() {
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
+}
+
+_verbose() {
+    _quiet || printf "%s\\n" "${*}"
+}
+
+_quiet() {
+    [ X"${qflag}" = X"true" ]
+}
+
+_is_x_available() {
+    ! test -S "${1}"
+}
+
+_check_bins_are_installed() {
+    [ -z "${1}" ] && return 1
+    for bin in "${@}"; do
+        if ! command -v "${bin}" >/dev/null 2>&1; then
+            printf "%s\\n" "Unable to find '${bin}'. Aborting." >&2
+            _cleanup
+            exit 1
+        fi
+    done; unset bin
+}
+
+_is_x_healthy() {
+    _ixh__x_pid="${1}"
+    _ixh__xsocket="${2}"
+    _ixh__displayn="${3}"
+
+    #try xterm to see if X is up
+    if command -v "xterm"  > /dev/null 2>&1; then
+        DISPLAY=":${_ixh__displayn}" xterm -e 'true'
+    #otherwise, try xdotool
+    elif command -v "xdotool"  > /dev/null 2>&1; then
+        DISPLAY=":${_ixh__displayn}" xdotool getmouselocation > /dev/null 2>&1
+    #otherwise, try lsof
+    elif command -v "lsof" > /dev/null 2>&1; then
+        lsof -p "${_ixh__x_pid}" | grep -F "${_ixh__xsocket}" > /dev/null 2>&1
+    else
+        echo "Unable to determine if X is xhealth (install either xterm, xdotool or lsof)"
+        return 1
+    fi
+
+    #return xhealth test status
+    return "${?}"
+}
+
+_is_wm_healthy() {
+    #a good signal that the WM has started is that the WM_STATE property is
+    #set or that any NETWM/ICCCM property is set.
+    xprop -root | egrep 'WM_STATE|^_NET' >/dev/null 2>&1
+}
+
+_cleanup() {
+    _cleanup__wm_pid="${1}"
+    _cleanup__x_pid="${2}"
+
+    kill -TERM "$_cleanup__wm_pid" || true
+    kill -TERM "$_cleanup__x_pid"  || true
+
+    pkill -KILL -P "${$}" || true
+}
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- "${@}" $(cat)
+fi
+
+[ "${#}" -eq "0" ] && _die #no option
+
+for arg in "${@}"; do #parse options
+    case "${arg}" in
+        -h|--help)  _usage && exit ;;
+        -q|--quiet) qflag="true" && shift ;;
+        '-x'|'--xserver') xserver_user_defined="true"
+            shift; [ -n "${1}" ] && xserver="${1}" && shift ;;
+        -x*) xserver_user_defined="true"; xserver="${1#-x}"; shift ;;
+        --xserver*) xserver_user_defined="true"; xserver="${1#--xserver}"; shift ;;
+        '-w'|'--wm') shift; [ -n "${1}" ] && wm="${1}" && shift ;;
+        -w*) wm="${1#-w}"; shift ;;
+        --wm*) wm="${1#--wm}"; shift ;;
+        --) shift; break ;;
+        #-*) _die "${progname}: unrecognized option '${arg}'" ;;
+    esac
+done
+
+xserver_bin="$(printf "%s\\n" "${xserver}" | awk '{print $1}')"
+wm_bin="$(printf "%s\\n" "${wm}" | awk '{print $1}')"
+_check_bins_are_installed "${xserver_bin}" "${wm_bin}"
+
+if [ -z "${xserver_user_defined}" ]; then
+    xserver_resolution="$(xrandr 2>/dev/null | awk '/ connected / {gsub(/\+0\+0/,""); print $3}' 2>/dev/null)"
+    if [ -z "${xserver_resolution}" ]; then
+        xserver_options="-ac -reset"
+    else
+        xserver_options="-ac -screen ${xserver_resolution} -reset"
+    fi
+    xserver="${xserver} ${xserver_options}"
+fi
+
+while :; do
+    displayn="$(expr "${displayn}" + 1)"
+    xsocket="/tmp/.X11-unix/X${displayn}"
+    _verbose "Trying DISPLAY :${displayn}.0 ..."
+
+    _is_x_available "${xsocket}" || continue
+
+    _verbose ""; _verbose "Starting X server: ${xserver_bin}"
+    (
+        if _quiet; then
+            exec >  /dev/null
+            exec 2> /dev/null
+        fi
+        exec $xserver ":$displayn"
+    ) &
+    x_pid="${!}"
+
+    xhealth="false"
+    _verbose "Waiting for X server to be health"
+    for i in 1 2 3 4 5 6 7 8 9 10 ABORT ; do
+        #break early if the xserver died
+        #ps -p "${x_pid}"  > /dev/null 2>&1 || break
+        kill -0 "${x_pid}" > /dev/null 2>&1 || break
+
+        #see if the xserver got a hold of the display socket.
+        #if so, the server is up and healthy
+        if _is_x_healthy "${x_pid}" "${xsocket}" "${displayn}"; then
+            _verbose "${xserver_bin} was launched sucessfully"
+            xhealth="true"
+            break
+        fi
+        #in case your sleep doesn't take subsecond values
+        sleep 0.2 || sleep 1
+
+        if [ X"${i}" = X"ABORT" ] ; then
+            _verbose "X server (${xserver_bin}) seems to have failed starting up."
+            _cleanup "${x_pid}"
+            exit 1
+        fi
+    done
+
+    [ X"$xhealth" = X"true" ] && break
+done
+
+if [ -n "${wm}" ]; then
+    _verbose ""; _verbose "Starting window manager: ${wm_bin}"
+    (
+        if _quiet; then
+          exec > /dev/null
+          exec 2> /dev/null
+        fi
+
+        DISPLAY=":${displayn}"
+        export DISPLAY
+        exec ${wm}
+    ) &
+    wm_pid="${!}"
+
+    _verbose "Waiting for window manager to be health"
+    for i in 1 2 3 4 5 6 7 8 9 10 ABORT ; do
+        if _is_wm_healthy; then
+            _verbose "${wm_bin} was launched sucessfully"
+            break;
+        fi
+        #in case your sleep doesn't take subsecond values
+        sleep 0.2 || sleep 1
+
+        if [ X"${i}" = X"ABORT" ] ; then
+            _verbose "Window manager (${wm_bin}) seems to have failed starting up."
+            _cleanup "${x_pid}"
+            exit 1
+        fi
+    done
+fi
+
+_verbose "Running: ${@}"
+(
+    DISPLAY=":${displayn}"
+    export DISPLAY
+    $@
+)
+
+exitcode="$?"
+_cleanup "${x_pid}" "${wm_pid}"
+exit "${exitcode}"
