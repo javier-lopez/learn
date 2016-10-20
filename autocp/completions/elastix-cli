@@ -1,15 +1,12 @@
-_elastix_cli()
-{
-    if ! command -v "elastix-cli" >/dev/null 2>&1; then
+_elastix_cli() {
+    local cmd="elastix-cli"
+    if ! command -v "${cmd}" >/dev/null 2>&1; then
         return
     fi
 
     #defining local vars
     local cur prev words cword
     _init_completion || return
-
-    #cur="${COMP_WORDS[COMP_CWORD]}"
-    #prev="${COMP_WORDS[COMP_CWORD-1]}"
 
     case "${prev}" in
         -c) case "${cur}" in
@@ -19,13 +16,12 @@ _elastix_cli()
 
     #general options
     case "${cur}" in
-        --*) long_opts="$(elastix-cli  --help 2>&1 | awk 'match($0,/--[0-9A-Za-z]* /) {print substr($0,RSTART,RLENGTH)}')"
-             COMPREPLY=($(compgen -W "${long_opts}" -- ${cur}));  return ;;
-        -*)  short_opts="$(elastix-cli --help 2>&1 | awk '/^ *-.? / {sub(/,/, ""); print $1}')"
-             COMPREPLY=($(compgen -W "${short_opts}" -- ${cur})); return ;;
-        *)   _filedir; return ;;
+      --*) long_opts="$("${cmd}" --help 2>&1 | awk 'match($0,/--[0-9A-Za-z_-]* /) {print substr($0,RSTART,RLENGTH)}')"
+           COMPREPLY=($(compgen -W "${long_opts}" -- ${cur}));  return ;;
+       -*) short_opts="$("${cmd}" --help 2>&1 | awk '/^ *-.? / {sub(/,/, ""); print $1}')"
+           COMPREPLY=($(compgen -W "${short_opts}" -- ${cur})); return ;;
+        *) _filedir; return ;;
     esac
-} &&
-complete -F _elastix_cli elastix-cli
+} && complete -F _elastix_cli elastix-cli
 
 # vim: set ts=8 sw=4 tw=0 ft=sh :

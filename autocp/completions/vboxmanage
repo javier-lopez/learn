@@ -1,5 +1,4 @@
-_vboxmanage()
-{
+_vboxmanage() {
     if ! command -v "vboxmanage" >/dev/null 2>&1; then
         return
     fi
@@ -138,7 +137,7 @@ _vboxmanage()
             return 0
             ;;
         registervm)
-	    _filedir
+            _filedir
             #COMPREPLY=($(compgen -A file -- $cur))
             return 0
             ;;
@@ -347,7 +346,6 @@ _vboxmanage()
     else
         COMPREPLY=( $( compgen -W "$COMMANDS" -- $cur ) )
     fi
-} &&
-complete -F _vboxmanage VBoxManage vboxmanage
+} && complete -F _vboxmanage VBoxManage vboxmanage
 
 # vim: set ts=8 sw=4 tw=80 ft=sh :

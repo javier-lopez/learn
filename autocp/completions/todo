@@ -1,5 +1,4 @@
-_todo()
-{
+_todo() {
     if ! command -v "todo" >/dev/null 2>&1; then
         return
     fi
@@ -80,8 +79,7 @@ _todo()
 
     COMPREPLY=( $( compgen -W "$completions" -- $cur ))
     return 0
-} &&
-complete -F _todo todo.sh todo t
+} && complete -F _todo todo.sh todo t
 
 # vim: set ts=8 sw=4 tw=0 ft=sh :
 

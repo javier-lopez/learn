@@ -1,6 +1,6 @@
-_bin_dpkg_rdeps()
-{
-    if ! command -v "bin-dpkg-rdeps" >/dev/null 2>&1; then
+_bin_dpkg_rdeps() {
+    local cmd="bin-dpkg-rdeps"
+    if ! command -v "${cmd}" >/dev/null 2>&1; then
         return
     fi
 
@@ -8,20 +8,16 @@ _bin_dpkg_rdeps()
     local cur prev words cword
     _init_completion || return
 
-    #cur="${COMP_WORDS[COMP_CWORD]}"
-    #prev="${COMP_WORDS[COMP_CWORD-1]}"
-
     #general options
     case "${cur}" in
-        --*) return ;;
-        -*) COMPREPLY="-h"; return ;;
-        *)  COMPREPLY=($(compgen -c -- ${cur}))
-            if [ -z "${COMPREPLY}" ]; then
-                _filedir
-            fi
-            return ;;
+      --*) return ;;
+       -*) COMPREPLY="-h"; return ;;
+        *) COMPREPLY=($(compgen -c -- ${cur}))
+           if [ -z "${COMPREPLY}" ]; then
+               _filedir
+           fi
+           return ;;
     esac
-} &&
-complete -F _bin_dpkg_rdeps bin-dpkg-rdeps
+} && complete -F _bin_dpkg_rdeps bin-dpkg-rdeps
 
 # vim: set ts=8 sw=4 tw=0 ft=sh :

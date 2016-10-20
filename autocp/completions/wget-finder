@@ -1,22 +1,21 @@
-_wget_finder()
-{
-    if ! command -v "wget-finder" >/dev/null 2>&1; then
+_wget_finder() {
+    local cmd="wget-finder"
+    if ! command -v "${cmd}" >/dev/null 2>&1; then
         return
     fi
 
     #defining local vars
     local cur prev words cword
     _init_completion || return
-    [ -z "${youtube_dl_output}" ] && youtube_dl_output="$(wget-finder -h 2>&1)"
+    [ -z "${cmd_help_output}" ] && cmd_help_output="$("${cmd}" -h 2>&1)"
 
     #general options
     case "${cur}" in
-        --*) long_opts="$(printf "%s\\n" "${youtube_dl_output}"  | awk 'match($0,/--[0-9A-Za-z_-]* /) {print substr($0,RSTART,RLENGTH)}')"
+        --*) long_opts="$(printf "%s\\n" "${cmd_help_output}"  | awk 'match($0,/--[0-9A-Za-z_-]* /) {print substr($0,RSTART,RLENGTH)}')"
              COMPREPLY=($(compgen -W "${long_opts}" -- ${cur}));  return ;;
-        -*)  short_opts="$(printf "%s\\n" "${youtube_dl_output}" | awk 'match($0,/-[0-9A-Za-z],/) {sub(/,/, ""); print substr($0,RSTART,RLENGTH)}')"
+        -*)  short_opts="$(printf "%s\\n" "${cmd_help_output}" | awk 'match($0,/-[0-9A-Za-z_-],/) {sub(/,/, ""); print substr($0,RSTART,RLENGTH)}')"
              COMPREPLY=($(compgen -W "${short_opts}" -- ${cur})); return ;;
     esac
-} &&
-complete -F _wget_finder wget-finder
+} && complete -F _wget_finder wget-finder
 
 # vim: set ts=8 sw=4 tw=0 ft=sh :

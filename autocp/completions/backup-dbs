@@ -1,6 +1,6 @@
-_backup_dbs()
-{
-    if ! command -v "backup-dbs" >/dev/null 2>&1; then
+_backup_dbs() {
+    local cmd="backup-dbs"
+    if ! command -v "${cmd}" >/dev/null 2>&1; then
         return
     fi
 
@@ -12,8 +12,8 @@ _backup_dbs()
     prev="${COMP_WORDS[COMP_CWORD-1]}"
 
     module="mysql"
-    short_opts="$(backup-dbs -h 2>&1 | awk '/^ *-.+ / {sub(/,/, ""); print $1}')"
-    long_opts="$(backup-dbs  -h 2>&1 | awk 'match($0,/--[0-9A-Za-z]* /) {print substr($0,RSTART,RLENGTH)}')"
+    short_opts="$("${cmd}" -h 2>&1 | awk '/^ *-.+ / {sub(/,/, ""); print $1}')"
+    long_opts="$("${cmd}"  -h 2>&1 | awk 'match($0,/--[0-9A-Za-z_-]* /) {print substr($0,RSTART,RLENGTH)}')"
 
     case "${prev}" in
         -o|-c) case "${cur}" in
@@ -25,11 +25,10 @@ _backup_dbs()
 
     #general options
     case "${cur}" in
-        --*) COMPREPLY=($(compgen -W "${long_opts}" -- ${cur})); return ;;
-        -*)  COMPREPLY=($(compgen -W "${short_opts}" -- ${cur})); return ;;
-        *)   COMPREPLY=($(compgen -W "${module}" -- ${cur})); return ;;
+      --*) COMPREPLY=($(compgen -W "${long_opts}" -- ${cur})); return ;;
+       -*) COMPREPLY=($(compgen -W "${short_opts}" -- ${cur})); return ;;
+        *) COMPREPLY=($(compgen -W "${module}" -- ${cur})); return ;;
     esac
-} &&
-complete -F _backup_dbs backup-dbs
+} && complete -F _backup_dbs "backup-dbs"
 
 # vim: set ts=8 sw=4 tw=0 ft=sh :

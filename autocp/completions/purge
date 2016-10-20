@@ -1,5 +1,4 @@
-_removecustom()
-{
+_removecustom() {
     if ! command -v "remove" >/dev/null 2>&1; then
         return
     fi
@@ -12,7 +11,6 @@ _removecustom()
        return 0
        ;;
     esac
-} &&
-complete -F _removecustom remove purge
+} && complete -F _removecustom remove purge
 
 # vim: set ts=8 sw=4 tw=0 ft=sh :

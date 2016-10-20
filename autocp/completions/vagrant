@@ -1,5 +1,4 @@
-_vagrant()
-{
+_vagrant() {
     if ! command -v "vagrant" >/dev/null 2>&1; then
         return
     fi
@@ -35,7 +34,7 @@ _vagrant()
       if [ X"${action}" = X"box" ]; then
         case "${prev}" in
             "remove"|"repackage")
-              local box_list=$(find $HOME/.vagrant/boxes/* -maxdepth 0 -type d -printf '%f ')
+              local box_list="$(find $HOME/.vagrant/boxes/* -maxdepth 0 -type d -printf '%f ')"
               COMPREPLY=($(compgen -W "${box_list}" -- ${cur}))
               return 0
               ;;
@@ -45,7 +44,6 @@ _vagrant()
       fi
     fi
 
-} &&
-complete -F _vagrant vagrant
+} && complete -F _vagrant vagrant
 
 # vim: set ts=8 sw=4 tw=0 ft=sh :
