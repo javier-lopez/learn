@@ -1,15 +1,12 @@
-_setup()
-{
-    if ! command -v "setup" >/dev/null 2>&1; then
+_setup() {
+    local cmd="setup"
+    if ! command -v "${cmd}" >/dev/null 2>&1; then
         return
     fi
 
     #defining local vars
     local cur prev words cword
     _init_completion || return
-
-    #cur="${COMP_WORDS[COMP_CWORD]}"
-    #prev="${COMP_WORDS[COMP_CWORD-1]}"
 
     case "${commands}" in
         *"${prev}"*) _filedir; return 0; ;;
@@ -19,10 +16,9 @@ _setup()
 
     #general options
     case "${cur}" in
-        *) commands="$(setup -h 2>&1 | awk '/ . / {print $1}')"
+        *) commands="$("${cmd}" -h 2>&1 | awk '/ . / {print $1}')"
            OMPREPLY=($(compgen -W "${commands}" -- ${cur})) ;;
     esac
-} &&
-complete -F _setup setup st ztup
+} && complete -F _setup setup st ztup
 
 # vim: set ts=8 sw=4 tw=0 ft=sh :

@@ -1,6 +1,6 @@
-_weather()
-{
-    if ! command -v "weather" >/dev/null 2>&1; then
+_weather() {
+    local cmd="weather"
+    if ! command -v "${cmd}" >/dev/null 2>&1; then
         return
     fi
 
@@ -10,12 +10,11 @@ _weather()
 
     #general options
     case "${cur}" in
-        --*) long_opts="$(weather  -h 2>&1 | awk 'match($0,/--[0-9A-Za-z]* /) {print substr($0,RSTART,RLENGTH)}')"
-             COMPREPLY=($(compgen -W "${long_opts}" -- ${cur}));  return ;;
-        -*)  short_opts="$(weather -h 2>&1 | awk '/^ *-.+ / {sub(/,/, ""); print $1}')"
-             COMPREPLY=($(compgen -W "${short_opts}" -- ${cur})); return ;;
+       --*) long_opts="$("${cmd}" -h 2>&1 | awk 'match($0,/--[0-9A-Za-z_-]* /) {print substr($0,RSTART,RLENGTH)}')"
+            COMPREPLY=($(compgen -W "${long_opts}" -- ${cur}));  return ;;
+        -*) short_opts="$("${cmd}" -h 2>&1 | awk '/^ *-.+ / {sub(/,/, ""); print $1}')"
+            COMPREPLY=($(compgen -W "${short_opts}" -- ${cur})); return ;;
     esac
-} &&
-complete -F _weather weather
+} && complete -F _weather weather
 
 # vim: set ts=8 sw=4 tw=0 ft=sh :

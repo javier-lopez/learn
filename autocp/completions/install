@@ -1,5 +1,4 @@
-_installcustom()
-{
+_installcustom() {
     if ! command -v "install" >/dev/null 2>&1; then
         return
     fi
@@ -13,7 +12,6 @@ _installcustom()
        return 0
        ;;
     esac
-} &&
-complete -F _installcustom install
+} && complete -F _installcustom install
 
 # vim: set ts=8 sw=4 tw=0 ft=sh :

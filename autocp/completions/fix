@@ -1,6 +1,6 @@
-_fix()
-{
-    if ! command -v "fix" >/dev/null 2>&1; then
+_fix() {
+    local cmd="fix"
+    if ! command -v "${cmd}" >/dev/null 2>&1; then
         return
     fi
 
@@ -10,14 +10,13 @@ _fix()
 
     #general options
     case "${cur}" in
-        --*) long_opts="$(fix -h 2>&1 | awk 'match($0,/--[0-9A-Za-z]* /) {print substr($0,RSTART,RLENGTH)}')"
-             COMPREPLY=($(compgen -W "${long_opts}" -- ${cur}));  return ;;
-        -*)  short_opts="$(fix -h 2>&1 | awk '/^ *-.+ / {sub(/,/, ""); print $1}')"
-             COMPREPLY=($(compgen -W "${short_opts}" -- ${cur})); return ;;
-        *)   commands="$(fix -h 2>&1 | awk '/ . / {if ($0 !~ "-") print $1}')"
-             COMPREPLY=($(compgen -W "${commands}" -- ${cur}));   return ;;
+       --*) long_opts="$("${cmd}" -h 2>&1 | awk 'match($0,/--[0-9A-Za-z_-]* /) {print substr($0,RSTART,RLENGTH)}')"
+            COMPREPLY=($(compgen -W "${long_opts}" -- ${cur}));  return ;;
+        -*) short_opts="$("${cmd}" -h 2>&1 | awk '/^ *-.+ / {sub(/,/, ""); print $1}')"
+            COMPREPLY=($(compgen -W "${short_opts}" -- ${cur})); return ;;
+        *)  commands="$("${cmd}" -h 2>&1 | awk '/ . / {if ($0 !~ "-") print $1}')"
+            COMPREPLY=($(compgen -W "${commands}" -- ${cur}));   return ;;
     esac
-} &&
-complete -F _fix fix
+} && complete -F _fix fix
 
 # vim: set ts=8 sw=4 tw=0 ft=sh :

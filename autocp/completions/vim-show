@@ -1,5 +1,4 @@
-_vim_show()
-{
+_vim_show() {
     if ! command -v "vim-show" >/dev/null 2>&1; then
         return
     fi
@@ -8,20 +7,16 @@ _vim_show()
     local cur prev words cword
     _init_completion || return
 
-    #cur="${COMP_WORDS[COMP_CWORD]}"
-    #prev="${COMP_WORDS[COMP_CWORD-1]}"
-
     #general options
     case "${cur}" in
-        --*) return ;;
-        -*) COMPREPLY="-h"; return ;;
-        *)  COMPREPLY=($(compgen -c -- ${cur}))
-            if [ -z "${COMPREPLY}" ]; then
-                _filedir
-            fi
-            return ;;
+      --*) return ;;
+       -*) COMPREPLY="-h"; return ;;
+        *) COMPREPLY=($(compgen -c -- ${cur}))
+           if [ -z "${COMPREPLY}" ]; then
+               _filedir
+           fi
+           return ;;
     esac
-} &&
-complete -F _vim_show vim-show
+} && complete -F _vim_show vim-show
 
 # vim: set ts=8 sw=4 tw=0 ft=sh :

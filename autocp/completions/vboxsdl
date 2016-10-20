@@ -1,5 +1,4 @@
-_vboxsdl()
-{
+_vboxsdl() {
     if ! command -v "vboxsdl" >/dev/null 2>&1; then
         return
     fi
@@ -47,7 +46,6 @@ _vboxsdl()
         # relevant options completion
         COMPREPLY=($(compgen -W "$OPTS" -- $cur))
     fi
-} &&
-complete -F _vboxsdl VBoxSDL vboxsdl
+} && complete -F _vboxsdl VBoxSDL vboxsdl
 
 # vim: set ts=8 sw=4 tw=80 ft=sh :

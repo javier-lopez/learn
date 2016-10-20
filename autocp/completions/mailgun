@@ -1,15 +1,12 @@
-_mailgun()
-{
-    if ! command -v "mailgun" >/dev/null 2>&1; then
+_mailgun() {
+    local cmd="mailgun"
+    if ! command -v "${cmd}" >/dev/null 2>&1; then
         return
     fi
 
     #defining local vars
     local cur prev words cword
     _init_completion || return
-
-    #cur="${COMP_WORDS[COMP_CWORD]}"
-    #prev="${COMP_WORDS[COMP_CWORD-1]}"
 
     case "${prev}" in
         -c|--config) case "${cur}" in
@@ -19,12 +16,11 @@ _mailgun()
 
     #general options
     case "${cur}" in
-        --*) long_opts="$(mailgun  --help 2>&1 | awk 'match($0,/--[0-9A-Za-z]* /) {print substr($0,RSTART,RLENGTH)}')"
-             COMPREPLY=($(compgen -W "${long_opts}" -- ${cur}));  return ;;
-        -*)  short_opts="$(mailgun --help 2>&1 | awk '/^ *-.+ / {sub(/,/, ""); print $1}')"
-             COMPREPLY=($(compgen -W "${short_opts}" -- ${cur})); return ;;
+       --*) long_opts="$("${cmd}" -h 2>&1 | awk 'match($0,/--[0-9A-Za-z_-]* /) {print substr($0,RSTART,RLENGTH)}')"
+            COMPREPLY=($(compgen -W "${long_opts}" -- ${cur}));  return ;;
+        -*) short_opts="$("${cmd}" -h 2>&1 | awk '/^ *-.+ / {sub(/,/, ""); print $1}')"
+            COMPREPLY=($(compgen -W "${short_opts}" -- ${cur})); return ;;
     esac
-} &&
-complete -F _mailgun mailgun
+} && complete -F _mailgun mailgun
 
 # vim: set ts=8 sw=4 tw=0 ft=sh :
