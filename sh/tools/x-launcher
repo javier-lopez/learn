@@ -69,11 +69,11 @@ _is_x_healthy() {
     elif command -v "lsof" > /dev/null 2>&1; then
         lsof -p "${_ixh__x_pid}" | grep -F "${_ixh__xsocket}" > /dev/null 2>&1
     else
-        echo "Unable to determine if X is xhealth (install either xterm, xdotool or lsof)"
+        printf "%s\\n" "Unable to determine if X is health (install either xterm, xdotool or lsof)" >&2
         return 1
     fi
 
-    #return xhealth test status
+    #return health test status
     return "${?}"
 }
 
@@ -87,8 +87,8 @@ _cleanup() {
     _cleanup__wm_pid="${1}"
     _cleanup__x_pid="${2}"
 
-    kill -TERM "$_cleanup__wm_pid" || true
-    kill -TERM "$_cleanup__x_pid"  || true
+    kill -TERM "${_cleanup__wm_pid}" || true
+    kill -TERM "${_cleanup__x_pid}"  || true
 
     pkill -KILL -P "${$}" || true
 }
@@ -143,7 +143,7 @@ while :; do
             exec >  /dev/null
             exec 2> /dev/null
         fi
-        exec $xserver ":$displayn"
+        exec ${xserver} ":${displayn}"
     ) &
     x_pid="${!}"
 
@@ -212,6 +212,6 @@ _verbose "Running: ${@}"
     $@
 )
 
-exitcode="$?"
+exitcode="${?}"
 _cleanup "${x_pid}" "${wm_pid}"
 exit "${exitcode}"
