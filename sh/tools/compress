@@ -87,7 +87,7 @@ _compress() {
                     exit 1; }
                 gzip -c ${_compress__files} | dd of="${_compress__compression}" ;;
             *.tar) tar cf "${_compress__compression}" ${_compress__files} ;;
-            *.zip|*.xpi) zip -r "${_compress__compression}" ${_compress__files} ;;
+            *.zip|*.xpi|*.war|*.jar|*.ear) zip -r "${_compress__compression}" ${_compress__files} ;;
             *.7z) 7z a "${_compress__compression}" ${_compress__files} ;;
             *.jar) jar cf "${_compress__compression}" ${_compress__files} ;;
             *.iso) 7z a "${_compress__compression}" ${_compress__files} ;;
