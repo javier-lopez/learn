@@ -62,7 +62,7 @@ _extract() {
                     *.rar)                  _exec "rar x '${_extract__file}'"                  ;;
                     *.gz)                   _exec "gunzip '${_extract__file}'"                 ;;
                     *.tar)                  _exec "tar xf '${_extract__file}'"                 ;;
-                    *.zip|*.xpi)            _exec "unzip '${_extract__file}'"                  ;;
+                    *.zip|*.xpi|*.war|*.jar|*.ear) _exec "unzip '${_extract__file}'"           ;;
                     *.7z)                   _exec "7z x '${_extract__file}'"                   ;;
                     *.jar)                  _exec "jar xf '${_extract__file}'"                 ;;
                     *.iso)                  _exec "7z x '${_extract__file}'"                   ;;
