@@ -286,18 +286,17 @@ _pianocat() {
                 *)     note=""; continue;;
             esac
         else
-            sleep "$(awk "BEGIN {printf \"%.4f\", "${cur_len}" * "${beat}" / (1/${tempo##*/}); exit(0)}" 2>/dev/null)" 2>/dev/null
             case "${input}" in
                 *' '*)     note="${input%% *}"; input="${input#* }" ;;
                 "${note}") [ -z "${quiet}" ] && printf "\\b\\b" && exit 0 ;;
                 *)         note="${input%% *}"; input="${note%%:*}" ;;
             esac
             case "${note}" in
-                T*) tempo="${note##*:}";  note=""; continue ;;
-                L*) length="${note##*:}"; note=""; continue ;;
+                T*)  tempo="${note##*:}";  note=""; continue ;;
+                L*)  length="${note##*:}"; note=""; continue ;;
                 '|') note=""; continue ;;
-                =)  cur_len="${tempo}"   ;;
-                -)  cur_len="$(awk "BEGIN {printf \"%.4f\", "${tempo}"/2; exit(0)}")";;
+                =)   cur_len="${tempo}"   ;;
+                -)   cur_len="$(awk "BEGIN {printf \"%.4f\", "${tempo}"/2; exit(0)}")";;
                 *:*) cur_len="${note##*:}/${tempo##*/}"; note="${note%%:*}" ;;
                 !|*) cur_len="${length}" ;;
             esac
@@ -326,6 +325,8 @@ _pianocat() {
             *)   _strreplace "${_pianocat__args}" NOTE "${note}"
                  play ${_strreplace__retval} >/dev/null 2>&1 & ;;
         esac
+
+        sleep "$(awk "BEGIN {printf \"%.4f\", "${cur_len}" * "${beat}" / (1/${tempo##*/}); exit(0)}" 2>/dev/null)" 2>/dev/null
     done
 }
 
@@ -335,46 +336,61 @@ _basename "${0}"; progname="${_basename__retval}"
 if [ ! -t 0 ]; then
     #there is input comming from pipe or file, save it
     input="$(cat)"
+    #remove double empty spaces, new lines and other garbage
+    input="$(printf "%s\\n" "${input}" | tr "\n" " ")"
+    input="$(printf "%s\\n" "${input}" | awk '{gsub(/[|;]/, "");print}')"
+    input="$(printf "%s\\n" "${input}" | tr  -s  " ")"
+    input="${input%% }"; input="${input## }"
+    #format stream
     input="$(_str2upper "${input}")"
-    input="$(printf "%s" "${input}" | awk '{ sub(/[ \t]+$/, ""); sub(/^[ \t]+/, ""); print }')"
 fi
 
 for arg; do #parse options
     case "${arg}" in
         -h|--help) _usage && exit ;;
         -q|--quiet) quiet="1" && shift ;;
-        -b|--beat)
+        '-b'|'--beat')
             if [ "${#}" -gt "1" ]; then
                 shift; beat="${1}"; [ "${1}" ] && shift
             else
                 _die "Option '${arg}' requires a parameter"
             fi ;;
-        -s|--sound)
+        -b*) beat="${1#-b}"; shift ;;
+        --beat*) beat="${1#--beat}"; shift ;;
+        '-s'|'--sound')
             if [ "${#}" -gt "1" ]; then
                 shift; sound="${1}"; [ "${1}" ] && shift
             else
                 _die "Option '${arg}' requires a parameter"
             fi ;;
+        -s*) sound="${1#-s}"; shift ;;
+        --sound*) sound="${1#--sound}"; shift ;;
         -sd) sound="dynamic"; shift ;;
         -ss) sound="static" ; shift ;;
-        -d|--directory)
+        '-d'|'--directory')
             if [ "${#}" -gt "1" ]; then
                 shift; directory="${1}"; [ "${1}" ] && shift
             else
                 _die "Option '${arg}' requires a parameter"
             fi ;;
-        -c|--collection)
+        -d*) directory="${1#-d}"; shift ;;
+        --directory*) directory="${1#--directory}"; shift ;;
+        '-c'|'--collection')
             if [ "${#}" -gt "1" ]; then
                 shift; collection="${1}"; [ "${1}" ] && shift
             else
                 _die "Option '${arg}' requires a parameter"
             fi ;;
+        -c*) collection="${1#-c}"; shift ;;
+        --collection*) collection="${1#--collection}"; shift ;;
         -f|--format)
             if [ "${#}" -gt "1" ]; then
                 shift; format="${1}"; [ "${1}" ] && shift
             else
                 _die "Option '${arg}' requires a parameter"
             fi ;;
+        -f*) format="${1#-f}"; shift ;;
+        --format*) format="${1#--format}"; shift ;;
         -?*) _die "${progname}: unrecognized option '${arg}'" ;;
     esac
 done
