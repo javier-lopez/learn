@@ -101,7 +101,7 @@ _mysql() {
         [ -z "${_mysql__sleep_id}" ] || printf "%s\\n" "KILL ${_mysql__sleep_id};" > "${backup_dir}"/kill_sleep.sql 2>/dev/null
 
         if [ "${@}" ]; then
-            for _mysql__db; do
+            for _mysql__db in "${@}"; do
                 [ "${verbose}" ] && printf "%s " "${_mysql__db}"
                 mysqldump -u"${user}" -p"${passwd}" --single-transaction --routines \
                 --triggers "${_mysql__db}" | $compression_bin > "${backup_dir}"/"${_mysql__db}".sql"${compression_suffix}"
