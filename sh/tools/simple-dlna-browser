@@ -63,10 +63,6 @@ _die() {
     _usage >&2; exit 1
 }
 
-_false() {
-    return 1
-}
-
 _is_int() {
     case "${1}" in
         *[!0-9]*|"") return 1 ;;
@@ -129,14 +125,14 @@ User-Agent: gupnp-av-cp GSSDP/0.12.1\r\n'
         socat -T1 STDIO UDP4-DATAGRAM:239.255.255.250:1900 | \
         tr -d '\r' | awk "${_lservers__awk_filter}")"
 
-    for _lservers__result in $(printf "%s" "${_lservers__results}" | \
+    for _lservers__result in $(printf "%s\\n" "${_lservers__results}" | \
         awk '/http/' | ${sed} 's,.*http:,http:,'); do
-        _lservers__friendly_name="$(printf "%s"  \
+        _lservers__friendly_name="$(printf "%s\\n"  \
             "$(curl -s  "${_lservers__result}" 2>/dev/null  || \
             wget -q -O- "${_lservers__result}" 2>/dev/null)" | \
             ${sed} 's:</:\n:g' | \
             awk '/<friendlyName/ {gsub(/.*<friendlyName>/,""); print}')"
-        _lservers__results="$(printf "%s" "${_lservers__results}"  | \
+        _lservers__results="$(printf "%s\\n" "${_lservers__results}"  | \
             ${sed} "s,${_lservers__result},${_lservers__result} (${_lservers__friendly_name}),")"
     done
 
@@ -243,9 +239,9 @@ _list_media() {
     _init_http_headers
     soap_envelope='<?xml version="1.0"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"><s:Body><u:Browse xmlns:u="urn:schemas-upnp-org:service:ContentDirectory:1"><ObjectID>'"${@:-0}"'</ObjectID><BrowseFlag>BrowseDirectChildren</BrowseFlag><Filter>@childCount</Filter><StartingIndex>0</StartingIndex><RequestedCount>10000</RequestedCount><SortCriteria></SortCriteria></u:Browse></s:Body></s:Envelope>'
 
-    for _lmedia__server in $(printf "%s" "${_lmedia__servers}" | \
+    for _lmedia__server in $(printf "%s\\n" "${_lmedia__servers}" | \
         awk '{print $1}'|cut -d'/' -f1-3); do
-        printf "%s" "${_lmedia__servers}" | awk '/'"${_lmedia__server#http://}"'/'
+        printf "%s\\n" "${_lmedia__servers}" | awk '/'"${_lmedia__server#http://}"'/'
         #_fetch_data "${_lmedia__server}"  | _filter_files_with_ids
         _fetch_data "${_lmedia__server}"  | ( \
             [ -z  "${_lmedia__verbose}" ] &&  \
@@ -268,7 +264,7 @@ _search_media() {
     soap_action='SOAPAction: "urn:schemas-upnp-org:service:ContentDirectory:1#Search"'
     soap_envelope='<?xml version="1.0" encoding="UTF-8" ?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"><s:Body><u:Search xmlns:u="urn:schemas-upnp-org:service:ContentDirectory:1"><ContainerID>0</ContainerID><SearchCriteria>(dc:title contains "'"${@}"'")</SearchCriteria><Filter>*</Filter><StartingIndex>0</StartingIndex><RequestedCount>100</RequestedCount><SortCriteria>+dc:title</SortCriteria></u:Search></s:Body></s:Envelope>'
 
-    for _smedia__server in $(printf "%s" "${_smedia__servers}" | \
+    for _smedia__server in $(printf "%s\\n" "${_smedia__servers}" | \
         awk '{print $1}'|cut -d'/' -f1-3); do
         _fetch_data "${_smedia__server}" | ( \
             [ -z  "${_smedia__verbose}" ] && \
