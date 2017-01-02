@@ -160,6 +160,10 @@ test X"$(crontab -l | grep test_lib.db | wc -l )" = X"1"
 crontab -l | grep -v test_lib.db | crontab
 @end
 
+@begin{_false}
+_false; test X"${?}" = X"1"
+@end
+
 @begin{_filesize_in_bytes}
 _filesize_in_bytes; test X"${?}"       = X"1"
 _filesize_in_bytes a.out; test X"${?}" = X"1"

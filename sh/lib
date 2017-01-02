@@ -524,6 +524,13 @@ _ensurecron() { #adds cron job, returns 1 on error
 #_ensurecron "* * * * * /path/task"
 #=================================================================
 
+_false() { #opposite to ':' or 'true'
+    return 1
+#==================================================== Example ====
+#_false #set current status to '1' which commonly refers to false
+#=================================================================
+}
+
 _filesize_in_bytes() {
     [ -z "${1}" ] && return 1
     [ -r "${1}" ] || return 1
