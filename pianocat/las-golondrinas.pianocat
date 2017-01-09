@@ -1,0 +1,11 @@
+#!/usr/bin/pianocat
+
+T:4/4 L:2/4
+
+C4 C4 D4 E4:4 !
+D4 E4 F4 G4 a4 a4:3 !
+g4:1 f4:1 e4:1 d4:2 C4 C4 D4 E4:4 !
+g4 f#4 g4 a4 g4 d4:5 e4:1 f4:1 e4:1 d4:2 C4 C4 D4 E4:4 !
+d4 c4 c5 c5 b4 c5:4 !
+b4 a4 a4 f4 d4 e4:4 !
+g4 F#4 g4 f4 d4 c4:4
