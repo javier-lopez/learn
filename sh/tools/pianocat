@@ -28,7 +28,7 @@ Press any key to play, 1..7 to select an octave
                or Esc to exit")"
 
 _usage() {
-    printf "%s\\n" "Usage: ${progname} [options]"
+    printf "%s\\n" "Usage: ${progname} [options] [file]"
     printf "%s\\n" "A piano emulator."
     printf "\\n"
     printf "%s\\n" "  -b, --beat          beat time in seconds (0.5)"
@@ -110,6 +110,18 @@ _substr() { #print a substring
     [ "${_substr__start}" -gt "${_substr__len}" ] && return 1
 
     printf "%s\\n" "${1}" | cut -c"${_substr__start}"-"${_substr__len}"
+}
+
+_sanitize() {
+    #remove double empty spaces, new lines and other garbage
+    _sanitize__result="$(printf "%s\\n" "${@}" | awk '!/^#/')"
+    _sanitize__result="$(printf "%s\\n" "${_sanitize__result}" | tr "\n" " ")"
+    _sanitize__result="$(printf "%s\\n" "${_sanitize__result}" | awk '{gsub(/[|;]/, "");print}')"
+    _sanitize__result="$(printf "%s\\n" "${_sanitize__result}" | tr  -s  " ")"
+    _sanitize__result="${_sanitize__result%% }"; _sanitize__result="${_sanitize__result## }"
+    #format stream
+    _sanitize__result="$(_str2upper "${_sanitize__result}")"
+    printf "%s\\n" "${_sanitize__result}"
 }
 
 _strreplace() { #replace param in string
@@ -286,6 +298,7 @@ _pianocat() {
                 *)     note=""; continue;;
             esac
         else
+            input="$(_sanitize "${input}")"
             case "${input}" in
                 *' '*)     note="${input%% *}"; input="${input#* }" ;;
                 "${note}") [ -z "${quiet}" ] && printf "\\b\\b" && exit 0 ;;
@@ -336,16 +349,13 @@ _basename "${0}"; progname="${_basename__retval}"
 if [ ! -t 0 ]; then
     #there is input comming from pipe or file, save it
     input="$(cat)"
-    #remove double empty spaces, new lines and other garbage
-    input="$(printf "%s\\n" "${input}" | tr "\n" " ")"
-    input="$(printf "%s\\n" "${input}" | awk '{gsub(/[|;]/, "");print}')"
-    input="$(printf "%s\\n" "${input}" | tr  -s  " ")"
-    input="${input%% }"; input="${input## }"
-    #format stream
-    input="$(_str2upper "${input}")"
 fi
 
-for arg; do #parse options
+for arg in "${@}"; do #parse options
+    if [ -f "${arg}" ]; then
+        input="$(cat "${arg}")"
+    fi
+
     case "${arg}" in
         -h|--help) _usage && exit ;;
         -q|--quiet) quiet="1" && shift ;;
