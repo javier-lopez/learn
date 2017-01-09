@@ -250,6 +250,7 @@ _pianocat() {
     printf "%s\\n\\n" "${title}"
     printf "%s" "> "
 
+    [ -z "${input}" ] || input="$(_sanitize "${input}")"
     notes="CDEFGAB"; octave="4"; tempo="4/4"; length="1/4"; while :; do
         [ "${quiet}" ] || [ -z "${note}" ] || printf "%s" "> "
         if [ -z "${input}" ]; then
@@ -298,7 +299,6 @@ _pianocat() {
                 *)     note=""; continue;;
             esac
         else
-            input="$(_sanitize "${input}")"
             case "${input}" in
                 *' '*)     note="${input%% *}"; input="${input#* }" ;;
                 "${note}") [ -z "${quiet}" ] && printf "\\b\\b" && exit 0 ;;
