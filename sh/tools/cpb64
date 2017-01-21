@@ -8,6 +8,7 @@
 #to-a-remote-shell
 #...
 
+progname="$(expr "${0}" : '.*/\([^/]*\)')"
 decodestr="$(
 cat - <<'EOF'
 _decode64() { #decode a base64 string
@@ -77,7 +78,7 @@ EOF
 )" #'
 
 _usage() {
-    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] file ..."
+    printf "%s\\n" "Usage: ${progname} [options] file ..."
     printf "%s\\n" "Copy files using base64."
     printf "\\n"
     printf "%s\\n" "  -p, --portable   produce extra portable output, useful"
@@ -94,7 +95,7 @@ _die() {
 _cpb64() {
     for file; do
         [ ! -r "${file}" ] && {
-            printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): '${file}' does not exist or is not readable" >&2; exit 1; }
+            printf "%s\\n" "${progname}: '${file}' does not exist or is not readable" >&2; exit 1; }
     done
 
     if command -v "base64" >/dev/null 2>&1; then
@@ -102,7 +103,7 @@ _cpb64() {
     elif command -v "openssl" >/dev/null 2>&1; then
         str="$(tar cf - "${@}" | gzip | openssl enc -base64)"
     else
-        printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unable to encode files, install either base64 or openssl to continue" >&2
+        printf "%s\\n" "${progname}: unable to encode files, install either base64 or openssl to continue" >&2
         exit 1
     fi
 
@@ -141,8 +142,8 @@ for arg; do #parse options
     case "${arg}" in
         -h|--help) _usage && exit ;;
         -p|--portable) portable="true"; shift
-            [ -z "${1}" ] && _die "$(expr "${0}" : '.*/\([^/]*\)'): missing parameters" ;;
-        -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${arg}'" ;;
+            [ -z "${1}" ] && _die "${progname}: missing parameters" ;;
+        -*) _die "${progname}: unrecognized option '${arg}'" ;;
     esac
 done
 

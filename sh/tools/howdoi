@@ -5,8 +5,10 @@
 #example: howdoi format date bash
 #DATE=`date +%Y-%m-%d`
 
+progname="$(expr "${0}" : '.*/\([^/]*\)')"
+
 _usage() {
-    printf "%b\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] query ..."
+    printf "%b\\n" "Usage: ${progname} [options] query ..."
     printf "%b\\n" "Instant coding answers via the command line."
     printf "\\n"
     printf "%b\\n" "Positional arguments:"
@@ -174,7 +176,7 @@ for arg; do #parse options
             else
                 _die "Option '${arg}' requires a parameter"
             fi ;;
-        -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${arg}'" ;;
+        -*) _die "${progname}: unrecognized option '${arg}'" ;;
     esac
 done
 

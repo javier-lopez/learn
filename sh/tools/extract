@@ -25,7 +25,7 @@ _basename() {
 }
 
 _usage() {
-    printf "%s\\n" "Usage: $(_basename "${0}") [options] files ..."
+    printf "%s\\n" "Usage: ${progname} [options] files ..."
     printf "%s\\n" "Extract files."
     printf "\\n"
     printf "%s\\n" "  -v, --verbose   verbose mode"
@@ -89,10 +89,12 @@ _extract() {
                 esac
             fi
         else
-            printf "%s\\n" "$(_basename "${0}"): '${_extract__file}' does not exist or is not readable" >&2
+            printf "%s\\n" "${progname}: '${_extract__file}' does not exist or is not readable" >&2
         fi
     done
 }
+
+progname="$(_basename "${0}")"
 
 if [ ! -t 0 ]; then
     #there is input comming from pipe or file, add to the end of $@
@@ -112,7 +114,7 @@ for arg; do #parse options
                 _extract "${@}"
                 exit "${?}"
             fi ;;
-        -*) _die "$(_basename "${0}"): unrecognized option '${arg}'" ;;
+        -*) _die "${progname}: unrecognized option '${arg}'" ;;
     esac
 done
 
