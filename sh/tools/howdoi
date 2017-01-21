@@ -150,7 +150,7 @@ if ! command -v "wget" >/dev/null 2>&1; then
     exit 1
 fi
 
-for arg; do #parse options
+for arg in "${@}"; do #parse options
     case "${arg}" in
         -h|--help) _usage && exit ;;
         -a) aflag="true"; shift;;

@@ -157,7 +157,7 @@ if [ ! -t 0 ]; then
     set -- "${@}" $(cat)
 fi
 
-for arg; do #parse options
+for arg in "${@}"; do #parse options
     case "${arg}" in
         -h|--help) _usage && exit ;;
         -l) list="true"; shift ;;

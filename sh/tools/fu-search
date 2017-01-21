@@ -47,7 +47,7 @@ fi
 
 PATTERN="${*}"
 
-for arg; do #parse options
+for arg in "${@}"; do #parse options
     case "${arg}" in
         -h|--help) _usage && exit ;;
         -c) CFLAG="true"; shift; PATTERN="${*}";;
