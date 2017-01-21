@@ -13,8 +13,10 @@
 #example: fuck you firefox
 #ヽ(`Д´)ﾉ⌒ xoɟǝɹᴉɟ
 
+progname="$(expr "${0}" : '.*/\([^/]*\)')"
+
 _usage() {
-    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [you|off] [program ...]"
+    printf "%s\\n" "Usage: ${progname} [you|off] [program ...]"
     printf "%s\\n" "Correct previous cli commands and kill processes by name."
     printf "\\n"
     printf "%s\\n" "  -d, --deviation   deviation, higher value, faster computation, default 1"
@@ -81,7 +83,7 @@ fi
 case "${1}" in
     you|off) shift; _fuck_process "${@}"; exit "${?}" ;;
     -h|--help) _usage && exit ;;
-    -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${1}'" ;;
+    -*) _die "${progname}: unrecognized option '${1}'" ;;
     *) _fuck_process "${@}"; exit "${?}"
 esac; _fuck; exit "${?}"
 

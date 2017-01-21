@@ -7,11 +7,11 @@
 #Member,City,Latitude,Longitude
 #ivarela,Madrid,40.4167754,-3.7037902
 #..
-
 #http://viajemotu.wordpress.com/2013/11/14/launchpad-maps/
+progname="$(expr "${0}" : '.*/\([^/]*\)')"
 
 _usage() {
-    printf "%s\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [options] [lp-group]"
+    printf "%s\\n" "Usage: ${progname} [options] [lp-group]"
     printf "%s\\n" "Create CVS files with geolocalization data of launchpad groups."
     printf "\\n"
     printf "%s\\n" "  -h,--help   show this message and exits"
@@ -54,7 +54,7 @@ fi
 for arg; do #parse options
     case "${arg}" in
         -h|--help) _usage && exit ;;
-        -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${arg}'" ;;
+        -*) _die "${progname}: unrecognized option '${arg}'" ;;
     esac
 done
 

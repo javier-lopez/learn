@@ -11,8 +11,10 @@
 #original python implementation
 #http://charlesleifer.com/blog/using-python-and-k-means-to-find-the-dominant-colors-in-images/
 
+progname="$(expr "${0}" : '.*/\([^/]*\)')"
+
 _usage() {
-    printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') [options] image-file ..."
+    printf "Usage: %s\\n" "${progname} [options] image-file ..."
     printf "%s\\n" "Find dominant colors in images."
     printf "\\n"
     printf "%s\\n" "  -d, --deviation   deviation, higher value, faster computation, default 1"
@@ -257,7 +259,7 @@ for arg; do #parse options
             fi ;;
         -f*) format="${1#-f}"; shift ;;
         --format*) format="${1#--format}"; shift ;;
-        -*) _die "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${arg}'" ;;
+        -*) _die "${progname}: unrecognized option '${arg}'" ;;
     esac
 done
 

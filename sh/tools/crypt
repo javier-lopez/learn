@@ -5,6 +5,8 @@
 #example: crypt script
 #creates script.crypt
 
+progname="$(expr "${0}" : '.*/\([^/]*\)')"
+
 _basename() {
     [ -z "${1}" ] && return 1 || _bbasename__name="${1}"
     [ -z "${2}" ] || _bbasename__suffix="${2}"
@@ -49,13 +51,13 @@ if [ ! -t 0 ]; then
     set -- "${@}" $(cat)
 fi
 
-[ "${#}" -eq "0" ] && printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') file ..." >&2 && exit 1
+[ "${#}" -eq "0" ] && printf "Usage: %s\\n" "${progname} file ..." >&2 && exit 1
 
 for arg; do #parse options
     case "${arg}" in
-        -h|--help) printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') file ..." && exit ;;
-        -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${arg}'" >&2;
-            printf "Usage: %s\\n" "$(expr "${0}" : '.*/\([^/]*\)') file ..." >&2
+        -h|--help) printf "Usage: %s\\n" "${progname} file ..." && exit ;;
+        -*) printf "%s\\n" "${progname}: unrecognized option '${arg}'" >&2;
+            printf "Usage: %s\\n" "${progname} file ..." >&2
             exit 1 ;;
     esac
 done
