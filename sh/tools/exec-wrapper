@@ -268,7 +268,7 @@ fi
 
 [ "${#}" = "0" ] && _usage >&2 && exit 1
 
-for arg; do
+for arg in "${@}"; do #parse options
     case "${arg}" in
         -h|--help) _usage && exit ;;
         --*) printf "%s\\n" "Illegal option '${arg}'" >&2

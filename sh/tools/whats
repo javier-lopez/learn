@@ -37,7 +37,7 @@ fi
 
 [ "${#}" -eq "0" ] && _die
 
-for arg; do #parse options
+for arg in "${@}"; do #parse options
     case "${arg}" in
         -h|--help) _usage && exit ;;
         -*) _die "${progname}: unrecognized option '${arg}'" ;;

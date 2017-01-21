@@ -435,7 +435,7 @@ fi
 
 [ "${#}" -eq "0" ] && _usage >&2 && exit 1 # no options
 
-for arg; do #parse options
+for arg in "${@}"; do #parse options
     case "${arg}" in
         --help) _usage && exit ;;
         -c)

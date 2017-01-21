@@ -1224,7 +1224,7 @@ if [ ! -t 0 ]; then
     set -- "${@}" $(cat)
 fi
 
-for arg; do
+for arg in "${@}"; do #parse options
     case "${arg}" in
         -h|--help) _usage && exit ;;
         -v|--verbose) _verbose_flag="seen"; ;;

@@ -42,7 +42,7 @@ fi
 
 [ "${#}" -eq "0" ] && { printf "Usage: %s\\n" "${progname} binary ..." >&2; exit 1; }
 
-for arg; do #parse options
+for arg in "${@}"; do #parse options
     case "${arg}" in
         -h|--help) { printf "Usage: %s\\n" "${progname} binary ..."; exit; } ;;
         -*) printf "%s\\n" "${progname}: unrecognized option '${arg}'" >&2
