@@ -128,8 +128,9 @@ case "$DISTRIB_ID" in
             _cmd sudo wget --no-check-certificate https://raw.githubusercontent.com/chilicuil/dotfiles/master/.minos/config -O /etc/minos/config
 
             _printfs "Installing minos base ..."
-            _cmd wget javier.io/s -O s && sudo sh s
-            _cmd rm -rf s
+            _cmd wget javier.io/deploy -O deploy
+            _cmd_verbose sudo sh deploy minos core
+            _cmd rm -rf deploy
         fi
 
         _printfl "Installing deps ..."
