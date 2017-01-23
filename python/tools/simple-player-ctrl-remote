@@ -1,0 +1,248 @@
+#!/usr/bin/env python
+#usage: simple-player-ctrl-remote [options]
+#based on mplayer-remote v0.0.4, http://www.gwenn.dk/mplayer-remote.html
+
+import BaseHTTPServer, commands, sys, os, socket, subprocess
+from optparse import OptionParser
+
+parser = OptionParser(description='%prog - a multimedia player web control', usage='%prog [options]')
+parser.add_option("-p", "--port", dest="port", action="store", help='local port to bind (default 80).')
+
+(options, args) = parser.parse_args()
+
+if options.port:
+    port = int(options.port)
+else:
+    port = 80
+
+if port < 1024:
+    if not os.geteuid() == 0:
+        sys.exit(os.path.basename(__file__) + ": root permitions are necessary to bind to port " + str(port) + ", or use -p to specify a non privileged port.")
+
+pagehead = """
+<html><head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+ <TITLE>Remote player ctrl</TITLE>
+ <style type="text/css" media="screen">
+    body { font-family: Arial, Helvetica, Sans-Serif;
+    font-size: 16px; background-color:black; color: gray;
+    min-height:540px; }
+    body[orient="portrait"]  { min-height:540px; }
+    body[orient="landscape"] { min-height:400px; }width:100%;
+    a { text-decoration: none; display: block; }
+    table { width: 90%; border: 1px solid white; }
+    td { border: none; color: white; text-align: center;}
+    td.volbar { background-color: lightgray; color: black;}
+    table.nav { width: 100%; border: none; }
+    input.txt { width: 10%; height: 5%; font-size: 20px;
+    background-color:black; color:#fff; border: 1px solid white;
+    margin: 10px; }
+    input.icon {display:none}
+    .svg-icon { width: 2em; height: 2em; padding-right: 1em;}
+    .svg-icon path, .svg-icon polygon, .svg-icon rect { fill: #fff; }
+  </style>
+<script>
+    function hideAddressBar() {
+      if(!window.location.hash) {
+          if(document.height < window.outerHeight) {
+              document.body.style.height = (window.outerHeight + 50) + 'px';
+          }
+          setTimeout( function(){ window.scrollTo(0, 1); }, 50 );
+      }
+    }
+    window.addEventListener("load", function(){ hideAddressBar(); });
+    window.addEventListener("orientationchange", hideAddressBar );
+</script>
+</head>
+<body>
+<center>
+<h1>Player Control</h1>
+"""
+
+pagectrl = """
+<br/><br/><form action="/control" method="get">
+  <input type="submit" value="|<"  name="player" class="txt">
+  <input type="submit" value=">||" name="player" class="txt">
+  <input type="submit" value=">|"  name="player" class="txt">
+  <br/>
+  <input type="submit" value="<<"  name="player" class="txt">
+  <input type="submit" value="<"   name="player" class="txt">
+  <input type="submit" value=">"   name="player" class="txt">
+  <input type="submit" value=">>"  name="player" class="txt">
+  <br/><h2>Volume</h2>
+  <label>
+    <input type="submit" value="-"    name="volume" class="icon">
+    <svg class="svg-icon" viewBox="0 0 20 20">
+      <path d="M15.938,10c0,1.165 -0.305,2.319 -0.88,3.339c-0.074,0.129 -0.21,0.201 -0.347,0.201c-0.068,0 -0.134,-0.016 -0.197,-0.052c-0.191,-0.107 -0.259,-0.351 -0.149,-0.542c0.508,-0.9 0.776,-1.918 0.776,-2.946c0,-1.028 -0.269,-2.046 -0.776,-2.946c-0.109,-0.191 -0.042,-0.434 0.149,-0.542c0.193,-0.109 0.436,-0.042 0.544,0.149c0.576,1.02 0.88,2.173 0.88,3.339m-2.028,0c0,0.629 -0.119,1.237 -0.354,1.811c-0.063,0.153 -0.211,0.247 -0.368,0.247c-0.05,0 -0.102,-0.01 -0.151,-0.029c-0.203,-0.084 -0.301,-0.317 -0.217,-0.521c0.194,-0.476 0.294,-0.984 0.294,-1.508s-0.1,-1.032 -0.294,-1.508c-0.084,-0.203 0.014,-0.437 0.217,-0.52c0.203,-0.084 0.437,0.014 0.52,0.217c0.234,0.574 0.353,1.184 0.353,1.811m-2.316,-6.773l0,13.546c0,0.161 -0.098,0.307 -0.245,0.368c-0.05,0.021 -0.102,0.03 -0.153,0.03c-0.104,0 -0.205,-0.04 -0.281,-0.117l-3.669,-3.668l-4.816,0c-0.219,0 -0.398,-0.18 -0.398,-0.398l0,-5.976c0,-0.219 0.179,-0.398 0.398,-0.398l4.815,0l3.669,-3.668c0.114,-0.115 0.285,-0.149 0.435,-0.087c0.147,0.061 0.245,0.206 0.245,0.368m-4.582,4.183l-4.184,0l0,5.18l4.184,0l0,-5.18zm3.785,-3.221l-2.988,2.988l0,5.646l2.988,2.988l0,-11.622z"></path>
+    </svg>
+  </label>
+  <label>
+    <input type="submit" value="mute"    name="volume" class="icon">
+    <svg class="svg-icon" viewBox="0 0 20 20">
+        <path d="M18.084,11.639c0.168,0.169,0.168,0.442,0,0.611c-0.084,0.084-0.195,0.127-0.306,0.127c-0.111,0-0.221-0.043-0.306-0.127l-1.639-1.639l-1.639,1.639c-0.084,0.084-0.195,0.127-0.306,0.127c-0.111,0-0.222-0.043-0.307-0.127c-0.168-0.169-0.168-0.442,0-0.611L15.223,10l-1.64-1.639c-0.168-0.168-0.168-0.442,0-0.61c0.17-0.169,0.442-0.169,0.612,0l1.639,1.639l1.639-1.639c0.169-0.169,0.442-0.169,0.611,0c0.168,0.168,0.168,0.442,0,0.61L16.445,10L18.084,11.639z M12.161,2.654v14.691c0,0.175-0.105,0.333-0.267,0.4c-0.054,0.021-0.109,0.032-0.166,0.032c-0.111,0-0.223-0.043-0.305-0.127l-3.979-3.979H2.222c-0.237,0-0.432-0.194-0.432-0.432V6.759c0-0.237,0.195-0.432,0.432-0.432h5.222l3.979-3.978c0.123-0.125,0.309-0.163,0.471-0.095C12.056,2.322,12.161,2.479,12.161,2.654 M7.192,7.192H2.654v5.617h4.538V7.192z M11.296,3.698l-3.24,3.241v6.123l3.24,3.24V3.698z"></path>
+    </svg>
+  </label>
+  <label>
+    <input type="submit" value="+"    name="volume" class="icon">
+    <svg class="svg-icon" viewBox="0 0 20 20">
+      <path d="M17.969,10c0,1.707-0.5,3.366-1.446,4.802c-0.076,0.115-0.203,0.179-0.333,0.179c-0.075,0-0.151-0.022-0.219-0.065c-0.184-0.122-0.233-0.369-0.113-0.553c0.86-1.302,1.314-2.812,1.314-4.362s-0.454-3.058-1.314-4.363c-0.12-0.183-0.07-0.43,0.113-0.552c0.186-0.12,0.432-0.07,0.552,0.114C17.469,6.633,17.969,8.293,17.969,10 M15.938,10c0,1.165-0.305,2.319-0.88,3.339c-0.074,0.129-0.21,0.201-0.347,0.201c-0.068,0-0.134-0.016-0.197-0.052c-0.191-0.107-0.259-0.351-0.149-0.542c0.508-0.9,0.776-1.918,0.776-2.946c0-1.028-0.269-2.046-0.776-2.946c-0.109-0.191-0.042-0.434,0.149-0.542c0.193-0.109,0.436-0.042,0.544,0.149C15.634,7.681,15.938,8.834,15.938,10 M13.91,10c0,0.629-0.119,1.237-0.354,1.811c-0.063,0.153-0.211,0.247-0.368,0.247c-0.05,0-0.102-0.01-0.151-0.029c-0.203-0.084-0.301-0.317-0.217-0.521c0.194-0.476,0.294-0.984,0.294-1.508s-0.1-1.032-0.294-1.508c-0.084-0.203,0.014-0.437,0.217-0.52c0.203-0.084,0.437,0.014,0.52,0.217C13.791,8.763,13.91,9.373,13.91,10 M11.594,3.227v13.546c0,0.161-0.098,0.307-0.245,0.368c-0.05,0.021-0.102,0.03-0.153,0.03c-0.104,0-0.205-0.04-0.281-0.117l-3.669-3.668H2.43c-0.219,0-0.398-0.18-0.398-0.398V7.012c0-0.219,0.179-0.398,0.398-0.398h4.815l3.669-3.668c0.114-0.115,0.285-0.149,0.435-0.087C11.496,2.92,11.594,3.065,11.594,3.227 M7.012,7.41H2.828v5.18h4.184V7.41z M10.797,4.189L7.809,7.177v5.646l2.988,2.988V4.189z"></path>
+    </svg>
+  </label>
+  <br/><h2>Session</h2>
+  <label>
+    <input type="submit" value="lock" name="session" class="icon">
+    <svg class="svg-icon" viewBox="0 0 20 20">
+      <path d="M17.308,7.564h-1.993c0-2.929-2.385-5.314-5.314-5.314S4.686,4.635,4.686,7.564H2.693c-0.244,0-0.443,0.2-0.443,0.443v9.3c0,0.243,0.199,0.442,0.443,0.442h14.615c0.243,0,0.442-0.199,0.442-0.442v-9.3C17.75,7.764,17.551,7.564,17.308,7.564 M10,3.136c2.442,0,4.43,1.986,4.43,4.428H5.571C5.571,5.122,7.558,3.136,10,3.136 M16.865,16.864H3.136V8.45h13.729V16.864z M10,10.664c-0.854,0-1.55,0.696-1.55,1.551c0,0.699,0.467,1.292,1.107,1.485v0.95c0,0.243,0.2,0.442,0.443,0.442s0.443-0.199,0.443-0.442V13.7c0.64-0.193,1.106-0.786,1.106-1.485C11.55,11.36,10.854,10.664,10,10.664 M10,12.878c-0.366,0-0.664-0.298-0.664-0.663c0-0.366,0.298-0.665,0.664-0.665c0.365,0,0.664,0.299,0.664,0.665C10.664,12.58,10.365,12.878,10,12.878"></path>
+    </svg>
+  </label>
+  <label>
+    <input type="submit" value="suspend"   name="session" class="icon">
+    <svg class="svg-icon" viewBox="0 0 20 20">
+      <path fill="none" d="M5.163,5.768c0.167,0.167,0.438,0.167,0.605,0c0.167-0.167,0.167-0.438,0-0.604L3.953,3.349c-0.167-0.167-0.438-0.167-0.604,0c-0.167,0.167-0.167,0.437,0,0.604L5.163,5.768z M14.837,5.768l1.814-1.814c0.167-0.167,0.167-0.438,0-0.604c-0.168-0.167-0.438-0.167-0.605,0l-1.813,1.814c-0.167,0.167-0.167,0.437,0,0.604C14.399,5.935,14.67,5.935,14.837,5.768 M10,4.014c0.236,0,0.428-0.191,0.428-0.428V1.021c0-0.236-0.192-0.428-0.428-0.428S9.572,0.785,9.572,1.021v2.565C9.572,3.823,9.764,4.014,10,4.014 M18.979,10h-3.848c0-2.833-2.297-5.131-5.131-5.131c-2.833,0-5.131,2.297-5.131,5.131H1.021c-0.236,0-0.428,0.191-0.428,0.428s0.192,0.428,0.428,0.428h17.957c0.236,0,0.428-0.191,0.428-0.428S19.215,10,18.979,10 M5.725,10c0-2.361,1.914-4.275,4.275-4.275S14.276,7.639,14.276,10H5.725zM12.565,15.985H11.71v-2.138c0-0.235-0.191-0.427-0.428-0.427H8.717c-0.236,0-0.428,0.191-0.428,0.427v2.138H7.435c-0.235,0-0.427,0.191-0.427,0.428c0,0.118,0.047,0.226,0.125,0.304l2.565,2.564c0.077,0.078,0.185,0.125,0.302,0.125s0.225-0.047,0.302-0.125l2.565-2.564c0.078-0.078,0.126-0.186,0.126-0.304C12.993,16.177,12.802,15.985,12.565,15.985 M10,18.374l-1.533-1.533h0.25c0.236,0,0.428-0.191,0.428-0.428v-2.138h1.709v2.138c0,0.236,0.192,0.428,0.428,0.428h0.251L10,18.374z"></path>
+      </svg>
+  </label>
+  <label>
+    <input type="submit" value="hibernate" name="session" class="icon">
+    <svg class="svg-icon" viewBox="0 0 20 20">
+      <path fill="none" d="M10.544,8.717l1.166-0.855l1.166,0.855l-0.467-1.399l1.012-0.778h-1.244L11.71,5.297l-0.466,1.244H10l1.011,0.778L10.544,8.717z M15.986,9.572l-0.467,1.244h-1.244l1.011,0.777l-0.467,1.4l1.167-0.855l1.165,0.855l-0.466-1.4l1.011-0.777h-1.244L15.986,9.572z M7.007,6.552c0-2.259,0.795-4.33,2.117-5.955C4.34,1.042,0.594,5.07,0.594,9.98c0,5.207,4.211,9.426,9.406,9.426c2.94,0,5.972-1.354,7.696-3.472c-0.289,0.026-0.987,0.044-1.283,0.044C11.219,15.979,7.007,11.759,7.007,6.552 M10,18.55c-4.715,0-8.551-3.845-8.551-8.57c0-3.783,2.407-6.999,5.842-8.131C6.549,3.295,6.152,4.911,6.152,6.552c0,5.368,4.125,9.788,9.365,10.245C13.972,17.893,11.973,18.55,10,18.55 M19.406,2.304h-1.71l-0.642-1.71l-0.642,1.71h-1.71l1.39,1.069l-0.642,1.924l1.604-1.176l1.604,1.176l-0.642-1.924L19.406,2.304z"></path>
+    </svg>
+  </label>
+</form>"""
+
+pageend = """</center></body></html>"""
+
+ctrl_cmd = {"%7C%3C"    :"prev",      # |<
+            "%3C%3C"    :"seek -20%", # <<
+            "%3C"       :"seek -5%",  # <
+            "%3E%7C%7C" :"toggle",    # >||
+            "%3E"       :"seek +5%",  # >
+            "%3E%3E"    :"seek +20%", # >>
+            "%3E%7C"    :"next",      # >|
+            "fullscreen":"fullscreen" # fullscreen
+           }
+
+vol_cmd = {"%2B" :"amixer --quiet set Master 1%+",    #+
+           "-"   :"amixer --quiet set Master 1%-",    #-
+           "mute":"amixer --quiet set Master toggle"} #mute
+
+session_cmd = { "lock"      :"lock",
+                "suspend"   :"suspend",
+                "hibernate" :"hibernate"}
+
+def execute(cmd):
+    """ Execute a shell command, while handling errors gracefully"""
+    (stat, out) = commands.getstatusoutput(cmd)
+    if stat != 0:
+        print >>sys.stderr, "ERROR: '"+cmd+"' returned "+ str(out)
+    return out
+
+class myHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+    """Handles all http requests."""
+
+    def __init__(self, *args):
+        """Initialise the handler (called each time we handle a request)"""
+        BaseHTTPServer.BaseHTTPRequestHandler.__init__(self, *args)
+
+    def write(self, x):
+        """Send some html code to the browser"""
+        return self.wfile.write(x)
+
+    def handleCmd(self,param):
+        """Global handler of commands, doesn't care what the page is, just
+        executes the correct commands if possible"""
+        if "player" in param:
+            if param["player"] in ctrl_cmd:
+                self.write(execute("player-ctrl " + ctrl_cmd[param["player"]]))
+                print "exec: player-ctrl " + ctrl_cmd[param["player"]]
+
+        if "volume" in param:
+            if param["volume"] in vol_cmd:
+                self.write(execute(vol_cmd[param["volume"]]))
+                print "exec: " + vol_cmd[param["volume"]]
+                vol = execute("amixer get 'Master',0|egrep -m1 -o '[0-9]{1,3}%'")
+                audio_enabled = execute("amixer get 'Master',0|egrep -o '\[o.+\]'")
+                if vol != "0%" and audio_enabled == "[on]":
+                    self.write('Volume: ' +vol)
+                else:
+                    self.write('MUTED')
+
+        if "session" in param:
+            if param["session"] in session_cmd:
+                subprocess.Popen(["dmenu-session", session_cmd[param["session"]]])
+                print "exec: dmenu-session " + session_cmd[param["session"]] + " &"
+                if param["session"] == "lock":
+                    self.write("Interactive session LOCKED")
+                elif param["session"] == "suspend":
+                    self.write("System SUSPENDED");
+                elif param["session"] == "hibernate":
+                    self.write("System HIBERNATED");
+
+    def volumebar(self):
+        """Get the current volume setting and plot it as a "bar diagram", or
+        if muted, indicate this"""
+        out = execute("amixer get Master").split()
+        vol = execute("amixer get 'Master',0|egrep -m1 -o '[0-9]{1,3}%'")
+        audio_enabled = execute("amixer get 'Master',0|egrep -o '\[o.+\]'")
+        if vol != "0%" and audio_enabled == "[on]":
+            self.write('<table width="99%" border=1><tr><td width="'
+                             +vol+'" class="volbar">'+vol+'</td><td></td></tr></table>')
+        else:
+            self.write('<table width="99%" border=1><tr><td>Muted</td></tr></table>')
+
+    def do_GET(self):
+        """Handle the GET request. This identifies the page that is
+        being served, and handles the submitted form variables"""
+        self.send_response(200)
+        self.send_header('Content-type','text/html')
+        self.end_headers()
+        self.write(pagehead)
+
+        file = self.path.split('/')[-1]
+        paramstr=file.split('?')
+        print "args:", paramstr
+        param = {}
+        if len(paramstr) > 1:
+            for p in paramstr[1].split('&'):
+                s = p.split('=')
+                param[s[0]] = s[1]
+            self.handleCmd(param)
+        # self.volumebar()
+        self.write(pagectrl)
+        self.write(pageend)
+
+class StoppableHTTPServer(BaseHTTPServer.HTTPServer):
+    """
+    This is a simple change to the normal basehttp server which is
+    not blocked waiting for HTTP connections
+    """
+    def server_bind(self):
+        BaseHTTPServer.HTTPServer.server_bind(self)
+        self.socket.settimeout(1)
+        self.run = True
+
+    def get_request(self):
+        while self.run:
+            try:
+                sock, addr = self.socket.accept()
+                sock.settimeout(None)
+                return (sock, addr)
+            except socket.timeout:
+                pass
+
+def run():
+    """
+    This is the "main" function, that gets called from the
+    end of the file, after everything has been parsed.
+    """
+    try:
+        server = StoppableHTTPServer(('', port), myHandler)
+        print 'Started httpserver on port ' , port
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print '^C received, shutting down the web server'
+    finally:
+        if 'server' in locals():
+            server.socket.close()
+
+# Finally, just execute it all
+run()
