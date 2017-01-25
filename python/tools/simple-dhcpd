@@ -191,6 +191,7 @@ if __name__ == "__main__":
           print "  address: all interfaces"
         else:
           print "  address:      " + address
+
         print   "  tftp:         " + str(tftp)
         print   "  gateway:      " + str(gateway)
         print   "  dns:          " + str(dns)

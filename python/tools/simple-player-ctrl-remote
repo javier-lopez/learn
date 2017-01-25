@@ -2,7 +2,7 @@
 #usage: simple-player-ctrl-remote [options]
 #based on mplayer-remote v0.0.4, http://www.gwenn.dk/mplayer-remote.html
 
-import BaseHTTPServer, commands, sys, os, socket, subprocess
+import BaseHTTPServer, commands, sys, os, pwd, grp, socket, subprocess
 from optparse import OptionParser
 
 parser = OptionParser(description='%prog - a multimedia player web control', usage='%prog [options]')
@@ -129,6 +129,26 @@ session_cmd = { "lock"      :"lock",
                 "suspend"   :"suspend",
                 "hibernate" :"hibernate"}
 
+def drop_privileges():
+    if os.getuid() != 0:
+        #we're not root so, whatever dude
+        return
+
+    #get the uid/gid from the name
+    user_name = os.getenv("SUDO_USER")
+    pwnam = pwd.getpwnam(user_name)
+
+    #remove group privileges
+    os.setgroups([])
+
+    #try setting the new uid/gid
+    os.setgid(pwnam.pw_gid)
+    os.setuid(pwnam.pw_uid)
+
+    #ensure a reasonable umask
+    old_umask = os.umask(0o22)
+    print "Dropping user privileges: root -> " +  user_name
+
 def execute(cmd):
     """ Execute a shell command, while handling errors gracefully"""
     (stat, out) = commands.getstatusoutput(cmd)
@@ -237,6 +257,7 @@ def run():
     try:
         server = StoppableHTTPServer(('', port), myHandler)
         print 'Started httpserver on port ' , port
+        drop_privileges()
         server.serve_forever()
     except KeyboardInterrupt:
         print '^C received, shutting down the web server'
