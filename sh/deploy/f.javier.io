@@ -135,8 +135,8 @@ case "$DISTRIB_ID" in
 
         _printfl "Installing deps ..."
         _apt_update 3600
-        [ X"${DISTRIB_CODENAME}" = X"trusty" ] && _apt_install apache2 libapache2-mod-php5 php5
-        [ X"${DISTRIB_CODENAME}" = X"xenial" ] && _apt_install apache2 libapache2-mod-php php
+        [ X"${DISTRIB_CODENAME}" = X"trusty" ] && _apt_install apache2 libapache2-mod-php5 php5 php5-gd
+        [ X"${DISTRIB_CODENAME}" = X"xenial" ] && _apt_install apache2 libapache2-mod-php php php-gd php-xml
         _printfs "Setting up apache2/php ..."
         _cmd "sudo sed -i '/^<Directory/,/^</d' /etc/apache2/apache2.conf"
         for file in $(find /etc -name php.ini 2>/dev/null); do
@@ -157,6 +157,12 @@ case "$DISTRIB_ID" in
         for site in /etc/apache2/sites-available/*javier*; do
             test -f "${site}" && _cmd sudo a2ensite "$(basename "${site}")"
         done
+        _cmd sudo a2enmod rewrite #enable .htaccess files
+
+        ##securing apache2
+        _cmd "sudo sed -i 's/^ServerTokens OS/ServerTokens Prod/g'     /etc/apache2/conf-enabled/security.conf"
+        _cmd "sudo sed -i 's/^ServerSignature On/ServerSignature Off/g /etc/apache2/conf-enabled/security.conf"
+
         _cmd sudo service apache2 restart
 
         _printfs "Installing crons"
