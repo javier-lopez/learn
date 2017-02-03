@@ -18,6 +18,34 @@ _1stchar() { #return first char of a string
 #_1stchar test #print 't'
 #=================================================================
 
+_1stletter_upper() { #return string with first char in upper case
+    [ -z "${1}" ] && return 1
+    _1stletter__substr="${1#?}"
+    _1stletter__char="${1%$_1stletter__substr}"
+
+    _1stletter__charupper="$(printf "%s\\n" "${_1stletter__char}" | \
+        tr 'abcdefghijklmnopqrstuvwxyz' 'ABCDEFGHIJKLMNOPQRSTUVWXYZ')"
+
+    printf "%s\\n" "${_1stletter__charupper}${_1stletter__substr}"
+}
+#==================================================== Example ====
+#_1stletter_upper test #print 'Test'
+#=================================================================
+
+_1stletter_lower() { #return string with first char in lower case
+    [ -z "${1}" ] && return 1
+    _1stletter__substr="${1#?}"
+    _1stletter__char="${1%$_1stletter__substr}"
+
+    _1stletter__charlower="$(printf "%s\\n" "${_1stletter__char}" | \
+        tr 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 'abcdefghijklmnopqrstuvwxyz')"
+
+    printf "%s\\n" "${_1stletter__charlower}${_1stletter__substr}"
+}
+#==================================================== Example ====
+#_1stletter_lower Test #print 'test'
+#=================================================================
+
 _abs() { #return the absolute value of the argument, or 1 on failure
     case "${1}" in
         *[!0-9-]*|"") return 1 ;;
