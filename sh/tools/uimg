@@ -8,7 +8,7 @@
 version="2016.04.03-13:25"
 
 #TODO 04-11-2015 12:53 >> add more image sharing sites
-sites="imgur uploadpie"
+sites="imgur"
 
 _usage() {
     printf "%s\\n" "Usage: ${progname} image.[png|jpg] ..."
@@ -158,6 +158,8 @@ _uimg() {
     }
 
     _uimg_uploadpie() {
+        #uploadpie now encodes the result in b64 and embebbed it in a html file
+        #so it no longer can be download it easily, this module is now disabled
         _uuploadpie__agent="Mozilla/5.0 (X11; Linux x86_64; rv:26.0) Gecko/20100101 Firefox/26.0"
         _uuploadpie__max_file_size="3145728"
         _uuploadpie__duration="3145728"
