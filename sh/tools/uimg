@@ -164,12 +164,12 @@ _uimg() {
         _uuploadpie__response="$(curl -s  -A "${_uuploadpie__agent}" \
             --form uploadedfile=@"${1}" --form upload=1              \
             --form MAX_FILE_SIZE="${_uuploadpie__max_file_size}"     \
-            --form expire="${_uuploadpie__duration}" http://uploadpie.com)"
+            --form expire="${_uuploadpie__duration}" https://uploadpie.com)"
         _uuploadpie__response="$(printf "%s" "${_uuploadpie__response}" | \
             grep 'id="uploaded"' 2>/dev/null | cut -d'"' -f6)"
 
         if [ -z "${_uuploadpie__response}" ];then
-            printf "%s\\n" "http://uploadpie.com api timeout" >&2
+            printf "%s\\n" "https://uploadpie.com api timeout" >&2
             return 1
         else
             printf "%s" "${_uuploadpie__response}"
