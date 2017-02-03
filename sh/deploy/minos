@@ -931,7 +931,7 @@ _core() {
 
     _printfl "Installing software"
     _printfs "Installing packages ..."
-    _apt_update 3600
+    _apt_update 0
     _waitforsudo apt-get install --no-install-recommends -y ${minos_core}
 
     if ! command -v "git" >/dev/null 2>&1; then
