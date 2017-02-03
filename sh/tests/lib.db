@@ -9,6 +9,24 @@ test X"$(_1stchar -99)"   = X"-"
 test X"$(_1stchar -99 2)" = X"-"
 @end
 
+@begin{_1stletter_upper}
+_1stletter_upper;    test X"${?}" = X"1"
+test X"$(_1stletter_upper 0)"     = X"0"
+test X"$(_1stletter_upper 99)"    = X"99"
+test X"$(_1stletter_upper -1)"    = X"-1"
+test X"$(_1stletter_upper test)"  = X"Test"
+test X"$(_1stletter_upper Test)"  = X"Test"
+@end
+
+@begin{_1stletter_lower}
+_1stletter_lower;    test X"${?}" = X"1"
+test X"$(_1stletter_lower 0)"     = X"0"
+test X"$(_1stletter_lower 99)"    = X"99"
+test X"$(_1stletter_lower -1)"    = X"-1"
+test X"$(_1stletter_lower test)"  = X"test"
+test X"$(_1stletter_lower Test)"  = X"test"
+@end
+
 @begin{_abs}
 _abs;         test X"${?}" = X"1"
 _abs string;  test X"${?}" = X"1"
