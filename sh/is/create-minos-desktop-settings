@@ -10,9 +10,10 @@ trap _cleanup 15 #trap ctrl-c
 
 file_header="This file is part of the minos-desktop-settings package"
 total_errors="0"
+progname="$(expr "${0}" : '.*/\([^/]*\)')"
 
 _usage() {
-    printf "%b\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [directory]"
+    printf "%b\\n" "Usage: ${progname} [directory]"
     printf "%b\\n" "minos desktop settings creator."
     printf "\\n"
     printf "%s\\n" "  -h, --help   show this help message and exit"
@@ -75,7 +76,7 @@ _create_minos_default_desktop_settings() {
 
     if _file_or_directory_exist ~/.minos/help; then
         echo
-        _cmd cp ~/.minos/help "${1}"/etc##minos##help
+        _cmd cp ~/.minos/help "${1}/etc##minos##help"
     fi
 
     if _file_or_directory_exist ~/.minos/session-manager; then
@@ -93,130 +94,146 @@ _create_minos_default_desktop_settings() {
 
     if _file_or_directory_exist ~/.i3status.conf; then
         echo
-        _cmd "printf \"%s\\n\\n\" \"#${file_header}\" > \"${1}\"/etc##minos##i3status.conf"
-        _cmd "cat ~/.i3status.conf >> ${1}/etc##minos##i3status.conf"
+        _cmd "printf \"%s\\n\\n\" \"#${file_header}\" > \"${1}\"/etc##i3status.conf"
+        _cmd "cat ~/.i3status.conf >> ${1}/etc##i3status.conf"
     fi
 
     if _file_or_directory_exist ~/.local/share/applications/defaults.list; then
         echo
-        _cmd cp ~/.local/share/applications/defaults.list "${1}"/usr##share##minos##applications##defaults.list
+        _cmd cp ~/.local/share/applications/defaults.list "${1}/usr##share##minos##desktop-settings##applications-defaults.list"
     fi
 
     if _file_or_directory_exist ~/.local/share/applications/mimeapps.list; then
         echo
-        _cmd cp ~/.local/share/applications/mimeapps.list "${1}"/usr##share##minos##applications##mimeapps.list
+        _cmd cp ~/.local/share/applications/mimeapps.list "${1}/usr##share##minos##desktop-settings##applications-mimeapps.list"
     fi
 
     if _file_or_directory_exist ~/.Xdefaults; then
         echo
-        _cmd "printf \"%s\\n\\n\" \"#${file_header}\" > \"${1}\"/usr##share##minos##Xdefaults"
-        _cmd "cat ~/.Xdefaults >> ${1}/usr##share##minos##Xdefaults"
+        _cmd "printf \"%s\\n\\n\" \"#${file_header}\" > \"${1}\"/usr##share##minos##desktop-settings##Xdefaults"
+        _cmd "cat ~/.Xdefaults >> ${1}/usr##share##minos##desktop-settings##Xdefaults"
     fi
 
     if _file_or_directory_exist ~/.xsession; then
         echo
-        _cmd "printf \"%s\\n\\n\" \"#${file_header}\" > \"${1}\"/usr##share##minos##xsession"
-        _cmd "cat ~/.xsession >> ${1}/usr##share##minos##xsession"
+        _cmd "printf \"%s\\n\\n\" \"#${file_header}\" > \"${1}\"/usr##share##minos##desktop-settings##xsession"
+        _cmd "cat ~/.xsession >> ${1}/usr##share##minos##desktop-settings##xsession"
     fi
 
-    if _file_or_directory_exist ~/.config/libfm/; then
+    if _file_or_directory_exist ~/.config/libfm/libfm.conf; then
         echo
-        _cmd cp -r ~/.config/libfm/ "${1}"/usr##share##minos##config##libfm/
+        _cmd cp -r ~/.config/libfm/libfm.conf "${1}/etc##xdg##libfm##libfm.conf"
     fi
 
-    if _file_or_directory_exist ~/.config/pcmanfm/; then
+    if _file_or_directory_exist ~/.config/pcmanfm/default/pcmanfm.conf; then
         echo
-        _cmd cp -r ~/.config/pcmanfm/ "${1}"/usr##share##minos##config##pcmanfm/
+        _cmd cp -r ~/.config/pcmanfm/default/pcmanfm.conf "${1}/etc##xdg##pcmanfm##default##pcmanfm.conf"
+    fi
+
+    if _file_or_directory_exist ~/.config/pcmanfm/main; then
+        echo
+        _cmd cp -r ~/.config/pcmanfm/main "${1}/etc##xdg##pcmanfm##main"
     fi
 
     if _file_or_directory_exist ~/.config/Trolltech.conf; then
         echo
-        _cmd cp -r ~/.config/Trolltech.conf "${1}"/usr##share##minos##config##Trolltech.conf
+        _cmd cp -r ~/.config/Trolltech.conf "${1}/etc##xdg##Trolltech.conf"
     fi
 
     if _file_or_directory_exist ~/.config/redshift.conf; then
         echo
-        _cmd "printf \"%s\\n\\n\" \"#${file_header}\" > \"${1}\"/usr##share##minos##config##redshift.conf"
-        _cmd "cat ~/.config/redshift.conf >> ${1}/usr##share##minos##config##redshift.conf"
+        _cmd "printf \"%s\\n\\n\" \"#${file_header}\" > \"${1}\"/usr##share##minos##desktop-settings##redshift.conf"
+        _cmd "cat ~/.config/redshift.conf >> ${1}/usr##share##minos##desktop-settings##redshift.conf"
     fi
 
     if _file_or_directory_exist ~/.config/user-dirs.dirs; then
         echo
-        _cmd "printf \"%s\\n\\n\" \"#${file_header}\" > \"${1}\"/usr##share##minos##config##user-dirs.dirs"
-        _cmd "cat ~/.config/user-dirs.dirs >> ${1}/usr##share##minos##config##user-dirs.dirs"
+        _cmd "printf \"%s\\n\\n\" \"#${file_header}\" > \"${1}\"/usr##share##minos##desktop-settings##user-dirs.dirs"
+        _cmd "cat ~/.config/user-dirs.dirs >> ${1}/usr##share##minos##desktop-settings##user-dirs.dirs"
     fi
 
     if _file_or_directory_exist ~/.i3/config; then
         echo
-        _cmd "printf \"%s\\n\\n\" \"#${file_header}\" > \"${1}\"/usr##share##minos##i3##config"
-        _cmd "cat ~/.i3/config >> ${1}/usr##share##minos##i3##config"
-        _cmd "sed -i 's:dmenu-countdown.*:dmenu-countdown:' ${1}/usr##share##minos##i3##config"
+        _cmd "printf \"%s\\n\\n\" \"#${file_header}\" > \"${1}\"/etc##i3##config"
+        _cmd "cat ~/.i3/config >> ${1}/etc##i3##config"
+        _cmd "sed -i 's:dmenu-countdown.*:dmenu-countdown:' ${1}/etc##i3##config"
     fi
 
     if _file_or_directory_exist ~/.irssi/; then
         echo
-        _cmd cp -r ~/.irssi/ "${1}"/usr##share##minos##irssi
-        _cmd rm -rf "${1}"/usr##share##minos##irssi/*gpg
-        _cmd rm -rf "${1}"/usr##share##minos##irssi/*.log
-        _cmd rm -rf "${1}"/usr##share##minos##irssi/autobleh*
+        _cmd cp -r ~/.irssi/ "${1}/usr##share##minos##desktop-settings##irssi"
+        _cmd rm -rf "${1}/usr##share##minos##desktop-settings##irssi"/*gpg
+        _cmd rm -rf "${1}/usr##share##minos##desktop-settings##irssi"/*.log
+        _cmd rm -rf "${1}/usr##share##minos##desktop-settings##irssi"/autobleh*
     fi
 
     if _file_or_directory_exist ~/.mplayer/config; then
         echo
-        _cmd "printf \"%s\\n\\n\" \"#${file_header}\" > \"${1}\"/usr##share##minos##mplayer##config"
-        _cmd "cat ~/.mplayer/config >> ${1}/usr##share##minos##mplayer##config"
+        _cmd "printf \"%s\\n\\n\" \"#${file_header}\" > \"${1}\"/etc##mplayer##config"
+        _cmd "cat ~/.mplayer/config >> ${1}/etc##mplayer##config"
     fi
 
     if _file_or_directory_exist ~/.mutt/muttrc; then
         echo
-        _cmd mkdir "${1}"/usr##share##minos##mutt
-        _cmd cp -r ~/.mutt/accounts "${1}"/usr##share##minos##mutt/
-        _cmd "printf \"%s\\n\\n\" \"#${file_header}\" > \"${1}\"/usr##share##minos##mutt/muttrc"
-        _cmd "cat ~/.mutt/muttrc >> ${1}/usr##share##minos##mutt/muttrc"
-        _cmd rm -rf ${1}/usr##share##minos##mutt/cache
-        _cmd rm -rf ${1}/usr##share##minos##mutt/certificates
-        _cmd mv     ${1}/usr##share##minos##mutt/accounts/f* ${1}/usr##share##minos##mutt/accounts/1st_account@domain.tld
-        _cmd mv     ${1}/usr##share##minos##mutt/accounts/c* ${1}/usr##share##minos##mutt/accounts/2nd_account@domain.tld
-        _cmd "sed -i 's:alternates.*:alternates \"alt_1@domain.tld|alt_2@domain.tld\":' ${1}/usr##share##minos##mutt/accounts/1st_account@domain.tld/account"
-        _cmd "sed -i 's:set from.*:set from             = \"Joe Foobar <1st_account@domain.tld>\":' ${1}/usr##share##minos##mutt/accounts/1st_account@domain.tld/account"
-        _cmd "sed -i 's:fc.*@.*mail.com:1st_account@domain.tld:'   ${1}/usr##share##minos##mutt/accounts/1st_account@domain.tld/account"
-        _cmd "sed -i 's,imap\..*:,imap.domain.tld:,'               ${1}/usr##share##minos##mutt/accounts/1st_account@domain.tld/account"
-        _cmd "sed -i 's,imap\..*/\[,imap.domain.tld/\[,'           ${1}/usr##share##minos##mutt/accounts/1st_account@domain.tld/account"
-        _cmd "sed -i 's,smtp:.*:,smtp://1st_account@smtp.domain.ltd:,' ${1}/usr##share##minos##mutt/accounts/1st_account@domain.tld/account"
-        _cmd "sed -i 's,my_.*,my_1st_accountATdomainDOTltd,'       ${1}/usr##share##minos##mutt/accounts/1st_account@domain.tld/account"
-        _cmd "sed -i '/^set status_format/d'                       ${1}/usr##share##minos##mutt/accounts/1st_account@domain.tld/account"
-        _cmd "sed -i 's:^#set status_format:set status_format:'    ${1}/usr##share##minos##mutt/accounts/1st_account@domain.tld/account"
+        _cmd mkdir "${1}/usr##share##minos##desktop-settings##mutt"
+        _cmd cp -r ~/.mutt/accounts "${1}/usr##share##minos##desktop-settings##mutt"
+        _cmd "printf \"%s\\n\\n\" \"#${file_header}\" > \"${1}\"/usr##share##minos##desktop-settings##mutt/muttrc"
+        _cmd "cat ~/.mutt/muttrc >> ${1}/usr##share##minos##desktop-settings##mutt/muttrc"
+        _cmd rm -rf "${1}/usr##share##minos##desktop-settings##mutt/cache"
+        _cmd rm -rf "${1}/usr##share##minos##desktop-settings##mutt/certificates"
+        _cmd mv     "${1}/usr##share##minos##desktop-settings##mutt/accounts/"f* "${1}/usr##share##minos##desktop-settings##mutt/accounts/1st_account@domain.tld"
+        _cmd mv     "${1}/usr##share##minos##desktop-settings##mutt/accounts/"c* "${1}/usr##share##minos##desktop-settings##mutt/accounts/2nd_account@domain.tld"
+        _cmd rm -rf "${1}/usr##share##minos##desktop-settings##mutt/accounts/"*@*.com
+        _cmd "sed -i 's:alternates.*:alternates \"alt_1@domain.tld|alt_2@domain.tld\":' ${1}/usr##share##minos##desktop-settings##mutt/accounts/1st_account@domain.tld/account"
+        _cmd "sed -i 's:set from.*:set from             = \"Joe Foobar <1st_account@domain.tld>\":' ${1}/usr##share##minos##desktop-settings##mutt/accounts/1st_account@domain.tld/account"
+        _cmd "sed -i 's:fc.*@.*mail.com:1st_account@domain.tld:'   ${1}/usr##share##minos##desktop-settings##mutt/accounts/1st_account@domain.tld/account"
+        _cmd "sed -i 's,imap\..*:,imap.domain.tld:,'               ${1}/usr##share##minos##desktop-settings##mutt/accounts/1st_account@domain.tld/account"
+        _cmd "sed -i 's,imap\..*/\[,imap.domain.tld/\[,'           ${1}/usr##share##minos##desktop-settings##mutt/accounts/1st_account@domain.tld/account"
+        _cmd "sed -i 's,smtp:.*:,smtp://1st_account@smtp.domain.ltd:,' ${1}/usr##share##minos##desktop-settings##mutt/accounts/1st_account@domain.tld/account"
+        _cmd "sed -i 's,my_.*,my_1st_accountATdomainDOTltd,'       ${1}/usr##share##minos##desktop-settings##mutt/accounts/1st_account@domain.tld/account"
+        _cmd "sed -i '/^set status_format/d'                       ${1}/usr##share##minos##desktop-settings##mutt/accounts/1st_account@domain.tld/account"
+        _cmd "sed -i 's:^#set status_format:set status_format:'    ${1}/usr##share##minos##desktop-settings##mutt/accounts/1st_account@domain.tld/account"
+        _cmd "sed -i 's,index 2,index 1,'                          ${1}/usr##share##minos##desktop-settings##mutt/muttrc"
+        _cmd "sed -i 's,index 3,index 2,'                          ${1}/usr##share##minos##desktop-settings##mutt/muttrc"
+        _cmd "sed -i 's,set pgp_sign_as.*,#set pgp_sign_as             = 0xFFFFFF,' ${1}/usr##share##minos##desktop-settings##mutt/muttrc"
 
-        _cmd "sed -i 's:set from.*:set from             = \"Joe Foobar <2nd_account@domain.tld>\":' ${1}/usr##share##minos##mutt/accounts/2nd_account@domain.tld/account"
-        _cmd "sed -i 's:chi.*@.*mail.com:2nd_account@domain.tld:'  ${1}/usr##share##minos##mutt/accounts/2nd_account@domain.tld/account"
-        _cmd "sed -i 's,imap\..*:,imap.domain.tld:,'               ${1}/usr##share##minos##mutt/accounts/2nd_account@domain.tld/account"
-        _cmd "sed -i 's,imap\..*/\[,imap.domain.tld/\[,'           ${1}/usr##share##minos##mutt/accounts/2nd_account@domain.tld/account"
-        _cmd "sed -i 's,smtp:.*:,smtp://2nd_account@smtp.domain.ltd:,' ${1}/usr##share##minos##mutt/accounts/2nd_account@domain.tld/account"
-        _cmd "sed -i 's,my_.*,my_2nd_accountATdomainDOTltd,'       ${1}/usr##share##minos##mutt/accounts/2nd_account@domain.tld/account"
+        _cmd "sed -i 's:set from.*:set from             = \"Joe Foobar <2nd_account@domain.tld>\":' ${1}/usr##share##minos##desktop-settings##mutt/accounts/2nd_account@domain.tld/account"
+        _cmd "sed -i 's:chi.*@.*mail.com:2nd_account@domain.tld:'  ${1}/usr##share##minos##desktop-settings##mutt/accounts/2nd_account@domain.tld/account"
+        _cmd "sed -i 's,imap\..*:,imap.domain.tld:,'               ${1}/usr##share##minos##desktop-settings##mutt/accounts/2nd_account@domain.tld/account"
+        _cmd "sed -i 's,imap\..*/\[,imap.domain.tld/\[,'           ${1}/usr##share##minos##desktop-settings##mutt/accounts/2nd_account@domain.tld/account"
+        _cmd "sed -i 's,smtp:.*:,smtp://2nd_account@smtp.domain.ltd:,' ${1}/usr##share##minos##desktop-settings##mutt/accounts/2nd_account@domain.tld/account"
+        _cmd "sed -i 's,my_.*,my_2nd_accountATdomainDOTltd,'       ${1}/usr##share##minos##desktop-settings##mutt/accounts/2nd_account@domain.tld/account"
 
-        _cmd "sed -i 's,my_fc.*=,my_1st_accountATdomainDOTltd=,'   ${1}/usr##share##minos##mutt/muttrc"
-        _cmd "sed -i 's,my_chi.*=,my_2nd_accountATdomainDOTltd=,'  ${1}/usr##share##minos##mutt/muttrc"
-        _cmd "sed -i 's:fc.*@.*mail.com:1st_account@domain.tld:'   ${1}/usr##share##minos##mutt/muttrc"
-        _cmd "sed -i 's:chi.*@.*mail.com:2nd_account@domain.tld:'  ${1}/usr##share##minos##mutt/muttrc"
-        _cmd "printf \"%s\\n%s\" \"1st_account@domain.tld: passwd\" \"2nd_account@domain.tld: passwd\" > \"${1}\"/usr##share##minos##mutt/accounts/passwd.gpg"
+        _cmd "sed -i 's,my_fc.*=,my_1st_accountATdomainDOTltd=,'   ${1}/usr##share##minos##desktop-settings##mutt/muttrc"
+        _cmd "sed -i 's,my_chi.*=,my_2nd_accountATdomainDOTltd=,'  ${1}/usr##share##minos##desktop-settings##mutt/muttrc"
+        _cmd "sed -i 's:fc.*@.*mail.com:1st_account@domain.tld:'   ${1}/usr##share##minos##desktop-settings##mutt/muttrc"
+        _cmd "sed -i 's:chi.*@.*mail.com:2nd_account@domain.tld:'  ${1}/usr##share##minos##desktop-settings##mutt/muttrc"
+        _cmd "sed -i 's:^source.*:source ~/.mutt/accounts/1st_account@domain.tld/account:' ${1}/usr##share##minos##desktop-settings##mutt/muttrc"
+        _cmd "sed -i '/javier/d'                                   ${1}/usr##share##minos##desktop-settings##mutt/muttrc"
+        _cmd "printf \"%s\\n%s\" \"1st_account@domain.tld: passwd\" \"2nd_account@domain.tld: passwd\" > \"${1}\"/usr##share##minos##desktop-settings##mutt/accounts/passwd.gpg"
     fi
 
     if _file_or_directory_exist ~/.ncmpcpp/config; then
         echo
-        _cmd "printf \"%s\\n\\n\" \"#${file_header}\" > \"${1}\"/usr##share##minos##ncmpcpp##config"
-        _cmd "cat ~/.ncmpcpp/config >> ${1}/usr##share##minos##ncmpcpp##config"
+        _cmd "printf \"%s\\n\\n\" \"#${file_header}\" > \"${1}\"/usr##share##minos##desktop-settings##ncmpcpp##config"
+        _cmd "cat ~/.ncmpcpp/config >> ${1}/usr##share##minos##desktop-settings##ncmpcpp##config"
     fi
 
-    if _file_or_directory_exist ~/.urxvt/; then
-        echo
-        _cmd cp -r ~/.urxvt/ ${1}/usr##share##minos##urxvt
-        _cmd rm -rf          ${1}/usr##share##minos##urxvt/urxvtd*
-    fi
+    for urxvt_script in ~/.urxvt/*; do
+        case "${urxvt_script}" in
+            *urxvtd*) continue ;;
+        esac
+
+        if _file_or_directory_exist "${urxvt_script}"; then
+            echo
+            _cmd cp -r "${urxvt_script}" "${1}/usr##lib##urxvt##perl##$(basename "${urxvt_script}")"
+        fi
+    done
 
     if _file_or_directory_exist ~/.compton.conf; then
         echo
-        _cmd "printf \"%s\\n\\n\" \"#${file_header}\" > \"${1}\"/usr##share##minos##compton.conf"
-        _cmd "cat ~/.compton.conf >> ${1}/usr##share##minos##compton.conf"
+        _cmd "printf \"%s\\n\\n\" \"#${file_header}\" > \"${1}\"/etc##xdg##compton.conf"
+        _cmd "cat ~/.compton.conf >> ${1}/etc##xdg##compton.conf"
     fi
 
     if _file_or_directory_exist ~/.slim.conf; then
@@ -226,6 +243,43 @@ _create_minos_default_desktop_settings() {
         _cmd "sed -i 's:^default_user.*:default_user        muser:g' ${1}/etc##slim.conf"
     fi
 
+    cat > "${1}/usr##share##debconf##confmodule" << 'E=O=F'
+#!/bin/sh
+#While abusing apt some maintainer postinst scripts fail to
+#run debconf due to missing file descriptors, eg:
+#https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=439763
+#http://help-cfengine.narkive.com/foRdaZbB/shellcommands-3-bad-file-descriptor
+#https://bugs.launchpad.net/ubuntu/+source/cloud-init/+bug/961142
+
+#replace db_* functions as a nasty workaround
+db_capb ()               { return 0; }
+db_set ()                { return 0; }
+db_reset ()              { return 0; }
+db_title ()              { return 0; }
+db_input ()              { return 0; }
+db_beginblock ()         { return 0; }
+db_endblock ()           { return 0; }
+db_go ()                 { return 0; }
+db_get ()                { return 0; }
+db_register ()           { return 0; }
+db_unregister ()         { return 0; }
+db_subst ()              { return 0; }
+db_fset ()               { return 0; }
+db_fget ()               { return 0; }
+db_purge ()              { return 0; }
+db_metaget ()            { return 0; }
+db_version ()            { return 0; }
+db_clear ()              { return 0; }
+db_settitle ()           { return 0; }
+db_previous_module ()    { return 0; }
+db_info ()               { return 0; }
+db_progress ()           { return 0; }
+db_data ()               { return 0; }
+db_x_loadtemplatefile () { return 0; }
+db_text ()               { return 0; }
+db_stop ()               { return 0; }
+E=O=F
+
     _cmd "find ${1} -type f -exec sed -i '/local_changes$/d' {} +"
 
     printf "\\n%s\\n" "[+] New minos desktop settings generated at: ${1}/"
@@ -234,7 +288,7 @@ _create_minos_default_desktop_settings() {
     cat > minos-desktop-settings/README.md << 'E=O=F'
 ## About
 
-This repository contain default desktop minos settings, some of the changes affect:
+This repository contain the settings that give to minos its identify, it targets desktop environments, some of the changes are:
 
 - Skel default files:
  - `.Xdefault`: default theme and urxvt options
@@ -253,6 +307,7 @@ This repository contain default desktop minos settings, some of the changes affe
  - `irssi`: default theme
  - `mutt`: multiple account email settings template
  - `urxvt`: common plugins and default theme
+ - `minos`: autostart/statusbar/help settings
 
 ## Quick start
 
@@ -281,7 +336,7 @@ E=O=F
 for arg; do #parse options
     case "${arg}" in
         -h|--help) _usage && exit ;;
-        -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${arg}'" >&2
+        -*) printf "%s\\n" "${progname}: unrecognized option '${arg}'" >&2
             _usage >&2; exit 1 ;;
         *) target_directory="${arg}"
     esac

@@ -10,9 +10,10 @@ trap _cleanup 15 #trap ctrl-c
 
 file_header="This file is part of the minos-core-settings package"
 total_errors="0"
+progname="$(expr "${0}" : '.*/\([^/]*\)')"
 
 _usage() {
-    printf "%b\\n" "Usage: $(expr "${0}" : '.*/\([^/]*\)') [directory]"
+    printf "%b\\n" "Usage: ${progname} [directory]"
     printf "%b\\n" "minos core settings creator."
     printf "\\n"
     printf "%s\\n" "  -h, --help   show this help message and exit"
@@ -252,7 +253,7 @@ E=O=F
 for arg; do #parse options
     case "${arg}" in
         -h|--help) _usage && exit ;;
-        -*) printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): unrecognized option '${arg}'" >&2
+        -*) printf "%s\\n" "${progname}: unrecognized option '${arg}'" >&2
             _usage >&2; exit 1 ;;
         *) target_directory="${arg}"
     esac
