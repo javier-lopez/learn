@@ -1,0 +1,263 @@
+#!/bin/sh
+#create jekyll galleries
+#usage: create-jekyll-gallery DIRECTORY
+
+#example:
+# $ create-jekyll-gallery .
+#a thumbnail/ directory is generated with generated thumbnails
+#a html/ directory is generated with recursive galleries
+progname="$(expr "${0}" : '.*/\([^/]*\)')"
+
+_usage() {
+    printf "%s\\n" "Usage: ${progname} [directory]"
+    printf "%s\\n" "create jekyll powered galleries."
+    printf "\\n"
+    printf "%s\\n" "  -h, --help     show this help message and exit"
+    printf "%s\\n" "  -j, --jekyll   only generate jekyll txt, skip thumbnail generation"
+}
+
+_realpath() {
+    [ -z "${1}" ] && return 1
+
+    #start with the file name (sans the trailing slash)
+    _realpath__path="${1%/}"
+
+    #if we stripped off the trailing slash and were left with nothing, that means we're in the root directory
+    [ -z "${_realpath__path}" ] && _realpath__path="/"
+
+    #get the basename of the file (ignoring '.' & '..', because they're really part of the path)
+    _realpath__file_basename="${_realpath__path##*/}"
+    if [ X"${_realpath__file_basename}" = X"." ] || [ X"${_realpath__file_basename}" = X".." ]; then
+        _realpath__file_basename=""
+    fi
+
+    #extracts the directory component of the full path, if it's empty then assume '.'
+    _realpath__directory="${_realpath__path%${_realpath__file_basename}}"
+    [ -z "${_realpath__directory}" ] && _realpath__directory="."
+
+    #attempt to change to the directory
+    if ! \cd "${_realpath__directory}" >/dev/null 2>/dev/null; then
+        return 1
+    fi
+
+    #get the absolute path of the current directory & change back to previous directory
+    _realpath__abs_path="$(pwd -P)"
+    \cd "-" >/dev/null 2>/dev/null
+
+    #append base filename to absolute path
+    if [ X"${_realpath__abs_path}" = X"/" ]; then
+        _realpath__abs_path="${_realpath__abs_path}${_realpath__file_basename}"
+    else
+        _realpath__abs_path="${_realpath__abs_path}/${_realpath__file_basename}"
+    fi
+
+    printf "%s\\n" "${_realpath__abs_path}"
+}
+
+_1stletter_upper() {
+    [ -z "${1}" ] && return 1
+    _1stletter__substr="${1#?}"
+    _1stletter__char="${1%$_1stletter__substr}"
+
+    _1stletter__charupper="$(printf "%s\\n" "${_1stletter__char}" | \
+        tr 'abcdefghijklmnopqrstuvwxyz' 'ABCDEFGHIJKLMNOPQRSTUVWXYZ')"
+
+    printf "%s\\n" "${_1stletter__charupper}${_1stletter__substr}"
+}
+
+_check_deps() {
+    command -v "convert" >/dev/null 2>&1 || printf "%s\\n" "'convert' is required to run this program, exiting" >&2
+}
+
+_generate_title_url() {
+    #input: $1 => /data/images/photos/travel/html/travel/southamerica/atacama.md
+    #input: $2 => /data/images/photos/travel
+    #output: <a href="/travel.html">travel</a> / <a href="/travel/southamerica.html">southamerica</a> / atacama
+
+    #real:   <a href="//travel/southamerica/santa-fe-(argentina).md.html"></a>
+
+    #/travel/southamerica/atacama.md
+    _gturl__base="$(printf "%s\\n" "${1}" | sed "s|${2}/html||g")"
+    _gturl__depth="$(printf "%s\\n" "${_gturl__base}" | tr -d -c '/' | wc -c)"
+
+    _gturl__i="0"; for _gturl__suburl in $(printf "%s\\n" "${_gturl__base}" | tr '/' '\n'); do
+        _gturl__i="$(expr "${_gturl__i}" + 1)"
+
+        case "${_gturl__i}" in
+            #first
+            1) _gturl__result="<a href=\"/${_gturl__suburl}.html\">${_gturl__suburl}</a> /"
+               _gturl__subbase="/${_gturl__suburl}" ;;
+            "${_gturl__depth}") #last
+                _gturl__current="$(_1stletter_upper "${_gturl__suburl%.md}")"
+                _gturl__current="$(printf "%s\\n" "${_gturl__current}" | sed 's|-| |g')"
+                _gturl__result="${_gturl__result} ${_gturl__current}" ;;
+            #middle
+            *) _gturl__result="${_gturl__result} <a href=\"${_gturl__subbase}/${_gturl__suburl}.html\">${_gturl__suburl}</a> /"
+               _gturl__subbase="${_gturl__subbase}/${_gturl__suburl}"
+               ;;
+        esac
+    done
+
+    printf "%s\\n" "${_gturl__result}"
+}
+
+_index_template() {
+    [ -z "${1}" ] && return 1
+    title="$(basename "${1}")"; title="$(_1stletter_upper ${title%.md})"
+    title="$(printf "%s\\n" "${title}" | sed 's|-| |g')"
+    printf "%s\\n" \
+'---
+layout: default
+title: "TITLE"
+---
+
+<h1 class="page" style="padding-left:0%;">TITLE</h1>
+<div class="page">
+    <div class="autowide">
+        <div class="autocolumn">
+            <p>COLUMN_1</p>
+        </div>
+
+        <div class="autocolumn">
+            <p>COLUMN_2</p>
+        </div>
+
+        <div class="autocolumn">
+            <p>COLUMN_3</p>
+        </div>
+
+        <div class="autocolumn">
+            <p>COLUMN_4</p>
+        </div>
+    </div>
+</div>' | sed "s/TITLE/${title}/g"
+}
+
+_gallery_template() {
+    [ -z "${2}" ] && return 1
+
+    title="$(basename "${1}")"; title="$(_1stletter_upper ${title%.md})"
+    title="$(printf "%s\\n" "${title}" | sed 's|-| |g')"
+    title_url="$(_generate_title_url "${1}" "${2}")"
+
+    printf "%s\\n" \
+'---
+layout: default
+title: "TITLE"
+---
+
+<h1 class="page" style="padding-left:0%;">PARENT_URL</h1>
+<div class="page">
+    <div class="autowide">
+        <div class="autocolumn">
+            <p>COLUMN_1</p>
+        </div>
+
+        <div class="autocolumn">
+            <p>COLUMN_2</p>
+        </div>
+
+        <div class="autocolumn">
+            <p>COLUMN_3</p>
+        </div>
+
+        <div class="autocolumn">
+            <p>COLUMN_4</p>
+        </div>
+    </div>
+</div>' | sed "s|TITLE|${title}|g;s|PARENT_URL|${title_url}|g"
+}
+
+_new_entry_index() {
+    #$1 => index file
+    #$2 => entry string
+    [ -z "${2}" ] && return 1
+    [ -z "${_neindex__counter}" ] && _neindex__counter="0"
+    _neindex__counter="$(expr "${_neindex__counter}" + 1)"
+    _neindex__entry="$(_1stletter_upper "$(printf "%s\\n" "${2}" | sed 's|-| |g')")"
+
+    printf "%s\\n" "index => ${1} add '${2}'"
+
+    mkdir -p "$(dirname "${1}")"
+    [ ! -f "${1}" ] && _index_template "${1}" > "${1}"
+
+    _neindex__basename_index_file="$(basename "${1}")"
+    _neindex__basename_index_file="${_neindex__basename_index_file%.md}"
+
+    sed -i "s|<p>COLUMN_${_neindex__counter}</p>|<p><a href=\"./${_neindex__basename_index_file}/${2}.html\">${_neindex__entry}</a></p>\n            <p>COLUMN_${_neindex__counter}</p>|g" "${1}"
+    [ X"${_neindex__counter}" = X"4" ] && _neindex__counter="0"
+}
+
+_new_entry_gallery() {
+    #$1 => gallery file
+    #$2 => original file
+    #$3 => thumbnail file
+    #$4 => base dir
+    [ -z "${4}" ] && return 1
+    [ -z "${_negallery__counter}" ] && _negallery__counter="0"
+    _negallery__counter="$(expr "${_negallery__counter}" + 1)"
+
+    printf "%s\\n" "gallery => ${1} add '${2}' with thumbnail in ${3}, basedir: ${4}"
+
+    mkdir -p "$(dirname "${1}")"
+    [ ! -f "${1}" ] && _gallery_template "${1}" "${4}" > "${1}"
+
+    thumbnail_dirfile="${3%thumbnail-*}"
+    mkdir -p "${thumbnail_dirfile}"
+    [ -z "${only_jekyll}" ] && convert -thumbnail 200 "${2}" "${3}" &
+
+    _negallery__original="http://f.javier.io/public/img/$(printf  "%s\\n" "${2}" | sed "s|$4/||g")"
+    _negallery__thumbnail="http://f.javier.io/public/img/$(printf "%s\\n" "${3}" | sed "s|$4/||g")"
+
+    sed -i "s|<p>COLUMN_${_negallery__counter}</p>|<p><strong><a href=\"${_negallery__original}\"><img src=\"${_negallery__thumbnail}\"/></a></strong></p>\n            <p>COLUMN_${_negallery__counter}</p>|g" "${1}"
+    [ X"${_negallery__counter}" = X"4" ] && _negallery__counter="0"
+}
+
+_create_jekyll_gallery() {
+    for dir in "${@}"; do
+        dir="$(_realpath "${dir}")"; dir="${dir%/}"
+        thumbnails_path="${dir}/thumbnails"
+        html_path="${dir}/html"
+
+        rm -rf "${thumbnails_path}"; mkdir -p "${thumbnails_path}"
+        rm -rf "${html_path}";       mkdir -p "${html_path}"
+
+        directories_found="0"; files_found="0"
+        for file in $(find "${dir}" 2>/dev/null); do
+            [ X"${file}" = X"$(pwd)" ] && continue
+            fake_basename_file="${file#$dir/}"
+            fake_basename_file_depth="$(printf "$fake_basename_file" | tr -d -c '/'  | wc -c)"
+            [ "${fake_basename_file_depth}" -lt 1 ] && continue
+            basename_file="$(basename "${file}")"
+            #printf "%s " "${fake_basename_file_depth}"
+
+            if [ -d "${file}" ]; then
+                directories_found="$(expr "${directories_found}" + 1)"
+                index_file="${html_path}/${fake_basename_file%/$basename_file}.md"
+                [ X"${directories_found}" = X"1" ] && rm -rf "${index_file}"
+                _new_entry_index "${index_file}" "${basename_file}"
+            elif [ -f "${file}" ]; then
+                files_found="$(expr "${files_found}" + 1)"
+                gallery_file="${html_path}/${fake_basename_file%/$basename_file}.md"
+                thumbnail_file="${thumbnails_path}/${fake_basename_file%/$basename_file}/thumbnail-${basename_file}"
+                [ X"${files_found}" = X"1" ] && rm -rf "${gallery_file}"
+                _new_entry_gallery "${gallery_file}" "${file}" "${thumbnail_file}" "${dir}"
+            fi
+        done
+
+        find "${html_path}" -name "*.md" -exec sed -E -i '/COLUMN|THUMBNAIL/d' '{}' ';'
+    done
+}
+
+[ -z "${1}" ] && _usage >&2
+
+for arg in "${@}"; do #parse options
+    case "${arg}" in
+        -h|--help) _usage && exit ;;
+        -j|--jekyll) only_jekyll="1" && shift;;
+        -*) printf "%s\\n" "${progname}: unrecognized option '${arg}'" >&2
+            _usage >&2; exit 1 ;;
+    esac
+done
+
+_check_deps && _create_jekyll_gallery "${@}"

@@ -1,0 +1,24 @@
+#!/bin/sh
+
+[ -z "${1}" ] && exit 1
+
+for file in "${1}"/*; do
+    if [ -d "${file}" ]; then
+        dir="$file"
+        _i=1; for subfile in "${dir}"/*; do
+            [ ! -f "${subfile}" ] && continue
+            extention="$(basename "${subfile}")"; extention="${extention##*.}"
+            extention="$(printf "%s\\n" "${extention}" | \
+                tr 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 'abcdefghijklmnopqrstuvwxyz')"
+            renamed_file="$(basename "$(dirname "${subfile}")")/$(basename "${dir}")-$(printf "%5d\\n" "$_i" | sed 's: :0:g').${extention}"
+            [ X"${subfile}" = X"${renamed_file}" ] && continue
+            echo mv "${subfile}" "${renamed_file}"
+            mv "${subfile}" "${renamed_file}"
+            _i="$(expr "${_i}" + 1)"
+        done
+    elif [ -f "${file}" ]; then
+        mkdir -p "${1}"/misc
+        echo mv "${file}" "${1}"/misc
+        mv "${file}" "${1}"/misc
+    fi
+done
