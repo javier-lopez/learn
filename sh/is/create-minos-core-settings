@@ -62,8 +62,8 @@ _create_minos_default_core_settings() {
         _cmd "sed -n '/{2/,/^#}2/p;/^#}2/q' ~/.bashrc  | head -n -1 | sed 1d >> ${1}/etc##profile.d##minos-bash.sh"
         _cmd "echo >> ${1}/etc##profile.d##minos-bash.sh"
         _cmd "sed -n '/{3/,/^#}3/p;/^#}3/q' ~/.bashrc | head -n -1 | sed 1d >> ${1}/etc##profile.d##minos-bash.sh"
-        _cmd "sed -i '/^export PATH/d' ${1}/etc##profile.d##minos-bash.sh"
-        _cmd "sed -i 's:^#export PATH:export PATH:' ${1}/etc##profile.d##minos-bash.sh"
+        _cmd "sed -i 's:^#export _JAVA:export _JAVA:' ${1}/etc##profile.d##minos-bash.sh"
+        _cmd "sed -i '/tmux/d' ${1}/etc##profile.d##minos-bash.sh"
         _cmd "sed -i '/GPGKEY/d' ${1}/etc##profile.d##minos-bash.sh"
         _cmd "sed -i '/^#gpg/d' ${1}/etc##profile.d##minos-bash.sh"
         _cmd "sed -i '/^#random vars/d' ${1}/etc##profile.d##minos-bash.sh"
@@ -115,6 +115,7 @@ _create_minos_default_core_settings() {
     echo
     _cmd "printf \"%s\\n\\n\" \"#${file_header}\" > \"${1}\"/etc##sudoers.d##minos-core"
     _cmd "printf \"%s\\n\" \"Defaults	insults,timestamp_timeout=60\" >> \"${1}\"/etc##sudoers.d##minos-core"
+    _cmd "printf \"%s\\n\" \"Defaults	!tty_tickets\" >> \"${1}\"/etc##sudoers.d##minos-core"
     _cmd "echo >> ${1}/etc##sudoers.d##minos-core"
     _cmd "printf \"%s\\n\" \"Cmnd_Alias MINOS_SESSION=/usr/sbin/pm-suspend,/usr/sbin/pm-hibernate,/sbin/shutdown\" >> \"${1}\"/etc##sudoers.d##minos-core"
     _cmd "printf \"%s\\n\" \"Cmnd_Alias MINOS_BACKUP=/usr/bin/backup_remote_rsync\" >> \"${1}\"/etc##sudoers.d##minos-core"
@@ -195,6 +196,43 @@ EOF
         _cmd "sed -i '/^\[user\]$/,/^$/d'                   ${1}/etc##gitconfig"
         _cmd "sed -i '/^\[github\]$/,/^$/d'                 ${1}/etc##gitconfig"
     fi
+
+    cat > "${1}/usr##share##debconf##confmodule" << 'E=O=F'
+#!/bin/sh
+#While abusing apt some maintainer postinst scripts fail to
+#run debconf due to missing file descriptors, eg:
+#https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=439763
+#http://help-cfengine.narkive.com/foRdaZbB/shellcommands-3-bad-file-descriptor
+#https://bugs.launchpad.net/ubuntu/+source/cloud-init/+bug/961142
+
+#replace db_* functions as a nasty workaround
+db_capb ()               { return 0; }
+db_set ()                { return 0; }
+db_reset ()              { return 0; }
+db_title ()              { return 0; }
+db_input ()              { return 0; }
+db_beginblock ()         { return 0; }
+db_endblock ()           { return 0; }
+db_go ()                 { return 0; }
+db_get ()                { return 0; }
+db_register ()           { return 0; }
+db_unregister ()         { return 0; }
+db_subst ()              { return 0; }
+db_fset ()               { return 0; }
+db_fget ()               { return 0; }
+db_purge ()              { return 0; }
+db_metaget ()            { return 0; }
+db_version ()            { return 0; }
+db_clear ()              { return 0; }
+db_settitle ()           { return 0; }
+db_previous_module ()    { return 0; }
+db_info ()               { return 0; }
+db_progress ()           { return 0; }
+db_data ()               { return 0; }
+db_x_loadtemplatefile () { return 0; }
+db_text ()               { return 0; }
+db_stop ()               { return 0; }
+E=O=F
 
     printf "\\n%s\\n" "[+] New minos core settings generated at: ${1}/"
     [ "${total_errors}" -gt "0" ] && printf "%s\\n" "[-] "${total_errors}" errors were found, see above to find more details" && return 1 || :
