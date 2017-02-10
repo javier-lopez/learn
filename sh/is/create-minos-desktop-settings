@@ -135,6 +135,13 @@ _create_minos_default_desktop_settings() {
         _cmd cp -r ~/.config/pcmanfm/main "${1}/etc##xdg##pcmanfm##main"
     fi
 
+    if _file_or_directory_exist ~/.gtkrc-2.0; then
+        echo
+        _cmd "printf \"%s\\n\\n\" \"# ${file_header}\" > \"${1}\"/usr##share##minos##desktop-settings##gtkrc-2.0"
+        _cmd "cat ~/.gtkrc-2.0 >> ${1}/usr##share##minos##desktop-settings##gtkrc-2.0"
+        _cmd "sed -i 's:^include.*:include \"/home/muser/.gtkrc-2.0.mine\":' ${1}/usr##share##minos##desktop-settings##gtkrc-2.0"
+    fi
+
     if _file_or_directory_exist ~/.config/Trolltech.conf; then
         echo
         _cmd cp -r ~/.config/Trolltech.conf "${1}/etc##xdg##Trolltech.conf"
