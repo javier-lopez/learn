@@ -57,9 +57,10 @@ _create_minos_default_desktop_settings() {
 
     if _file_or_directory_exist ~/.minos/autostart; then
         echo
-        _cmd "printf \"%s\\n%s\\n\" \"#!/bin/sh\" \"#${file_header}\" > \"${1}\"/etc##minos##autostart"
+        _cmd "printf \"%s\\n\\n%s\\n\" \"#!/bin/sh\" \"#${file_header}\" > \"${1}\"/etc##minos##autostart"
         _cmd "tail -n+2 ~/.minos/autostart >> ${1}/etc##minos##autostart"
         _cmd "chmod +x ${1}/etc##minos##autostart"
+        _cmd "sed -i '/#local$/d' ${1}/etc##minos##autostart"
     fi
 
     if _file_or_directory_exist ~/.minos/config; then
