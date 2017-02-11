@@ -70,9 +70,11 @@ _create_minos_default_desktop_settings() {
         _cmd "sed -i '/HOME/d' ${1}/etc##minos##config"
         _cmd "sed -i '/connman/d' ${1}/etc##minos##config"
         #_cmd "sed -i '/^m-battery-config/d' ${1}/etc##minos##config"
-        #_cmd "sed -i 's:^#m-battery-config:m-battery-config:' ${1}/etc##minos##config"
-        _cmd "sed -i 's:^#wallpaper:wallpaper:' ${1}/etc##minos##config"
-        _cmd "sed -i 's:^#lock-wallpaper:lock-wallpaper:' ${1}/etc##minos##config"
+        _cmd "sed -i '/^#m-battery-config/d' ${1}/etc##minos##config"
+        _cmd "sed -i '/^#wallpaper/d' ${1}/etc##minos##config"
+        _cmd "sed -i '/^#lock-wallpaper/d' ${1}/etc##minos##config"
+        _cmd "sed -i 's:^wallpaper.*:wallpaper       /usr/share/minos/wallpapers/sunlight.png:' ${1}/etc##minos##config"
+        _cmd "sed -i 's:^lock-wallpaper.*:lock-wallpaper  /usr/share/minos/wallpapers/locked.png:' ${1}/etc##minos##config"
     fi
 
     if _file_or_directory_exist ~/.minos/help; then
