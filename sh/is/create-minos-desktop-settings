@@ -109,6 +109,9 @@ _create_minos_default_desktop_settings() {
     if _file_or_directory_exist ~/.local/share/applications/mimeapps.list; then
         echo
         _cmd cp ~/.local/share/applications/mimeapps.list "${1}/usr##share##minos##desktop-settings##applications-mimeapps.list"
+        _cmd "sed -i 's:;userapp-.*::'  ${1}/usr##share##minos##desktop-settings##applications-mimeapps.list"
+        _cmd "sed -i 's:=userapp-.*:=:' ${1}/usr##share##minos##desktop-settings##applications-mimeapps.list"
+        _cmd "sed -i '/=$/d' ${1}/usr##share##minos##desktop-settings##applications-mimeapps.list"
     fi
 
     if _file_or_directory_exist ~/.Xdefaults; then
@@ -288,6 +291,40 @@ db_data ()               { return 0; }
 db_x_loadtemplatefile () { return 0; }
 db_text ()               { return 0; }
 db_stop ()               { return 0; }
+E=O=F
+
+    cat > "${1}/etc##polkit-1##localauthority##50-local.d##org.freedesktop.consolekit.pkla" << 'E=O=F'
+[Restart]
+Identity=unix-group:sudo
+Action=org.freedesktop.consolekit.system.restart
+ResultAny=yes
+ResultInactive=yes
+ResultActive=yes
+
+[Shutdown]
+Identity=unix-group:sudo
+Action=org.freedesktop.consolekit.system.stop
+ResultAny=yes
+ResultInactive=yes
+ResultActive=yes
+E=O=F
+
+    cat > "${1}/etc##X11##Xsession.d##05minos-noerrfile" << 'E=O=F'
+# This is a -*- shell-script -*- fragment called by /etc/X11/Xsession
+
+# Redirect all errors to /dev/null instead of $ERRFILE
+# (~/.xsession-errors by default), to avoid filling up users home
+# directory with error messages.  Allow the user to disable this by
+# creating ~/.xsession-errors-enable
+
+if [ ! -f "$HOME/.xsession-errors-enable" ] ; then
+  grep -ri "xsession-errors-enable" /etc/X11/Xsession.d/ 2>/dev/null | \
+      grep -v 05minos-noerrfile >/dev/null 2>&1 && exit
+  # Report the change to the log file before switching
+  echo "info: Redirecting xsession messages to /dev/null."
+  echo "info: touch '$HOME/.xsession-errors-enable' to disable this."
+  exec >> /dev/null 2>&1
+fi
 E=O=F
 
     _cmd "find ${1} -type f -exec sed -i '/local_changes$/d' {} +"
