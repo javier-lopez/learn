@@ -6,7 +6,8 @@
 from="No reply <noreply@$(hostname -f)>"
 subject="Automated mail from $(hostname -f)"
 to=""
-api="" #mailgun api, required
+api=""    #mailgun api, required
+domain="" #mailgun registered domain, required
 
 progname="$(expr "${0}" : '.*/\([^/]*\)')"
 
@@ -15,6 +16,7 @@ _usage() {
     printf "%s\\n" "Send emails using mailgun infraestructure."
     printf "%s\\n"
     printf "%s\\n" "  -a, --api       mailgun api"
+    printf "%s\\n" "  -d, --domain    mailgun registered domain"
     printf "%s\\n" "  -f, --from      from header"
     printf "%s\\n" "  -s, --subject   subject header"
     printf "%s\\n" "  -c, --config    use FILE instead of ~/.mailgun"
@@ -42,17 +44,25 @@ _loadconf() {
 }
 
 _mailgun() {
-    [ -z "${5}" ] && return 1
+    [ -z "${6}" ] && return 1
 
     _mailgun__api="${1}";     shift
+    _mailgun__domain="${1}";  shift
     _mailgun__from="${1}";    shift
     _mailgun__to="${1}";      shift
     _mailgun__subject="${1}"; shift
     _mailgun__msg="${*}"
-    curl -s --user "${_mailgun__api}" \
-         -G https://api.mailgun.net/v2/correo.io/messages \
-         -F from="${_mailgun__from}" -F to="${_mailgun__to}" \
-         -F subject="${_mailgun__subject}" -F text="${_mailgun__msg}"
+    _mailgun__reply="$(curl -s --user "${_mailgun__api}"            \
+         -G https://api.mailgun.net/v2/${_mailgun__domain}/messages \
+         -F from="${_mailgun__from}" -F to="${_mailgun__to}"        \
+         -F subject="${_mailgun__subject}" -F text="${_mailgun__msg}" 2>&1)"
+    _mailgun__status="$?"
+
+    if ! printf "%s\\n" "${_mailgun__reply}" | grep "Queued. Thank you." >/dev/null 2>&1; then
+        printf "%s\\n" "${_mailgun__reply}" >&2
+    fi
+
+    return "${_mailgun__status}"
 }
 
 if [ ! -t 0 ]; then
@@ -66,6 +76,11 @@ for arg in "${@}"; do #parse options
     case "${arg}" in
         -a|--api) if [ "${#}" -gt "1" ]; then
                      shift; api="${1}"; shift
+                  else
+                     _die "Option '${arg}' requires a parameter"
+                  fi ;;
+        -d|--domain) if [ "${#}" -gt "1" ]; then
+                     shift; domain="${1}"; shift
                   else
                      _die "Option '${arg}' requires a parameter"
                   fi ;;
@@ -111,11 +126,13 @@ else
     _loadconf "${config}"
 fi
 
+#required vars
 [ "${#api}" -ne "40" ] && \
     _die "Specify a valid mailgun api and try again (the api is 40 characters long)"
+[ -z "${domain}" ] && _die "Specify a registered domain on mailgun"
 
 if ! command -v "curl" >/dev/null 2>&1; then
     _die "install 'curl' to run this program"
 fi
 
-_mailgun "${api}" "${from}" "${to}" "${subject}" "${msg}"
+_mailgun "${api}" "${domain}" "${from}" "${to}" "${subject}" "${msg}"
