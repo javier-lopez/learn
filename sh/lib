@@ -1433,6 +1433,25 @@ _verbose() { #print a message when in verbose mode
 #VERBOSE=1 _verbose "hello" # print verbose
 #=================================================================
 
+_virt_what() { #print used virtualization system
+    if [ -d /proc/vz ] && [ ! -d /proc/bc ]; then
+        printf "openvz"
+    elif grep 'UML' /proc/cpuinfo >/dev/null 2>&1; then
+        printf "uml"
+    elif [ -f /proc/xen/capabilities ]; then
+        printf "xen"
+    elif grep 'QEMU' /proc/cpuinfo >/dev/null 2>&1; then
+        printf "qemu"
+    elif grep 'Hypervisor detected' /var/log/dmesg >/dev/null 2>&1; then
+        awk '/Hypervisor detected/{print tolower($NF); exit;}' /var/log/dmesg
+    else
+        return 1
+    fi
+}
+#==================================================== Example ====
+#_virt_what # print virt tech used or return -1 if none
+#=================================================================
+
 _whereis() { #whereis portable version
     command -v "${1}" 2>/dev/null || return 1
 }
