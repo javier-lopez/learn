@@ -41,7 +41,7 @@ if __name__ == "__main__":
         team = sys.argv[1]
     else:
         team = 'ubuntumembers'
-    
+
     home      = expanduser("~")
     cachedir  = home + "/.launchpadlib/cache/"
     launchpad = Launchpad.login_anonymously('just testing', 'production', cachedir)
