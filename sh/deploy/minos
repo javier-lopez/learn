@@ -5,23 +5,6 @@ trap _cleanup INT QUIT #trap ctrl-c
 updates="http://minos.io/s"
 liner="$ sh <(wget -qO- minos.io/s)"
 
-#minos_core="minos-core" #same as meta-package
-minos_core="git vim-nox tmux mosh wcd htop curl bc rsync ncurses-bin gdebi-core
-ncurses-term command-not-found bash-completion libpam-captcha exuberant-ctags
-silversearcher-ag bash-minos-settings minos-tools-extra minos-core-settings"
-
-#minos_desktop="minos-desktop" #same as meta-package
-minos_desktop="i3-wm i3lock alsa-utils alsa-base mpd mpc ncmpcpp mplayer2 slim
-xorg rxvt-unicode-256color autocutsel acpi dmenu feh sxiv notify-osd pm-utils
-libnotify-bin irssi mutt-patched pcmanfm gvfs gvfs-backends rlpr gnupg-agent
-lxappearance zathura scrot ffcast unrar unzip xarchiver zram-config udisks
-gtk2-engines-pixbuf openssh-server wicd-curses redshift vim-gtk lame xclip
-policykit-1 libmad0 geoclue-ubuntu-geoip libdvdread4 xdotool dbus-x11 umplayer
-gxmessage magnifier compton plymouth-theme-minos-comet xbacklight genpass
-slim-theme-minos-login minos-tools minos-artwork util-linux xdg-utils conky-cli
-realvncviewer507 firefox28 firefox28-minos-settings firefox-flashplugin"
-#minos-core minos-desktop-settings
-
 if [ -z "${1}" ]; then
     mode="core"; cx="\b>"
 else
@@ -36,22 +19,7 @@ fi
 # General functions ############################################################
 ################################################################################
 
-_arch() { #check system arch, return 64|32 (32 by default)
-    if [ -z "${MACHTYPE}" ]; then
-        _arch__arch="$(uname -m)"
-    else
-        _arch__arch="$(printf "%s" "${MACHTYPE}" | cut -d- -f1)"
-    fi
-
-    case "${_arch__arch}" in
-        x86_64) _arch__arch="64" ;;
-             *) _arch__arch="32" ;;
-    esac
-
-    printf "%s" "${_arch__arch}"
-}
-
-_animcui() { #wait animation
+_animate_while() {
     [ -z "${1}" ] && { printf "%5s\n" ""; return 1; }
 
     if ! printf "%s" "$(pidof "${1}")" | grep "[0-9].*" >/dev/null; then
@@ -59,7 +27,7 @@ _animcui() { #wait animation
         return 1;
     fi
 
-    _animcui_var_animation_state="1"
+    _awhile__animation_state="1"
 
     if [ ! "$(ps -p "$(pidof "${1}")" -o comm= 2>/dev/null)" ]; then
         printf "%5s\n" ""
@@ -70,15 +38,15 @@ _animcui() { #wait animation
 
     while [ "$(ps -p "$(pidof "${1}")" -o comm= 2>/dev/null)" ]; do
         printf "%b" "\b\b\b\b\b"
-        case "${_animcui_var_animation_state}" in
+        case "${_awhile__animation_state}" in
             1) printf "%s" '\o@o\'
-               _animcui_var_animation_state="2" ;;
+               _awhile__animation_state="2" ;;
             2) printf "%s" '|o@o|'
-               _animcui_var_animation_state="3" ;;
+               _awhile__animation_state="3" ;;
             3) printf "%s" '/o@o/'
-               _animcui_var_animation_state="4" ;;
+               _awhile__animation_state="4" ;;
             4) printf "%s" '|o@o|'
-               _animcui_var_animation_state="1" ;;
+               _awhile__animation_state="1" ;;
         esac
         sleep 1
     done
@@ -102,7 +70,7 @@ _basename() {
     printf "%s\\n" "${_basename_var_name}"
 }
 
-_getroot() { #get sudo's password, define $sudopwd and $sudocmd
+_get_root_passwd() { #get sudo's password, define $sudopwd and $sudocmd
     if [ ! X"${LOGNAME}" = X"root" ]; then
         printf "%s\\n" "Detecting user ${LOGNAME} (non-root) ..."
         printf "%s\\n" "Checking if sudo is available ..."
@@ -173,13 +141,6 @@ _getroot() { #get sudo's password, define $sudopwd and $sudocmd
     fi
 }
 
-_ensurecron() { #adds cron job, returns 1 on error
-    [ -z "${1}" ] && return 1
-    _ensurecron_var_exist="$(crontab -l 2>/dev/null | awk -v p="${1}" '{ if ($0 == p) {print p}}')"
-    [ -n "${_ensurecron_var_exist}" ] && return 0
-    ( crontab -l 2>/dev/null; printf "%s\\n" "${1}" ) | crontab -
-}
-
 _printfl() { #print lines
     _printfl_var_max_len="80"
     if [ -n "${1}" ]; then
@@ -223,7 +184,7 @@ _unprintf() { #unprint sentence
     done
 }
 
-_distro() { #return distro name in a lower string
+_distro() { #return distro name in lower case
     _distro_var_DIST_INFO="/etc/lsb-release"
     if [ -r "${_distro_var_DIST_INFO}" ]; then
         . "${_distro_var_DIST_INFO}"
@@ -242,48 +203,6 @@ _distro() { #return distro name in a lower string
         printf "%s\\n" "${_distro_var_DISTRIB_ID}" | tr 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 'abcdefghijklmnopqrstuvwxyz'
     else
         printf "%s\\n" "${DISTRIB_ID}" | tr 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 'abcdefghijklmnopqrstuvwxyz'
-    fi
-}
-
-_smv() { #move files, create backups before overriding
-    [ -z "${1}" ] && return 1 || _smv_var_origin_basename="$(_basename "${1}")"
-    [ -z "${2}" ] && return 1
-
-    if [ X"${_smv_var_origin_basename}" = X"." ] || [ X"${_smv_var_origin_basename}" = X".." ]; then
-        return 1
-    fi
-
-    if [ -e "${2}"/"${_smv_var_origin_basename}" ]; then
-        if diff -qr "${1}" "${2}"/"${_smv_var_origin_basename}" >/dev/null 2>&1; then
-            return 0
-        fi
-    else
-        if diff -qr "${1}" "${2}" >/dev/null 2>&1; then
-            return 0
-        fi
-    fi
-
-    _smv_var_owner="$(stat -c %U "${2}")"
-    _smv_var_version="$(date +"%d-%m-%Y-[%H:%M]")"
-
-    _printfc "mv ${1} ${2}"
-
-    if [ X"${_smv_var_owner}" != X"${LOGNAME}" ]; then
-        #if target has a file with the same name as origin
-        if [ -e "${2}"/"${_smv_var_origin_basename}" ]; then
-            printf "%s\\n" "${sudopwd}" | \ ${sudocmd} mv "${2}"/"${_smv_var_origin_basename}" \
-                "$2"/"${_smv_var_origin_basename}".minos-backup."${_smv_var_version}" >/dev/null 2>&1
-            printf "%s\\n" "${sudopwd}" | \
-                ${sudocmd} chown -R "${_smv_var_owner}" \
-                "${2}"/"${_smv_var_origin_basename}".minos-backup."${_smv_var_version}" >/dev/null 2>&1
-        fi
-        printf "%s\\n" "${sudopwd}" | ${sudocmd} mv "${1}" "${2}" >/dev/null 2>&1
-    else
-        if [ -e "${2}"/"${_smv_var_origin_basename}" ]; then
-            mv "${2}"/"${_smv_var_origin_basename}" \
-               "${2}"/"${_smv_var_origin_basename}".minos-backup."${_smv_var_version}"
-        fi
-        mv "${1}" "${2}"
     fi
 }
 
@@ -311,44 +230,7 @@ _hooks() {
     esac
 }
 
-_getuuid() { #get partition uuid, eg, _getuuid /dev/sda1
-    [ -z "${1}" ] && return 1
-    udevadm info -q all -n "${1}" | awk -F"/" '/^S.*uuid.*/ {print $3}'
-}
-
-_getfs() { #get partition fs, eg, _getfs /dev/sda1
-    [ -z "${1}" ] && return 1
-    udevadm info -q all -n "${1}" | awk -F"=" '/ID_FS_TYPE/ {print $2}'
-}
-
-_getlastversion() { #get last version of a bunch of files
-    [ -z "${1}" ] && return 1
-
-    _getlastversion_var_files="${1}".minos-backup.*
-    _getlastversion_var_counter="0"
-
-    for _getlastversion_var_file in ${_getlastversion_var_files}; do
-        _getlastversion_var_counter="$(expr "${_getlastversion_var_counter}" + 1)"
-    done
-
-    if [ "${_getlastversion_var_counter}" -eq "1" ]; then
-        if [ -e "${_getlastversion_var_file}" ]; then
-            printf "%s" "${_getlastversion_var_file}"
-        fi
-    else
-        _getlastversion_var_newer="${_getlastversion_var_file}"
-        for _getlastversion_var_file in ${_getlastversion_var_files}; do
-            if [ "${_getlastversion_var_file}" -nt "${_getlastversion_var_newer}" ]; then
-                _getlastversion_var_newer="${_getlastversion_var_file}"
-            fi
-        done
-        if [ -e "${_getlastversion_var_newer}" ]; then
-            printf "%s" "${_getlastversion_var_newer}"
-        fi
-    fi
-}
-
-_getrelease() { #print debian|ubuntu release version
+_get_release() {
     if command -v "lsb_release" 1>/dev/null 2>&1; then
         _getrelease_var_release="$(lsb_release -s -c)"
     else
@@ -360,7 +242,7 @@ _getrelease() { #print debian|ubuntu release version
     printf "%s" "${_getrelease_var_release}"
 }
 
-_fetchfile() {
+_fetch_file() {
     [ -z "${1}" ] && return 1 || _fetchfile_var_url="${1}"
     [ -z "${2}" ] && _fetchfile_var_output="" || _fetchfile_var_output="${2}"
     _fetchfile_var_max_retries="10"
@@ -394,38 +276,7 @@ _fetchfile() {
     done
 }
 
-_fetchrepo() { #git clone doesn't support retry, this function fix that
-    [ -z "${1}" ] && return 1 || _fetchrepo_var_url="${1}"
-    [ -z "${2}" ] || _fetchrepo_var_output="${2}"
-   _fetchrepo_var_max_retries="10"
-
-    _fetchrepo_var_i="0"
-    while [ "${_fetchrepo_var_i}" -lt "${_fetchrepo_var_max_retries}" ]; do
-        _fetchrepo_var_i="$(expr "${_fetchrepo_var_i}" + 1)"
-
-        if [ -z "${_fetchrepo_var_output}" ]; then
-            _waitfor git clone --dept=1 "${_fetchrepo_var_url}"
-        else
-            _waitfor git clone --dept=1 "${_fetchrepo_var_url}" "${_fetchrepo_var_output}"
-        fi
-
-        if [ -d "./$(_basename "${_fetchrepo_var_url}" ".git")" ] || \
-           [ -d "${_fetchrepo_var_output}" ]; then
-            break
-        else
-            if [ "${_fetchrepo_var_i}" -eq "$(expr "${_fetchrepo_var_max_retries}" - 1)" ]; then
-                printf "%s" "Impossible to retrive files"
-                exit 1
-            else
-                printf "[-] %s" "${_fetchrepo_var_url} seems down, retrying in ${_fetchrepo_var_i} minute(s) ..."
-                sleep "$(expr "${_fetchrepo_var_i}" \* 60)"
-                printf "\\n"
-            fi
-        fi
-    done
-}
-
-_existaptproxy() { #look for apt proxies, return 0 on sucess, 1 otherwise
+_exists_apt_proxy() { #look for apt proxies, return 0 on sucess, 1 otherwise
     avahi-browse -a  -t | grep apt-cacher-ng >/dev/null && return 0
     return 1
 }
@@ -450,6 +301,7 @@ _seconds2human() {
     _s2h__min="0"
     _s2h__hour="0"
     _s2h__day="0"
+
     if [ "${_s2h__num}" -gt "59" ]; then
         _s2h__sec="$((${_s2h__num} % 60))"
         _s2h__num="$((${_s2h__num} / 60))"
@@ -479,7 +331,6 @@ _seconds2human() {
 _apt_update() {
     [ -z "${1}" ] && _aupdate__cache_seconds="3600" || _aupdate__cache_seconds="${1}"
     _aupdate__cache_file="/var/cache/apt/pkgcache.bin"
-
     if [ -f "${_aupdate__cache_file}" ]; then
         _aupdate__last="$(stat -c %Y "${_aupdate__cache_file}")"
         _aupdate__now="$(date +'%s')"
@@ -496,11 +347,9 @@ _apt_update() {
 
 _cmd() { #print and execute a command, exit on fail
     [ -z "${1}" ] && return 1
-
     printf "%s \\n" "    $ ${*}"
     _cmd_var_output="$(eval ${@} 2>&1)"
     _cmd_var_status="${?}"
-
     if [ X"${_cmd_var_status}" != X"0" ]; then
         printf "> %s:%s" "${*}" "${_cmd_var_output}"
         printf "\\n"
@@ -510,13 +359,17 @@ _cmd() { #print and execute a command, exit on fail
     fi
 }
 
+_cmd_verbose() {
+    [ -z "${1}" ] && return 1
+    printf "%s \\n" "    $ ${*}"
+    $@
+}
+
 _cmdsudo() { #print && execute a command, exit on fail
     [ -z "${1}" ] && return 1
-
     printf "%s \\n" "    $ sudo ${*}"
     _cmdsudo_var_output="$(printf "%s\\n" "${sudopwd}" | ${sudocmd} sh -c "eval ${*}" 2>&1)"
     _cmdsudo_var_status="${?}"
-
     if [ X"${_cmdsudo_var_status}" != X"0" ]; then
         printf "> %s:%s\\n" "${*}" "${_cmdsudo_var_output}"
         printf "\\n"
@@ -526,109 +379,29 @@ _cmdsudo() { #print && execute a command, exit on fail
     fi
 }
 
+_cmdsudo_verbose() {
+    [ -z "${1}" ] && return 1
+    printf "%s \\n" "    $ sudo ${*}"
+    printf "%s\\n" "${sudopwd}" | ${sudocmd} sh -c "eval ${*}"
+}
+
 _waitfor() { #print, execute and wait for a command to finish
     [ -z "${1}" ] && return 1
-
     printf "%s " "    $ ${@} ..."
     eval "${@}" >/dev/null 2>&1 &
     sleep 1s
-
-    _animcui "${1}"
+    _animate_while "${1}"
 }
 
 _waitforsudo() { #print, execute and wait for a command to finish
     [ -z "${1}" ] && return 1
-
     printf "%s " "    $ sudo ${@} ..."
     printf "%s\\n" "${sudopwd}" | ${sudocmd} sh -c "eval ${*}" >/dev/null 2>&1 &
     sleep 1s
-
     if [ X"${1}" = X"DEBIAN_FRONTEND=noninteractive" ]; then
-        _animcui "${2}"
+        _animate_while "${2}"
     else
-        _animcui "${1}"
-    fi
-}
-
-_homedetected() { #does a partition has /home files?, 0 yes, 1 no
-    [ -z "${1}" ] && return 1
-    _homedetected_test="$(find "${1}" -maxdepth 2 -type d -iname ".local" 2>/dev/null | grep local)"
-    [ -z "${_homedetected_test}" ] && return 1 || return 0
-}
-
-_sethome() { #mount a partition as /home, update /etc/fstab
-    #TODO 17-09-2013 02:54 >> only mount partitions with id=83 (linux)
-    if mountpoint -q /home; then
-        if [ -f /etc/mtab ]; then
-            _sethome_var_hd="$(awk '$2 == "/home" {print $1; exit}' /etc/mtab)"
-        else
-            _sethome_var_hd="$(mount | awk '$3 == "/home" {print $1; exit}')"
-        fi
-        _sethome_var_uuid="$(_getuuid "${_sethome_var_hd}")"
-        _sethome_var_fs="$(_getfs "${_sethome_var_hd}")"
-
-        if [ ! -f /etc/fstab ]; then
-            _printfs "/etc/fstab doesn't exist, continuing ..."
-            return 1
-        fi
-
-        if ! grep "^UUID=${_sethome_var_uuid}" /etc/fstab >/dev/null; then
-            _printfs "/home is mounted but not listed in /etc/fstab, adding it ..."
-            _sethome_var_fstab="UUID=${_sethome_var_uuid} /home"
-            _sethome_var_fstab="${_sethome_var_fstab} ${_sethome_var_fs}"
-            _sethome_var_fstab="${_sethome_var_fstab} errors=remount-ro 0 1"
-            _cmdsudo sed -i -e \"\\$a${_sethome_var_fstab}\" /etc/fstab
-        fi
-    else
-        _sethome_var_total="$(awk '$4 ~ ".*[0-9]+" {if ($4 !~ "sr") {if (part == "") {part=$4} else {part=part " " $4}}} END {print part}' /proc/partitions)"
-        if [ -n "${_sethome_var_total}" ]; then
-            _sethome_var_swap="$(awk '/partition/ {gsub(/\/dev\//,""); if (part == "") {part=$1} else {part=part " " $1}} END {print part}' /proc/swaps)"
-            if [ -f /etc/mtab ]; then
-                _sethome_var_mounted="$(awk '/^\// {gsub(/\/dev\//,""); if (part == "") {part=$1} else {part=part " " $1}} END {print part}' /etc/mtab)"
-            else
-                _sethome_var_mounted="$(mount | awk '/^\// {gsub(/\/dev\//,""); if (part == "") {part=$1} else {part=part " " $1}} END {print part}')"
-            fi
-
-            if [ -n "${_sethome_var_swap}" ]; then
-                for _sethome_var_swapp in ${_sethome_var_swap}; do
-                    _sethome_var_total="$(printf "%s" "${_sethome_var_total}" | sed "s/${_sethome_var_swapp}//g")"
-                done
-            fi
-
-            if [ -n "${_sethome_var_mounted}" ]; then
-                for _sethome_var_mountedp in ${_sethome_var_mounted}; do
-                    _sethome_var_total="$(printf "%s" "${_sethome_var_total}" | sed "s/${_sethome_var_mountedp}//g")"
-                done
-            fi
-
-            if [ -n "${_sethome_var_total}" ]; then
-                for _sethome_var_partition in ${_sethome_var_total}; do
-                    [ X"$(awk -v part="$_sethome_var_partition" '{if ($0 ~ part) print $3}' /proc/partitions)" = X"1" ] && continue
-                    mkdir /tmp/"${_sethome_var_partition}"
-                    _cmdsudo mount /dev/"${_sethome_var_partition}" /tmp/"${_sethome_var_partition}"
-
-                    if _homedetected /tmp/"${_sethome_var_partition}"; then
-                        _printfs "/home partition found in: ${_sethome_var_partition}"
-                        _printfs "replacing /home with partition ..."
-
-                        _cmdsudo umount /tmp/"${_sethome_var_partition}"
-                        _cmdsudo rm -rf /tmp/"${_sethome_var_partition}"
-                        _cmdsudo mv /home /home.minos-backup
-                        _cmdsudo mkdir /home
-                        _cmdsudo mount /dev/"${_sethome_var_partition}" /home
-                        _cmdsudo chown -R "$(whoami)":"$(whoami)" /home/"$(whoami)"
-
-                        _sethome
-                    fi
-
-                    if [ -d /tmp/"${_sethome_var_partition}" ]; then
-                        _cmdsudo umount /tmp/"${_sethome_var_partition}"
-                        _cmdsudo rm -rf /tmp/"${_sethome_var_partition}"
-                    fi
-                done
-            fi
-        fi
-        [ ! -d /home/"$(whoami)" ] && _cmdsudo mkdir -p /home/"$(whoami)"
+        _animate_while "${1}"
     fi
 }
 
@@ -640,47 +413,41 @@ _supported() { #retun 0 on a supported system, 1 otherwise
     return 1
 }
 
-_installaptproxy() {
+_install_apt_proxy() {
+    _printfs "Setting up an apt-get proxy ..."
+
     _apt_update 3600
     _waitforsudo apt-get install --no-install-recommends -y avahi-utils
 
-    if _existaptproxy; then
+    if _exists_apt_proxy; then
         _remotesetup_var_apt_proxy_server="$(avahi-browse -a -t -r -p | awk -F";" '/^=.*apt-cacher-ng/ {print $8}')"
         _printfs "exists an apt-get proxy at ${_remotesetup_var_apt_proxy_server}, setting up the client ..."
         _waitforsudo apt-get install --no-install-recommends -y squid-deb-proxy-client
     else
         _printfs "no apt-get proxy found, installing one locally ..."
         _waitforsudo apt-get install --no-install-recommends -y squid-deb-proxy-client apt-cacher-ng
+
         if [ ! -f /etc/avahi/services/apt-cacher-ng.service ]; then
-            _fetchfile http://javier.io/mirror/apt-cacher-ng.service /tmp/apt-cacher-ng.service
-            _cmdsudo mv /tmp/apt-cacher-ng.service /etc/avahi/services/apt-cacher-ng.service
+            cat > /tmp/etc##avahi##services##apt-cacher-ng.service  << 'E=O=F'
+<?xml version="1.0" standalone='no'?>
+<!DOCTYPE service-group SYSTEM "avahi-service.dtd">
+<service-group>
+ <name replace-wildcards="yes">apt-cacher-ng proxy on %h</name>
+ <service protocol="ipv4">
+  <type>_apt_proxy._tcp</type>
+  <port>3142</port>
+ </service>
+</service-group>
+E=O=F
+            _cmdsudo mv /tmp/etc##avahi##services##apt-cacher-ng.service /etc/avahi/services/apt-cacher-ng.service
         fi
+
         if [ -d "${HOME}"/misc/deb-proxy/apt-cacher-ng/ ]; then
-            _printfs "exporting files ..."
+            _printfs "Exporting files ..."
             _cmdsudo rm -rf /var/cache/apt-cacher-ng
             _cmdsudo ln -s "${HOME}"/misc/deb-proxy/apt-cacher-ng/ /var/cache/apt-cacher-ng
         fi
     fi
-}
-
-_siteup() { #check if a site us up, return 0 on sucess, 1 otherwise
-    [ -z "${1}" ] && return 1 || _siteup_var_url="${1}"
-    _siteup_var_max_retries="3"
-
-    _siteup_var_i="0"
-    while [ "${_siteup_var_i}" -lt "${_siteup_var_max_retries}" ]; do
-        _siteup_var_i="$(expr "${_siteup_var_i}" + 1)"
-        if wget "${_siteup_var_url}" -qO- >/dev/null 2>&1; then
-            break
-        fi
-        if [ "${_siteup_var_i}" -eq "$(expr "${_siteup_var_max_retries}" - 1)" ]; then
-            return 1
-        else
-            sleep "${_siteup_var_i}"
-        fi
-    done
-
-    return 0
 }
 
 _header() {
@@ -695,7 +462,7 @@ _header() {
     [ "$(id -u)" != "0" ] && _printfl
 }
 
-_diesendmail() { #apt-get purge doesn't kill sendmail instances
+_die_sendmail() { #apt-get purge doesn't kill sendmail instances
     _diesendmail_var_pid="$(ps -aef | awk '$0 ~ "sendmail" {if ($0 !~ "awk") print $2}')"
     if [ -n "${_diesendmail_var_pid}" ]; then
         _printfs 'die sendmail, die!!'
@@ -706,39 +473,33 @@ _diesendmail() { #apt-get purge doesn't kill sendmail instances
 _cleanup() {
     [ "${_cleanup_var_init}" ] && return
     _cleanup_var_init="done"
-
     stty echo
     [ -z "${sudopwd}" ] && return
-
     printf "\\n"
     _printfl "Cleanup"
     _cmd rm -rf /tmp/"$(_basename "${dotfiles}")"
-    _recoverreps
-
+    _recover_original_reps
     [ -z "${1}" ] && exit
 }
 
-_backupreps() { #create a backup of /etc/apt/sources.list.d/* files
+_backup_original_reps() { #create a backup of /etc/apt/sources.list.d/* files
     for _backupreps_var_file in /etc/apt/sources.list.d/*.list; do
         break
     done
-
     [ -f "${_backupreps_var_file}" ] && _printfs "disabling temporaly non standard repos ..."
-
     for _backupreps_var_file in /etc/apt/sources.list.d/*.list; do
         if [ -f "${_backupreps_var_file}" ]; then
             _cmdsudo mv "${_backupreps_var_file}" "${_backupreps_var_file}".backup_rep
         fi
     done
+    _tweak_apt_get
 }
 
-_recoverreps() { #recover files at /etc/apt/sources.list.d/*
+_recover_original_reps() { #recover files at /etc/apt/sources.list.d/*
     for _recoverreps_var_file in /etc/apt/sources.list.d/*.list.backup_rep; do
         break
     done
-
     [ -f "${_recoverreps_var_file}" ] && _printfs "recovering non standard repos ..."
-
     for _recoverreps_var_file in /etc/apt/sources.list.d/*.list.backup_rep; do
         if [ -f "${_recoverreps_var_file}" ]; then
             _cmdsudo mv "${_recoverreps_var_file}" "${_recoverreps_var_file%.backup_rep}"
@@ -746,154 +507,95 @@ _recoverreps() { #recover files at /etc/apt/sources.list.d/*
     done
 }
 
-_ensureonline() { #ensure site is online
+_add_repository() { #ensure rep is enabled
     [ -z "${1}" ] && return 1
-    _printfs "testing ${1} ... "
-    if ! _siteup "${1}"; then
-        _die "${1} seems down, retry when up"
-    fi
-    return 0
-}
+    [ -z "${2}" ] && _arepository__key="" || _arepository__key="${2}"
 
-_ensurerepo() { #ensure rep is enabled
-    [ -z "${1}" ] && return 1
-    [ -z "${2}" ] && _ensurerepo_var_key="" || _ensurerepo_var_key="${2}"
-
-    _ensurerepo_var_baseurl="$(printf "%s" "${1}" | cut -d' ' -f2 | grep "//")"
-    if [ -z "$(printf "%s" "${1}" | cut -d' ' -f3)" ] || [ -z "${_ensurerepo_var_baseurl}" ]; then
+    _arepository__baseurl="$(printf "%s" "${1}" | cut -d' ' -f2 | grep "//")"
+    if [ -z "$(printf "%s" "${1}" | cut -d' ' -f3)" ] || [ -z "${_arepository__baseurl}" ]; then
         _die "Bad formated repository: ${1}"
     fi
 
     [ ! -d /etc/apt/sources.list.d ] && _cmdsudo mkdir /etc/apt/sources.list.d
-    if [ -z "${_ensurerepo_var_list}" ]; then
-        _ensurerepo_var_extras=/etc/apt/sources.list.d/*.list
+    if [ -z "${_arepository__list}" ]; then
+        _arepository__extras=/etc/apt/sources.list.d/*.list
 
-        for _ensurerepo_var_extra in ${_ensurerepo_var_extras}; do
+        for _arepository__extra in ${_arepository__extras}; do
             break
         done
 
-        if [ -e "${_ensurerepo_var_extra}" ]; then
-            _ensurerepo_var_list="$(grep -h ^deb /etc/apt/sources.list /etc/apt/sources.list.d/*.list)"
+        if [ -e "${_arepository__extra}" ]; then
+            _arepository__list="$(grep -h ^deb /etc/apt/sources.list /etc/apt/sources.list.d/*.list)"
         else
-            _ensurerepo_var_list="$(grep -h ^deb /etc/apt/sources.list)"
+            _arepository__list="$(grep -h ^deb /etc/apt/sources.list)"
         fi
     fi
 
-    case "${_ensurerepo_var_baseurl}" in
+    case "${_arepository__baseurl}" in
         *archive.ubuntu.com*)
-            _ensurerepo_var_regex="$(printf "%s" "${1}" | cut -d' ' -f3-4)"
-            _ensurerepo_var_name="$(printf "%s" "${1}" | cut -d' ' -f3-4 | tr ' ' '-')"
+            _arepository__regex="$(printf "%s" "${1}" | cut -d' ' -f3-4)"
+            _arepository__name="$(printf "%s" "${1}" | cut -d' ' -f3-4 | tr ' ' '-')"
             ;;
         *)
-            _ensurerepo_var_regex="${_ensurerepo_var_baseurl}"
-            if [ -n "$(printf "%s" "${_ensurerepo_var_baseurl}" | cut -d'/' -f5)" ]; then
-                _ensurerepo_var_name="$(printf "%s" "${_ensurerepo_var_baseurl}" \
+            _arepository__regex="${_arepository__baseurl}"
+            if [ -n "$(printf "%s" "${_arepository__baseurl}" | cut -d'/' -f5)" ]; then
+                _arepository__name="$(printf "%s" "${_arepository__baseurl}" \
                                      | cut -d'/' -f4-5 | tr '/' '-')"
             else
-                _ensurerepo_var_name="$(printf "%s" "${_ensurerepo_var_baseurl}" \
+                _arepository__name="$(printf "%s" "${_arepository__baseurl}" \
                                      | cut -d'/' -f3-4 | tr '/' '-')"
             fi
             if [ -z "$(printf "%s" "${1}" | cut -d' ' -f4)" ]; then
-                _ensurerepo_var_name="$(printf "%s" "${_ensurerepo_var_baseurl}" \
-                    | cut -d'/' -f 3 | awk -F. '{print $(NF-1)}')"-"${_ensurerepo_var_name}"
+                _arepository__name="$(printf "%s" "${_arepository__baseurl}" \
+                    | cut -d'/' -f 3 | awk -F. '{print $(NF-1)}')"-"${_arepository__name}"
             fi
             ;;
     esac
 
-    if ! printf "%s" "${_ensurerepo_var_list}" | grep "${_ensurerepo_var_regex}" >/dev/null; then
-        printf "%s\\n" "${1}" > /tmp/"${_ensurerepo_var_name}".list
-        _cmdsudo mv /tmp/"${_ensurerepo_var_name}".list /etc/apt/sources.list.d/
-        if [ -n "${_ensurerepo_var_key}" ]; then
-            if printf "%s" "${_ensurerepo_var_key}" | grep "http" >/dev/null; then
-                _fetchfile ${_ensurerepo_var_key} /tmp/keyfile.asc
+    if ! printf "%s" "${_arepository__list}" | grep "${_arepository__regex}" >/dev/null; then
+        printf "%s\\n" "${1}" > /tmp/"${_arepository__name}".list
+        _cmdsudo mv /tmp/"${_arepository__name}".list /etc/apt/sources.list.d/
+        if [ -n "${_arepository__key}" ]; then
+            if printf "%s" "${_arepository__key}" | grep "http" >/dev/null; then
+                _fetch_file ${_arepository__key} /tmp/keyfile.asc
                 _waitforsudo apt-key add /tmp/keyfile.asc
                 _cmd rm -rf /tmp/keyfile.asc
             else
                 _waitforsudo apt-key adv --keyserver keyserver.ubuntu.com \
-                --recv-keys "${_ensurerepo_var_key}"
+                --recv-keys "${_arepository__key}"
             fi
         fi
     fi
 }
 
-_ensuresetting() { #ensure setting($1) is set in a configuration file($2)
-    [ -z "${1}" ] && return 1 || _ensuresetting_var_line="${1}"
-    [ -z "${2}" ] && return 1 || _ensuresetting_var_file="${2}"
-
-    [ ! -f "${_ensuresetting_var_file}" ] && return 1
-
-    _ensuresetting_var_regex="$(printf "%s" "${_ensuresetting_var_line}" | sed 's: :[ \\t]\\+:g')"
-    _ensuresetting_var_setting="$(printf "%s" "${_ensuresetting_var_line}" | cut -d' ' -f1)"
-
-    if grep "$(printf "^%s" "${_ensuresetting_var_setting}")" "${_ensuresetting_var_file}" >/dev/null; then
-        if ! grep "$(printf "^%s" "${_ensuresetting_var_regex}")" "${_ensuresetting_var_file}" >/dev/null; then
-            _cmdsudo sed -i -e \\\"/^${_ensuresetting_var_setting}/ s:.*:${_ensuresetting_var_line}:\\\" "${_ensuresetting_var_file}"
-        fi
-    else
-        if grep "$(printf "^#%s[ \t]" "${_ensuresetting_var_setting}")" "${_ensuresetting_var_file}" >/dev/null; then
-            _cmdsudo sed -i -e \
-            \\\"/^#${_ensuresetting_var_setting}/ s:#.*:${_ensuresetting_var_line}:\\\" \
-            "${_ensuresetting_var_file}"
-        else
-            _cmdsudo sed -i -e \\\"\$ a${_ensuresetting_var_line}\\\" "${_ensuresetting_var_file}" #'
-        fi
-    fi
-}
-
-_whatvirt() { #check for virtualization systems, returns technology used
+_virt_what() { #check for virtualization systems, returns technology used
     if [ -d /proc/vz ] && [ ! -d /proc/bc ]; then
         printf "openvz"
-    elif grep 'UML' /proc/cpuinfo >/dev/null; then
+    elif grep 'UML' /proc/cpuinfo >/dev/null 2>&1; then
         printf "uml"
     elif [ -f /proc/xen/capabilities ]; then
         printf "xen"
-    elif grep 'QEMU' /proc/cpuinfo >/dev/null; then
+    elif grep 'QEMU' /proc/cpuinfo >/dev/null 2>&1; then
         printf "qemu"
+    elif grep 'Hypervisor detected' /var/log/dmesg >/dev/null 2>&1; then
+        awk '/Hypervisor detected/ {print tolower($NF); exit; }' /var/log/dmesg
     fi
     return 1
 }
 
-_enableremotevnc() {
-    _printfs "enabling xvnc"
-    _waitforsudo apt-get install --no-install-recommends -y x11vnc xserver-xorg-video-dummy
-    _printfs "forcing xorg to use dummy driver ..."
+_tweak_apt_get() {
+    _printfl "Tweaking apt-get"
+    printf "%s\\n" '    $ printf "%s\n" "Dir::Ignore-Files-Silently:: "(.save|.distUpgrade|.backup_rep)$";" > /tmp/minos-apt-99ignoresave'
+    printf "%s"    'Dir::Ignore-Files-Silently:: "(.save|.distUpgrade|.backup_rep)$";' > /tmp/minos-apt-99ignoresave
+    _cmdsudo       mv /tmp/minos-apt-99ignoresave /etc/apt/apt.conf.d/99ignoresave
+}
 
-    printf "%s\\n" 'Section "Monitor"' > /tmp/xorg.conf
-    printf "%s\\n" '    Identifier "Monitor0"' >> /tmp/xorg.conf
-    printf "%s\\n" '    HorizSync 28.0-80.0' >> /tmp/xorg.conf
-    printf "%s\\n" '    VertRefresh 48.0-75.0' >> /tmp/xorg.conf
-    printf "%s\\n" '    #Modeline "1280x800"  83.46  1280 1344 1480 1680  800 801 804 828 -HSync +Vsync' >> /tmp/xorg.conf
-    printf "%s\\n" '    # 1224x685 @ 60.00 Hz (GTF) hsync: 42.54 kHz; pclk: 67.72 MHz' >> /tmp/xorg.conf
-    printf "%s\\n" '    Modeline "1224x685" 67.72 1224 1280 1408 1592 685 686 689 709 -HSync +Vsync' >> /tmp/xorg.conf
-    printf "%s\\n" 'EndSection' >> /tmp/xorg.conf
-
-    printf "%s\\n" 'Section "Device"' >> /tmp/xorg.conf
-    printf "%s\\n" '    Identifier "Card0"' >> /tmp/xorg.conf
-    printf "%s\\n" '    Option "NoDDC" "true"' >> /tmp/xorg.conf
-    printf "%s\\n" '    Option "IgnoreEDID" "true"' >> /tmp/xorg.conf
-    printf "%s\\n" '    Option "ShadowFB" "true"' >> /tmp/xorg.conf
-    printf "%s\\n" '    Driver "dummy"' >> /tmp/xorg.conf
-    printf "%s\\n" 'EndSection' >> /tmp/xorg.conf
-
-    printf "%s\\n" 'Section "Screen"' >> /tmp/xorg.conf
-    printf "%s\\n" '    #DefaultDepth 24' >> /tmp/xorg.conf
-    printf "%s\\n" '    DefaultDepth 16' >> /tmp/xorg.conf
-    printf "%s\\n" '    Identifier "Screen0"' >> /tmp/xorg.conf
-    printf "%s\\n" '    Device "Card0"' >> /tmp/xorg.conf
-    printf "%s\\n" '    Monitor "Monitor0"' >> /tmp/xorg.conf
-    printf "%s\\n" '    SubSection "Display"' >> /tmp/xorg.conf
-    printf "%s\\n" '        #Depth 24' >> /tmp/xorg.conf
-    printf "%s\\n" '        Depth 16' >> /tmp/xorg.conf
-    printf "%s\\n" '        #    Virtual 1280 800' >> /tmp/xorg.conf
-    printf "%s\\n" '        Modes "1224x685"' >> /tmp/xorg.conf
-    printf "%s\\n" '    EndSubSection' >> /tmp/xorg.conf
-    printf "%s\\n" 'EndSection' >> /tmp/xorg.conf
-
-    _smv /tmp/xorg.conf /etc/X11/
-    _cmd rm -rf /tmp/xorg.conf
-
-    #TODO 05-01-2014 03:48 >> create a service instead
-    _printfs "$ sudo x11vnc -display :0 -auth /var/run/slim.auth -forever -safer -shared"
+_add_minos_repository() {
+    _printfl "Adding repositories"
+    _add_repository "deb http://ppa.launchpad.net/minos-archive/main/ubuntu ${1} main" "4A06406469B4B061"
+    _add_repository "deb http://archive.ubuntu.com/ubuntu/ ${1} multiverse"
+    _add_repository "deb http://archive.ubuntu.com/ubuntu/ ${1}-updates multiverse"
+    _apt_update 0
 }
 
 ################################################################################
@@ -901,319 +603,40 @@ _enableremotevnc() {
 ################################################################################
 
 _core() {
-    _printfl "Adding repositories"
-    _remotesetup_var_release="$(_getrelease)"
-    if [ -n "${_remotesetup_var_release}" ]; then
-        _backupreps
-        _printfs    "adding repos ..."
-        _ensurerepo "deb http://ppa.launchpad.net/minos-archive/main/ubuntu ${_remotesetup_var_release} main" "4A06406469B4B061"
-        _ensurerepo "deb http://archive.ubuntu.com/ubuntu/ ${_remotesetup_var_release} multiverse"
-        _ensurerepo "deb http://archive.ubuntu.com/ubuntu/ ${_remotesetup_var_release}-updates multiverse"
+    if [ -n "$(_get_release)" ]; then
+        _backup_original_reps
+        _add_minos_repository "$(_get_release)"
     else
-        _die "Impossible to find release"
+        _die "Couldn't find valid release"
     fi
-
-    #this logic was incorporated in minos-core-settings
-
-    #_printfs     "fixing locales ..."
-    #_waitforsudo locale-gen en_US en_US.UTF-8
-    #_waitforsudo locale-gen
-    ##https://bugs.launchpad.net/ubuntu/+source/pam/+bug/155794
-    #if [ ! -f /etc/default/locale ]; then
-        #printf "%s\\n%s\\n" 'LANG="en_US.UTF-8"' 'LANGUAGE="en_US:en"' > /tmp/locale
-        #_smv /tmp/locale /etc/default/
-        ##_cmdsudo update-locale LANG=en_US.UTF-8 LC_MESSAGES=POSIX
-    #fi
-
-    _printfs    "fixing apt-get bugs"
-    printf "%s" "Dir::Ignore-Files-Silently:: \"(.save|.distUpgrade|.backup_rep)$\";" > /tmp/minos-apt-99ignoresave
-    _cmdsudo    mv /tmp/minos-apt-99ignoresave /etc/apt/apt.conf.d/99ignoresave
-
-    _printfl "Installing software"
     _printfs "Installing packages ..."
-    _apt_update 0
-    _waitforsudo apt-get install --no-install-recommends -y ${minos_core}
-
-    if ! command -v "git" >/dev/null 2>&1; then
-        _die "Dependency step failed"
-    fi
-
-    ############################################################################
-
-    #this logic was incorporated in minos-core-settings
-
-    #_printfl   "Downloading files"
-    #_printfs   "getting reps ..."
-    #if [ -f "${HOME}"/.minos/not_override ]; then
-        #_printfs "${HOME}/.minos/not_override is present, skipping ..."
-    #else
-        #_fetchrepo "${dotfiles}.git" "/tmp/$(_basename "${dotfiles}")"
-    #fi
-
-    ############################################################################
-
-    #_printfl "Installing files"
-
-    #if [ ! -f "${HOME}"/.minos/not_override ]; then
-        #_printfs "installing dotfiles (old files will get an .minos-backup suffix) ..."
-        #for _remotesetup_var_file in /tmp/$(_basename "${dotfiles}")/.*; do
-            #[ ! -e "${_remotesetup_var_file}" ] && continue
-            #_smv "${_remotesetup_var_file}" "${HOME}"
-        #done
-
-        ##special case, avoid removing my own certificates
-        #_remotesetup_var_ssh_old="$(_getlastversion "${HOME}"/.ssh)"
-        #if [ -n "${_remotesetup_var_ssh_old}" ] && \
-        #[ ! X"${_remotesetup_var_ssh_old}" = X"${HOME}"/.ssh ]; then
-            #cp -- "${_remotesetup_var_ssh_old}"/* "${HOME}"/.ssh/
-        #fi
-    #else
-        #_printfs "${HOME}/.minos/not_override is present, skipping ..."
-    #fi
-
-    #_cmd rm -rf /tmp/"$(_basename "${dotfiles}")"
-
-    ############################################################################
-
-    #_printfl "Configuring main apps"
-
-    #_printfs "configuring vim (2 min aprox) ..."
-    #[ ! -d "${HOME}"/.vim/bundle/vundle/.git/ ] && \
-        #_fetchrepo "https://github.com/chilicuil/vundle.git" "${HOME}/.vim/bundle/vundle"
-    ##_waitfor vim -es -u "${HOME}"/.vimrc -c "BundleInstall" -c qa
-    #vim +BundleInstall +qall >/dev/null 2>&1
-
-    #_printfs "configuring shell (1 min aprox) ..."
-    #[ ! -d "${HOME}"/.shundle/bundle/shundle/.git/ ] && \
-        #_fetchrepo "https://github.com/chilicuil/shundle.git" "${HOME}/.shundle/bundle/shundle"
-    #_cmd SHUNDLE_HOME="${HOME}"/.shundle SHUNDLE_RC="${HOME}"/.bashrc "${HOME}"/.shundle/bundle/shundle/bin/shundle install
-
-    #_printfs "configuring cd ..."
-    #_waitfor update-cd
-
-    ############################################################################
-
-    _recoverreps
-
+    #_waitforsudo apt-get install --no-install-recommends -y minos-core
+    _cmdsudo_verbose apt-get install --no-install-recommends -y --force-yes \
+        minos-core || _die "Installation failed"
+    _recover_original_reps
     _printfl "DONE"
-    printf "\\n%s\\n" "Reload the configuration or relogin to start having fun, n@n/"
+    printf "\\n%s\\n" "Reload your session or relogin to get started, have fun! n@n/"
     printf "%s\\n"    "    $ source ~/.bashrc"
 }
 
 _desktop() {
-    _printfl      "Verifying mirrors"
-    _ensureonline "http://javier.io"
-    _ensureonline "http://files.javier.io"
-    _ensureonline "http://launchpad.net"
-    _printfs      "everything seems ok, continuing..."
-
-    _remotesetup_var_release="$(_getrelease)"
-    _remotesetup_var_arch="$(_arch)"
-
-    _printfl      "Fixing dependencies"
-    if [ -n "${_remotesetup_var_release}" ]; then
-        _backupreps
-        _printfs    "adding repos ..."
-        _ensurerepo "deb http://ppa.launchpad.net/minos-archive/main/ubuntu ${_remotesetup_var_release} main" "4A06406469B4B061"
-        _ensurerepo "deb http://archive.ubuntu.com/ubuntu/ ${_remotesetup_var_release} multiverse"
-        _ensurerepo "deb http://archive.ubuntu.com/ubuntu/ ${_remotesetup_var_release}-updates multiverse"
+    if [ -n "$(_get_release)" ]; then
+        _backup_original_reps
+        _add_minos_repository "$(_get_release)"
     else
-        _die "Impossible to find release"
+        _die "Couldn't find valid release"
     fi
-
-    #mount/use home if available
-    _sethome
-
-    _printfs     "fixing locales ..."
-    _waitforsudo locale-gen en_US en_US.UTF-8
-    _waitforsudo locale-gen
-    #https://bugs.launchpad.net/ubuntu/+source/pam/+bug/155794
-    if [ ! -f /etc/default/locale ]; then
-        printf "%s\\n%s\\n" 'LANG="en_US.UTF-8"' 'LANGUAGE="en_US:en"' > /tmp/locale
-        _smv /tmp/locale /etc/default/
-        #_cmdsudo update-locale LANG=en_US.UTF-8 LC_MESSAGES=POSIX
-    fi
-
-    _printfs "setting up an apt-get proxy ..."
-    _installaptproxy
-
-    _printfs     "installing apps ..."
-    _waitforsudo DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y ${minos_desktop}
-
-    if ! command -v "i3" >/dev/null 2>&1; then
-        _die "Dependency step failed"
-    fi
-
-    ############################################################################
-
-    _printfl     "Downloading files"
-    _printfs     "downloading confs, themes and so on ..."
-    if [ -f "${HOME}"/.minos/not_override ]; then
-        _printfs "${HOME}/.minos/not_override is present, skipping ..."
-    else
-        _fetchfile   http://files.javier.io/rep/s/minos-conf.tar.bz2 /tmp/minos-conf.tar.bz2
-        _fetchfile   http://files.javier.io/rep/s/mconf.tar.bz2 /tmp/mconf.tar.bz2
-        _waitfor     tar jxf /tmp/minos-conf.tar.bz2 -C /tmp
-        _waitfor     tar jxf /tmp/mconf.tar.bz2 -C /tmp
-        _waitfor     rm /tmp/minos-conf.tar.bz2 /tmp/mconf.tar.bz2
-        if [ ! -d "/tmp/minos-conf" ] && [ ! -d "/tmp/mconf" ]; then
-            _die "Download step failed"
-        fi
-    fi
-
-    ############################################################################
-
-    _printfl       "Configuring system"
-
-    #_printfs       "configuring swappiness ..."
-    #_ensuresetting "vm.swappiness=10" /etc/sysctl.conf
-    #_printfs       "configuring kernel messages ..."
-    #_ensuresetting "kernel.printk = 4 4 1 7" /etc/sysctl.conf
-
-    _printfs       "configuring network ..."
-    printf         "%s\\n" "auto lo"                >  /tmp/interfaces
-    printf         "%s\\n" "iface lo inet loopback" >> /tmp/interfaces
-    _cmdsudo       mv /tmp/interfaces /etc/network/
-    _cmdsudo       usermod -a -G netdev "$(whoami)"
-
-    _printfs       "configuring audio ..."
-    [ -f /tmp/minos-conf/mpd/mpd.conf ] && _cmdsudo mv /tmp/minos-conf/mpd/mpd.conf /etc
-    _cmdsudo       sed -i -e \\\"/music_directory/ s:chilicuil:$(whoami):\\\" /etc/mpd.conf
-
-    _printfs       "configuring groups ..."
-    _cmdsudo       usermod -a -G dialout "$(whoami)"
-    _cmdsudo       usermod -a -G sudo    "$(whoami)"
-    _cmdsudo       usermod -a -G plugdev "$(whoami)"
-    _cmdsudo       usermod -a -G audio   "$(whoami)"
-
-    #_printfs "configuring cron ..."
-    #if [ -f /usr/local/bin/watch-battery ]; then
-        #printf "%s\\n" "    $ echo \"*/1 * * * * /usr/local/bin/watch-battery\" | crontab -"
-        #_ensurecron "*/1 * * * * /usr/local/bin/watch-battery";
-    #fi
-
-    #if [ -f /usr/local/bin/wcd ] && [ -f /usr/bin/wcd.exec ] && [ -f /usr/local/bin/update-cd ]; then
-        #printf "%s\\n" "    $ echo \"* 23 * * *  /usr/local/bin/update-cd\" | crontab -"
-        #_ensurecron "* 23 * * *  /usr/local/bin/update-cd";
-    #fi
-
-    #if [ -f /usr/local/bin/backup-mozilla ]; then
-        #printf "%s\\n" "    $ echo \"15 */4 * * * /usr/local/bin/backup-mozilla\" | crontab -"
-        #_ensurecron "15 */4 * * * /usr/local/bin/backup-mozilla";
-    #fi
-
-    if [ -f "${HOME}"/misc/conf/ubuntu/etc/lenovo-edge-netbook/crontabs.tar.gz ]; then
-        _waitforsudo tar zxf "${HOME}"/misc/conf/ubuntu/etc/lenovo-edge-netbook/crontabs.tar.gz -C /
-    fi
-
-    _printfs "configuring login manager ..."
-    #if [ -f /tmp/minos-conf/slim/slim.conf ]; then
-        #if [ -d /tmp/minos-conf/slim/"$(awk '/^current_theme/ {print $2}'  /tmp/minos-conf/slim/slim.conf)" ]; then
-            #_smv /tmp/minos-conf/slim/"$(awk '/^current_theme/ {print $2}' /tmp/minos-conf/slim/slim.conf)" /usr/share/slim/themes/
-        #fi
-        #_smv /tmp/minos-conf/slim/slim.conf /etc/
-    #fi
-    _cmdsudo sed -i -e \\\"/default_user/ s:chilicuil:$(whoami):\\\" /etc/slim.conf
-    _cmdsudo update-alternatives --install /usr/bin/x-session-manager x-session-manager /usr/share/xsessions/i3.desktop 50
-
-    _printfs "configuring gpg/ssh agents ..."
-    if [ -f /etc/X11/Xsession.d/90gpg-agent ]; then
-        if ! grep -- "--enable-ssh-support" /etc/X11/Xsession.d/90gpg-agent >/dev/null; then
-            _cmdsudo sed -i -e \\\"/STARTUP/ s:--daemon:--enable-ssh-support --daemon:\\\" \
-                /etc/X11/Xsession.d/90gpg-agent
-        fi
-    fi
-
-    if [ -f /etc/X11/Xsession.options ]; then
-        _cmdsudo sed -i -e \\\"s:^use-ssh-agent:#use-ssh-agent:g\\\" /etc/X11/Xsession.options
-    fi
-
-    [ ! -d "${HOME}"/.gnupg ]        && _cmd mkdir "${HOME}"/.gnupg
-    [ -f "${HOME}"/.gnupg/gpg.conf ] && _ensuresetting "use-agent" "${HOME}"/.gnupg/gpg.conf
-
-    _printfs "configuring dbus ..."
-    #allow use of shutdown/reboot through dbus-send
-    if [ ! -f /etc/polkit-1/localauthority/50-local.d/org.freedesktop.consolekit.pkla ]; then
-        _fetchfile http://javier.io/mirror/org.freedesktop.consolekit.pkla /tmp/org.freedesktop.consolekit.pkla
-        _cmdsudo   mv /tmp/org.freedesktop.consolekit.pkla /etc/polkit-1/localauthority/50-local.d/org.freedesktop.consolekit.pkla
-    fi
-
-    _printfs "configuring file manager ..."
-    #https://bugs.launchpad.net/ubuntu/+source/policykit-1/+bug/600575
-    if [ ! -f /etc/polkit-1/localauthority/50-local.d/55-storage.pkla ]; then
-        _fetchfile http://javier.io/mirror/55-storage.pkla /tmp/55-storage.pkla
-        _cmdsudo   mv /tmp/55-storage.pkla /etc/polkit-1/localauthority/50-local.d/55-storage.pkla
-    fi
-
-    _printfs "configuring browser ..."
-    #if [ ! -f "${HOME}"/.minos/not_override ]; then
-        #_waitfor tar jxf /tmp/mconf/firefox/mozilla.tar.bz2 -C /tmp/mconf/firefox
-        #for mozilla_old_profile in /tmp/mconf/firefox/.mozilla/firefox/*.default; do break; done
-        #mozilla_old_profile="$(_basename "${mozilla_old_profile}" .default)"
-        #mozilla_new_profile="$(strings /dev/urandom | grep -o '[[:alnum:]]' | \
-                              #head -n 8 | tr -d '\n'; printf "\\n")"
-        #[ ! -d /usr/lib/mozilla/plugins/ ] && _cmdsudo mkdir -p /usr/lib/mozilla/plugins/
-        #_smv /tmp/mconf/firefox/libflashplayer"${_remotesetup_var_arch}".so /usr/lib/mozilla/plugins/
-        #_cmd mv /tmp/mconf/firefox/.mozilla/firefox/${mozilla_old_profile}.default \
-                #/tmp/mconf/firefox/.mozilla/firefox/${mozilla_new_profile}.default
-        #find /tmp/mconf/firefox/.mozilla -type f | xargs sed -i -e "s/${mozilla_old_profile}/${mozilla_new_profile}/g"
-        #find /tmp/mconf/firefox/.mozilla -type f | xargs sed -i -e "s/admin/$(whoami)/g"
-        #find /tmp/mconf/firefox/.mozilla -type f | xargs sed -i -e "s/chilicuil/$(whoami)/g"
-        #_smv /tmp/mconf/firefox/.mozilla "${HOME}"
-
-        _cmd rm -rf ~/.macromedia ~/.adobe
-        _cmd ln -s      /dev/null ~/.adobe
-        _cmd ln -s      /dev/null ~/.macromedia
-    #fi
-
-    _printfs "configuring gtk, icon, cursor themes ..."
-    if [ ! -f "${HOME}"/.minos/not_override ]; then
-        [ ! -d "${HOME}"/.local/share ] && mkdir -p "${HOME}"/.local/share
-        mv   /tmp/minos-conf/icons        /tmp/minos-conf/.icons
-        mv   /tmp/minos-conf/gtk/themes   /tmp/minos-conf/gtk/.themes
-        mv   /tmp/minos-conf/fonts        /tmp/minos-conf/.fonts
-        mv   /tmp/minos-conf/data         /tmp/minos-conf/.data
-        _smv /tmp/minos-conf/.icons       "${HOME}"
-        _smv /tmp/minos-conf/gtk/.themes  "${HOME}"
-        _smv /tmp/minos-conf/.fonts       "${HOME}"
-        _smv /tmp/minos-conf/.data        "${HOME}"
-        _smv /tmp/minos-conf/applications "${HOME}"/.local/share
-    fi
-
-    _waitforsudo fc-cache -f -v  #update font information
-    _cmdsudo update-alternatives --set x-terminal-emulator /usr/bin/urxvt
-
-    [ -d "${HOME}"/.gvfs ] && fusermount -u "${HOME}"/.gvfs
-
-    #stackoverflow.com/q/8887972
-    find "${HOME}" -maxdepth 3                \
-        \(  -type f -iname "*gtkrc*"          \
-         -o -type f -iname "*Trolltech.conf*" \
-         -o -type f -iname "*Xdefaults*"      \
-         -o -type f -iname "*bazaar.conf*"    \
-         -o -type f -iname "*conkyrc*" \) -exec sed -i "s/chilicuil/$(whoami)/g" '{}' \;
-
-    #virtualization technologies used in vps's don't have displays
-    localsetup_var_virt="$(_whatvirt)"
-    case "${localsetup_var_virt}" in
-        openvz|uml|xen)
-            _printfl     "Virtualization addons"
-            _waitforsudo DEBIAN_FRONTEND=noninteractive apt-get purge -y zram-config
-            _enableremotevnc
-            ;;
-    esac
-
-    _printfs "cleaning up ..."
-    _cmd     touch "${HOME}"/.minos/not_override
-    _cmdsudo mkdir /etc/minos/
-    _cmdsudo touch /etc/minos/.minos/not_override
-    _cmd     rm -rf /tmp/minos-conf* /tmp/mconf*
-
-    ############################################################################
-
+    #We're about to install many packages, speed up the process for subsequent local machines
+    _install_apt_proxy
+    _printfs "Installing packages ..."
+    #_waitforsudo DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y minos-desktop
+    _cmdsudo_verbose \
+        DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends \
+        -y --force-yes minos-desktop || _die "Installation failed"
+    #[ -d "${HOME}"/.gvfs ] && fusermount -u "${HOME}"/.gvfs
+    _recover_original_reps
     _printfl "DONE"
-    printf   "\\n"
-    printf   "%s\\n" "Restart your computer to start having fun, n@n/"
+    printf   "\\n%s\\n" "Restart your computer to get started, have fun!, n@n/"
 }
 
 ################################################################################
@@ -1225,7 +648,7 @@ if _supported; then
     #the _hook function execute $HOME/s/[LETTER][NUMBER] scripts
     #eg: $HOME/s/A01action, $HOME/s/B01installextra, $HOME/s/Z01finish
     _hooks A #these hooks wont have super powers
-    _getroot
+    _get_root_passwd
     _hooks B #super powers are available through the "_cmdsudo" function
              #e.g, _cmdsudo mkdir /root/forbidden_directory
     case "${mode}" in
