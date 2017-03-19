@@ -914,6 +914,13 @@ test -f libssh2-1.3.0.tar.gz && test -f libssh2-1.4.0.tar.gz
 rm -rf *.tar.gz
 wget-finder -O file libssh2-1.3.0.tar.gz:6425331899ccf1015f1ed79448cb4709 libssh2-1.4.0.tar.gz:ee670161d8c5dff93ae84a3f34f15669
 test -f file && test ! -f libssh2-1.3.0.tar.gz && test ! -f libssh2-1.4.0.tar.gz
+
+wget-finder --checksum a48fefe93507668193135f6aa5f1ed77 -O killramdisk-1.0-2.i386.rpm http://mirrors.mit.edu/kernel/dist/superrescue/v1/RPMS/killramdisk-1.0-2.i386.rpm || :
+test ! -f killramdisk-1.0-2.i386.rpm
+wget-finder --checksum a48fefe93507668193135f6aa5f1ed77 --keep-wrong-file -O killramdisk-1.0-2.i386.rpm http://mirrors.mit.edu/kernel/dist/superrescue/v1/RPMS/killramdisk-1.0-2.i386.rpm || :
+test   -f killramdisk-1.0-2.i386.rpm && rm -rf killramdisk-1.0-2.i386.rpm
+wget-finder --checksum a48fefe93507668193135f6aa5f1ed7f -O killramdisk-1.0-2.i386.rpm http://mirrors.mit.edu/kernel/dist/superrescue/v1/RPMS/killramdisk-1.0-2.i386.rpm
+test   -f   killramdisk-1.0-2.i386.rpm
 @end
 
 @begin{whats}

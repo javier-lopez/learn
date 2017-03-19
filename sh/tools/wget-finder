@@ -13,11 +13,15 @@ _usage() {
     printf "%s\\n" "Usage: ${progname} [OPTION]... FILE:CHECKSUM..."
     printf "%s\\n" "A wrapper around the wget non-interactive network retriever."
     printf "\\n"
-    printf "%s\\n" "  --clean-cache          remove temporal files"
     printf "%s\\n" "  --search-engine        prefer a search engine"
     printf "%s\\n" "  --list-search-engine   list supported search engines"
     printf "%s\\n" "  --list-checksum        list supported checksums functions"
     printf "%s\\n" "  --list-links           print links and exit"
+    printf "%s\\n" "  --clean-cache          remove temporal files"
+    printf "\\n"
+    printf "%s\\n" "  --checksum             verify protocol://FILE matches checksum"
+    printf "%s\\n" "  --keep-wrong-file      keep downloaded file even if it doesn't match the checksum"
+    printf "\\n"
     printf "%s\\n" "  -h, --help             show this and wget help message and exit"
     printf "%s\\n" "-----------------------------------------------------------------"
     exec wget "${@}"
@@ -35,17 +39,6 @@ _basename() {
     fi
 
     printf "%s" "${_basename__name}"
-}
-
-_dirname() {
-    [ -z "${1}" ] && return 1
-    case "${1}" in
-        /*|*/*) #http://www.linuxselfhelp.com/gnu/autoconf/html_chapter/autoconf_10.html
-            _dirname__dir=$(expr "x${1}" : 'x\(.*\)/[^/]*' \| '.'      : '.')
-            printf "%s\\n" "${_dirname__dir}"
-            ;;
-        *) printf "%s\\n" ".";;
-    esac
 }
 
 _shuf() {
@@ -274,6 +267,17 @@ for arg in "${@}"; do #parse options
     case "${arg}" in
         -h|--help) _usage "${arg}"   ;;
         -q|--quiet) quiet="1"; shift ;;
+        --keep-wrong-file) keep_wrong_file="1"; shift ;;
+        --checksum)
+            if [ "${#}" -gt "1" ]; then
+                case "${2}" in
+                    -*) _die "Option '${arg}' requires a parameter" ;;
+                esac
+                shift; user_checksum="${1}"; [ "${1}" ] && shift
+            else
+                _die "Option '${arg}' requires a parameter"
+            fi
+            ;;
         --clean-cache)
             rm -rf "/tmp/${progname}".* && [ -z "${quiet}" ] && \
                 printf "%s\\n" "Cache cleared successfully"
@@ -307,8 +311,18 @@ for arg in "${@}"; do #parse options
 done
 
 if [ -z "${archives}" ]; then
-    if [ -d "$(_dirname "${output}")" ]; then
-        exec wget -O "${output}" ${extra_args}
+    if [ -n "${output}" ]; then
+        if [ -n "${user_checksum}" ]; then
+            wget -O "${output}" ${extra_args} || exit "${?}"
+            output_checksum="$(_checksum "$(_checksum_type "${user_checksum}")" "${output}")"
+            if test X"${output_checksum}" != X"${user_checksum}"; then
+                printf "%s\\n" "'${output}' => '${output_checksum}' doesn't match '${user_checksum}' checksum"
+                [ -z "${keep_wrong_file}" ] && rm -rf "${output}" && exit 1
+            fi
+            exit
+        else
+            exec wget -O "${output}" ${extra_args}
+        fi
     else
         exec wget ${extra_args}
     fi
