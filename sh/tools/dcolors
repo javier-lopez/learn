@@ -72,9 +72,13 @@ _kmeans_awk() {
                 else if (coordinate == 3) sumZ+=coordinates[coordinate] * times
             }
         }
-        sumX=int(sumX/plist_array_len)
-        sumY=int(sumY/plist_array_len)
-        sumZ=int(sumZ/plist_array_len)
+
+        //avoid division by zero
+        if(plist_array_len) {
+            sumX=int(sumX/plist_array_len)
+            sumY=int(sumY/plist_array_len)
+            sumZ=int(sumZ/plist_array_len)
+        }
         return sumX "," sumY "," sumZ
     }
 
