@@ -175,7 +175,7 @@ _create_minos_default_desktop_settings() {
         echo
         _cmd "printf \"%s\\n\\n\" \"#${file_header}\" > \"${1}\"/etc##i3##config"
         _cmd "cat ~/.i3/config >> ${1}/etc##i3##config"
-        _cmd "sed -i 's:dmenu-countdown.*:dmenu-countdown:' ${1}/etc##i3##config"
+        _cmd "sed -i 's:dmenu-alarm.*:dmenu-alarm:' ${1}/etc##i3##config"
     fi
 
     if _file_or_directory_exist ~/.irssi/; then
