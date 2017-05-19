@@ -106,7 +106,7 @@ _update() {
         "${progname} version = ${_u__current_version}" >&2 && return 1
 
     _u__error_msg="$(curl -s  \
-    https://raw.githubusercontent.com/chilicuil/learn/master/sh/tools/uimg \
+    https://raw.githubusercontent.com/javier-lopez/learn/master/sh/tools/uimg \
     > "/tmp/${progname}.${$}" 2>&1)" || { printf "%s\\n%s\\n" \
         "ERROR: Failed to fetch update, please try later or update manually" \
         "${_u__error_msg}" >&2; return 1; }

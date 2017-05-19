@@ -76,7 +76,7 @@ if ! _internetavailable; then
 fi
 
 [ -f /tmp/lp-g9n.py ] || wget \
-    https://raw.github.com/chilicuil/learn/master/python/lp-g9n \
+    https://raw.github.com/javier-lopez/learn/master/python/lp-g9n \
     -O /tmp/lp-g9n.py >/dev/null 2>&1
 [ -f /tmp/lp-g9n.py ] && printf "%s\\n" \
     "Outputing data to \"lp-g9n-team.csv\"" || \

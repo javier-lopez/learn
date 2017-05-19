@@ -39,7 +39,7 @@ _last_sundays() {
 
 _send_mails() {
     for mail in ${mails}; do
-        #https://raw.githubusercontent.com/chilicuil/learn/master/sh/tools/mailgun
+        #https://raw.githubusercontent.com/javier-lopez/learn/master/sh/tools/mailgun
         mail="$(printf "%s\\n" "${mail}" | sed "s:#%#:@:")"
         mailgun --from "${from}" --subject "${subject}" "${mail}" "${msg}"
     done

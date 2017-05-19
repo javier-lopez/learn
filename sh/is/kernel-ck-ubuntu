@@ -1,6 +1,6 @@
 #!/bin/sh
 #http://viajemotu.wordpress.com/2012/08/13/kernel-ck-for-ubuntu-precise/
-#https://github.com/chilicuil/learn/blob/master/sh/is/kernel-ck-ubuntu
+#https://github.com/javier-lopez/learn/blob/master/sh/is/kernel-ck-ubuntu
 
 # $ time sh kernel-ck-ubuntu
 
@@ -69,7 +69,7 @@ _die() {
 _header() {
     clear
     _printfl "Kernel ck builder (${patchkernel})"
-    printf "%b\\n" "\033[1m Updates:\033[0m     https://github.com/chilicuil/learn/blob/master/sh/is/kernel-ck-ubuntu"
+    printf "%b\\n" "\033[1m Updates:\033[0m     https://github.com/javier-lopez/learn/blob/master/sh/is/kernel-ck-ubuntu"
     printf "%b\\n" "\033[1m Patches:\033[0m     -bfq, -ck"
     printf "%b\\n" "\033[1m Config:\033[0m      http://repo-ck.com/"
     _printfl "Current configuration: edit the script to change it"

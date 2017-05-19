@@ -17,7 +17,7 @@
 #
 #Run: share-backup stop, to stop sharing"
 
-upstream_url_httpd='https://raw.githubusercontent.com/chilicuil/learn/master/python/tools/simple-httpd'
+upstream_url_httpd='https://raw.githubusercontent.com/javier-lopez/learn/master/python/tools/simple-httpd'
 
 _basename() {
     [ -z "${1}" ] && return 1 || _basename__name="${1}"
