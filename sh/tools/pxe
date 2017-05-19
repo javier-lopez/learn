@@ -194,14 +194,14 @@ LABEL 3
 MENU LABEL Ubuntu minimal 12.04 LTS (32-bit)(hands-free)
 KERNEL ubuntu/1204/i386/linux
 IPAPPEND 2
-APPEND DEBCONF_DEBUG=5 priority=critical locale=en_US interface=auto netcfg/get_nameservers=8.8.8.8 url=http://people.ubuntu.com/~chilicuil/conf/preseed/ubuntu-minimal.preseed initrd=ubuntu/1204/i386/initrd.gz
-#APPEND DEBCONF_DEBUG=5 priority=critical locale=en_US user=joe interface=auto proxy=http://10.99.88.1:3142 netcfg/get_nameservers=8.8.8.8 url=http://people.ubuntu.com/~chilicuil/conf/preseed/ubuntu-minimal.preseed initrd=ubuntu/1204/i386/initrd.gz
+APPEND DEBCONF_DEBUG=5 priority=critical locale=en_US interface=auto netcfg/get_nameservers=8.8.8.8 url=http://people.ubuntu.com/~javier-lopez/conf/preseed/ubuntu-minimal.preseed initrd=ubuntu/1204/i386/initrd.gz
+#APPEND DEBCONF_DEBUG=5 priority=critical locale=en_US user=joe interface=auto proxy=http://10.99.88.1:3142 netcfg/get_nameservers=8.8.8.8 url=http://people.ubuntu.com/~javier-lopez/conf/preseed/ubuntu-minimal.preseed initrd=ubuntu/1204/i386/initrd.gz
 LABEL 4
 MENU LABEL Ubuntu minimal 12.04 LTS (64-bit)(hands-free)
 KERNEL ubuntu/1204/amd64/linux
 IPAPPEND 2
-APPEND DEBCONF_DEBUG=5 priority=critical locale=en_US interface=auto netcfg/get_nameservers=8.8.8.8 url=http://people.ubuntu.com/~chilicuil/conf/preseed/ubuntu-minimal.preseed initrd=ubuntu/1204/amd64/initrd.gz
-#APPEND DEBCONF_DEBUG=5 priority=critical locale=en_US user=joe interface=auto proxy=http://10.99.88.1:3142 netcfg/get_nameservers=8.8.8.8 url=http://people.ubuntu.com/~chilicuil/conf/preseed/ubuntu-minimal.preseed initrd=ubuntu/1204/amd64/initrd.gz
+APPEND DEBCONF_DEBUG=5 priority=critical locale=en_US interface=auto netcfg/get_nameservers=8.8.8.8 url=http://people.ubuntu.com/~javier-lopez/conf/preseed/ubuntu-minimal.preseed initrd=ubuntu/1204/amd64/initrd.gz
+#APPEND DEBCONF_DEBUG=5 priority=critical locale=en_US user=joe interface=auto proxy=http://10.99.88.1:3142 netcfg/get_nameservers=8.8.8.8 url=http://people.ubuntu.com/~javier-lopez/conf/preseed/ubuntu-minimal.preseed initrd=ubuntu/1204/amd64/initrd.gz
 LABEL 5
 MENU LABEL Ubuntu minimal 14.04 LTS (32-bit)
 KERNEL ubuntu/1404/i386/linux
@@ -216,14 +216,14 @@ LABEL 7
 MENU LABEL Ubuntu minimal 14.04 LTS (32-bit)(hands-free)
 KERNEL ubuntu/1404/i386/linux
 IPAPPEND 2
-APPEND DEBCONF_DEBUG=5 priority=critical locale=en_US interface=auto netcfg/get_nameservers=8.8.8.8 url=http://people.ubuntu.com/~chilicuil/conf/preseed/ubuntu-minimal.preseed initrd=ubuntu/1404/i386/initrd.gz
-#APPEND DEBCONF_DEBUG=5 priority=critical locale=en_US user=joe interface=auto proxy=http://10.99.88.1:3142 netcfg/get_nameservers=8.8.8.8 url=http://people.ubuntu.com/~chilicuil/conf/preseed/ubuntu-minimal.preseed initrd=ubuntu/1404/i386/initrd.gz
+APPEND DEBCONF_DEBUG=5 priority=critical locale=en_US interface=auto netcfg/get_nameservers=8.8.8.8 url=http://people.ubuntu.com/~javier-lopez/conf/preseed/ubuntu-minimal.preseed initrd=ubuntu/1404/i386/initrd.gz
+#APPEND DEBCONF_DEBUG=5 priority=critical locale=en_US user=joe interface=auto proxy=http://10.99.88.1:3142 netcfg/get_nameservers=8.8.8.8 url=http://people.ubuntu.com/~javier-lopez/conf/preseed/ubuntu-minimal.preseed initrd=ubuntu/1404/i386/initrd.gz
 LABEL 8
 MENU LABEL Ubuntu minimal 14.04 LTS (64-bit)(hands-free)
 KERNEL ubuntu/1404/amd64/linux
 IPAPPEND 2
-APPEND DEBCONF_DEBUG=5 priority=critical locale=en_US interface=auto netcfg/get_nameservers=8.8.8.8 url=http://people.ubuntu.com/~chilicuil/conf/preseed/ubuntu-minimal.preseed initrd=ubuntu/1404/amd64/initrd.gz
-#APPEND DEBCONF_DEBUG=5 priority=critical locale=en_US user=joe interface=auto proxy=http://10.99.88.1:3142 netcfg/get_nameservers=8.8.8.8 url=http://people.ubuntu.com/~chilicuil/conf/preseed/ubuntu-minimal.preseed initrd=ubuntu/1404/amd64/initrd.gz
+APPEND DEBCONF_DEBUG=5 priority=critical locale=en_US interface=auto netcfg/get_nameservers=8.8.8.8 url=http://people.ubuntu.com/~javier-lopez/conf/preseed/ubuntu-minimal.preseed initrd=ubuntu/1404/amd64/initrd.gz
+#APPEND DEBCONF_DEBUG=5 priority=critical locale=en_US user=joe interface=auto proxy=http://10.99.88.1:3142 netcfg/get_nameservers=8.8.8.8 url=http://people.ubuntu.com/~javier-lopez/conf/preseed/ubuntu-minimal.preseed initrd=ubuntu/1404/amd64/initrd.gz
 EOF
     _verbose "  - creating ${1}/pxe/fedora/fedora.menu ..."
     mkdir -p "${1}"/fedora/19/amd64
@@ -250,7 +250,7 @@ _create_deps() {
 
     #menu.c32 and pxelinux.0 were taken from https://github.com/psychomario/PyPXE
     #python programs are customized version of psychomario work
-    #https://github.com/chilicuil/learn/tree/master/python
+    #https://github.com/javier-lopez/learn/tree/master/python
 
     #menu.c32
     _verbose "  - creating ${1}/menu.c32 ..."

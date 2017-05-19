@@ -1,7 +1,7 @@
 #!/bin/sh
 
 manual="https://help.github.com/articles/using-jekyll-with-pages#troubleshooting"
-updates="https://github.com/chilicuil/learn/blob/master/sh/is/gitpages"
+updates="https://github.com/javier-lopez/learn/blob/master/sh/is/gitpages"
 
 apps_deps="ruby1.9.1 build-essential ruby1.9.1-dev libgsl0-dev"
 gems_deps="bundler gsl"

@@ -125,7 +125,7 @@ case "$DISTRIB_ID" in
         if ! dpkg -s minos-core-settings >/dev/null 2>&1; then
             _printfs "Adding minos configuration file to ${DISTRIB_ID} ${DISTRIB_CODENAME} ..."
             _cmd sudo mkdir -p /etc/minos/
-            _cmd sudo wget --no-check-certificate https://raw.githubusercontent.com/chilicuil/dotfiles/master/.minos/config -O /etc/minos/config
+            _cmd sudo wget --no-check-certificate https://raw.githubusercontent.com/javier-lopez/dotfiles/master/.minos/config -O /etc/minos/config
 
             _printfs "Installing minos base ..."
             _cmd wget javier.io/deploy -O deploy

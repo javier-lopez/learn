@@ -1,6 +1,6 @@
 #!/bin/sh
 
-updates="https://raw.github.com/chilicuil/learn/master/sh/is/apt-proxy"
+updates="https://raw.github.com/javier-lopez/learn/master/sh/is/apt-proxy"
 
 _header() {
     clear

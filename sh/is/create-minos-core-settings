@@ -90,7 +90,7 @@ _create_minos_default_core_settings() {
     if _file_or_directory_exist ~/.bashrc; then
         echo
         _cmd "printf \"%s\\n\\n\" \"#${file_header}\" > \"${1}\"/etc##skel##.profile.d##shundle.sh"
-        _cmd "printf \"%s\\n\\n\" \"#http://github.com/chilicuil/shundle\" >> \"${1}\"/etc##skel##.profile.d##shundle.sh"
+        _cmd "printf \"%s\\n\\n\" \"#http://github.com/javier-lopez/shundle\" >> \"${1}\"/etc##skel##.profile.d##shundle.sh"
         _cmd "sed -n '/shundle/,\$p' ~/.bashrc >> ${1}/etc##skel##.profile.d##shundle.sh"
     fi
 

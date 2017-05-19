@@ -570,7 +570,7 @@ _staticus_notify() {
             done
         else
             printf "%b\\n" "mailgun is not available, install it to use this notification module" >&2
-            printf "%b\\n" "https://raw.githubusercontent.com/chilicuil/learn/master/sh/tools/mailgun" >&2
+            printf "%b\\n" "https://raw.githubusercontent.com/javier-lopez/learn/master/sh/tools/mailgun" >&2
             return 1
         fi
     }

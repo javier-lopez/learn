@@ -200,9 +200,9 @@ _update() {
     return 1; }
 
     _u__error_msg="$(wget -q -O- --no-check-certificate \
-    https://raw.githubusercontent.com/chilicuil/learn/master/sh/tools/translate \
+    https://raw.githubusercontent.com/javier-lopez/learn/master/sh/tools/translate \
         > "/tmp/${progname}.${$}" 2>&1 || curl -s  \
-    https://raw.githubusercontent.com/chilicuil/learn/master/sh/tools/translate \
+    https://raw.githubusercontent.com/javier-lopez/learn/master/sh/tools/translate \
     > "/tmp/${progname}.${$}" 2>&1)"   || { printf "%s\\n%s\\n" \
         "ERROR: Failed to fetch update, please try later or update manually" \
         "${_u__error_msg}" >&2; return 1; }
