@@ -477,7 +477,6 @@ _cleanup() {
     [ -z "${sudopwd}" ] && return
     printf "\\n"
     _printfl "Cleanup"
-    _cmd rm -rf /tmp/"$(_basename "${dotfiles}")"
     _recover_original_reps
     [ -z "${1}" ] && exit
 }
