@@ -750,7 +750,7 @@ _staticus_txt2html() {
         awk '/^### notification:/ {print substr($0, index($0,$3)); exit}' | \
         _escape_special_characters)"
     _stxt2html__notification_description="$(printf "%s\\n" "${_stxt2html__report_txt_content}" | \
-        sed '1,/^### notification/d;/####/,$d' | sed '/^\s*$/d' | \
+        sed '0,/^### notification/d;/####/,$d' | sed '/^\s*$/d' | \
         _escape_special_characters)"
     if [ -n "${_stxt2html__notification}" ]; then
         _stxt2html__report_html_content="$(printf "%s\\n" \
