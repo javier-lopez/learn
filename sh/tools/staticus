@@ -12,8 +12,15 @@
 report_html="./staticus.html"
 report_txt="./staticus.txt"
 
-modules="memory,swap,load,storage,process,info"
-#modules="notification,memory,swap,load,storage,process,info"
+modules="title,status,memory,swap,load,storage,process,info"
+#modules="title,status,notification,memory,swap,load,storage,process,info"
+
+#module's properties
+module_title_msg="Staticus - $(hostname -f) $(date "+%d-%m-%Y %H:%M (%Z)")"
+module_storage_partitions="/,/home"
+module_process_list="init,rsyslogd,cron"
+module_info_list="issue,uname,uptime"
+module_notification_msg="Next maintenance window is programmed at Tuesday May 12th"
 
 #thresholds
 module_memory_threshold="80"
@@ -21,24 +28,21 @@ module_swap_threshold="80"
 module_load_threshold="4"
 module_storage_threshold="80"
 
-#partitions
-module_storage_partitions="/,/home"
-
-#processes
-module_process_list="init,rsyslogd,cron"
-
-module_notification_msg="Next maintenance window is programmed at Tuesday May 12th"
-
 #notifications
-#notify="true"
+notify="false" #or true
 notify_method="mailgun"
 notify_contacts="admin@example.com,contact@example.com"
 
-date_format="+%d-%m-%Y %H:%M (%Z)"
 theme="default"
 config_file="/etc/staticus.conf"
+
 ###############################################################################
 
+VERSION="2017.06.20-12:08"
+
+status_ok="0"
+status_error="1"
+status_warning="2"
 themes="default"
 theme_default='H4sIANbmPFcAA+w8aZPaxrb+fH+FMqmUE0cwQiBmgCR1ZzPDBIHN4GEg5XqlDSTQdrWwPv77O90t
 iZaQGOxXefU+ZOwxovuc06fPrl4caJZrSoFW1gPLfPf3/HDwU6/V3tX4GlfhhHc1Dj64Cm7nOOGK
@@ -185,15 +189,17 @@ _usage() {
     printf "%s\\n" "Usage: ${progname} [options] -o staticus.html"
     printf "%s\\n" "Create static status pages."
     printf "\\n"
-    printf "%s\\n" "  -c, --config /etc/staticus.conf   read options from a configuration file"
-    printf "%s\\n" "  -m, --modules \"all\"               use defined modules"
-    printf "%s\\n" "  -o, --output-html staticus.html   save html  status output to this file"
-    printf "%s\\n" "  -O, --output-txt  staticus.txt    save plain status output to this file"
-    printf "%s\\n" "  --txt2html staticus.txt           convert a plain status output to a static html page"
+    printf "%s\\n" "  -c, --config /etc/staticus.conf   configuration file"
+    printf "%s\\n" "  -m, --modules \"all\"               define modules"
+    printf "%s\\n" "  -o, --output-html staticus.html   html status output file"
+    printf "%s\\n" "  -O, --output-txt  staticus.txt    txt  status output file"
+    printf "%s\\n" "  --txt2html staticus.txt           convert txt to html"
     printf "%s\\n" "  --theme default                   use specified html theme"
     printf "%s\\n" "  --list-modules                    list available modules"
     printf "%s\\n" "  --list-themes                     list available html themes"
-    printf "%s\\n" "  -v, --verbose                     verbose mode"
+    printf "\\n"
+    printf "%b\\n" "  -U, --update                      update this program to latest version"
+    printf "%s\\n" "  -v, --version                     display version"
     printf "%s\\n" "  -h, --help                        show this help message and exit"
 }
 
@@ -205,13 +211,67 @@ _basename() {
     esac
 
     if [ -n "${_basename__suffix}" ] && [ "${#_basename__name}" -gt "${#2}" ]; then
-        if [ X"$(printf "%s" "${_basename__name}" | cut -c"$((${#_basename__name} - ${#_basename__suffix} + 1))"-"${#_basename__name}")" \
-           = X"$(printf "%s" "${_basename__suffix}")" ]; then
-            _basename__name="$(printf "%s" "${_basename__name}" | cut -c1-"$((${#_basename__name} - ${#_basename__suffix}))")"
+        if [ X"$(printf "%s\\n" "${_basename__name}" | cut -c"$((${#_basename__name} - ${#_basename__suffix} + 1))"-"${#_basename__name}")" \
+           = X"$(printf "%s\\n" "${_basename__suffix}")" ]; then
+            _basename__name="$(printf "%s\\n" "${_basename__name}" | cut -c1-"$((${#_basename__name} - ${#_basename__suffix}))")"
         fi
     fi
 
-    printf "%s" "${_basename__name}"
+    printf "%s\\n" "${_basename__name}"
+}
+
+_update() {
+    _u__current_file="$(cd "$(dirname "${0}")" && pwd)/${progname}"
+    _u__current_version_long="$(awk -F\" \
+        '/VERSION=/{print $2;exit}' "${_u__current_file}" 2>/dev/null)"
+    _u__current_version="$(printf "%s" "${_u__current_version_long}" | awk \
+        '{gsub(/[\.:]/,"");gsub(/-/,"");print;exit}' 2>/dev/null)"
+    [ -z "${_u__current_version}" ] && printf "%s\\n%s\\n%s\\n"    \
+        "ERROR: Failed to detect current version, please update manually" \
+        "${progname}         = ${_u__current_file}"                 \
+        "${progname} version = ${_u__current_version}" >&2 && return 1
+
+    command -v "wget" >/dev/null 2>&1 || command -v "curl" >/dev/null 2>&1 || { \
+    printf "%s\\n" "ERROR: Install either 'wget' or 'curl' to update within the program" >&2
+    return 1; }
+
+    _u__error_msg="$(wget -q -O- --no-check-certificate \
+    https://raw.githubusercontent.com/javier-lopez/learn/master/sh/tools/${progname} \
+        > "/tmp/${progname}.${$}" 2>&1 || curl -s  \
+    https://raw.githubusercontent.com/javier-lopez/learn/master/sh/tools/${progname} \
+    > "/tmp/${progname}.${$}" 2>&1)"   || { printf "%s\\n%s\\n" \
+        "ERROR: Failed to fetch update, please try later or update manually" \
+        "${_u__error_msg}" >&2; return 1; }
+
+    _u__update_version_long="$(awk -F\" \
+        '/VERSION=/{print $2;exit}' "/tmp/${progname}.${$}" 2>/dev/null)"
+    _u__update_version="$(printf "%s" "${_u__update_version_long}" | awk \
+        '{gsub(/[\.:]/,"");gsub(/-/,"");print;exit}' 2>/dev/null)"
+    [ -z "${_u__update_version}" ] && _u__update_version="0"
+
+    if [ "${_u__current_version}" -lt "${_u__update_version}" ]; then
+        printf "%s %s\\n" "Updating from version" \
+            "${_u__current_version_long} to ${_u__update_version_long} ..."
+        chmod +x "/tmp/${progname}.${$}"
+        if ! mv -f "/tmp/${progname}.${$}" "${_u__current_file}" 2>/dev/null; then
+            printf "%s\\n" "ERROR: no write permissions on ${_u__current_file}" >&2
+            printf "%s\\n" "INFO : trying with sudo ..." >&2
+            if command -v "sudo" >/dev/null 2>&1; then
+                sudo mv "/tmp/${progname}.${$}" "${_u__current_file}" || return 1
+            else
+                printf "%s\\n" "ERROR: sudo isn't available, exiting ..." >&2
+                rm -rf "/tmp/${progname}.${$}"; return 1
+            fi
+        fi
+        printf "%s %s\\n" "${progname} is up-to-date (${_u__update_version_long})"
+        return 0
+    fi
+    printf "%s %s\\n" "${progname} is up-to-date (${_u__current_version_long})"
+    rm -rf "/tmp/${progname}.${$}"
+}
+
+_show_version() {
+    printf "%s\\n" "${progname} ${VERSION}"
 }
 
 _die() {
@@ -219,9 +279,21 @@ _die() {
     _usage >&2; exit 1
 }
 
-_verbose() {
-    [ -z "${1}" ] && return 1
-    [ -n "${verbose}" ] && printf "%s\\n" "${*}"
+_warning() {
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+}
+
+_normalize_file() {
+    printf "%s\\n" "${@}" | sed 's:-:/dev/stdout:'
+}
+
+_file_is_writable() {
+    case "${1}" in
+        '/dev/stdout'|'/dev/stderr') return 0 ;;
+        *)
+        printf "%s\\n" "writable" > "${1}" 2>/dev/null
+        test "$(cat "${1}" 2>/dev/null)" = "writable" || return 1
+    esac
 }
 
 _decode64() {
@@ -309,7 +381,7 @@ _bytes2human() {
         *[!0-9]*|"") return 1 ;;
     esac
 
-    printf "%s" "${1}" | awk '{
+    printf "%s\\n" "${1}" | awk '{
         split( "bytes Kb Mb Gb Tb Eb Pb Yb Zb" , v );
         s=1; while($1>=1024) { $1/=1024; s++ }
         printf("%.2f %s\n", $1, v[s])}' | sed 's:\.00 : :'
@@ -327,29 +399,53 @@ _escape_special_characters() {
     sed -e 's/[]\/$*.^|[]/\\&/g'
 }
 
-_failed_module() {
-    [ -z "${failed_modules}" ] && failed_modules="0"
-    failed_modules="$(($failed_modules+1))"
+_staticus_report_module() {
+    [ -z "${2}" ] && return 1
+
+    _srm__module="${1}"
+    _srm__module_status="${2}"
+    _srm__module_msg="${3}"
+
+    case "$(_str2lower "${_srm__module}")" in
+        title)
+            printf "%s\\n"    "# ${_srm__module}: ${_srm__module_status}"
+            ;;
+        status)
+            printf "%s\\n"    "## ${_srm__module}: ${_srm__module_status}"
+            ;;
+        notification)
+            printf "%s\\n"    "### ${_srm__module}: ${2}"
+            ;;
+        *)
+            printf "\\n%s\\n" "#### ${_srm__module}: ${2}"
+            ;;
+    esac
+
+    if [ -n "${_srm__module_msg}" ]; then
+        printf "%s\\n" "${_srm__module_msg}"
+    fi
+}
+
+_module_title() {
+    [ -z "${1}" ] && return 1
+    _staticus_report_module "title" "${*}"
 }
 
 _module_notification() {
     [ -z "${1}" ] && return 1
-    _verbose "notification module"
-    _staticus_report_notification "notification" "notification" "${*}"
+    _staticus_report_module "notification" "notification" "${*}"
 }
 
 _module_memory() {
-    # $1 => threshold
     [ -z "${1}" ] && return 1
-    _verbose "memory module"
 
     #https://bugzilla.redhat.com/show_bug.cgi?id=1253036
     _mmemory__input="$(free -k | grep Mem)"
 
-    _mmemory__total="$(printf "%s" "${_mmemory__input}" | awk '{print $2}')"
-    _mmemory__used="$(printf  "%s" "${_mmemory__input}" | awk '{print $3}')"
-    _mmemory__used_percentage="$(printf "%s" "${_mmemory__input}" | awk '{printf "%.2f", $3/$2 * 100.0}' | cut -d\. -f1)"
-    _mmemory__threshold="$(printf "%s" "${_mmemory__total} ${1}"  | awk '{printf "%.2f", $1 * ($2/100)}' | cut -d\. -f1)"
+    _mmemory__total="$(printf "%s\\n" "${_mmemory__input}" | awk '{print $2}')"
+    _mmemory__used="$(printf  "%s\\n" "${_mmemory__input}" | awk '{print $3}')"
+    _mmemory__used_percentage="$(printf "%s\\n" "${_mmemory__input}" | awk '{printf "%.2f", $3/$2 * 100.0}' | cut -d\. -f1)"
+    _mmemory__threshold="$(printf "%s\\n" "${_mmemory__total} ${1}"  | awk '{printf "%.2f", $1 * ($2/100)}' | cut -d\. -f1)"
 
     _mmemory__description="$(printf "%s\\n%s\\n%s\\n" \
         "* threshold $(_bytes2human "$(($_mmemory__threshold*1024))") (${1}%)" \
@@ -358,30 +454,29 @@ _module_memory() {
 
     if [ "${_mmemory__used_percentage}" -ge "${1}" ]; then
         _staticus_report_module "memory" "warning" "${_mmemory__description}"
+        return "${status_warning}"
     else
         _staticus_report_module "memory" "ok" "${_mmemory__description}"
     fi
 }
 
 _module_swap() {
-    # $1 => threshold
     [ -z "${1}" ] && return 1
-    _verbose "swap module"
 
     #https://bugzilla.redhat.com/show_bug.cgi?id=1253036
     _mswap__input="$(free -k | grep Swap)"
 
-    _mswap__total="$(printf "%s" "${_mswap__input}" | awk '{print $2}')"
-    _mswap__used="$(printf "%s" "${_mswap__input}"  | awk '{print $3}')"
+    _mswap__total="$(printf "%s\\n" "${_mswap__input}" | awk '{print $2}')"
+    _mswap__used="$(printf "%s\\n" "${_mswap__input}"  | awk '{print $3}')"
+    _mswap__description="$(printf "%s\\n%s\\n" "* no swap configured" "  ${_mswap__input}")"
 
-    [ X"${_mswap__total}" = X"0" ] && {
-        _staticus_report_module "swap" "error" \
-            "$(printf "%s\\n%s\\n" "* no swap configured" "  ${_mswap__input}")"
-        return 1
-    }
+    if [ X"${_mswap__total}" = X"0" ]; then
+        _staticus_report_module "swap" "error" "${_mswap__description}"
+        return "${status_error}"
+    fi
 
-    _mswap__used_percentage="$(printf "%s" "${_mswap__input}" | awk '{printf "%.2f", $3/$2 * 100.0}' | cut -d\. -f1)"
-    _mswap__threshold="$(printf "%s" "${_mswap__total} ${1}"  | awk '{printf "%.2f", $1 * ($2/100)}' | cut -d\. -f1)"
+    _mswap__used_percentage="$(printf "%s\\n" "${_mswap__input}" | awk '{printf "%.2f", $3/$2 * 100.0}' | cut -d\. -f1)"
+    _mswap__threshold="$(printf "%s\\n" "${_mswap__total} ${1}"  | awk '{printf "%.2f", $1 * ($2/100)}' | cut -d\. -f1)"
 
     _mswap__description="$(printf "%s\\n%s\\n%s\\n" \
         "* threshold $(_bytes2human "$(($_mswap__threshold*1024))") (${1}%)" \
@@ -390,6 +485,7 @@ _module_swap() {
 
     if [ "${_mswap__used_percentage}" -ge "${1}" ]; then
         _staticus_report_module "swap" "warning" "${_mswap__description}"
+        return "${status_warning}"
     else
         _staticus_report_module "swap" "ok" "${_mswap__description}"
     fi
@@ -397,50 +493,49 @@ _module_swap() {
 
 _module_load() {
     [ -z "${1}" ] && return 1
-    # $1 => threshold
-    _verbose "load module"
 
     _mload__input="$(awk '{print $1}' /proc/loadavg 2>&1)" || {
         _staticus_report_module "load" "error" "${_mload__input}"
-        return 1
+        return "${status_error}"
     }
 
-    _mload__used_percentage="$(printf "%s" "${_mload__input} ${1}" | awk '{printf "%.2f", ($1 * 100.0) / $2}' | cut -d\. -f1)"
+    _mload__used_percentage="$(printf "%s\\n" "${_mload__input} ${1}" | \
+        awk '{printf "%.2f", ($1 * 100.0) / $2}' | cut -d\. -f1)"
     _mload__description="$(printf "%s\\n%s\\n%s\\n" \
         "* threshold ${1}" \
         "* current   ${_mload__input} (${_mload__used_percentage}%)")"
 
     if [ "${_mload__input%.*}" -ge "${1}" ]; then
         _staticus_report_module "load" "warning" "${_mload__description}"
+        return "${status_warning}"
     else
         _staticus_report_module "load" "ok" "${_mload__description}"
     fi
 }
 
 _module_storage() {
-    # $1 => threshold
-    # $2 => partitions
     [ -z "${2}" ] && return 1
-    _verbose "storage module"
 
     _mstorage__input="$(df -P 2>&1)" || {
         _staticus_report_module "storage" "error" "${_mstorage__input}"
-        return 1
+        return "${status_error}"
     }
 
-    OLDIFS="${IFS}"
+    _mstorage__status="${status_ok}"
+
+    _mstorage__OLDIFS="${IFS}"
     IFS=","; for partition in ${2}; do
-        _mstorage__partition="$(printf "%s" "${_mstorage__input}" | grep "${partition}$")"
+        _mstorage__partition="$(printf "%s\\n" "${_mstorage__input}" | grep "${partition}$")"
 
         if [ -z "${_mstorage__partition}" ]; then
             _staticus_report_module "storage ${partition}" "error" "* partition ${partition} doesn't exists"
             continue;
         fi
 
-        _mstorage__total="$(printf "%s" "${_mstorage__partition}" | awk '{print $2}')"
-        _mstorage__used="$(printf "%s"  "${_mstorage__partition}" | awk '{print $3}')"
-        _mstorage__used_percentage="$(printf "%s" "${_mstorage__partition}" | awk '{gsub("%",""); print $5}')"
-        _mstorage__threshold="$(printf "%s" "${_mstorage__total} ${1}"  | awk '{printf "%.2f", $1 * ($2/100)}' | cut -d\. -f1)"
+        _mstorage__total="$(printf "%s\\n" "${_mstorage__partition}" | awk '{print $2}')"
+        _mstorage__used="$(printf "%s\\n"  "${_mstorage__partition}" | awk '{print $3}')"
+        _mstorage__used_percentage="$(printf "%s\\n" "${_mstorage__partition}" | awk '{gsub("%",""); print $5}')"
+        _mstorage__threshold="$(printf "%s\\n" "${_mstorage__total} ${1}"  | awk '{printf "%.2f", $1 * ($2/100)}' | cut -d\. -f1)"
 
         #df outputs numbers in Kb, convert them to bytes
         _mstorage__used="$(($_mstorage__used*1024))"
@@ -454,26 +549,29 @@ _module_storage() {
 
         if [ "${_mstorage__used_percentage}" -ge "${1}" ]; then
             _staticus_report_module "storage ${partition}" "warning" "${_mstorage__description}"
+            _mstorage__status="${status_warning}"
         else
             _staticus_report_module "storage ${partition}" "ok" "${_mstorage__description}"
         fi
-    done; IFS="${OLDIFS}"
+    done; IFS="${_mstorage__OLDIFS}"
+
+    return "${_mstorage__status}"
 }
 
 _module_process() {
-    # $1 => processes
     [ -z "${1}" ] && return 1
-    _verbose "process module"
 
     _mprocess__input="$(ps aux 2>&1)" || {
         _staticus_report_module "process" "error" "${_mprocess__input}"
         return 1
     }
 
-    OLDIFS="${IFS}"
+    _mprocess__status="${status_ok}"
+
+    _mprocess__OLDIFS="${IFS}"
     IFS=","; for process in ${1}; do
-        _mprocess__name="$(printf "%s" "${_mprocess__input}"    | awk '/'"${process}"'/ {print; exit}')"
-        _mprocess__detailed="$(printf "%s" "${_mprocess__name}" | \
+        _mprocess__name="$(printf "%s\\n" "${_mprocess__input}"    | awk '/'"${process}"'/ {print; exit}')"
+        _mprocess__detailed="$(printf "%s\\n" "${_mprocess__name}" | \
             awk '{print "cpu:", $3 "%", "mem:", $4 "%s", "user:", $1, "cmd:", substr($0, index($0,$11)); exit}')"
 
         _mprocess__description="$(printf "%s\\n" "* ${_mprocess__detailed}")"
@@ -481,96 +579,104 @@ _module_process() {
         if [ -z "${_mprocess__name}" ]; then
             _mprocess__description="$(printf "%s\\n" "* process isn't running")"
             _staticus_report_module "process ${process}" "warning" "${_mprocess__description}"
+            _mprocess__status="${status_warning}"
         else
             _staticus_report_module "process ${process}" "ok" "${_mprocess__description}"
         fi
-    done; IFS="${OLDIFS}"
+    done; IFS="${_mprocess__OLDIFS}"
+
+    return "${_mprocess__status}"
 }
 
 _module_info() {
-    _verbose "info module"
+    _module_info_column() {
+        #get titles
+        _minfoc__description="${1}"
+        _minfoc__description_titles="$(printf "%s\\n" "${1}" | awk '/^\*/{printf "%s ", $2}')"
 
-    _minfo__uptime="$(uptime | awk '{sub(/,/," hours"); printf $3" "$4}')"
-    _minfo__description="$(printf "%s\\n%s\\n%s\\n" \
-        "* /etc/issue $(cat /etc/issue.net)" \
-        "* uname      $(uname -snvp)" \
-        "* uptime     ${_minfo__uptime}")"
+        #find largest title len
+        _minfoc__OLDIFS="${IFS}"; _minfoc__description_title_size_max="0"
+        IFS=" "; for _minfoc__description_title in ${_minfoc__description_titles}; do
+            _minfoc__description_title_size="${#_minfoc__description_title}"
+            if [ "${_minfoc__description_title_size}" -gt "${_minfoc__description_title_size_max}" ]; then
+                _minfoc__description_title_size_max="${_minfoc__description_title_size}"
+            fi
+        done; IFS="${_minfoc__OLDIFS}"
 
+        #append whitespaces to titles
+        _minfoc__OLDIFS="${IFS}"
+        IFS=" "; for _minfoc__description_title in ${_minfoc__description_titles}; do
+            _minfoc__description_new_title="${_minfoc__description_title}"
+            _minfoc__description_new_title_size="${#_minfoc__description_new_title}"
+            while [ "${_minfoc__description_new_title_size}" -lt "${_minfoc__description_title_size_max}" ]; do
+                _minfoc__description_new_title="${_minfoc__description_new_title} "
+                _minfoc__description_new_title_size="${#_minfoc__description_new_title}"
+            done
+
+            _minfoc__description="$(printf "%s\\n" "${_minfoc__description}" | \
+                sed "s:${_minfoc__description_title}:${_minfoc__description_new_title}:")"
+        done; IFS="${_minfoc__OLDIFS}"
+
+        #return formated data
+        printf "%s\\n" "${_minfoc__description}"
+    }
+
+    _minfo__OLDIFS="${IFS}"
+    IFS=","; for info in ${1}; do
+        case "${info}" in
+            issue)
+                _minfo__issue="* /etc/issue $(cat /etc/issue.net)"
+                _minfo__description="${_minfo__description}${_minfo__issue}\n"
+                ;;
+            uname)
+                _minfo__uname="* uname $(uname -snvp)"
+                _minfo__description="${_minfo__description}${_minfo__uname}\n"
+                ;;
+            uptime)
+                _minfo__uptime="* uptime $(uptime | awk '{sub(/,/," hours"); printf $3" "$4}')"
+                _minfo__description="${_minfo__description}${_minfo__uptime}\n"
+                ;;
+        esac
+
+    done; IFS="${_minfo__OLDIFS}"
+
+    #apply new lines to the description, fix this, it should be added in the
+    #above case statements
+    _minfo__description="$(printf "%b\\n" "${_minfo__description}")"
+
+    #format output in a tabular form
+    _minfo__description=$(_module_info_column "${_minfo__description}")
     _staticus_report_module "info" "info" "${_minfo__description}"
 }
 
-_staticus_report_title() {
-    [ -z "${1}" ] && return 1
-    printf "%s\\n" "# title: ${1}" > "${report_txt}"
-}
-
-_staticus_report_general_status() {
+_module_status() {
     [ -z "${1}" ] && return 1
 
     if [ "${1}" -lt "1" ]; then
-        sed -i "s/^# title:.*/&\n\n## status: ok\nEverything is running ok/" "${report_txt}"
+        _staticus_report_module "status" "ok" "Everything is running ok"
     else
-        sed -i "s/^# title:.*/&\n\n## status: error\nThere are ${1} issues/" "${report_txt}"
+        _staticus_report_module "status" "error" "There are ${1} issues"
     fi
-}
-
-_staticus_report_notification() {
-    #sed "# status:" and write after line
-    # $1 => memory|swap|load|...
-    # $2 => ok|warning|error|notification|...
-    # $3 => msg
-    [ -z "${2}" ] && return 1
-    printf "\\n%s\\n" "### ${1}: ${2}" >> "${report_txt}"
-    if [ -n "${3}" ]; then
-        printf "%s\\n" "${3}" >> "${report_txt}"
-    fi
-
-    if [ "$(_str2lower "${notify}")" = "true" ]; then
-        case "$(_str2lower "${2}")" in
-            error|warning) _staticus_notify "${1}" "$(_str2upper "${2}")" "${3}" ;;
-        esac
-    fi
-}
-
-_staticus_report_module() {
-    # $1 => memory|swap|load|...
-    # $2 => ok|warning|error|info|notification|...
-    # $3 => msg
-    [ -z "${2}" ] && return 1
-
-    printf "\\n%s\\n" "#### ${1}: ${2}" >> "${report_txt}"
-    if [ -n "${3}" ]; then
-        printf "%s\\n" "${3}" >> "${report_txt}"
-    fi
-
-    case "$(_str2lower "${2}")" in
-      error|warning) _failed_module
-          if [ "$(_str2lower "${notify}")" = "true" ]; then
-              _staticus_notify "${1}" "$(_str2upper "${2}")" "${3}"
-          fi
-          ;;
-    esac
 }
 
 _staticus_notify() {
-    # $1 => memory|swap|load|...
-    # $2 => ALERT|NOTIFICATION|CRITICAL|...
-    # $3 => msg
+    # $1 => title msg
+    # $2 => body msg
     [ -z "${3}" ] && return 1
 
     _staticus_notify_mailgun() {
         if command -v "mailgun" >/dev/null; then
             for contact in ${notify_contacts}; do
                 contact="$(printf "%s\\n" "${contact}" | sed "s:#%#:@:")"
-                mailgun --subject "${progname} - $(hostname -f): ${1} - ${2}" "${contact}" "$(
+                mailgun --subject "${progname} - $(hostname -f): ${1}" "${contact}" "$(
                 printf "+---Notification----------------------------+\\n"
-                printf "%b\\n" "${*}"
+                printf "%b\\n" "${2}"
                 printf "+-------------------------------------------+\\n"
                 )" >/dev/null || return 1
             done
         else
-            printf "%b\\n" "mailgun is not available, install it to use this notification module" >&2
-            printf "%b\\n" "https://raw.githubusercontent.com/javier-lopez/learn/master/sh/tools/mailgun" >&2
+            _warning "mailgun is not available, install it to use this notification module"
+            _warning "https://raw.githubusercontent.com/javier-lopez/learn/master/sh/tools/mailgun"
             return 1
         fi
     }
@@ -589,7 +695,7 @@ _inflate_theme() {
     # $2 => report_html
     eval "_itheme__b64=\$theme_${1}"
     _itheme__tmpdir="$(mktemp -d)" || return 1
-    ( cd "${_itheme__tmpdir}" && printf "%s" "${_itheme__b64}" | _decode64 | zcat | tar xvf - >/dev/null ) || \
+    ( cd "${_itheme__tmpdir}" && printf "%s\\n" "${_itheme__b64}" | _decode64 | zcat | tar xvf - >/dev/null ) || \
         { rm -rf  "${_itheme__tmpdir}"; return 1; }
     for _itheme__template in "${_itheme__tmpdir}"/*; do
         [ -f "${_itheme__template}" ] || return 1
@@ -599,93 +705,95 @@ _inflate_theme() {
 }
 
 _staticus_txt2html() {
-    [ -z "${3}" ] && return 1
+    [ -z "${2}" ] && return 1
+
     _stxt2html__report_txt="${1}"
     _stxt2html__report_html="${2}"
-    _stxt2html__theme="${3}"
-    _inflate_theme "${_stxt2html__theme}" "${_stxt2html__report_html}" || return 1
+
+    _inflate_theme "${theme}" "${_stxt2html__report_html}" || return 1
+
     _stxt2html__report_txt_content="$(cat "${_stxt2html__report_txt}")"
     _stxt2html__report_html_content="$(cat "${_stxt2html__report_html}")"
 
     #title section
-    _stxt2html__title="$(printf "%s" "${_stxt2html__report_txt_content}" | \
+    _stxt2html__title="$(printf "%s\\n" "${_stxt2html__report_txt_content}" | \
         awk '/^# title:/ {print substr($0, index($0,$3)); exit}' | \
         _escape_special_characters)"
     if [ -z "${_stxt2html__title}" ]; then
-        _verbose "txt2html: no title was found, skipping..."
+        _warning "txt2html: no title was found, skipping..."
     else
-        _stxt2html__report_html_content="$(printf "%s" "${_stxt2html__report_html_content}" | \
+        _stxt2html__report_html_content="$(printf "%s\\n" "${_stxt2html__report_html_content}" | \
             sed "s/STATICUS_TITLE/${_stxt2html__title}/g")"
     fi
 
     #status section
-    _stxt2html__status="$(printf "%s" "${_stxt2html__report_txt_content}" | \
+    _stxt2html__status="$(printf "%s\\n" "${_stxt2html__report_txt_content}" | \
         awk '/^## status:/ {print substr($0, index($0,$3)); exit}' | \
         _escape_special_characters)"
-    _stxt2html__status_description="$(printf "%s" "${_stxt2html__report_txt_content}" | \
+    _stxt2html__status_description="$(printf "%s\\n" "${_stxt2html__report_txt_content}" | \
         awk '/^## status:/ {getline;print;exit}' | _escape_special_characters)"
     if [ -z "${_stxt2html__status}" ]; then
-        _verbose "txt2html: no status was found, skipping..."
+        _warning "txt2html: no status was found, skipping..."
     else
         case "${_stxt2html__status}" in
-            ok) _stxt2html__report_html_content="$(printf "%s" \
+            ok) _stxt2html__report_html_content="$(printf "%s\\n" \
                   "${_stxt2html__report_html_content}" | \
                    sed "s/STATICUS_EVERYTHING_OK/${_stxt2html__status_description}/g")" ;;
-            error) _stxt2html__report_html_content="$(printf "%s" \
+            error) _stxt2html__report_html_content="$(printf "%s\\n" \
                    "${_stxt2html__report_html_content}"   | \
                    sed "s/STATICUS_FAILED_MODULES/${_stxt2html__status_description}/g")";;
         esac
     fi
 
     #notification section
-    _stxt2html__notification="$(printf "%s" "${_stxt2html__report_txt_content}" | \
+    _stxt2html__notification="$(printf "%s\\n" "${_stxt2html__report_txt_content}" | \
         awk '/^### notification:/ {print substr($0, index($0,$3)); exit}' | \
         _escape_special_characters)"
-    _stxt2html__notification_description="$(printf "%s" "${_stxt2html__report_txt_content}" | \
+    _stxt2html__notification_description="$(printf "%s\\n" "${_stxt2html__report_txt_content}" | \
         sed '1,/^### notification/d;/####/,$d' | sed '/^\s*$/d' | \
         _escape_special_characters)"
-    if [ -z "${_stxt2html__notification}" ]; then
-        _verbose "txt2html: no notification was found, skipping..."
-    else
-        _stxt2html__report_html_content="$(printf "%s" \
+    if [ -n "${_stxt2html__notification}" ]; then
+        _stxt2html__report_html_content="$(printf "%s\\n" \
             "${_stxt2html__report_html_content}" | \
             sed "s/STATICUS_NOTIFICATION/${_stxt2html__notification_description}/g")"
     fi
 
     #modules section
-    _stxt2html__modules="$(printf "%s" "${_stxt2html__report_txt_content}" | awk '/^#### /')"
+    _stxt2html__modules="$(printf "%s\\n" "${_stxt2html__report_txt_content}" | awk '/^#### /')"
     if [ -z "${_stxt2html__modules}" ]; then
-        _verbose "txt2html: no modules were found, skipping..."
+        _warning "txt2html: no modules were found, skipping..."
     else
-        _stxt2html__report_html_content="$(printf "%s" \
+        _stxt2html__report_html_content="$(printf "%s\\n" \
             "${_stxt2html__report_html_content}" | sed 's/STATICUS_MODULE_PLACEHOLDER//g')"
-        OLDIFS="${IFS}"; IFS='
+        _stxt2html__OLDIFS="${IFS}"; IFS='
 ';          for _stxt2html__module in ${_stxt2html__modules}; do
             _stxt2html__module_status="${_stxt2html__module##*:}"
             _stxt2html__module_status="${_stxt2html__module##* }"
-            _stxt2html__module_escaped="$(printf "%s" "${_stxt2html__module}" | \
+            _stxt2html__module_escaped="$(printf "%s\\n" "${_stxt2html__module}" | \
                 _escape_special_characters)"
-            _stxt2html__module_description="$(printf "%s" \
+            _stxt2html__module_description="$(printf "%s\\n" \
                 "${_stxt2html__report_txt_content}"    |  \
                 sed '1,/^'"${_stxt2html__module_escaped}"'/d;/####/,$d' | sed '/^\s*$/d')"
-            _stxt2html__module="$(printf "%s" "${_stxt2html__module}" | \
+            _stxt2html__module="$(printf "%s\\n" "${_stxt2html__module}" | \
                 awk -F: '{gsub("^#### ","");print $1}' |  \
                 awk -F "" '{$1=toupper($1)}1' OFS=)"
 
             #special info formatting
             if [ "${_stxt2html__module}" = "Info" ]; then
-              _stxt2html__report_html_content="$(printf "%s" \
+              _stxt2html__report_html_content="$(printf "%s\\n" \
               "${_stxt2html__report_html_content}" | sed 's/STATICUS_INFO_PLACEHOLDER//g')"
               for _stxt2html__module_description_line in ${_stxt2html__module_description}; do
+                  #remove extra white spaces, [ \t]
+                  _stxt2html__module_description_line="$(printf "%s\\n" "${_stxt2html__module_description_line}" | awk '{$1=$1};1')"
                   _stxt2html__module_description_line="${_stxt2html__module_description_line#* }"
                   _stxt2html__module_info_cmd="${_stxt2html__module_description_line%% *}"
                   _stxt2html__module_info_description="${_stxt2html__module_description_line#* }"
 
-                  _stxt2html__report_html_content="$(printf "%s" \
+                  _stxt2html__report_html_content="$(printf "%s\\n" \
                       "${_stxt2html__report_html_content}"   |   \
                       awk '/STATICUS_INFO_DESCRIPTION/ {print;print;next}; 1')"
 
-                  _stxt2html__report_html_content="$(printf "%s" \
+                  _stxt2html__report_html_content="$(printf "%s\\n" \
                       "${_stxt2html__report_html_content}"   |   \
                       awk -v cmd="${_stxt2html__module_info_cmd}"\
                       -v description="${_stxt2html__module_info_description}" \
@@ -694,11 +802,11 @@ _staticus_txt2html() {
                       gsub(/STATICUS_INFO_DESCRIPTION/, description);seen=1;print;next}; 1')"
               done
             else
-                _stxt2html__report_html_content="$(printf "%s" \
+                _stxt2html__report_html_content="$(printf "%s\\n" \
                     "${_stxt2html__report_html_content}"   |   \
                     awk '/module '"${_stxt2html__module_status}"'.*STATICUS_MODULE_DESCRIPTION/ {
                     print;print;next}; 1')"
-                _stxt2html__report_html_content="$(printf "%s" \
+                _stxt2html__report_html_content="$(printf "%s\\n" \
                     "${_stxt2html__report_html_content}"   |   \
                     awk -v module="${_stxt2html__module}"      \
                     -v description="${_stxt2html__module_description}" \
@@ -706,20 +814,20 @@ _staticus_txt2html() {
                     gsub(/STATICUS_MODULE_NAME/, module);
                     gsub(/STATICUS_MODULE_DESCRIPTION/, description);seen=1;print;next}; 1')"
             fi
-        done; IFS="${OLDIFS}"
+        done; IFS="${_stxt2html__OLDIFS}"
     fi
 
     #contacts section
     if [ -z "${notify_contacts}" ]; then
-        _verbose "txt2html: no contacts were found, skipping..."
+        _warning "txt2html: no contacts were found, skipping..."
     else
-        _stxt2html__report_html_content="$(printf "%s" \
+        _stxt2html__report_html_content="$(printf "%s\\n" \
             "${_stxt2html__report_html_content}" | sed 's/STATICUS_CONTACT_PLACEHOLDER//g')"
         for _stxt2html__contact in ${notify_contacts}; do
-            _stxt2html__report_html_content="$(printf "%s" \
+            _stxt2html__report_html_content="$(printf "%s\\n" \
                 "${_stxt2html__report_html_content}"   |   \
                 awk '/mailto:STATICUS_CONTACT/ {print;print;next}; 1')"
-            _stxt2html__report_html_content="$(printf "%s" \
+            _stxt2html__report_html_content="$(printf "%s\\n" \
                 "${_stxt2html__report_html_content}"   |   \
                 awk -v contact="${_stxt2html__contact}"    \
                 '/mailto:STATICUS_CONTACT/ && !seen {
@@ -728,36 +836,71 @@ _staticus_txt2html() {
     fi
 
     #cleanup not used placeholders
-    _stxt2html__report_html_content="$(printf "%s" "${_stxt2html__report_html_content}" | \
+    _stxt2html__report_html_content="$(printf "%s\\n" "${_stxt2html__report_html_content}" | \
         sed '/STATICUS_/d')"
     #update IDs
-    _stxt2html__report_html_content="$(printf "%s" "${_stxt2html__report_html_content}" | \
+    _stxt2html__report_html_content="$(printf "%s\\n" "${_stxt2html__report_html_content}" | \
         awk '/ID_/ {counter++; gsub(/ID_./, "ID_" counter ); print;next}; 1')"
     #write final html report
-    printf "%s" "${_stxt2html__report_html_content}" > "${_stxt2html__report_html}"
+    printf "%s\\n" "${_stxt2html__report_html_content}" > "${_stxt2html__report_html}"
 }
 
 _staticus() {
-    _staticus_report_title "Staticus - $(hostname -f) $(date "${date_format}")"
+    #$1 => modules
+    #$2 => output file
+    [ -z "${2}" ] && return 1
+
     OLDIFS="${IFS}"
-    IFS=","; for module in $(_str2lower "${modules}"); do
+    IFS=","; for module in $(_str2lower "${1}"); do {
         case "${module}" in
-            notification) _module_"${module}" "${module_notification_msg}" ;;
-            memory)  _module_"${module}" "${module_memory_threshold}" ;;
-            swap)    _module_"${module}" "${module_swap_threshold}"   ;;
-            load)    _module_"${module}" "${module_load_threshold}"   ;;
-            storage) _module_"${module}" "${module_storage_threshold}" "${module_storage_partitions}" ;;
-            process) _module_"${module}" "${module_process_list}"     ;;
-            info)    _module_"${module}" ;;
-            *) printf "%s\\n" "module ${module} doesn't exists, skipping..." >&2 ;;
-        esac
+            title)        _module_title        "${module_title_msg}"        ;;
+            notification) _module_notification "${module_notification_msg}" ;;
+            memory)       _module_memory       "${module_memory_threshold}" ;;
+            swap)         _module_swap         "${module_swap_threshold}"   ;;
+            load)         _module_load         "${module_load_threshold}"   ;;
+            storage)      _module_storage      "${module_storage_threshold}" "${module_storage_partitions}" ;;
+            process)      _module_process      "${module_process_list}"     ;;
+            info)         _module_info         "${module_info_list}";;
+            status)       use_module_status="1" ;;
+            *) _warning "module ${module} doesn't exists, skipping..." ;;
+        esac } >> "${2}"
+
+        current_status="${?}"
+
+        if [ X"${current_status}" != X"0" ]; then
+            if [ -z "${failed_modules}" ]; then
+               failed_modules="${module}"
+           else
+               failed_modules="${failed_modules},${module}"
+           fi
+        fi
+
     done; IFS="${OLDIFS}"
-    _staticus_report_general_status "${failed_modules:-0}"         || return 1
-    _staticus_txt2html "${report_txt}" "${report_html}" "${theme}" || return 1
-    return "${failed_modules:-0}"
+
+    if [ -n "${use_module_status}" ]; then
+        if [ -n "${failed_modules}" ]; then
+            failed_modules_len=$(($(printf "%s\\n" "${failed_modules}" | tr -cd ',' | wc -c) + 1))
+        fi
+        _module_status "${failed_modules_len:-0}" >> "${2}"
+
+        #append to the next line after title
+        status_msg="$(sed -n '/^## status:/,$p' "${2}" 2>/dev/null | tr '\n' '\r')"
+        sed -i '/^## status:/,$d' "${2}"
+        sed -i "s/^# title:.*/&\n\n${status_msg}/" "${2}"
+
+        #and cleanup
+        sed -i "s/\r/\n/" "${2}"
+        sed -i "s/\r//"   "${2}"
+    fi
+
+    return "${failed_modules_len:-0}"
 }
 
 progname="$(_basename "${0}")"
+
+#use a temporal file to save data which eventually will become txt|html outputs
+tmpfile="/tmp/${progname}.${$}.tmp"
+trap "rm -f -- ${tmpfile}" 0 2 3 15 #remove it on exit|crashes|etc
 
 if [ ! -t 0 ]; then
     #there is input comming from pipe or file, add to the end of $@
@@ -769,7 +912,8 @@ fi
 for arg in "${@}"; do #parse options
     case "${arg}" in
         -h|--help) _usage && exit  ;;
-        -v|--verbose) verbose="on"; shift ;;
+        -U|--update) _update; exit "${?}" ;;
+        -v|--version) _show_version; exit "${?}" ;;
         '-c'|'--config'|-c*|--config*)
             case "${arg}" in
                 '-c'|'--config')
@@ -785,13 +929,18 @@ for arg in "${@}"; do #parse options
                 -c*) user_config_file="${1#-c}"; shift ;;
                 --config*) user_config_file="${1#--config}"; shift ;;
             esac
+
             if [ -f "${user_config_file}" ]; then
-               [ -r "${user_config_file}" ] && config_file="${user_config_file}" || \
-                _die "Specified config file '${user_config_file}' isn't readable"
+                if [ -r "${user_config_file}" ]; then
+                    config_file="${user_config_file}"
+                else
+                    _die "Specified config file '${user_config_file}' isn't readable"
+                fi
             else
                 _die "Specified config file '${user_config_file}' doesn't exists"
             fi
             ;;
+
         '-m'|'--modules'|-m*|--modules*)
             case "${arg}" in
                 '-m'|'--modules')
@@ -807,11 +956,13 @@ for arg in "${@}"; do #parse options
                 -m*) user_modules="${1#-m}"; shift ;;
                 --modules*) user_modules="${1#--modules}"; shift ;;
             esac
+
             case "${user_modules}" in
                 all) : ;;
-                *) modules="${user_modules}"
+                  *) modules="${user_modules}"
             esac
             ;;
+
         '-o'|'--output-html'|-o*|--output-html*)
             case "${arg}" in
                 '-o'|'--output-html')
@@ -827,11 +978,16 @@ for arg in "${@}"; do #parse options
                 -o*) user_page_html="${1#-o}"; shift ;;
                 --output-html*) user_page_html="${1#--output-html}"; shift ;;
             esac
-            touch "${user_page_html}" >/dev/null 2>&1 || _die "Unable to create '${user_page_html}' output file"
-            [ -w "${user_page_html}" ] && rm -rf "${user_page_html}" || \
+
+            user_page_html_normalized="$(_normalize_file "${user_page_html}")"
+
+            if _file_is_writable "${user_page_html_normalized}"; then
+                report_html="${user_page_html_normalized}"
+            else
                 _die "Unable to write to '${user_page_html}' output file"
-            report_html="${user_page_html}"
+            fi
             ;;
+
         '-O'|'--output-txt'|-O*|--output-txt*)
             case "${arg}" in
                 '-O'|'--output-txt')
@@ -847,11 +1003,16 @@ for arg in "${@}"; do #parse options
                 -O*) user_page_txt="${1#-O}"; shift ;;
                 --output-txt*) user_page_txt="${1#--output-txt}"; shift ;;
             esac
-            touch "${user_page_txt}" >/dev/null 2>&1 || _die "Unable to create '${user_page_txt}' output file"
-            [ -w "${user_page_txt}" ] && rm -rf "${user_page_txt}" || \
-                _die "Unable to write to '${user_page_txt}' output file"
-            report_txt="${user_page_txt}"
+
+            user_page_txt_normalized="$(_normalize_file "${user_page_txt}")"
+
+            if _file_is_writable "${user_page_txt_normalized}"; then
+                report_txt="${user_page_txt_normalized}"
+            else
+                _die "Unable to write to '${user_page_html}' output file"
+            fi
             ;;
+
         --txt2html|--txt2html*)
             case "${arg}" in
                 '--txt2html')
@@ -888,7 +1049,7 @@ for arg in "${@}"; do #parse options
                 --theme*) user_theme="${1#--theme}"; shift ;;
             esac
             if [ -z "$(printf "%s\\n" "${themes}" | tr ' ' '\n' | awk "/^$user_theme\$/")" ]; then
-                printf "%s\\n" "${progname}: '${user_theme}' is not a recognized theme, using default ..." >&2
+                _warning "${progname}: '${user_theme}' is not a recognized theme, using default ..."
             fi
             ;;
         --list-modules) printf "%s\\n" "${modules}" | tr ',' '\n'; exit 0; ;;
@@ -898,10 +1059,20 @@ for arg in "${@}"; do #parse options
 done
 
 _loadconf "${config_file}"
+
 if [ -z "${user_txt2html}" ]; then
-    _staticus
+    #report_txt could be /dev/stdout|/dev/stderr, so we better use a tmpfile
+    _staticus "${modules}" "${tmpfile}"
+    cat "${tmpfile}" > "${report_txt}"
+    _staticus_txt2html "${tmpfile}" "${report_html}" || return 1
+
+    if [ "$(_str2lower "${notify}")" = "true" ]; then
+        if [ -n "${failed_modules_len}" ]; then
+            _staticus_notify "There are ${failed_modules_len} issues" "$(cat "${tmpfile}")"
+        fi
+    fi
 else
-    _staticus_txt2html "${report_txt}" "${report_html}" "${theme}"
+    _staticus_txt2html "${report_txt}" "${report_html}"
 fi
 
-# vim: set ts=4 sw=4 tw=0 ft=sh :
+# vim:set ts=4 sw=4 tw=0 ft=sh :
