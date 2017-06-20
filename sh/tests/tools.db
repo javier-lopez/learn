@@ -676,7 +676,7 @@ test X"$(staticus -o 2>&1|head -1)"      = X"Option '-o' requires a parameter"
 test X"$(staticus -O 2>&1|head -1)"      = X"Option '-O' requires a parameter"
 test X"$(staticus --txt2html 2>&1|head -1)" = X"Option '--txt2html' requires a parameter"
 test X"$(staticus --theme 2>&1|head -1)"    = X"Option '--theme' requires a parameter"
-test X"$(staticus --list-modules 2>&1|head -1)" = X"memory"
+test X"$(staticus --list-modules 2>&1|head -1)" = X"title"
 test X"$(staticus --list-themes 2>&1|head -1)"  = X"default"
 staticus go; test -f ./staticus.html  && test -f ./staticus.txt
 grep "####" ./staticus.txt >/dev/null && grep "Modules" ./staticus.html >/dev/null
