@@ -171,9 +171,9 @@ _bytes2human() {
     esac
 
     printf "%s\\n" "${1}" | awk '{
-        split( "bytes K M G Tb Eb Pb Yb Zb" , v );
+        split( "Bytes K M G Tb Eb Pb Yb Zb" , v );
         s=1; while($1>=1024) { $1/=1024; s++ }
-        printf("%.1f%s\n", $1, v[s])}' | sed 's:\.0 : :'
+        printf("%.1f%s\n", $1, v[s])}' | sed 's:\.0::'
 }
 
 load="$(awk '{print $1}' /proc/loadavg)"
@@ -206,7 +206,7 @@ memory_output="$(free -k)"
 memory_usage="$(printf "%s\\n" "${memory_output}" | awk '/Mem:/ {print $3; exit;}')"
 memory_usage="$(_bytes2human "$(($memory_usage*1024))")"
 memory_usage_percentage="$(printf "%s\\n" "${memory_output}" | \
-    awk '/Mem:/ {total=$2; used=$3} /buffers\/cache/ { used=$3 } END { printf("%2d", used/total*100)}' | sed 's: 0:0:')"
+    awk '/Mem:/ {total=$2; used=$3} /buffers\/cache/ { used=$3 } END { printf("%2d", used/total*100)}' | sed 's: \([0-9]\):\1:')"
 memory_total="$(printf "%s\\n" "${memory_output}" | awk '/Mem:/ {print $2; exit;}')"
 memory_total="$(_bytes2human "$(($memory_total*1024))")"
 memory_usage_msg="${memory_usage}, ${memory_usage_percentage}% of ${memory_total}"
@@ -214,7 +214,7 @@ memory_usage_msg="${memory_usage}, ${memory_usage_percentage}% of ${memory_total
 swap_usage="$(printf "%s\\n" "${memory_output}" | awk '/Swap:/ {print $3; exit;}')"
 swap_usage="$(_bytes2human "$(($swap_usage*1024))")"
 swap_usage_percentage="$(printf "%s\\n" "${memory_output}" | \
-    awk '/Swap:/ {total=$2; used=$3} END { printf("%2d", used/total*100)}' | sed 's: 0:0:')"
+    awk '/Swap:/ {total=$2; used=$3} END { printf("%2d", used/total*100)}' | sed 's: \([0-9]\):\1:')"
 if [ -n "${swap_usage_percentage}" ]; then
     swap_total="$(printf "%s\\n" "${memory_output}" | awk '/Swap:/ {print $2; exit;}')"
     swap_total="$(_bytes2human "$(($swap_total*1024))")"
