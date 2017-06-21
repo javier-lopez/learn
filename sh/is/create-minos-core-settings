@@ -155,24 +155,80 @@ EOF
 
 [ -x /etc/update-motd.d/50-landscape-sysinfo ] && exit
 
-load=`awk '{print $1}' /proc/loadavg`
-df_output=`df -h`
-root_usage=`printf "%s" "${df_output}" | awk '/\/$/ {print $(NF-1);exit}'`
-home_usage=`printf "%s" "${df_output}" | awk '/\/home$/ {print $(NF-1);exit}'`
-memory_output=`free -m`
-memory_usage=`printf "%s" "${memory_output}" | awk '/Mem:/ {total=$2} /buffers\/cache/ { used=$3 } END { printf("%3.1f%%", used/total*100)}'`
-swap_usage=`printf "%s" "${memory_output}" |awk '/Swap/ {printf("%3.1f%%", "exit !$2;$3/$2*100")}'`
-#users=`users | wc -w`
-uptime=`uptime | awk '{sub(/,/," hours"); printf $3" "$4}'`
-#ps_output=`ps aux`
-#processes=`printf "%s" "${ps_output}" | wc -l`
-#top_process=`printf "%s\\n" "${ps_output}" | awk '{print $2, $4"%", $11}' | sort -k2rn | awk '{print $3, $2;exit}'`
-#ip=`ifconfig $(route | grep default | awk '{ print $8 }') | grep "inet addr" | awk -F: '{print $2}' | awk '{print $1}'`
+_column() {
+    if command -v "column" >/dev/null 2>&1; then
+        column -t -s'|'
+    else
+        awk -F'|' '{printf "%-35s  %-15s\n", $1,$2}'
+    fi
+}
 
-printf "%s\\n\\n" "System information as of: `date`"
-printf "System load:\t%s\tSystem uptime:\t%s\n" "$load" "$uptime"
-printf "Memory usage:\t%s\tSwap usage:\t%s\n" "$memory_usage" "$swap_usage"
-printf "Usage on /:\t%s\tUsage on /home:\t%s\n" "$root_usage" "$home_usage"
+_bytes2human() {
+    [ -z "${1}" ] && return 1
+    #is int?
+    case "${1%.*}" in
+        *[!0-9]*|"") return 1 ;;
+    esac
+
+    printf "%s\\n" "${1}" | awk '{
+        split( "bytes K M G Tb Eb Pb Yb Zb" , v );
+        s=1; while($1>=1024) { $1/=1024; s++ }
+        printf("%.1f%s\n", $1, v[s])}' | sed 's:\.0 : :'
+}
+
+load="$(awk '{print $1}' /proc/loadavg)"
+uptime="$(uptime | awk '{sub(/,/," hours"); printf $3" "$4}')"
+#users="$(users | wc -w)"
+#ps_output="$(ps aux)"
+#processes="$(printf "%s\\n" "${ps_output}" | wc -l)"
+#top_process="$(printf "%s\\n" "${ps_output}" | awk '{print $2, $4"%", $11}' | sort -k2rn | awk '{print $3, $2;exit}')"
+#ip="$(ifconfig $(route | grep default | awk '{ print $8 }') | grep "inet addr" | awk -F: '{print $2}' | awk '{print $1}')"
+
+df_output="$(df -h)"
+
+root_usage="$(printf "%s\\n" "${df_output}" | awk '/\/$/ {print $(NF-3);exit}')"
+root_usage_percentage="$(printf "%s\\n" "${df_output}" | awk '/\/$/ {print $(NF-1);exit}')"
+root_total="$(printf "%s\\n" "${df_output}" | awk '/\/$/ {print $(NF-4);exit}')"
+root_usage_msg="${root_usage}, ${root_usage_percentage} of ${root_total}"
+
+home_usage="$(printf "%s\\n" "${df_output}" | awk '/\/home$/ {print $(NF-3);exit}')"
+home_usage_percentage="$(printf "%s\\n" "${df_output}" | awk '/\/home$/ {print $(NF-1);exit}')"
+if [ -n "${home_usage_percentage}" ]; then
+    home_total="$(printf "%s\\n" "${df_output}" | awk '/\/home$/ {print $(NF-4);exit}')"
+    home_usage_msg="${home_usage}, ${home_usage_percentage} of ${home_total}"
+else
+    home_usage_msg="none detected"
+fi
+
+#https://bugzilla.redhat.com/show_bug.cgi?id=1253036
+memory_output="$(free -k)"
+
+memory_usage="$(printf "%s\\n" "${memory_output}" | awk '/Mem:/ {print $3; exit;}')"
+memory_usage="$(_bytes2human "$(($memory_usage*1024))")"
+memory_usage_percentage="$(printf "%s\\n" "${memory_output}" | \
+    awk '/Mem:/ {total=$2; used=$3} /buffers\/cache/ { used=$3 } END { printf("%2d", used/total*100)}' | sed 's: 0:0:')"
+memory_total="$(printf "%s\\n" "${memory_output}" | awk '/Mem:/ {print $2; exit;}')"
+memory_total="$(_bytes2human "$(($memory_total*1024))")"
+memory_usage_msg="${memory_usage}, ${memory_usage_percentage}% of ${memory_total}"
+
+swap_usage="$(printf "%s\\n" "${memory_output}" | awk '/Swap:/ {print $3; exit;}')"
+swap_usage="$(_bytes2human "$(($swap_usage*1024))")"
+swap_usage_percentage="$(printf "%s\\n" "${memory_output}" | \
+    awk '/Swap:/ {total=$2; used=$3} END { printf("%2d", used/total*100)}' | sed 's: 0:0:')"
+if [ -n "${swap_usage_percentage}" ]; then
+    swap_total="$(printf "%s\\n" "${memory_output}" | awk '/Swap:/ {print $2; exit;}')"
+    swap_total="$(_bytes2human "$(($swap_total*1024))")"
+    swap_usage_msg="${swap_usage}, ${swap_usage_percentage}% of ${swap_total}"
+else
+    swap_usage_msg="none detected"
+fi
+
+printf "%s\\n\\n" "System information as of: $(date)"
+(
+printf "System load:  %s|System uptime:  %s\n" "${load}" "${uptime}"
+printf "Memory usage: %s|Swap usage:     %s\n" "${memory_usage_msg}" "${swap_usage_msg}"
+printf "Usage on /:   %s|Usage on /home: %s\n" "${root_usage_msg}"   "${home_usage_msg}"
+) | _column
 #printf "Processes:\t%s\tTop process:\t%s\n" "$processes" "$top_process"
 printf "\\n"
 EOF
