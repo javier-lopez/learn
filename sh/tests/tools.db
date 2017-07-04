@@ -387,13 +387,13 @@ test X"$(fuck off top 2>&1| head -1)"              = X"(；￣Д￣) .oO('top' i
 test X"$(fuck top top 2>&1| wc -l)"                = X"2"
 top -b 2>&1 >/dev/null & : && sleep 0.1 && pgrep -x top
 test X"$(fuck top | head -1)"                      = X"ヽ(\`Д´)ﾉ⌒ doʇ"
-sleep 0.2 && test X"$(pgrep -x top)"               = X""
+sleep 0.1 && test X"$(pgrep -x top)"               = X""
 top -b 2>&1 >/dev/null & : && sleep 0.1 && pgrep -x top
 fuck you top; test X"${?}"                         = X"0"
-sleep 0.2 && test X"$(pgrep -x top)"               = X""
-top -b 2>&1 >/dev/null & :
-telnet  2>&1 >/dev/null & :
-test X"$(fuck you telnet top | head -1)"            = X"ヽ(\`Д´)ﾉ⌒ ʇǝ𝗎|ǝʇ"
+sleep 0.1 && test X"$(pgrep -x top)"               = X""
+htop   2>&1 >/dev/null & : && sleep 0.1
+top -b 2>&1 >/dev/null & : && sleep 0.1
+test X"$(fuck you htop top | head -1)"             = X"ヽ(\`Д´)ﾉ⌒ doʇɥ"
 sleep 0.2 && test X"$(pgrep -x top)" = X"" && test X"$(pgrep -x dmenu)" = X""
 @end
 

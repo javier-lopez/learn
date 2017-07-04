@@ -1,6 +1,6 @@
 before_install:
   - sudo apt-get update
-  - sudo apt-get install -y wget curl apt-file xclip xdotool gnupg suckless-tools gnupg-agent html2text
+  - sudo apt-get install -y wget curl apt-file xclip xdotool gnupg suckless-tools gnupg-agent html2text htop
   - sudo apt-file update
   - eval $(gpg-agent --daemon)
 script: (cd python/tests/ && sh tools.sh) && (cd sh/tests/ && sh lib.sh && xvfb-run sh tools.sh)
