@@ -786,15 +786,16 @@ _lock() {
 #_lock "${0}" #locks script till finish
 #=================================================================
 
-_mkdir_p() { #portable mkdir -p function
-    [ -z "${1}" ] && return 1
+_mkdir_p() { #portable mkdir -p
+    [ -n "${1}" ] || return 1
     for _mkdir_p__dir in "${@}"; do
-        _mkdir_p__IFS="$IFS"
+        [ -d "${_mkdir_p__dir}" ] && continue
+        _mkdir_p__IFS="${IFS}"
         IFS="/"
-        set -- $_mkdir_p__dir
-        IFS="$_mkdir_p__IFS"
+        set -- ${_mkdir_p__dir}
+        IFS="${_mkdir_p__IFS}"
         (
-        case "$_mkdir_p__dir" in
+        case "${_mkdir_p__dir}" in
             /*) cd /; shift ;;
         esac
         for _mkdir_p__subdir in "${@}"; do
