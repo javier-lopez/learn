@@ -298,6 +298,7 @@ _mkdir_p; test X"${?}" = X"1"
 _mkdir_p a         && test -d "a"       && rm -rf a
 _mkdir_p a/b       && test -d "a/b"     && rm -rf a
 _mkdir_p "a/b/c d" && test -d "a/b/c d" && rm -rf a
+_mkdir_p a b       && test -d "a" && test -d "b" && rm -rf a b
 @end
 
 @begin{_is_int}
