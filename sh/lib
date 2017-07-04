@@ -608,7 +608,7 @@ _float2fraction() {
 #=================================================================
 
 _getfirstvalue() { #returns first value that is non-empty
-    for _getfirstvalue__param; do
+    for _getfirstvalue__param in "${@}"; do
         if [ ! -z "${_getfirstvalue__param}" ]; then
             printf "%s\\n" "${_getfirstvalue__param}"
             return 0
@@ -750,7 +750,7 @@ _is_int() { #look for an integer, returns 0 on success, 1 otherwise
 
 _lastchar() { #return last char of a string
     [ -z "${1}" ] && return 1
-    for i; do :; done
+    for i in "${@}"; do :; done
     _1stchar__substr="${i%?}"
     printf "%s" "${i#$_1stchar__substr}"
 }
@@ -788,7 +788,7 @@ _lock() {
 
 _mkdir_p() { #portable mkdir -p function
     [ -z "${1}" ] && return 1
-    for _mkdir_p__dir; do
+    for _mkdir_p__dir in "${@}"; do
         _mkdir_p__IFS="$IFS"
         IFS="/"
         set -- $_mkdir_p__dir
@@ -797,7 +797,7 @@ _mkdir_p() { #portable mkdir -p function
         case "$_mkdir_p__dir" in
             /*) cd /; shift ;;
         esac
-        for _mkdir_p__subdir; do
+        for _mkdir_p__subdir in "${@}"; do
             [ -z "${_mkdir_p__subdir}" ] && continue
             if [ -d "${_mkdir_p__subdir}" ] || mkdir "${_mkdir_p__subdir}"; then
                 if cd "${_mkdir_p__subdir}"; then
@@ -1061,7 +1061,7 @@ _rmcron() { #remove cron jobs, returns 1 on failure
 #=================================================================
 
 _seq() { #portable seq
-    for _seq__arg; do
+    for _seq__arg in "${@}"; do
         case "${_seq__arg}" in
             *[!0-9-]*|"") return 1 ;;
         esac
@@ -1331,7 +1331,7 @@ _uploadimg() { #upload images, return url on success, 1 otherwise
     #requires curl, and optionally xclip
     [ -z "${1}" ] && return 1
 
-    for _upload_img__param; do
+    for _upload_img__param in "${@}"; do
         if [ -f "${_upload_img__param}" ] ; then
             case "${_upload_img__param}" in
                 *.jpg|*.JPG|*.jpeg|*.png|*.PNG)
@@ -1358,6 +1358,64 @@ _uploadimg() { #upload images, return url on success, 1 otherwise
 #==================================================== Example ====
 #url="$(_upload_img file.png)"
 #[ -z "${url}" ] && printf "%s\\n" "Error"
+#=================================================================
+
+_update() {
+    _u__current_file="$(cd "$(dirname "${0}")" && pwd)/${progname}"
+    _u__current_version_long="$(awk -F\" \
+        '/VERSION=/{print $2;exit}' "${_u__current_file}" 2>/dev/null)"
+    _u__current_version="$(printf "%s\\n" "${_u__current_version_long}" | \
+        awk '{gsub(/[\.:]/,"");gsub(/-/,"");print;exit}' 2>/dev/null)"
+    [ -z "${_u__current_version}" ] && printf "%s\\n%s\\n%s\\n"           \
+        "ERROR: Failed to detect current version, please update manually" \
+        "${progname}         = ${_u__current_file}"                       \
+        "${progname} version = ${_u__current_version}" >&2 && return 1
+
+    command -v "wget" >/dev/null 2>&1 || command -v "curl" >/dev/null 2>&1 || \
+        { printf "%s\\n" "ERROR: Install either 'wget' or 'curl' to upgrade" >&2; return 1; }
+
+    _u__url="https://raw.githubusercontent.com/minos-org/minos-static/master/${progname}"
+    _u__tmpfile="/tmp/${progname}.${$}.update"
+
+    _u__error_msg="$(wget -q -O- --no-check-certificate "${_u__url}" \
+        > "${_u__tmpfile}" 2>&1   || curl -s "${_u__url}"  \
+        > "${_u__tmpfile}" 2>&1)" || { printf "%s\\n%s\\n" \
+        "ERROR: Failed to fetch update, please try later or update manually" \
+        "${_u__error_msg}" >&2; return 1; }
+
+    _u__update_version_long="$(awk -F\" \
+        '/VERSION=/{print $2;exit}' "${_u__tmpfile}" 2>/dev/null)"
+    _u__update_version="$(printf "%s" "${_u__update_version_long}" | awk \
+        '{gsub(/[\.:]/,"");gsub(/-/,"");print;exit}' 2>/dev/null)"
+    [ -n "${_u__update_version}" ] || _u__update_version="0"
+
+    if [ "${_u__current_version}" -lt "${_u__update_version}" ]; then
+        printf "%s %s\\n" "Updating from version" \
+            "${_u__current_version_long} to ${_u__update_version_long} ..."
+        chmod +x "${_u__tmpfile}"
+        if ! mv -f "${_u__tmpfile}" "${_u__current_file}" 2>/dev/null; then
+            printf "%s\\n" "ERROR: no write permissions on ${_u__current_file}" >&2
+            printf "%s\\n" "INFO : trying with sudo ..." >&2
+            if command -v "sudo" >/dev/null 2>&1; then
+                sudo mv "${_u__tmpfile}" "${_u__current_file}" || return 1
+            else
+                printf "%s\\n" "ERROR: sudo isn't available, exiting ..." >&2
+                rm -rf "${_u__tmpfile}"
+                return 1
+            fi
+        fi
+        printf "%s %s\\n" "${progname} is up-to-date (${_u__update_version_long})"
+        return 0
+    fi
+    printf "%s %s\\n" "${progname} is up-to-date (${_u__current_version_long})"
+    rm -rf "${_u__tmpfile}"
+}
+#==================================================== Example ====
+#for arg in "${@}"; do #parse options and update if requested
+    #case "${arg}" in
+        #-U|--update)  _update; exit "${?}" ;;
+    #esac
+#done
 #=================================================================
 
 _user() {
