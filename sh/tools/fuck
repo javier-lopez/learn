@@ -342,7 +342,12 @@ _fuck_command_not_found() {
                     fi
                 fi
 
-                printf "%s\\n" "${_fucking__arith_result%.0000}"
+                if [ -z "${_fucking__arith_result}" ]; then
+                    return 1
+                else
+                    printf "%s\\n" "${_fucking__arith_result%.0000}"
+                fi
+
                 return  "${_fucking__status:-1}"
             fi
             ;;
