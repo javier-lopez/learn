@@ -1,5 +1,5 @@
 #!/bin/sh
-#description: correct previous cli commands and kill processes by name
+#description: correct commands and kill processes by name
 #usage: fuck [you|off] [program ...]
 
 #https://gist.github.com/namuol/9122237
@@ -13,19 +13,21 @@
 #example: fuck you firefox
 #ヽ(`Д´)ﾉ⌒ xoɟǝɹᴉɟ
 
-progname="$(expr "${0}" : '.*/\([^/]*\)')"
-
 _usage() {
     printf "%s\\n" "Usage: ${progname} [you|off] [program ...]"
-    printf "%s\\n" "Correct previous cli commands and kill processes by name."
+    printf "%s\\n" "Correct commands and kill processes by name."
     printf "\\n"
-    printf "%s\\n" "  -d, --deviation   deviation, higher value, faster computation, default 1"
-    printf "%s\\n" "  -k, --kmeans      output colors, default 3"
-    printf "%s\\n" "  -r, --resize      resize before procedure, lower value, faster computation, default 25x25"
-    printf "%s\\n" "  -f, --format      output format [rgb|hex], default rgb"
-    printf "%b\\n" "  -e, --editor      use this editor instead of the default \$EDITOR"
-    printf "%s\\n" "  -c, --config      use FILE instead of ~/.mailgun"
-    printf "%s\\n" "  -h, --help        show this help message and exit"
+    printf "%s\\n" "  -c, --command-not-found   run not found hooks"
+    printf "\\n"
+    printf "%s\\n" "    minos:g[oogle]       => search 'minos' in google using the default web browser"
+    printf "%s\\n" "    minos:b[ing]         => search 'minos' in bing using the default web browser"
+    printf "%s\\n" "    http://wikipedia.org => open url in the default browser"
+    printf "%s\\n" "    /path/image.png      => open image in the default image viewer"
+    printf "%s\\n" "    3*5                  => execute and display arithmetic operation"
+    printf "%s\\n" "    15 usd to mxn        => execute and display money currency"
+    printf "%s\\n" "    :weather             => show current weather"
+    printf "\\n"
+    printf "%s\\n" "  -h, --help                show this help message and exit"
 }
 
 _die() {
@@ -37,8 +39,95 @@ _false() {
     return 1
 }
 
+_weather() {
+    command -v "wget" >/dev/null 2>&1 || return 1
+
+    #TODO 04-11-2015 12:53 >> add more weather apis
+    _weather_bing() {
+        _weather__bing_awk_prog='/<div class="b_focusTextLarge">/ {
+            gsub(/<[^>]*>/, " "); gsub(/&#176;/, "°");
+            gsub(/&#183;|<.*$|^[ \t]+|[ \t]+$/, ""); gsub(/ F /, "°F");
+            gsub(/ C /, "°C"); gsub(/[ \t]+/, " "); print $0}'
+        if command -v "perl" >/dev/null 2>&1; then
+            wget --tries=1 --timeout=3 -q -O- -U ''  \
+                'http://bing.com/search?q=weather' | \
+                awk "${_weather__bing_awk_prog}"   | \
+                perl -MHTML::Entities -pe 'decode_entities($_);'
+        else
+            wget --tries=1 --timeout=3 -q -O- -U ''  \
+                'http://bing.com/search?q=weather' | \
+                awk "${_weather__bing_awk_prog}"
+        fi
+    }
+
+    _weather_ask() {
+        _weather__ask_awk_prog='/<span class="sa_current_reading">/ || /, DIF / {
+            gsub(/<[^>]*>|^[ \t]+|[ \t]+$/, ""); gsub(/&#186;/, "°");
+            printf("%s / ", $0) }'
+        _weather__ask_result="$(wget --tries=1 --timeout=3 -q -O- -U '' \
+            'http://www.ask.com/web?q=weather' | awk "${_weather__ask_awk_prog}")"
+        printf "%s" "${_weather__ask_result% / }"
+    }
+
+    for api in bing ask; do
+        [ -z "${_weather__result}" ] && _weather__result="$(_weather_"${api}")" || break
+    done
+
+    printf "%s" "${_weather__result}"
+}
+
+_cconverter() {
+    [ -z "${1}" ] && return 1
+
+    #TODO 04-11-2015 12:53 >> add more currency apis
+    _cconverter_google() {
+        wget --tries=1 --timeout=2 -q -O- \
+            "http://www.google.com/finance/converter?a=${1}&from=${2}&to=${3}" \
+            2>/dev/null | sed '/res/!d;s/<[^>]*>//g'
+    }
+
+    _cconverter_yahoo() {
+        _cconverter__yahoo_rate="$(wget --tries=1 --timeout=2 -q -O- \
+            "http://download.finance.yahoo.com/d/quotes.csv?s=${2}${3}=X&f=b&e=.csv" 2>/dev/null)"
+        if [ -z "${_cconverter__yahoo_rate}" ] || [ "${_cconverter__yahoo_rate}" = "N/A"  ]; then
+            return 1
+        fi
+        _cconverter__yahoo_result="$(awk "BEGIN {printf(\"%.4f\", ${1}*${_cconverter__yahoo_rate}); exit}")"
+        printf "%s\\n" "${1} ${2} = ${_cconverter__yahoo_result%.0000} ${3}"
+    }
+
+    _cconverter_webservicex() {
+        _cconverter__webservicex_rate="$(wget --tries=1 --timeout=2 -q -O- \
+            "http://www.webservicex.net/CurrencyConvertor.asmx/ConversionRate?FromCurrency=${2}&ToCurrency=${3}" | \
+            awk 'END {gsub(/<[^>]*>/, "");print $0}')"
+        [ -z "${_cconverter__webservicex_rate}" ] && return 1
+        _cconverter__webservicex_result="$(awk "BEGIN {printf(\"%.4f\", ${1}*${_cconverter__webservicex_rate}); exit}")"
+        printf "%s\\n" "${1} ${2} = ${_cconverter__webservicex_result%.0000} ${3}"
+    }
+
+    for _cconverter__1st_word; do break; done
+    case "${_cconverter__1st_word}" in #if invalid input use 1 as base
+        *[!0-9.,]*) _cconverter__input="$(printf "%s\\n" "${@}" | sed "s:${_cconverter__1st_word}:1:")" ;;
+        *) _cconverter__input="${@}" ;;
+    esac
+
+    _cconverter__input="$(printf "%s\\n" "${_cconverter__input}" | \
+        tr 'abcdefghijklmnopqrstuvwxyz' 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' | sed 's:TO::')"
+
+    for api in google yahoo webservicex; do
+        if [ -z "${_cconverter__result}" ]; then
+           _cconverter__result="$(_cconverter_"${api}" ${_cconverter__input})"
+       else
+           break
+       fi
+    done
+
+    printf "%s\\n" "${_cconverter__result}"
+}
+
 _flip() {
     [ -z "${1}" ] && return 1
+
     printf "%s\\n" "${1}" | sed -e 's:a:ɐ:g'     \
         -e 's:b:ԛ:g' -e 's:c:ɔ:g' -e 's:d:𝗉:g'   \
         -e 's:e:ǝ:g' -e 's:f:ɟ:g' -e 's:g:ƃ:g'   \
@@ -53,8 +142,90 @@ _flip() {
         sed -e :a -e 'N;s/\n//g;ta'
 }
 
+_exec() {
+    [ -z "${1}" ] && return 1
+
+    if command -v "setsid" >/dev/null 2>&1; then
+        (setsid "${@}" &)
+    else
+        exec "${@}"
+    fi
+    exit "${?}"
+}
+
+_open() {
+    [ -z "${1}" ] && return 1
+
+    if command -v "xdg-open" >/dev/null 2>&1; then
+        xdg-open "${@}" 2>/dev/null
+    else
+        case "${1}" in
+            http://*|https://*|ftp://*)
+                default_browser="$(minos-config browser 2>/dev/null)"
+                if ! command -v "${default_browser}" >/dev/null 2>&1; then
+                    default_browser="x-www-browser"
+                fi
+                _exec "${default_browser}" "${@}"
+                ;;
+
+            /*|./)
+                case "$(file --brief --mime-type "${_1st_word}")" in
+                    text/*)
+                        if ! command -v "${EDITOR}" >/dev/null 2>&1; then
+                            EDITOR="editor"
+                        fi
+                        _exec "${EDITOR}" "${@}"
+                        ;;
+                    inode/directory)
+                        default_fm="$(minos-config file-manager 2>/dev/null)"
+                        if ! command -v "${default_fm}" >/dev/null 2>&1; then
+                            default_fm="x-www-browser"
+                        fi
+                        _exec "${default_fm}" "${@}"
+                        ;;
+                    application/pdf)
+                        default_pdf_viewer="$(minos-config pdf 2>/dev/null)"
+                        if ! command -v "${default_pdf_viewer}" >/dev/null 2>&1; then
+                            default_pdf_viewer="x-www-browser"
+                        fi
+                        _exec "${default_pdf_viewer}" "${@}"
+                        ;;
+                    video/*)
+                        default_video_player="$(minos-config video-player 2>/dev/null)"
+                        if ! command -v "${default_video_player}" >/dev/null 2>&1; then
+                            default_video_player="x-www-browser"
+                        fi
+                        _exec "${default_video_player}" "${@}"
+                        ;;
+                    audio/*)
+                        default_music_player="$(minos-config music-player 2>/dev/null)"
+                        if ! command -v "${default_music_player}" >/dev/null 2>&1; then
+                            default_music_player="x-www-browser"
+                        fi
+                        _exec "${default_music_player}" "${@}"
+                        ;;
+                    image/*)
+                        default_image_viewer="$(minos-config image-viewer 2>/dev/null)"
+                        if ! command -v "${default_image_viewer}" >/dev/null 2>&1; then
+                            default_image_viewer="display"
+                        fi
+                        _exec "${default_image_viewer}" "${@}"
+                        ;;
+                    *)  return 1 ;;
+                esac
+                ;;
+
+            *) return 1 ;;
+        esac
+    fi
+}
+
+_encode_search() {
+    printf "%s" "${@}" | sed 's:[\t ]\+:%20:g'
+}
+
 _fuck_process() {
-    for _fucking__process; do
+    for _fucking__process in "${@}"; do
         _fucking__process_id="$(pgrep "${_fucking__process}")"
         if [ -z "${_fucking__process_id}" ]; then
             printf "%s\\n" "(；￣Д￣) .oO('${_fucking__process}' isn't running ...)" >&2
@@ -71,9 +242,126 @@ _fuck_process() {
     done
 }
 
+_fuck_command_not_found() {
+    [ -z "${1}" ] && return 1
+
+    _fucking__cmd="$(printf "%s\\n" "${*}" | sed "s:\$HOME:${HOME}:g;s:~/:${HOME}/:;s:\"::g;s:\'::g;s:\\\::g;s:[\t ]\+: :g;")"
+    _fucking__1st_word="${_fucking__cmd%% *}"
+    _fucking__1st_word="${_fucking__1st_word%:*}"
+
+    _fucking__cmd_len="0"; for _fucking__word in ${_fucking__cmd}; do
+        _fucking__cmd_len="$((_fucking__cmd_len+1))"
+    done
+
+    case "${_fucking__cmd}" in
+        *:g|*:go|*:goo|*:goog|*:googl|*:google)
+            _fucking__query="$(_encode_search "${_fucking__cmd%:*}")"
+            _fuck_command_not_found "http://www.google.com/search?q=${_fucking__query}:open"
+            ;;
+
+        *:b|*:bi|*:bin|*:bing)
+            _fucking__query="$(_encode_search "${_fucking__cmd%%:*}")"
+            _fuck_command_not_found "http://bing.com/search?q=${_fucking__query}:open"
+            ;;
+
+        *:o|*:op|*:ope|*:open) _open "${_fucking__cmd%:*}" ;;
+        "o "*)     _open "${_cmd#o }:open"    ;;
+        "open "*)  _open "${_cmd#open }:open" ;;
+
+        #execute isn't suppose to be used by users
+        #it's declared for internal redirection
+        *:execute) _exec "${_fucking__cmd%:*}" ;;
+
+        :w|:we|:wea|:weat|:weath|:weathe|:weather|weather)
+            if [ -x "$(command -v "weather" 2>/dev/null)" ]; then
+                exec weather
+            else
+                _fucking__weather="$(_weather)"
+                _fucking__status="${?}"
+
+                if [ -z "${_fucking__weather}" ]; then
+                    _fucking__weather="Weather api timeout"
+                fi
+
+                printf "%s\\n" "${_fucking__weather}"
+                return "${_fucking__status}"
+            fi
+            ;;
+
+        #money currency converter
+        *" "[tT][oO]" "*)
+           if [ X"${_fucking__cmd_len}" != X"4" ]; then
+               _fuck_command_not_found "${_fucking__cmd}:execute"
+           fi
+
+           if [ -x "$(command -v "cconverter" 2>/dev/null)" ]; then
+               exec cconverter "${_fucking__cmd}"
+           else
+               _fucking__currency="$(_cconverter ${_fucking__cmd})"
+               _fucking__status="${?}"
+
+               if [ -z "${_fucking__currency}" ]; then
+                   _fucking__currency="Money currency api timeout"
+               fi
+
+               printf "%s\\n" "${_fucking__currency}"
+               return  "${_fucking__status:-1}"
+           fi
+           ;;
+
+        #arithmetic operations, first character is a number or -,+,(
+        #or a math function()
+        [0-9+-\(]*|\(*|[a-z]*\(*|[a-z]*" (")
+            if [ -x "$(command -v "${_fucking__1st_word}" 2>/dev/null)" ]; then
+                _fuck_command_not_found "${_cmd}:execute"
+            else
+                if awk 'BEGIN {exit}' >/dev/null 2>&1; then
+                    for _fucking__word in ${_fucking__cmd}; do
+                        #only allow portable awk functions
+                        case "${_fucking__word}" in
+                            *[!0-9.-*/%+\(\)]*)
+                                case "${_fucking__word}" in
+                                    int\(*|int|sqrt\(*|sqrt|exp\(*|exp|log\(*|log|sin\(*|sin) continue ;;
+                                    cos\(*|cos|atan2\(*|atan2|rand\(*|rand|srand\(*|srand)    continue ;;
+                                esac
+                                _fucking__invalid_function="1"; break ;;
+                        esac
+                    done
+
+                    if [ -z "${_fucking__invalid_function}" ]; then
+                        _fucking__arith_result="$(awk "BEGIN {printf(\"%.4f\n\", $*); exit}" 2>/dev/null)"
+                        _fucking__status="${?}"
+                    fi
+
+                fi
+
+                if [ -z "${_fucking__arith_result}" ]; then
+                    if [ -x "$(command -v python 2>/dev/null)" ]; then
+                        _fucking__arith_result="$(python -c "from __future__ import division; from math import *; print($*)" 2>/dev/null)"
+                        _fucking__status="${?}"
+                    fi
+                fi
+
+                printf "%s\\n" "${_fucking__arith_result%.0000}"
+                return  "${_fucking__status:-1}"
+            fi
+            ;;
+
+        *)
+           if [ -x "$(command -v "${_fucking__1st_word}" 2>/dev/null)" ]; then
+               _exec ${_fucking__cmd}
+           else
+               _open ${_fucking__cmd}
+           fi
+           ;;
+    esac
+}
+
 _fuck() {
     :
 }
+
+progname="$(expr "${0}" : '.*/\([^/]*\)')"
 
 if [ ! -t 0 ]; then
     #there is input comming from pipe or file, add to the end of $@
@@ -83,9 +371,36 @@ fi
 case "${1}" in
     you|off) shift; _fuck_process "${@}"; exit "${?}" ;;
     -h|--help) _usage && exit ;;
+
+    '-c'|'--command-not-found'|-c*|--command-not-found*)
+        case "${1}" in
+            '-c'|'--command-not-found')
+                if [ "${#}" -gt "1" ]; then
+                    case "${2}" in
+                        -*) _die "Option '${arg}' requires a parameter" ;;
+                    esac
+                    shift && { _fuck_command_not_found "${@}"; exit "${?}"; }
+                else
+                    _die "Option '${arg}' requires a parameter"
+                fi
+                ;;
+
+            -c*)arg="${1#-c}"
+                shift && { _fuck_command_not_found "${arg} ${@}"; exit "${?}"; }
+                ;;
+
+            --command-not-found*)
+                arg="${1#--command-not-found}"
+                shift && _fuck_command_not_found "${arg} ${@}"
+                ;;
+        esac
+        ;;
+
     -*) _die "${progname}: unrecognized option '${1}'" ;;
-    *) _fuck_process "${@}"; exit "${?}"
-esac; _fuck; exit "${?}"
+     *) _fuck_process "${@}"; exit "${?}"
+esac
+
+_fuck; exit "${?}"
 
 #default rules
 @begin{app}
