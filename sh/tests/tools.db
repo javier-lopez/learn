@@ -99,6 +99,32 @@ test X"$(cat-show cui 2>&1|head -1)"                   = X"cat-show: 'cui' was n
 test X"$(printf "%s" 'cui' | cat-show 2>&1|head -1)"   = X"cat-show: 'cui' was not found in \$PATH"
 @end
 
+@begin{cb}
+cb ; test X"${?}"                       = X"0"
+cb -h ; test X"${?}"                    = X"0"
+cb --help ; test X"${?}"                = X"0"
+cb --cui; test X"${?}"                  = X"1"
+xclip -selection clipboard -i /dev/null
+test X"$(cb | head -1)"                 = X""
+test X"$(cb 2>&1 | head -1)"            = X""
+test X"$(cb -h |head -1)"               = X"Usage: cb [options]... [clipboard]..."
+test X"$(cb --help  | head -1)"         = X"Usage: cb [options]... [clipboard]..."
+test X"$(cb --cui | head -1)"           = X""
+test X"$(cb --cui 2>&1 | head -1)"      = X"cb: unrecognized option '--cui'"
+test X"$(printf "test\\n" | cb)"        = X"test"
+test X"$(cb)"                           = X"test"
+test X"$(cb|cat)"                       = X"test"
+test X"$(cb > outputfile)test"          = X"$(cat outputfile)"
+test X"$(printf "fest\\n" | cb | tee outputfile)" = X"fest"
+test X"fest" = X"$(cat outputfile)"
+xclip -selection clipboard -i /dev/null
+test X"$(printf "fest" | cb -a)"        = X"fest"
+test X"$(printf "ival" | cb -a)"        = X"festival"
+test X"$(printf "test" | cb   )"        = X"test"
+rm -rf outputfile
+xclip -selection clipboard -i /dev/null
+@end
+
 @begin{cconverter}
 cconverter ; test X"${?}"                                      = X"1"
 cconverter -h ; test X"${?}"                                   = X"0"

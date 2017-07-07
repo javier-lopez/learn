@@ -1,0 +1,182 @@
+#!/bin/sh
+#description: unify the copy and paste commands into one intelligent chainable command
+              #https://gist.github.com/RichardBronosky/56d8f614fab2bacdd8b048fb58d0c0c7
+#usage: `date | cb`, or `cb` or `date | cb | tee updates.log`
+
+#example:
+#$ date | cb #content is written to the system clipboard as well
+#Thu Jul  6 21:24:30 CDT 2017
+
+VERSION="2017.07.06-21:25"
+
+_usage() {
+    printf "%s\\n" "Usage: ${progname} [options]... [clipboard]..."
+    printf "%s\\n" "Unify the copy and paste commands into one intelligent chainable command."
+    printf "\\n"
+    printf "%s\\n" "  -a, --append              append to the given clipboard, do not overwrite"
+    printf "%s\\n" "  -i, --ignore-interrupts   ignore interrupt signals"
+    printf "\\n"
+    printf "%b\\n" "  -U, --update              update this program to latest version"
+    printf "%s\\n" "  -v, --version             display version"
+    printf "%s\\n" "  -h, --help                show this help message and exit"
+}
+
+_basename() {
+    [ -z "${1}" ] && return 1 || _basename__name="${1%%/}"
+    [ -z "${2}" ] || _basename__suffix="${2}"
+    case "${_basename__name}" in
+        /*|*/*) _basename__name="$(expr "${_basename__name}" : '.*/\([^/]*\)')" ;;
+    esac
+
+    if [ -n "${_basename__suffix}" ] && [ "${#_basename__name}" -gt "${#2}" ]; then
+        if [ X"$(printf "%s\\n" "${_basename__name}" | cut -c"$((${#_basename__name} - ${#_basename__suffix} + 1))"-"${#_basename__name}")" \
+           = X"$(printf "%s\\n" "${_basename__suffix}")" ]; then
+            _basename__name="$(printf "%s\\n" "${_basename__name}" | cut -c1-"$((${#_basename__name} - ${#_basename__suffix}))")"
+        fi
+    fi
+
+    printf "%s\\n" "${_basename__name}"
+}
+
+_die() {
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
+}
+
+_update() {
+    _u__current_file="$(cd "$(dirname "${0}")" && pwd)/${progname}"
+    _u__current_version_long="$(awk -F\" \
+        '/VERSION=/{print $2;exit}' "${_u__current_file}" 2>/dev/null)"
+    _u__current_version="$(printf "%s\\n" "${_u__current_version_long}" | \
+        awk '{gsub(/[\.:]/,"");gsub(/-/,"");print;exit}' 2>/dev/null)"
+    [ -z "${_u__current_version}" ] && printf "%s\\n%s\\n%s\\n"           \
+        "ERROR: Failed to detect current version, please update manually" \
+        "${progname}         = ${_u__current_file}"                       \
+        "${progname} version = ${_u__current_version}" >&2 && return 1
+
+    command -v "wget" >/dev/null 2>&1 || command -v "curl" >/dev/null 2>&1 || \
+        { printf "%s\\n" "ERROR: Install either 'wget' or 'curl' to upgrade" >&2; return 1; }
+
+    _u__url="https://raw.githubusercontent.com/javier-lopez/learn/master/sh/tools/${progname}"
+    _u__tmpfile="/tmp/${progname}.${$}.update"
+
+    _u__error_msg="$(wget -q -O- --no-check-certificate "${_u__url}" \
+        > "${_u__tmpfile}" 2>&1   || curl -s "${_u__url}"  \
+        > "${_u__tmpfile}" 2>&1)" || { printf "%s\\n%s\\n" \
+        "ERROR: Failed to fetch update, please try later or update manually" \
+        "${_u__error_msg}" >&2; return 1; }
+
+    _u__update_version_long="$(awk -F\" \
+        '/VERSION=/{print $2;exit}' "${_u__tmpfile}" 2>/dev/null)"
+    _u__update_version="$(printf "%s" "${_u__update_version_long}" | awk \
+        '{gsub(/[\.:]/,"");gsub(/-/,"");print;exit}' 2>/dev/null)"
+    [ -n "${_u__update_version}" ] || _u__update_version="0"
+
+    if [ "${_u__current_version}" -lt "${_u__update_version}" ]; then
+        printf "%s %s\\n" "Updating from version" \
+            "${_u__current_version_long} to ${_u__update_version_long} ..."
+        chmod +x "${_u__tmpfile}"
+        if ! mv -f "${_u__tmpfile}" "${_u__current_file}" 2>/dev/null; then
+            printf "%s\\n" "ERROR: no write permissions on ${_u__current_file}" >&2
+            printf "%s\\n" "INFO : trying with sudo ..." >&2
+            if command -v "sudo" >/dev/null 2>&1; then
+                sudo mv "${_u__tmpfile}" "${_u__current_file}" || return 1
+            else
+                printf "%s\\n" "ERROR: sudo isn't available, exiting ..." >&2
+                rm -rf "${_u__tmpfile}"
+                return 1
+            fi
+        fi
+        printf "%s %s\\n" "${progname} is up-to-date (${_u__update_version_long})"
+        return 0
+    fi
+    printf "%s %s\\n" "${progname} is up-to-date (${_u__current_version_long})"
+    rm -rf "${_u__tmpfile}"
+}
+
+_show_version() {
+    printf "%s\\n" "${progname} ${VERSION}"
+}
+
+_cb_copy() {
+    if command -v "xclip" >/dev/null 2>/dev/null; then
+        #dumping xclip's stdout to the bitbucket works around xclip's
+        #failure to properly daemonize: https://sourceforge.net/p/xclip/patches/9/
+        if [ -n "${append}" ]; then
+            (_cb_paste 2>/dev/null; cat) | xclip -selection clipboard -i >/dev/null 2>&1
+        else
+            cat | xclip -selection clipboard -i >/dev/null 2>&1
+        fi
+    elif command -v "xsel" >/dev/null 2>/dev/null; then
+        if [ -n "${append}" ]; then
+            (_cb_paste 2>/dev/null; cat) | xsel --clipboard
+        else
+            cat | xsel --clipboard
+        fi
+    elif command -v "pbcopy" >/dev/null 2>/dev/null; then
+        if [ -n "${append}" ]; then
+            (_cb_paste 2>/dev/null; cat) | pbcopy
+        else
+            cat | pbcopy
+        fi
+    elif [ -e /dev/clipboard ]; then
+        if [ -n "${append}" ]; then
+            (cat /dev/clipboard 2>/dev/null; cat) > /dev/clipboard
+        else
+            cat > /dev/clipboard
+        fi
+    else
+        _die "${progname}: unrecognized clipboard system"
+    fi
+}
+
+_cb_paste() {
+    if command -v "xclip" >/dev/null 2>/dev/null; then
+        xclip -selection clipboard -o
+    elif command -v "xsel" >/dev/null 2>/dev/null; then
+        xsel --clipboard
+    elif command -v "pbpaste" >/dev/null 2>/dev/null; then
+        pbpaste
+    elif [ -e /dev/clipboard ]; then
+        cat /dev/clipboard
+    else
+        _die "${progname}: unrecognized clipboard system"
+    fi
+}
+
+progname="$(_basename "${0}")"
+
+[ -p /dev/stdin ] && stdin_is_pipe="1"
+[ -t 0          ] && stdin_is_tty="1"
+[ -t 1          ] && stdout_is_tty="1"
+
+for arg in "${@}"; do #parse options
+    case "${arg}" in
+        -h|--help) _usage; exit "${?}" ;;
+        -U|--update) _update; exit "${?}" ;;
+        -v|--version) _show_version; exit "${?}" ;;
+        -a|--append) append="1"; shift ;;
+        -i|--ignore-interrupts) ignore_interrumpts="1"; shift ;;
+        -*) _die "${progname}: unrecognized option '${arg}'" ;;
+    esac
+done
+
+if [ -n "${stdin_is_pipe}" ] || [ ! -n "${stdin_is_tty}" ] ; then #stdin is pipe-ish
+    _cb_copy  #send stdin to the clipboard
+    #if [ ! -n "${stdout_is_tty}" ]; then #also, stdout is either a pipe or a redirection
+        #_cb_paste #send clipboard content to that pipe/redirection, enables chaining `man tee`
+    #fi
+    _cb_paste #doesn't matter if stdout is a pipe a redirection or a tty,
+              #always output clipboard content, it reflects `tee` behavior
+else #stdin is not a pipe
+    _cb_paste #output the clipboard
+    if [ -n "${stdout_is_tty}" ]; then #stdout is not a pipe so we don't have to
+                                       #be strict about not altering the output
+        :
+        #commented as it could confuse the user about the original content of
+        #the clipboard
+        #printf "\\n" #prevent the prompt from being on the same line
+    fi
+fi
+
+# vim:set ts=4 sw=4 tw=0 ft=sh :

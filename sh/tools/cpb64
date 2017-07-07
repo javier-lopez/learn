@@ -4,9 +4,7 @@
 #usage: cpb64 file[s]
 
 #example: cpb64 ~/.bashrc
-#output-to-copy
-#to-a-remote-shell
-#...
+#H4sIAPzxXlkAA...  #copy and execute output to a remote shell
 
 progname="$(expr "${0}" : '.*/\([^/]*\)')"
 decodestr="$(
