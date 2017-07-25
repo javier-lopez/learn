@@ -2,7 +2,7 @@ CC=gcc
 CFLAGS=-g -Wall
 LDFLAGS=`pkg-config --cflags --libs`
 
-all: cat count_spaces endian getchar input opts pointers pwd sSs steps_compilation sudoku time_waiting_baton time_waiting_percentaje types valid_chars allocating_memory promedios_cruzados monkey_typewriter
+all: cat count_spaces endian getchar input opts pointers pwd sSs steps_compilation sudoku time_waiting_baton time_waiting_percentaje types valid_chars allocating_memory promedios_cruzados monkey_typer
 
 native: CFLAGS=-O3 -march=native -Wall
 native: all
