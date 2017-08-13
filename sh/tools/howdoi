@@ -6,6 +6,9 @@
 #DATE=`date +%Y-%m-%d`
 
 progname="$(expr "${0}" : '.*/\([^/]*\)')"
+search_engines="google" #TODO 13-08-2017 02:30 >> add more search engines
+
+VERSION="2017.08.13-04:08"
 
 _usage() {
     printf "%b\\n" "Usage: ${progname} [options] query ..."
@@ -15,13 +18,44 @@ _usage() {
     printf "%b\\n" "  query       the question to answer"
     printf "\\n"
     printf "%b\\n" "Optional arguments:"
-    printf "%b\\n" "  -p pos       select answer in specified position (default: 1)"
+    printf "%b\\n" "  -l           display only links"
     printf "%b\\n" "  -a           display all the answers in full text"
-    printf "%b\\n" "  -l           display only the answer link"
+    printf "%b\\n" "  -n num       number of answers to return"
+    printf "%b\\n" "  -p pos       select answer from specified link position (default: 1)"
     printf "%b\\n" "  -c           enable colorized output"
     printf "%b\\n" "  -C           clear cache"
-    printf "%b\\n" "  -n num       number of answers to return"
+    printf "\\n"
+    printf "%b\\n" "  -U, --update update this program to latest version"
     printf "%b\\n" "  -h, --help   show this help message and exit"
+}
+
+_mkdir_p() { #portable mkdir -p
+    [ -n "${1}" ] || return 1
+    for _mkdir_p__dir in "${@}"; do
+        [ -d "${_mkdir_p__dir}" ] && continue
+        _mkdir_p__IFS="${IFS}"
+        IFS="/"
+        set -- ${_mkdir_p__dir}
+        IFS="${_mkdir_p__IFS}"
+        (
+        case "${_mkdir_p__dir}" in
+            /*) cd /; shift ;;
+        esac
+        for _mkdir_p__subdir in "${@}"; do
+            [ -z "${_mkdir_p__subdir}" ] && continue
+            if [ -d "${_mkdir_p__subdir}" ] || mkdir "${_mkdir_p__subdir}"; then
+                if cd "${_mkdir_p__subdir}"; then
+                    :
+                else
+                    printf "%s\\n" "_mkdir_p: Can't enter ${_mkdir_p__subdir} while creating ${_mkdir_p__dir}"
+                    return 1
+                fi
+            else
+                return 1
+            fi
+        done
+        )
+    done
 }
 
 _is_int() {
@@ -37,104 +71,164 @@ _die() {
     _usage >&2; exit 1
 }
 
-_howdoi() {
+_update() {
+    _u__current_file="$(cd "$(dirname "${0}")" && pwd)/${progname}"
+    _u__current_version_long="$(awk -F\" \
+        '/VERSION=/{print $2;exit}' "${_u__current_file}" 2>/dev/null)"
+    _u__current_version="$(printf "%s\\n" "${_u__current_version_long}" | \
+        awk '{gsub(/[\.:]/,"");gsub(/-/,"");print;exit}' 2>/dev/null)"
+    [ -z "${_u__current_version}" ] && printf "%s\\n%s\\n%s\\n"           \
+        "ERROR: Failed to detect current version, please update manually" \
+        "${progname}         = ${_u__current_file}"                       \
+        "${progname} version = ${_u__current_version}" >&2 && return 1
+
+    command -v "wget" >/dev/null 2>&1 || command -v "curl" >/dev/null 2>&1 || \
+        { printf "%s\\n" "ERROR: Install either 'wget' or 'curl' to upgrade" >&2; return 1; }
+
+    _u__url="https://raw.githubusercontent.com/javier-lopez/learn/master/sh/tools/${progname}"
+    _u__tmpfile="/tmp/${progname}.${$}.update"
+
+    _u__error_msg="$(wget -q -O- --no-check-certificate "${_u__url}" \
+        > "${_u__tmpfile}" 2>&1   || curl -s "${_u__url}"  \
+        > "${_u__tmpfile}" 2>&1)" || { printf "%s\\n%s\\n" \
+        "ERROR: Failed to fetch update, please try later or update manually" \
+        "${_u__error_msg}" >&2; return 1; }
+
+    _u__update_version_long="$(awk -F\" \
+        '/VERSION=/{print $2;exit}' "${_u__tmpfile}" 2>/dev/null)"
+    _u__update_version="$(printf "%s" "${_u__update_version_long}" | awk \
+        '{gsub(/[\.:]/,"");gsub(/-/,"");print;exit}' 2>/dev/null)"
+    [ -n "${_u__update_version}" ] || _u__update_version="0"
+
+    if [ "${_u__current_version}" -lt "${_u__update_version}" ]; then
+        printf "%s %s\\n" "Updating from version" \
+            "${_u__current_version_long} to ${_u__update_version_long} ..."
+        chmod +x "${_u__tmpfile}"
+        if ! mv -f "${_u__tmpfile}" "${_u__current_file}" 2>/dev/null; then
+            printf "%s\\n" "ERROR: no write permissions on ${_u__current_file}" >&2
+            printf "%s\\n" "INFO : trying with sudo ..." >&2
+            if command -v "sudo" >/dev/null 2>&1; then
+                sudo mv "${_u__tmpfile}" "${_u__current_file}" || return 1
+            else
+                printf "%s\\n" "ERROR: sudo isn't available, exiting ..." >&2
+                rm -rf "${_u__tmpfile}"
+                return 1
+            fi
+        fi
+        printf "%s %s\\n" "${progname} is up-to-date (${_u__update_version_long})"
+        return 0
+    fi
+    printf "%s %s\\n" "${progname} is up-to-date (${_u__current_version_long})"
+    rm -rf "${_u__tmpfile}"
+}
+
+_uniq() {
+    awk 'a !~ $0; {a=$0}'
+}
+
+_get_links() {
     [ -z "${1}" ] && return 1
-    [ -z "${pflag}" ] && pflag="1" || {
-        case "${pflag}" in
-            *[!0-9]) pflag="1" ;;
-        esac
+    __stackexchange_sites="stackoverflow.com superuser.com askubuntu.com serverfault.com stackexchange.com"
+    __question_hash="$(printf "%s\\n" "${*}" | tr ' ' '_')"
+
+    _get_links_google() {
+        #for some reason the google api doesn't return the same results
+        #http://ajax.googleapis.com/ajax/services/search/web?v=1.0
+        __query=""; for __site in ${__stackexchange_sites}; do
+            __query="${__query} __site:${__site} OR"
+        done; __query="${__query# }"; __query="${__query%OR} ${@}"
+        wget -q -U "Mozilla/5.0" "http://www.google.com/search?q=${__query}" -O- | \
+            grep -Po '(http|https)://.*/questions/[0-9]*/' | awk -F'&' '{print $1}' | awk '!/ /' | _uniq
     }
-    [ -z "${nflag}" ] && nflag="1" || {
-        case "${nflag}" in
-            *[!0-9]) nflag="1" ;;
-        esac
-    }
 
-    _howdoi__question="${*}"
-    _howdoi__question_format="$(printf "%s" "${*}" | tr ' ' '_')"
-
-    if [ -z "${HOWDOI_DISABLE_CACHE}" ]; then
-        _howdoi__google_links="$(find ~/.cache/howdoi/ -iname \
-            "${_howdoi__question_format}".links 2>/dev/null | head -n 1)"
-        _howdoi__google_links="$(cat "${_howdoi__google_links}" 2>/dev/null)"
+    if [ "${HOWDOI_CACHE_ENABLED}" ]; then
+        __links_cache_file="$(find ~/.cache/howdoi/ -iname \
+            "${__question_hash}".links 2>/dev/null | head -n 1)"
+        __links_content="$(cat "${__links_cache_file}" 2>/dev/null)"
+        [ -n "${__links_content}" ] && printf "%s\\n" "${__links_content}" && return
     fi
 
-    #for some reason the google api doesn't return the same results
-    #http://ajax.googleapis.com/ajax/services/search/web?v=1.0
-    if [ -z "${_howdoi__google_links}" ]; then
-        _howdoi__google_links="$(wget -q -U "Firefox/3.0.5" \
-            "http://www.google.com/search?q=site:stackoverflow.com%20${_howdoi__question}" -O- | \
-            awk 'match($0,/http:\/\/stackoverflow.com\/questions\/[0-9]*\/[A-Za-z-]+/) {if(NR!=1){print substr($0,RSTART,RLENGTH)}}')"
+    for __search_engine in ${search_engines}; do
+        __links_content="$(_get_links_"${__search_engine}" "${@}")"
+          [ -z "${__links_content}" ] || break
+    done; [ -z "${__links_content}" ] && return 1
+
+    if [ "${HOWDOI_CACHE_ENABLED}" ]; then
+        [ -d ~/.cache/howdoi/ ] || _mkdir_p ~/.cache/howdoi/
+        printf "%s\\n" "${__links_content}" > ~/.cache/howdoi/"${__question_hash}".links
     fi
 
-    if [ -z "${HOWDOI_DISABLE_CACHE}" ]; then
-        [ ! -d ~/.cache/howdoi/ ] && mkdir ~/.cache/howdoi/
-        [ ! -f ~/.cache/howdoi/"${_howdoi__question_format}".links ] && \
-            printf "%s\\n" "${_howdoi__google_links}" > \
-            ~/.cache/howdoi/"${_howdoi__question_format}".links
-    fi
+    printf "%s\\n" "${__links_content}"
+}
 
-    [ -z "${_howdoi__google_links}" ] && {
-        printf "%s\\n" "$(expr "${0}" : '.*/\([^/]*\)'): No results"; exit 1; }
+_get_answers() {
+    [ -z "${1}" ] && return 1
+    __link_hash="$(printf "%s\\n" "${*}" | tr '/' '#')"
 
-    _howdoi__google_link="$(printf "%s\\n" "${_howdoi__google_links}" | \
-        awk -v l="${pflag}" 'NR == l {print; exit}')"
-    [ -n "${lflag}" ] && { printf "%s\\n" "${_howdoi__google_link}"; exit; }
-
-    #if a user request a link out of scope, return the last link instead
-    [ -z "${_howdoi__google_link}" ] && \
-        _howdoi__google_link="$(printf "%s\\n" "${_howdoi__google_links}" | \
-            awk 'END {print}')"
-    _howdoi__so_basename="$(expr "${_howdoi__google_link}" : '.*/\([^/]*\)')"
-
-    if [ -z "${HOWDOI_DISABLE_CACHE}" ]; then
-        _howdoi__so_answers="$(find ~/.cache/howdoi/ -iname \
-            "${_howdoi__so_basename}".answers 2>/dev/null | head -n 1)"
-        _howdoi__so_answers="$(cat "${_howdoi__so_answers}" 2>/dev/null)"
-    fi
-
-    #the stackoverflow api doesn't print answers body
-    #http://api.stackoverflow.com/2.0/usage
-    if [ -z "${_howdoi__so_answers}" ]; then
-        _howdoi__so_answers="$(wget -q -U "Firefox/3.0.5"    \
-            "$(printf "%s" "${_howdoi__google_link}")" -O- | \
+    _get_answers_stackexchange() {
+        #the stackoverflow api doesn't print answers body
+        #http://api.stackoverflow.com/2.0/usage
+        wget --no-check-certificate -q -U "Firefox/3.0.5" "${@}" -O- | \
             awk '/answercell/,/div>/ {if ($0 ~ "div>") print "-----"; else print;}' | \
             awk '/<pre><code>/,/<\/code><\/pre>/ {gsub(/^[ \t]+<pre>/, ""); print ">>", $0}1' | \
             awk '/>>/ {print $0; getline; next}1' | \
             awk '{gsub("<[^>]*>", ""); gsub(/^[ \t]+|[ \t]+$/, "");
-                 gsub(/>>$/, ""); gsub(/>>[ \t]/, ">"); gsub(/&lt;/, "<");
-                 gsub(/&gt;/, ">"); sub(/\r$/,""); if ($0 != "") print}')"
+                  gsub(/>>$/, ""); gsub(/>>[ \t]/, ">"); gsub(/&lt;/, "<");
+                  gsub(/&gt;/, ">"); sub(/\r$/,""); if ($0 != "") print}'
+    }
+
+    if [ "${HOWDOI_CACHE_ENABLED}" ]; then
+        __answers_cache_file="$(find ~/.cache/howdoi/ -iname \
+            "${__link_hash}".answers 2>/dev/null | head -n 1)"
+        __answers_content="$(cat "${__answers_cache_file}" 2>/dev/null)"
+        [ -n "${__answers_content}" ] && printf "%s\\n" "${__answers_content}" && return
     fi
 
-    _howdoi__so_answers_len="$(printf "%s" "${_howdoi__so_answers}" | \
-        awk '/-----/ {i++} END {print i}')"
+    __answers_content="$(_get_answers_stackexchange "${@}")"
+    [ -z "${__answers_content}" ] && return 1
 
-    [ -z "${_howdoi__so_answers}" ] && {
-        printf "%s\\n" "No answers for your question" >&2; exit 1; }
-
-    if [ -z "${HOWDOI_DISABLE_CACHE}" ]; then
-        [ ! -d ~/.cache/howdoi/ ] && mkdir ~/.cache/howdoi/
-        [ ! -f ~/.cache/howdoi/"${_howdoi__so_basename}".answers ] && \
-            printf "%s\\n" "${_howdoi__so_answers}" \
-                > ~/.cache/howdoi/"${_howdoi__so_basename}".answers
+    if [ "${HOWDOI_CACHE_ENABLED}" ]; then
+        [ -d ~/.cache/howdoi/answers ] || _mkdir_p ~/.cache/howdoi/answers
+        printf "%s\\n" "${__answers_content}" > ~/.cache/howdoi/answers/"${__link_hash}".answers
     fi
 
-    [ -n "${aflag}" ] && {
-        printf "%s\\n" "${_howdoi__so_answers}" | \
-        awk '{gsub(/>/, "   "); print $0}'
-        printf "%s\\n" "${_howdoi__google_link}"; exit; }
+    printf "%s\\n" "${__answers_content}"
+}
 
-    if [ "${nflag}" -lt "2" ] || [ "${_howdoi__so_answers_len}" -lt "2" ]; then
-        printf "%s" "${_howdoi__so_answers}" | \
-            awk '/^>/ {sub(/^>/, ""); print $0; getline t;
-                if ( t ~ "^>") {sub(/^>/, "", t); print t;} else exit }'
+_howdoi() {
+    [ -z "${1}" ] && return 1
+    [ -z "${position_link}" ]     && position_link="1"
+    [ -z "${number_of_answers}" ] && number_of_answers="1"
+
+    __links="$(_get_links "${@}")"
+    [ -z "${__links}" ] && { printf "%s\\n" "${progname}: No results" >&2; exit 1; }
+
+    [ "${display_only_links}" ] && printf "%s\\n" "${__links}" && exit
+
+    __link="$(printf "%s\\n" "${__links}" | awk -v l="${position_link}" 'NR == l {print; exit}')"
+    #if a user request a link out of scope, return the last link instead
+    [ -z "${__link}" ] && __link="$(printf "%s\\n" "${__links}" | awk 'END {print}')"
+
+    __answers="$(_get_answers "${__link}")"
+    [ -z "${__answers}" ] && { printf "%s\\n" "${progname}: error parsing ${__link}" >&2; exit 1; }
+    __answers_len="$(printf "%s" "${__answers}" | awk '/-----/ {i++} END {print i}')"
+
+    if [ "${display_all_answers}" ]; then
+        printf "%s\\n" "${__answers}" | awk '{gsub(/>/, "   "); print $0}'
+        printf "%s\\n" "${__link}"; exit;
     else
-        printf "%s" "${_howdoi__so_answers}" | \
-            awk -v l="${nflag}" 'BEGIN {i++} /^>/ {
-            if (flagend !~ "set") {print "--- Answer", i, "---"; sub(/^>/, "");
-            print $0; getline; while ( $0 ~ "^>") {sub(/^>/, ""); print;
-            getline;} i++; flagend="set";} else
-            { if ($0 !~ "^-----$") flagend="none"} if (i == l+1) exit}'
+        if [ "${number_of_answers}" -lt "2" ] || [ "${__answers_len}" -lt "2" ]; then
+            printf "%s" "${__answers}" | \
+                awk '/^>/ {sub(/^>/, ""); print $0; getline t;
+                    if ( t ~ "^>") {sub(/^>/, "", t); print t;} else exit }'
+        else
+            printf "%s" "${__answers}" | \
+                awk -v l="${number_of_answers}" 'BEGIN {i++} /^>/ {
+                if (flagend !~ "set") {print "--- Answer", i, "---"; sub(/^>/, "");
+                print $0; getline; while ( $0 ~ "^>") {sub(/^>/, ""); print;
+                getline;} i++; flagend="set";} else
+                { if ($0 !~ "^-----$") flagend="none"} if (i == l+1) exit}'
+        fi
     fi
 }
 
@@ -153,25 +247,26 @@ fi
 for arg in "${@}"; do #parse options
     case "${arg}" in
         -h|--help) _usage && exit ;;
-        -a) aflag="true"; shift;;
-        -l) lflag="true"; shift;;
-        -c) cflag="true"; shift;;
+        -U|--update) _update; exit "${?}" ;;
+        -l) display_only_links="true"; shift;;
+        -a) display_all_answers="true"; shift;;
+        -c) display_colors="true"; shift;;
         -C) rm -rf ~/.cache/howdoi
             printf "%s\\n" "Cache cleared successfully" && exit ;;
         -p) if [ "${#}" -gt "1" ]; then
-                pflag="$(printf "%s " "${@}" | awk '{print $2}')"
+                position_link="$(printf "%s " "${@}" | awk '{print $2}')"
                 shift 2
-                if ! _is_int "${pflag}" ; then
-                    _die "Option '${arg}' requires a number: '${pflag}'"
+                if ! _is_int "${position_link}" ; then
+                    _die "Option '${arg}' requires a number: '${position_link}'"
                 fi
             else
                 _die "Option '${arg}' requires a parameter"
             fi ;;
         -n) if [ "${#}" -gt "1" ]; then
-                nflag="$(printf "%s " "${@}" | awk '{print $2}')"
+                number_of_answers="$(printf "%s " "${@}" | awk '{print $2}')"
                 shift 2
-                if ! _is_int "${nflag}" ; then
-                    _die "Option '${arg}' requires a number: '${nflag}'"
+                if ! _is_int "${number_of_answers}" ; then
+                    _die "Option '${arg}' requires a number: '${number_of_answers}'"
                 fi
             else
                 _die "Option '${arg}' requires a parameter"
@@ -179,5 +274,7 @@ for arg in "${@}"; do #parse options
         -*) _die "${progname}: unrecognized option '${arg}'" ;;
     esac
 done
+
+[ -z "${HOWDOI_DISABLE_CACHE}" ] && HOWDOI_CACHE_ENABLED="true"
 
 _howdoi "${@}"
