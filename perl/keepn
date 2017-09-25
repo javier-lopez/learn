@@ -1,0 +1,50 @@
+#!/usr/bin/perl
+#description: keep n more recent files in directory
+#usage: keepn DIR <n>
+
+#exampe: keepn /var/log/apt/ 15 #default to 10
+#keep latest 15 files, remove the rest
+
+use strict;
+use warnings;
+use File::Basename;
+
+my $progname  = basename(__FILE__);
+my $default_n = 10;
+
+sub _usage {
+    print "Usage: " . $progname . " DIR <n>\n";
+    print "Keep n more recent files in directory.\n\n";
+    print "  -h, --help   show this help message and exit\n";
+}
+
+sub _die {
+    print  STDERR "@_\n" if (scalar(@_) > 0);
+    select STDERR; _usage(); exit 1;
+}
+
+sub _keepn {
+    my ($dir, $n) = @_;
+    $n = $default_n if not defined $n;
+
+    if ( ! -d $dir) {
+        _die("Directory '" . $dir . "' doesn't exists!");
+    }
+
+    my @newest_first =
+        map $_->[0],
+        sort { $a->[1] <=> $b->[1] }
+        map [$_, -M],
+        < $dir/* >;
+        unlink @newest_first[$n..$#newest_first]
+    if @newest_first > $n;
+}
+
+_die() unless @ARGV;
+
+foreach (@ARGV) { #parse options
+    ($_ eq '-h' || $_ eq '--help') && do { _usage() && exit };
+    ($_ =~ /^-./) && do { _die("$progname: unrecognized option '$_'") };
+}
+
+_keepn @ARGV;
