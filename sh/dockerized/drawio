@@ -1,0 +1,7 @@
+#!/bin/sh
+
+port="${1:-8080}"
+printf "%s\\n" "http://localhost:8080/?offline=1&https=0"
+PS4="> "; set -x
+docker run -it --rm --name="drawio" -p 8080:"${port}" -p 8443:8443 fjudith/draw.io
+

@@ -1,0 +1,21 @@
+#!/bin/sh
+
+xhost local:pencil
+
+mkdir -p ~/.pencil/downloads; chmod -R 777 ~/.pencil
+mkdir -p ~/.config/pencil; chmod -R 777 ~/.config/pencil
+
+PS4="> "; set -x
+docker run --rm                                     \
+    -v ~/.pencil/downloads:/home/pencil/Downloads   \
+    -v ~/.pencil:/home/pencil/.pencil               \
+    -v ~/.config/pencil:/home/pencil/.config/Pencil \
+    -v ~/.themes:/home/pencil/.themes:ro            \
+    -v ~/.fonts:/home/pencil/.fonts:ro              \
+    -v ~/.icons:/home/pencil/.icons:ro              \
+    -v ~/.gtkrc-2.0:/home/pencil/.gtkrc-2.0:ro      \
+    -v /usr/share/themes:/usr/share/themes:ro       \
+    -v /usr/share/fonts:/usr/share/fonts:ro         \
+    -v /tmp/.X11-unix:/tmp/.X11-unix                \
+    -e DISPLAY=$DISPLAY                             \
+    loadaverage/pencil
