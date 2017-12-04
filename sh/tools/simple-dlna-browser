@@ -14,6 +14,8 @@ _usage() {
     printf "%s\\n" "  -l, --list-media [ID]    list multimedia resources"
     printf "%s\\n" "  -s, --server IP[:PORT]   specify media server"
     printf "%s\\n" "  -p, --port   PORT        specify media server port, default 8200"
+    printf "%s\\n" "  -f, --field  FIELD       field to search pattern in. May be dc:title or upnp:artist."
+    printf "%s\\n" "                           using this option implicitly restricts search to media items only"
     printf "%s\\n" "  -v                       verbose mode"
     printf "%s\\n" "  -h, --help               show this help message and exit"
     printf "\\n"
@@ -26,6 +28,10 @@ _usage() {
     printf "%s\\n" "  http://192.168.1.254:8200/MediaItems/22.mp4 - video1"
     printf "%s\\n" "  http://192.168.1.254:8200/MediaItems/23.mp4 - Other video file"
     printf "%s\\n" "  http://192.168.1.254:8200/MediaItems/24.mp4 - Yet another video file"
+    printf "\\n"
+    printf "%s\\n" "  $ ${progname} -s 192.168.1.254:8200 -v -f upnp:artist foo"
+    printf "%s\\n" "  http://192.168.1.254:8200/MediaItems/22.mp4 - video1 by foo"
+    printf "%s\\n" "  http://192.168.1.254:8200/MediaItems/23.mp4 - Other video file by foo"
     printf "\\n"
     printf "%s\\n" "  Search pattern in all detected media servers, require 'socat' or specify"
     printf "%s\\n" "  a media server IP (-s|--server) and port (-p|--port)"
@@ -258,11 +264,20 @@ _search_media() {
         _smedia__servers="${1}:${2}"
     fi
     _smedia__verbose="${3}"
-    shift && shift && shift
+    _search_field="${4}"
+    shift && shift && shift && shift
+
+    _criteria='upnp:class derivedfrom "object.item" and '
+    if [[ -z "${_search_field}" ]]
+    then
+        _search_field="dc:title"
+        _criteria=''
+    fi
+    _criteria="${_criteria}${_search_field}"' contains "'"${@}"'"'
 
     _init_http_headers
     soap_action='SOAPAction: "urn:schemas-upnp-org:service:ContentDirectory:1#Search"'
-    soap_envelope='<?xml version="1.0" encoding="UTF-8" ?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"><s:Body><u:Search xmlns:u="urn:schemas-upnp-org:service:ContentDirectory:1"><ContainerID>0</ContainerID><SearchCriteria>(dc:title contains "'"${@}"'")</SearchCriteria><Filter>*</Filter><StartingIndex>0</StartingIndex><RequestedCount>100</RequestedCount><SortCriteria>+dc:title</SortCriteria></u:Search></s:Body></s:Envelope>'
+    soap_envelope='<?xml version="1.0" encoding="UTF-8" ?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"><s:Body><u:Search xmlns:u="urn:schemas-upnp-org:service:ContentDirectory:1"><ContainerID>0</ContainerID><SearchCriteria>('"${_criteria}"')</SearchCriteria><Filter>*</Filter><StartingIndex>0</StartingIndex><RequestedCount>100</RequestedCount><SortCriteria>+dc:title</SortCriteria></u:Search></s:Body></s:Envelope>'
 
     for _smedia__server in $(printf "%s\\n" "${_smedia__servers}" | \
         awk '{print $1}'|cut -d'/' -f1-3); do
@@ -309,6 +324,18 @@ for arg in "${@}"; do #parse options
             ;;
         -p*) port="${1#-p}"; shift ;;
         --port*) port="${1#--port}"; shift ;;
+        '-f'|'--field')
+            if [ "${#}" -gt "1" ]; then
+                case "${2}" in
+                    -*) _die "Option '${arg}' requires a parameter"
+                esac
+                shift; search_field="${1}"; [ "${1}" ] && shift
+            else
+                _die "Option '${arg}' requires a parameter"
+            fi
+            ;;
+        -f*) search_type="${1#-f}"; shift ;;
+        --field*) search_type="${1#--field}"; shift ;;
         -v*) verbose_lvl="verbose" ; shift ;;
         -h|--help) _usage && exit ;;
         -*) _die "${progname}: unrecognized option '${arg}'" ;;
@@ -345,7 +372,7 @@ elif [ "${list_media_option}" ]; then
         esac
     }
 else
-    _search_media "${server}" "${port}" "${verbose_lvl}" "${@}" || {
+    _search_media "${server}" "${port}" "${verbose_lvl}" "${search_field}" "${@}" || {
         case "${?}" in
             127) _die "Specify a dlna media server" \
                       "or install 'socat' to enable autodetection." ;;
