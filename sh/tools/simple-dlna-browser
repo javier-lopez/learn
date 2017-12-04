@@ -268,7 +268,7 @@ _search_media() {
     shift && shift && shift && shift
 
     _criteria='upnp:class derivedfrom "object.item" and '
-    if [[ -z "${_search_field}" ]]
+    if [ -z "${_search_field}" ]
     then
         _search_field="dc:title"
         _criteria=''
