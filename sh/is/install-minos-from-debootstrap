@@ -1,0 +1,183 @@
+#!/bin/sh
+#description: install minos.io from a third party linux system
+
+_usage() {
+    printf "%s\\n" "Usage: ${progname} /dev/sdX username passwd [/dev/sdaY]"
+    printf "%s\\n" "Install minos.io from a third party linux system"
+    printf "\\n"
+    printf "%s\\n" "/dev/sdaX  =>  /     mount point"
+    printf "%s\\n" "/dev/sdaY  =>  /home mount point (optional)"
+}
+
+_die() {
+    printf "%s\\n" "${*}" >&2
+    exit 2
+}
+
+_die_with_usage() {
+    printf "%s\\n" "${*}" >&2
+    _usage >&2
+    exit 2
+}
+
+_printfl() {
+    _printfl_var_max_len="80"
+    if [ -n "${1}" ]; then
+        _printfl_var_word_len="$(expr "${#1}" + 2)"
+        _printfl_var_sub="$(expr "${_printfl_var_max_len}" - "${_printfl_var_word_len}")"
+        _printfl_var_half="$(expr "${_printfl_var_sub}" / 2)"
+        _printfl_var_other_half="$(expr "${_printfl_var_sub}" - "${_printfl_var_half}")"
+        printf "%b" "\033[1m" #white strong
+        printf '%*s' "${_printfl_var_half}" '' | tr ' ' -
+        printf "%b" "\033[7m" #white background
+        printf " %s " "${1}"
+        printf "%b" "\033[0m\033[1m" #white strong
+        printf '%*s' "${_printfl_var_other_half}" '' | tr ' ' -
+        printf "%b" "\033[0m" #back to normal
+        printf "\\n"
+    else
+        printf "%b" "\033[1m" #white strong
+        printf '%*s' "${_printfl_var_max_len}" '' | tr ' ' -
+        printf "%b" "\033[0m" #back to normal
+        printf "\\n"
+    fi
+}
+
+_exec() {
+    _printfl "${*}"
+    $* || _die "there was an error with the above command, exiting ..."
+}
+
+progname="$(basename "${0}")"
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add it to the end of $@
+    set -- "${@}" $(cat)
+fi
+
+if [ "$(whoami)" != "root" ]; then
+    _die "You aren't root!, re-run with admin privileges, exiting..."
+fi
+
+[ "${#}" -le "2" ] && _usage >&2 && exit 2
+
+RELEASE="$(lsb_release -cs)"
+RELEASE_NUMBER="$(lsb_release -rs)"
+ARCH="$(dpkg --print-architecture)"
+ROOT_PARTITION="${1}"
+USERNAME="${2}"
+PASSWD="${3}"
+HOME_PARTITION="${4}"
+MOUNT="/minos"
+SWAP="$(blkid | awk '/swap/ {print $1;exit;}' | sed 's/://g')"
+SECS="5"
+
+[ ! -e "${ROOT_PARTITION}" ] && _die_with_usage "${ROOT_PARTITION} doesn't exist, exiting..."
+
+if [ -n "${HOME_PARTITION}" ]; then
+    [ ! -e "${HOME_PARTITION}" ] && _die_with_usage "${HOME_PARTITION} doesn't exist, exiting..."
+fi
+
+GRUB_HD="$(printf "%s\\n" "${ROOT_PARTITION}" | sed 's:[0-9]::g')"
+
+printf "%s\\n" "MINOS INSTALLER"
+printf "%s\\n" "==============="
+printf "\\n"
+printf "%s\\n" "RELEASE:        ${RELEASE} / ${RELEASE_NUMBER}"
+printf "%s\\n" "ARCH:           ${ARCH}"
+printf "%s\\n" "MOUNT:          ${MOUNT}"
+printf "\\n"
+printf "%s\\n" "GRUB HD:        ${GRUB_HD}"
+printf "%s\\n" "ROOT PARTITION: ${ROOT_PARTITION}"
+if [ -n "${HOME_PARTITION}" ]; then
+printf "%s\\n" "HOME PARTITION: ${HOME_PARTITION}"
+fi
+printf "%s\\n" "SWAP:           ${SWAP}"
+printf "\\n"
+printf "%s\\n" "ACCOUNT:        ${USERNAME} / $(printf "%s\\n" "${PASSWD}" | sed 's:.:*:g')"
+printf "\\n"
+printf "%s\\n" "Press Ctrl-C to cancel, or wait ${SECS} seconds to continue"
+sleep "${SECS}"
+
+_exec mkfs.ext4 -F "${ROOT_PARTITION}"
+
+_printfl "Checking for bootstrap ..."
+if ! command -v "debootstrap"; then
+    _exec apt update
+    _exec apt install debootstrap
+fi
+
+_exec mkdir -p "${MOUNT}"
+_exec mount "${ROOT_PARTITION}" "${MOUNT}"
+
+_exec debootstrap --arch "${ARCH}" "${RELEASE}" "${MOUNT}"
+_exec cp /etc/apt/sources.list "${MOUNT}/etc/apt/sources.list"
+_exec sed -i "/cdrom:/d" "${MOUNT}/etc/apt/sources.list"
+
+_printfl "Generating new /etc/fstab file"
+printf "%s\\n" "${ROOT_PARTITION} / ext4 errors=remount-ro 0 1"     | tee "${MOUNT}/etc/fstab"
+if [ -n "${HOME_PARTITION}" ]; then
+printf "%s\\n" "${HOME_PARTITION} /home ext4 errors=remount-ro 0 1" | tee -a "${MOUNT}/etc/fstab"
+fi
+printf "%s\\n" "${SWAP} none swap sw 0 0"      | tee -a "${MOUNT}/etc/fstab"
+printf "%s\\n" "proc /proc proc  defaults 0 0" | tee -a "${MOUNT}/etc/fstab"
+printf "%s\\n" "sys  /sys  sysfs defaults 0 0" | tee -a "${MOUNT}/etc/fstab"
+
+_printfl "Chrooting into  ${MOUNT}"
+_exec mount --bind /dev  "${MOUNT}/dev"
+_exec mount --bind /proc "${MOUNT}/proc"
+_exec mount --bind /sys  "${MOUNT}/sys"
+
+#cat << EOF | chroot "${MOUNT}"
+set -xe
+
+printf "%s\\n" "grub-pc grub-pc/install_devices multiselect ${GRUB_HD}" | debconf-set-selections
+apt-get update
+apt-get install --no-install-recommends -y wget grub-pc grub2-common linux-generic-hwe-"${RELEASE_NUMBER}"
+
+wget -q -O- minos.io/s | sh /dev/stdin desktop
+apt-get autoremove
+
+adduser --quiet --disabled-password --shell /bin/bash --home "/home/${USERNAME}" --gecos "" "${USERNAME}"
+printf "%s\\n" "${USERNAME}:${PASSWD}" | chpasswd
+rm -rf "/home/${USERNAME}"
+
+for group in adm cdrom sudo dip plugdev netdev admin; do
+    if ! grep -q "${group}" /etc/group; then
+        addgroup "${group}"
+    fi
+    usermod -aG "${group}" "${USERNAME}"
+done
+
+hostnamectl set-hostname 'minos'
+sed -i -e "/^127.0.0.1/ s:^127.*:127.0.0.1\tminos minos.lan localhost:" /etc/hosts
+
+sed -i -e '/^XKBMODEL/  s:=.*:="pc105":' /etc/default/keyboard
+sed -i -e '/^XKBLAYOUT/ s:=.*:="latam":' /etc/default/keyboard
+
+sed -i -e '/^CHARMAP/   s:=.*:="UTF-8":' /etc/default/console-setup
+sed -i -e '/^CODESET/   s:=.*:="guess":' /etc/default/console-setup
+
+locale-gen en_US.UTF-8
+
+#https://stackoverflow.com/a/42344810/890858
+ln -fs /usr/share/zoneinfo/America/Mexico_City /etc/localtime
+dpkg-reconfigure --frontend noninteractive tzdata
+
+grub-install "${GRUB_HD}"
+grub-install --recheck "${GRUB_HD}"
+update-grub
+#EOF
+
+set +x
+
+printf "%s\\n" "Done: reboot the system to get started, have fun! n.n/"
+
+#TODO
+#hostnamectl set-hostname minos
+#dpkg-reconfigure keyboard-configuration
+#locale-gen en_US.UTF-8
+#dpkg-reconfigure locales
+#dpkg-reconfigure tzdata
+#dpkg-reconfigure console-data
+#dpkg-reconfigure console-setup
