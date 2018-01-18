@@ -1,0 +1,6 @@
+#!/bin/sh
+
+port="${1:-1760}"
+printf "%s\\n" "http://localhost:1760/web2ldap/"
+PS4="> "; set -x
+docker run -it --rm --name="web2ldap" -p 1760:"${port}" jlrigau/web2ldap
