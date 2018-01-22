@@ -256,9 +256,9 @@ _fetch() {
         1) $retriever_bin "${1}" ;;
         2)
            case "${retriever_bin}" in
-               wget*) $retriever_bin -O "${2}" "${1}" >/dev/null || \
-                      $retriever_bin -O "${2}" "http://${1}" >/dev/null ;;
-               curl*) ${retriever_bin# -O} -o "${2}" "${1}"  >/dev/null ;;
+               wget*) ${retriever_bin% -O-} -O "${2}" "${1}" >/dev/null || \
+                      ${retriever_bin% -O-} -O "${2}" "http://${1}" >/dev/null ;;
+               curl*) ${retriever_bin% -O-} -o "${2}" "${1}"  >/dev/null ;;
                *) return 1 ;;
            esac
            ;;
@@ -286,14 +286,14 @@ _filter_url() {
 _list_all() {
     for repo in ${@}; do
         _fetch https://api.github.com/repos/"${repo}"/releases | \
-            grep "${release_pattern}" | _filter_url
+            grep "${release_pattern}/" | _filter_url
     done
 }
 
 _list_release() {
     for repo in ${@}; do
         _fetch https://api.github.com/repos/"${repo}"/releases | \
-            grep "${release_pattern}" | grep "${arch}" | grep "${os}" | _filter_url
+            grep "${release_pattern}/" | grep "${arch}" | grep "${os}" | _filter_url
     done
 }
 
