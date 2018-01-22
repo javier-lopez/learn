@@ -24,8 +24,8 @@
     whitespace=fix,-indent-with-non-tab,trailing-space,cr-at-eol
 
 [user]
-    name = chilicuil
-    email = chilicuil@gmail.com
+    name = javier-lopez
+    email = m@javier.io
 
 [alias]
     cm = commit
@@ -49,8 +49,8 @@
     ;http://tinyurl.com/yeevhcr
     ;This tells Git 2 things:
 
-   ;1. When you're on the master branch, the default remote is origin. 
-   
+   ;1. When you're on the master branch, the default remote is origin.
+
    ;2. When using git pull on the master branch, with no remote and
       ;branch specified, use the default remote (origin) and merge in
       ;the changes from the master branch.
