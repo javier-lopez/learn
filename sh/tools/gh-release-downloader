@@ -6,7 +6,7 @@
 #gh-release-downloader yudai/gotty
 #gotty_linux_amd64.tar.gz
 
-VERSION="2018.01.19-19:17"
+VERSION="2018.01.22-15:02"
 SRC_URL="https://raw.githubusercontent.com/javier-lopez/learn/master/sh/tools/"
 
 _usage() {
@@ -290,7 +290,14 @@ _list_all() {
     done
 }
 
-_list() {
+_list_release() {
+    for repo in ${@}; do
+        _fetch https://api.github.com/repos/"${repo}"/releases | \
+            grep "${release_pattern}" | grep "${arch}" | grep "${os}" | _filter_url
+    done
+}
+
+_list_latest() {
     for repo in ${@}; do
         _fetch https://api.github.com/repos/"${repo}"/releases/latest | \
             grep "${arch}" | grep "${os}" | _filter_url
@@ -322,17 +329,24 @@ _gh_release_downloader() {
     [ -z "${1}" ] && return 1 || _set_defaults
 
     for pkg in "${@}"; do
-        pkg_url="$(_list "${pkg}")"
+        if [ -z "${release_pattern}" ]; then
+            pkg_url="$(_list_latest "${pkg}")"
+        else
+            pkg_url="$(_list_release "${pkg}")"
+        fi
+
         if [ -z "${pkg_url}" ]; then
            _verbose "No matches for '${pkg}', skipping..."
            _false; continue
        fi
 
-       tmpdir="${tmpdir}/${pkg}"
-       _mkdir_p "${tmpdir}"
-
        pkg_dirname="$(_dirname "${pkg_url}")"
        pkg_basename="$(_basename "${pkg_url}")"
+       pkg_release="$(_basename "${pkg_dirname}")"
+
+       tmpdir="${tmpdir}/${pkg}/${pkg_release}"
+       _mkdir_p "${tmpdir}"
+
        [ -f "${tmpdir}/SHA256SUMS" ] || _fetch "${pkg_dirname}/SHA256SUMS" "${tmpdir}/SHA256SUMS"
        pkg_hash="$(cat "${tmpdir}/SHA256SUMS" | awk -v pattern="${pkg_basename}" '$2 == pattern {print $1;exit;}')"
        pkg_hash_type="$(_checksum_type "${pkg_hash}")"
@@ -415,7 +429,7 @@ for arg in "${@}"; do #parse options
                         case "${2}" in
                             -*) _die "Option '${arg}' requires a parameter";;
                         esac
-                        shift; _list "${@}"; exit "${?}"
+                        shift; _list_latest "${@}"; exit "${?}"
                     else
                         _die "Option '${arg}' requires a parameter"
                     fi
