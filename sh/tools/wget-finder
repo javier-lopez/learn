@@ -60,55 +60,60 @@ _checksum_type() {
 }
 
 _checksum() {
-    [ -z "${1}" ] && return 1
-    if [ -z "${2}" ]; then
-        case "${1}" in
-            md5)
-                [ -z "${md5bin}" ] || return 0
-                if echo | md5sum >/dev/null 2>&1; then
-                    md5bin="md5sum"; return 0
-                elif echo | md5 -r >/dev/null 2>&1; then
-                    md5bin="md5"; return 0
-                elif echo | openssl dgst -md5 >/dev/null 2>&1; then
-                    md5bin="openssl"; return 0
-                else
-                    return 1
-                fi
-                ;;
-            sha1|sha256|sha512)
-                [ -z "${shabin}" ] || return 0
-                if echo | shasum -a "${1#sha}" >/dev/null 2>&1; then
-                    shabin="shasum"; return 0
-                elif echo | openssl dgst -"${1}" >/dev/null 2>&1; then
-                    shabin="openssl"; return 0
-                else
-                    return 1
-                fi
-                ;;
-            *)  return 1 ;;
-        esac
-    else
-        case "${1}" in
-            md5)
-                [ -z "${md5bin}" ] && _checksum "${1}"
-                case "${md5bin}" in
-                     md5sum) md5sum "${2}" | awk '{print $1}' ;;
-                        md5) md5 -r "${2}" | awk '{print $1}' ;;
-                    openssl) openssl  dgst -"${1}" "${2}" | awk '{print $2}' ;;
-                          *) return 1 ;;
-                esac
-                ;;
-            sha1|sha256|sha512)
-                [ -z "${shabin}" ] && _checksum "${1}"
-                case "${shabin}" in
-                     shasum) shasum -a "${1#sha}" "${2}" | awk '{print $1}' ;;
-                    openssl) openssl dgst -"${1}" "${2}" | awk '{print $2}' ;;
-                          *) return 1 ;;
-                esac
-                ;;
-            *) return 1 ;;
-        esac
-    fi
+    case "${#}" in #number of input parameters
+        1)
+            case "${1}" in
+                md5)
+                    [ -z "${md5bin}" ] || return 0
+                    if echo | md5sum >/dev/null 2>&1; then
+                        md5bin="md5sum"; return 0
+                    elif echo | md5 -r >/dev/null 2>&1; then
+                        md5bin="md5"; return 0
+                    elif echo | openssl dgst -md5 >/dev/null 2>&1; then
+                        md5bin="openssl"; return 0
+                    else
+                        return 1
+                    fi
+                    ;;
+                sha1|sha256|sha512)
+                    [ -z "${shabin}" ] || return 0
+                    if echo | shasum -a "${1#sha}" >/dev/null 2>&1; then
+                        shabin="shasum"; return 0
+                    elif echo | openssl dgst -"${1}" >/dev/null 2>&1; then
+                        shabin="openssl"; return 0
+                    else
+                        return 1
+                    fi
+                    ;;
+                *)  return 1 ;;
+            esac
+        ;;
+
+        2)
+            case "${1}" in
+                md5)
+                    [ -z "${md5bin}" ] && _checksum "${1}"
+                    case "${md5bin}" in
+                         md5sum) md5sum "${2}" | awk '{print $1}' ;;
+                            md5) md5 -r "${2}" | awk '{print $1}' ;;
+                        openssl) openssl  dgst -"${1}" "${2}" | awk '{print $2}' ;;
+                              *) return 1 ;;
+                    esac
+                    ;;
+                sha1|sha256|sha512)
+                    [ -z "${shabin}" ] && _checksum "${1}"
+                    case "${shabin}" in
+                         shasum) shasum -a "${1#sha}" "${2}" | awk '{print $1}' ;;
+                        openssl) openssl dgst -"${1}" "${2}" | awk '{print $2}' ;;
+                              *) return 1 ;;
+                    esac
+                    ;;
+                *) return 1 ;;
+            esac
+        ;;
+
+        *) return 1 ;;
+    esac
 }
 
 _cat() {
