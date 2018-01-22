@@ -280,7 +280,7 @@ _get_os() {
 }
 
 _filter_url() {
-    awk '/browser_download_url/ {gsub("\"", ""); print $2; exit;}'
+    awk '/browser_download_url/ {gsub("\"", ""); print $2}'
 }
 
 _list_all() {
