@@ -1,0 +1,535 @@
+#!/bin/sh
+#description: download latest releases from github
+#usage: gh-release-downloader REPO
+
+#example:
+#gh-release-downloader yudai/gotty
+#gotty_linux_amd64.tar.gz
+
+VERSION="2018.01.19-19:17"
+SRC_URL="https://raw.githubusercontent.com/javier-lopez/learn/master/sh/tools/"
+
+_usage() {
+    printf "%s\\n" "Usage: ${progname} [OPTION]... USER/REPO ..."
+    printf "%s\\n" "A github binary retriever"
+    printf "\\n"
+    printf "%b\\n" "  -d, --download [dir]      write to the specified directory"
+    printf "%b\\n" "  -o, --output [file]       write to file"
+    printf "%b\\n" "  -l, --list                list latest release"
+    printf "%b\\n" "  -L, --list-all            list all available releases, including pre|alpha|beta"
+    printf "%b\\n" "  -x, --extract             extract after download"
+    printf "%b\\n" "  -n, --dry-run             perform a trial run with no changes made"
+    printf "%b\\n" "  -c, --clean-cache         remove temporal files"
+    printf "%b\\n" "  -r, --release [pattern]   set release"
+    printf "%b\\n" "  -a, --arch [x86_64|...]   set architecture"
+    printf "%b\\n" "  -O, --os   [linux |...]   set os"
+    printf "%b\\n" "  -U, --update              update this program to latest version"
+    printf "%s\\n" "  -V, --version             display version"
+    printf "%b\\n" "  -v, --verbose             turn on verbose mode"
+    printf "%b\\n" "  -q, --quiet               suppress non-error messages"
+    printf "%b\\n" "  -h, --help                show this message and exit"
+}
+
+_dirname() {
+    [ -z "${1}" ] && return 1
+
+    #http://www.linuxselfhelp.com/gnu/autoconf/html_chapter/autoconf_10.html
+    case "${1}" in
+        /*|*/*) _dirname__dir=$(expr "x${1}" : 'x\(.*\)/[^/]*' \| '.' : '.')
+                printf "%s\\n" "${_dirname__dir}" ;;
+             *) printf "%s\\n" ".";;
+    esac
+}
+
+_basename() {
+    [ -z "${1}" ] && return 1 || _basename__name="${1}"
+    [ -z "${2}" ] || _basename__suffix="${2}"
+    case "${_basename__name}" in
+        /*|*/*) _basename__name="${_basename__name##*/}"
+    esac
+
+    if [ -n "${_basename__suffix}" ] && [ "${#_basename__name}" -gt "${#2}" ]; then
+        _basename__name="${_basename__name%$_basename__suffix}"
+    fi
+
+    printf "%s\\n" "${_basename__name}"
+}
+
+_die() {
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage; >&2; exit 1
+}
+
+_update() {
+    _u__current_file="$(cd "$(dirname "${0}")" && pwd)/${progname}"
+    _u__current_version_long="$(awk -F\" \
+        '/VERSION=/{print $2;exit}' "${_u__current_file}" 2>/dev/null)"
+    _u__current_version="$(printf "%s\\n" "${_u__current_version_long}" | \
+        awk '{gsub(/[\.:]/,"");gsub(/-/,"");print;exit}' 2>/dev/null)"
+    [ -z "${_u__current_version}" ] && printf "%s\\n%s\\n%s\\n"           \
+        "ERROR: Failed to detect current version, please update manually" \
+        "${progname}         = ${_u__current_file}"                       \
+        "${progname} version = ${_u__current_version}" >&2 && return 1
+
+    command -v "wget" >/dev/null 2>&1 || command -v "curl" >/dev/null 2>&1 || \
+        { printf "%s\\n" "ERROR: Install either 'wget' or 'curl' to upgrade" >&2; return 1; }
+
+    _u__url="${SRC_URL}/${progname}"
+    _u__tmpfile="/tmp/${progname}.${$}.update"
+
+    _u__error_msg="$(wget -q -O- --no-check-certificate "${_u__url}" \
+        > "${_u__tmpfile}" 2>&1   || curl -s -L "${_u__url}"  \
+        > "${_u__tmpfile}" 2>&1)" || { printf "%s\\n%s\\n" \
+        "ERROR: Failed to fetch update, please try later or update manually" \
+        "${_u__error_msg}" >&2; return 1; }
+
+    _u__update_version_long="$(awk -F\" \
+        '/VERSION=/{print $2;exit}' "${_u__tmpfile}" 2>/dev/null)"
+    _u__update_version="$(printf "%s\\n" "${_u__update_version_long}" | awk \
+        '{gsub(/[\.:]/,"");gsub(/-/,"");print;exit}' 2>/dev/null)"
+    [ -n "${_u__update_version}" ] || _u__update_version="0"
+
+    if [ "${_u__current_version}" -lt "${_u__update_version}" ]; then
+        printf "%s %s\\n" "Updating from version" \
+            "${_u__current_version_long} to ${_u__update_version_long} ..."
+        chmod +x "${_u__tmpfile}"
+        if ! mv -f "${_u__tmpfile}" "${_u__current_file}" 2>/dev/null; then
+            printf "%s\\n" "ERROR: no write permissions on ${_u__current_file}" >&2
+            printf "%s\\n" "INFO : trying with sudo ..." >&2
+            if command -v "sudo" >/dev/null 2>&1; then
+                sudo mv "${_u__tmpfile}" "${_u__current_file}" || return 1
+            else
+                printf "%s\\n" "ERROR: sudo isn't available, exiting ..." >&2
+                rm -rf "${_u__tmpfile}"
+                return 1
+            fi
+        fi
+        printf "%s %s\\n" "${progname} is up-to-date (${_u__update_version_long})"
+        return 0
+    fi
+    printf "%s %s\\n" "${progname} is up-to-date (${_u__current_version_long})"
+    rm -rf "${_u__tmpfile}"
+}
+
+_show_version() {
+    printf "%s\\n" "${progname} ${VERSION}"
+}
+
+_mkdir_p() { #portable mkdir -p
+    [ -n "${1}" ] || return 1
+    for _mkdir_p__dir in "${@}"; do
+        [ -d "${_mkdir_p__dir}" ] && continue
+        _mkdir_p__IFS="${IFS}"
+        IFS="/"
+        set -- ${_mkdir_p__dir}
+        IFS="${_mkdir_p__IFS}"
+        (
+        case "${_mkdir_p__dir}" in
+            /*) cd /; shift ;;
+        esac
+        for _mkdir_p__subdir in "${@}"; do
+            [ -z "${_mkdir_p__subdir}" ] && continue
+            if [ -d "${_mkdir_p__subdir}" ] || mkdir "${_mkdir_p__subdir}"; then
+                if cd "${_mkdir_p__subdir}"; then
+                    :
+                else
+                    printf "%s\\n" "_mkdir_p: Can't enter ${_mkdir_p__subdir} while creating ${_mkdir_p__dir}"
+                    return 1
+                fi
+            else
+                return 1
+            fi
+        done
+        )
+    done
+}
+
+_verbose() {
+    [ -z "${1}" ] && return 1
+    [ -n "${verbose}" ] && printf "%s\\n" "${*}" || :
+}
+
+_cat() {
+    [ -z "${1}" ] && return 1
+    [ -z "${global_output}" ]      && output_fname="$(_basename "${1}")" || {
+        [ -z "${output_counter}" ] && output_counter="0"
+    }
+
+    if [ -z "${global_output}" ]; then
+        cat "${1}" >  "${directory}/${output_fname}"
+    else
+        case "${output_fname}" in
+              -) cat "${1}"; return 0 ;;
+        *\{#\}*) output_counter="$(($output_counter + 1))"
+                 cat "${1}" >> "${directory}/$(printf "%s\\n" "${output_fname}" | \
+                     sed "s:{#}:${output_counter}:")"
+                 ;;
+              *) cat "${1}" >> "${directory}/${output_fname}" ;;
+        esac
+    fi
+
+    printf "%s\\n" "${directory}/${output_fname}" | sed 's:\./::' | sed "s:{#}:${output_counter}:"
+}
+
+_checksum_type() {
+    case "${#1}" in
+        32) printf "md5"    ;;
+        40) printf "sha1"   ;;
+        64) printf "sha256" ;;
+       128) printf "sha512" ;;
+         *) return 1 ;;
+    esac
+}
+
+_checksum() {
+    case "${#}" in #number of input parameters
+        1)
+            case "${1}" in
+                md5)
+                    [ -z "${md5bin}" ] || return 0
+                    if echo | md5sum >/dev/null 2>&1; then
+                        md5bin="md5sum"; return 0
+                    elif echo | md5 -r >/dev/null 2>&1; then
+                        md5bin="md5"; return 0
+                    elif echo | openssl dgst -md5 >/dev/null 2>&1; then
+                        md5bin="openssl"; return 0
+                    else
+                        return 1
+                    fi
+                    ;;
+                sha1|sha256|sha512)
+                    [ -z "${shabin}" ] || return 0
+                    if echo | shasum -a "${1#sha}" >/dev/null 2>&1; then
+                        shabin="shasum"; return 0
+                    elif echo | openssl dgst -"${1}" >/dev/null 2>&1; then
+                        shabin="openssl"; return 0
+                    else
+                        return 1
+                    fi
+                    ;;
+                *)  return 1 ;;
+            esac
+        ;;
+
+        2)
+            case "${1}" in
+                md5)
+                    [ -z "${md5bin}" ] && _checksum "${1}"
+                    case "${md5bin}" in
+                         md5sum) md5sum "${2}" | awk '{print $1}' ;;
+                            md5) md5 -r "${2}" | awk '{print $1}' ;;
+                        openssl) openssl  dgst -"${1}" "${2}" | awk '{print $2}' ;;
+                              *) return 1 ;;
+                    esac
+                    ;;
+                sha1|sha256|sha512)
+                    [ -z "${shabin}" ] && _checksum "${1}"
+                    case "${shabin}" in
+                         shasum) shasum -a "${1#sha}" "${2}" | awk '{print $1}' ;;
+                        openssl) openssl dgst -"${1}" "${2}" | awk '{print $2}' ;;
+                              *) return 1 ;;
+                    esac
+                    ;;
+                *) return 1 ;;
+            esac
+        ;;
+
+        *) return 1 ;;
+    esac
+}
+
+_fetch() {
+    if [ -z "${retriever_bin}" ]; then
+        if command -v "wget" >/dev/null 2>&1; then
+            retriever_bin="wget -q -O-"
+        elif command -v "curl" >/dev/null 2>&1; then
+            retriever_bin="curl -s -L"
+        elif command -v "fetch" >/dev/null 2>&1; then
+            retriever_bin="fetch"
+        else
+            printf "%s\\n" "install either 'wget', 'curl' or 'fetch' to run this program" >&2
+            exit 1
+        fi
+    fi
+
+    case "${#}" in #number of input parameters
+        1) $retriever_bin "${1}" ;;
+        2)
+           case "${retriever_bin}" in
+               wget*) $retriever_bin -O "${2}" "${1}" >/dev/null || \
+                      $retriever_bin -O "${2}" "http://${1}" >/dev/null ;;
+               curl*) ${retriever_bin# -O} -o "${2}" "${1}"  >/dev/null ;;
+               *) return 1 ;;
+           esac
+           ;;
+        *) return 1 ;;
+    esac
+}
+
+_str2lower() {
+    tr 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 'abcdefghijklmnopqrstuvwxyz'
+    # tr '[:upper:]' '[:lower:]'
+}
+
+_get_arch() {
+    uname -m
+}
+
+_get_os() {
+    uname | _str2lower
+}
+
+_filter_url() {
+    awk '/browser_download_url/ {gsub("\"", ""); print $2; exit;}'
+}
+
+_list_all() {
+    for repo in ${@}; do
+        _fetch https://api.github.com/repos/"${repo}"/releases | \
+            grep "${release_pattern}" | _filter_url
+    done
+}
+
+_list() {
+    for repo in ${@}; do
+        _fetch https://api.github.com/repos/"${repo}"/releases/latest | \
+            grep "${arch}" | grep "${os}" | _filter_url
+    done
+}
+
+_false() {
+    return 1
+}
+
+_set_defaults() {
+    [ -z "${os}" ]          && os="$(_get_os)"
+    [ -z "${arch}" ]        && arch="$(_get_arch)"
+    [ -z "${directory}" ]   && directory="."
+    [ X"${output}" = X"-" ] && directory="."
+
+    if [ -z "${dry_run}" ]; then
+        _mkdir_p "${directory}" || { printf "%s\\n" "unable to create ${directory}, exiting"; exit 1; }
+    fi
+
+    case "${arch}" in
+        x86|386|486|586|i86|32) arch="386" ;;
+        amd64|64|x86_64) arch="amd64" ;;
+        *) _verbose "${arch} is not a valid architecture, using system default: $(_get_arch)"; arch="$(_get_arch)" ;;
+    esac
+}
+
+_gh_release_downloader() {
+    [ -z "${1}" ] && return 1 || _set_defaults
+
+    for pkg in "${@}"; do
+        pkg_url="$(_list "${pkg}")"
+        if [ -z "${pkg_url}" ]; then
+           _verbose "No matches for '${pkg}', skipping..."
+           _false; continue
+       fi
+
+       tmpdir="${tmpdir}/${pkg}"
+       _mkdir_p "${tmpdir}"
+
+       pkg_dirname="$(_dirname "${pkg_url}")"
+       pkg_basename="$(_basename "${pkg_url}")"
+       [ -f "${tmpdir}/SHA256SUMS" ] || _fetch "${pkg_dirname}/SHA256SUMS" "${tmpdir}/SHA256SUMS"
+       pkg_hash="$(cat "${tmpdir}/SHA256SUMS" | awk -v pattern="${pkg_basename}" '$2 == pattern {print $1;exit;}')"
+       pkg_hash_type="$(_checksum_type "${pkg_hash}")"
+
+       for i in 1 2; do #download on first run, write/extract on second
+           if [ "${dry_run}" ]; then
+               if [ "${output_fname}" ]; then
+                   case "${output_fname}" in
+                       *\{#\}*) [ -z "${output_counter}" ] && output_counter="0"
+                            output_counter="$(($output_counter + 1))"
+                            ;;
+                   esac
+                   printf "%s\\n" "${directory}/${output_fname}" | sed 's:\./::' | sed "s:{#}:${output_counter}:"
+               else
+                   printf "%s\\n" "${directory}/${pkg_basename}" | sed 's:\./::'
+                   [ "${extract}" ] && printf "%s\\n" "${directory}/${pkg_basename%%.tar*}/" | sed 's:\./::'
+               fi
+               break
+           fi
+
+           if [ -f "${tmpdir}/${pkg_basename}" ]; then
+               if [ -z "${pkg_hash_type}" ]; then
+                   printf "%s\\n" "Warning: '${pkg_dirname}/SHA256SUMS' provides unrecognized hash checksum, skipping..." >&2
+                   pkg_hash_new="${pkg_hash}"
+               elif ! _checksum "${pkg_hash_type}"; then
+                   printf "%s\\n" "Warning: there is no way to calculate a '${pkg_hash_type}' checksum in your system, skipping..." >&2
+                   pkg_hash_new="${pkg_hash}"
+               else
+                   pkg_hash_new="$(_checksum "${pkg_hash_type}" "${tmpdir}/${pkg_basename}")"
+               fi
+
+               if [ "${pkg_hash}" = "${pkg_hash_new}" ]; then
+                   _cat "${tmpdir}/${pkg_basename}"
+
+                   if [ "${extract}" ]; then
+                       _mkdir_p "${directory}/${pkg_basename%%.tar*}"
+                       (cd "${directory}/${pkg_basename%%.tar*}" && \
+                       tar xf "../${pkg_basename}") && \
+                       printf "%s\\n" "${directory}/${pkg_basename%%.tar*}/" | sed 's:\./::'
+                   fi
+                   break
+               else
+                   printf "'%s' doesn't match hashsum => '%s', clean the cache (%s) and try again\\n" \
+                       "${directory}/${pkg_basename}" "${pkg_hash}" \
+                       "$(_usage | awk '/remove temporal/ {sub(/,/, ""); print $1 "|" $2}')" | sed 's:\./::'
+                   rm -f "${tmpdir}/${pkg_basename}"
+               fi
+           else
+               _mkdir_p "${tmpdir}"
+               (cd "${tmpdir}/" && _fetch "${pkg_url}" "${pkg_basename}")
+           fi
+       done
+
+    done
+}
+
+progname="$(_basename "${0}")"
+tmpdir="/tmp/${progname}"
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add it to the end of $@
+    set -- "${@}" $(cat)
+fi
+
+[ "${#}" -eq "0" ] && _die
+
+for arg in "${@}"; do #parse options
+    case "${arg}" in
+        -h|--help)    _usage;  exit ;;
+        -U|--update)  _update; exit "${?}" ;;
+        -V|--version) _show_version; exit "${?}" ;;
+        -q|--quiet)   quiet="1";   shift ;;
+        -v|--verbose) verbose="1"; shift ;;
+        -x|--extract) extract="1"; shift ;;
+        -n|--dry-run) dry_run="1"; shift ;;
+        '-l'|'--list'|-l*|--list*)
+            case "${arg}" in
+                '-l'|'--list')
+                    if [ "${#}" -gt "1" ]; then
+                        case "${2}" in
+                            -*) _die "Option '${arg}' requires a parameter";;
+                        esac
+                        shift; _list "${@}"; exit "${?}"
+                    else
+                        _die "Option '${arg}' requires a parameter"
+                    fi
+                    ;;
+            esac
+            ;;
+
+        '-L'|'--list-all'|-L*|--list-all*)
+            case "${arg}" in
+                '-L'|'--list-all')
+                    if [ "${#}" -gt "1" ]; then
+                        case "${2}" in
+                            -*) _die "Option '${arg}' requires a parameter";;
+                        esac
+                        shift; _list_all "${@}"; exit "${?}"
+                    else
+                        _die "Option '${arg}' requires a parameter"
+                    fi
+                    ;;
+            esac
+            ;;
+
+        '-d'|'--download'|-d*|--download*)
+            case "${arg}" in
+                '-d'|'--download')
+                    if [ "${#}" -gt "1" ]; then
+                        case "${2}" in
+                            -*) _die "Option '${arg}' requires a parameter";;
+                        esac
+                        shift; directory="${1}"; [ "${1}" ] && shift
+                    else
+                        _die "Option '${arg}' requires a parameter"
+                    fi
+                    ;;
+                -d*) directory="${1#-d}"; shift ;;
+                --download*) directory="${1#--download}"; shift ;;
+            esac
+            ;;
+
+        '-o'|'--output'|-o*|--output*)
+            case "${arg}" in
+                '-o'|'--output')
+                    if [ "${#}" -gt "1" ]; then
+                        case "${2}" in
+                            '-') : ;; #special stdout character
+                             -*) _die "Option '${arg}' requires a parameter" ;;
+                        esac
+                        shift; output_fname="${1}"; global_output="1"; [ "${1}" ] && shift
+                    else
+                        _die "Option '${arg}' requires a parameter"
+                    fi
+                    ;;
+                -o*) output_fname="${1#-o}"; shift; global_output="1" ;;
+                --output*) output_fname="${1#--output}"; shift; global_output="1" ;;
+            esac
+            ;;
+
+        '-r'|'--release'|-r*|--release*)
+            case "${arg}" in
+                '-r'|'--release')
+                    if [ "${#}" -gt "1" ]; then
+                        case "${2}" in
+                             -*) _die "Option '${arg}' requires a parameter" ;;
+                        esac
+                        shift; release_pattern="${1}"; [ "${1}" ] && shift
+                    else
+                        _die "Option '${arg}' requires a parameter"
+                    fi
+                    ;;
+                -r*) release_pattern="${1#-r}"; shift ;;
+                --output*) release_pattern="${1#--release}"; shift ;;
+            esac
+            ;;
+
+        '-a'|'--arch'|-a*|--arch*)
+            case "${arg}" in
+                '-a'|'--arch')
+                    if [ "${#}" -gt "1" ]; then
+                        case "${2}" in
+                            -*) _die "Option '${arg}' requires a parameter" ;;
+                        esac
+                        shift; arch="${1}"; [ "${1}" ] && shift
+                    else
+                        _die "Option '${arg}' requires a parameter"
+                    fi
+                    ;;
+                -a*)     arch="${1#-a}";     shift ;;
+                --arch*) arch="${1#--arch}"; shift ;;
+            esac
+            ;;
+
+        '-O'|'--os'|-O*|--os*)
+            case "${arg}" in
+                '-O'|'--os')
+                    if [ "${#}" -gt "1" ]; then
+                        case "${2}" in
+                            -*) _die "Option '${arg}' requires a parameter" ;;
+                        esac
+                        shift; os="${1}"; [ "${1}" ] && shift
+                    else
+                        _die "Option '${arg}' requires a parameter"
+                    fi
+                    ;;
+                -O*)   os="${1#-O}";   shift ;;
+                --os*) os="${1#--os}"; shift ;;
+            esac
+            ;;
+
+        -c|--clean-cache) rm -rf "${tmpdir}" && \
+            [ -z "${quiet}" ] && printf "%s\\n" "Cache cleared successfully"
+            exit "${?}";;
+        '-') : ;; #special stdout character
+        -*) _die "${progname}: unrecognized option '${arg}'" >&2 ;;
+    esac
+done
+
+_gh_release_downloader "${@}"
