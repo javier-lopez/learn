@@ -128,7 +128,7 @@ _exec mount --bind /dev  "${MOUNT}/dev"
 _exec mount --bind /proc "${MOUNT}/proc"
 _exec mount --bind /sys  "${MOUNT}/sys"
 
-#cat << EOF | chroot "${MOUNT}"
+cat << EOF | chroot "${MOUNT}"
 set -xe
 
 printf "%s\\n" "grub-pc grub-pc/install_devices multiselect ${GRUB_HD}" | debconf-set-selections
