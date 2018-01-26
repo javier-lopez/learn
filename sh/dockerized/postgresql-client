@@ -1,0 +1,24 @@
+#!/bin/sh
+
+_usage() {
+    host="$(ip addr | grep docker | grep inet | awk '{print $2; exit;}' | cut -d/ -f1)"
+    [ -z "${host}" ] && host="host"
+    printf "%s\\n" "Usage: ${progname} postgresql://user:pass@${host}:5432/db"
+    printf "%s\\n" "Minimal environment with PostgreSQL client"
+}
+
+_die() {
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage; >&2; exit 1
+}
+
+progname="$(basename "${0}")"
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add it to the end of $@
+    set -- "${@}" $(cat)
+fi
+
+[ "${#}" -eq "0" ] && _die
+
+docker run -it --rm jbergknoff/postgresql-client "${@}"
