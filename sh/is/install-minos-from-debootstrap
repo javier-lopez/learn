@@ -176,8 +176,8 @@ printf "%s\\n" "Done: reboot the system to get started, have fun! n.n/"
 #TODO
 #hostnamectl set-hostname minos
 #dpkg-reconfigure keyboard-configuration
+#dpkg-reconfigure tzdata
 #locale-gen en_US.UTF-8
 #dpkg-reconfigure locales
-#dpkg-reconfigure tzdata
 #dpkg-reconfigure console-data
 #dpkg-reconfigure console-setup
