@@ -1,0 +1,4 @@
+#!/bin/sh
+
+port="${1:-8080}"
+docker run --rm -p 8080:"${port}" jlpz/gotty:1.0.1-tmux
