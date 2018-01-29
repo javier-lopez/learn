@@ -1,0 +1,83 @@
+#!/bin/sh
+#description: change git author recursively
+#usage: git-change-author old-email@domain.tld correct-name correct-email@domain.tld
+
+#based on https://help.github.com/articles/changing-author-info/
+
+VERSION="2018.01.29-11:29"
+
+_usage() {
+    printf "%s\\n" "Usage: ${progname} WRONG_EMAIL AUTHOR_NAME EMAIL"
+    printf "%s\\n" "Fix wrong author data in git repositories."
+    printf "\\n"
+    printf "%s\\n" "  -y, --yes       don't ask confirmation"
+    printf "%s\\n" "  -V, --version   display version"
+    printf "%b\\n" "  -h, --help      show this message and exit"
+}
+
+_die() {
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage; >&2; exit 1
+}
+
+_show_version() {
+    printf "%s\\n" "${progname} ${VERSION}"
+}
+
+progname="$(basename "${0}")"
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add it to the end of $@
+    set -- "${@}" $(cat)
+fi
+
+[ "${#}" -eq "0" ] && _die
+
+for arg in "${@}"; do #parse options
+    case "${arg}" in
+        -h|--help)    _usage;  exit ;;
+        -V|--version) _show_version; exit "${?}" ;;
+        -y|--yes) skip_confirmation="yes"; shift ;;
+        -*) _die "${progname}: unrecognized option '${arg}'" >&2 ;;
+    esac
+done
+
+[ "${#}" -lt "3" ] && _die
+
+OLD_EMAIL="${1}"
+CORRECT_NAME="${2}"
+CORRECT_EMAIL="${3}"
+SECS="5"
+
+if [ -z "${skip_confirmation}" ]; then
+    printf "%s\\n" "Attempting to rename author data as:"
+    printf "\\n"
+    printf "%s\\n" "ORIG EMAIL => ${OLD_EMAIL}"
+    printf "%s\\n" "NEW  NAME  => ${CORRECT_NAME}"
+    printf "%s\\n" "NEW  EMAIL => ${CORRECT_EMAIL}"
+    printf "\\n"
+    printf "%s\\n" "Press Ctrl-C to cancel or wait ${SECS} to autocontinue ..."
+    sleep "${SECS}"
+fi
+
+trap "rm -f -- ~/.gca.*" 0 2 3 15 #remove it on exit|crashes|etc
+printf "%s\\n" "${OLD_EMAIL}"     > ~/.gca.old-email
+printf "%s\\n" "${CORRECT_NAME}"  > ~/.gca.new-name
+printf "%s\\n" "${CORRECT_EMAIL}" > ~/.gca.new-email
+
+git filter-branch --env-filter '
+OLD_EMAIL="$(cat ~/.gca.old-email)"
+CORRECT_NAME="$(cat ~/.gca.new-name)"
+CORRECT_EMAIL="$(cat ~/.gca.new-email)"
+
+if [ "$GIT_COMMITTER_EMAIL" = "$OLD_EMAIL" ] || ; then
+    export GIT_COMMITTER_NAME="$CORRECT_NAME"
+    export GIT_COMMITTER_EMAIL="$CORRECT_EMAIL"
+fi
+
+if [ "$GIT_AUTHOR_EMAIL" = "$OLD_EMAIL" ]; then
+    export GIT_AUTHOR_NAME="$CORRECT_NAME"
+    export GIT_AUTHOR_EMAIL="$CORRECT_EMAIL"
+fi
+
+' --tag-name-filter cat -- --branches --tags
