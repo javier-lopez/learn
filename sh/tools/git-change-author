@@ -70,7 +70,7 @@ OLD_EMAIL="$(cat ~/.gca.old-email)"
 CORRECT_NAME="$(cat ~/.gca.new-name)"
 CORRECT_EMAIL="$(cat ~/.gca.new-email)"
 
-if [ "$GIT_COMMITTER_EMAIL" = "$OLD_EMAIL" ] || ; then
+if [ "$GIT_COMMITTER_EMAIL" = "$OLD_EMAIL" ]; then
     export GIT_COMMITTER_NAME="$CORRECT_NAME"
     export GIT_COMMITTER_EMAIL="$CORRECT_EMAIL"
 fi
