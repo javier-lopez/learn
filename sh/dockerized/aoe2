@@ -1,0 +1,46 @@
+#!/bin/sh
+
+PS4="> "; set -x
+
+xhost +
+
+mkdir -p ~/.aoe2/data/ ~/.aoe2/bin/
+cat    > ~/.aoe2/bin/aoe2.sh << 'E=O=F'
+#!/bin/sh
+#set -x
+
+export ARCHIVE="http://f.javier.io/public/wine/wine-age-of-empires-II-i386.tar"
+export WINEPREFIX="/data/wine-age-of-empires-II-i386"
+export BIN="${WINEPREFIX}/drive_c/w7ddpatcher.exe"
+export MD5SUM="8443d46c729501ebb97055a710151f2e"
+
+if [ ! -f "${BIN}" ]; then
+    if [ ! -f "${WINEPREFIX}.tar" ]; then
+        wget -nc "${ARCHIVE}" -O "${WINEPREFIX}.tar"
+        local_md5sum="$(md5sum "${WINEPREFIX}.tar" | awk '{print $1}')"
+        test X"${local_md5sum}" == X"${MD5SUM}" || {
+            printf "%s\\n" "Archive '${WINEPREFIX}.tar' (${local_md5sum}) doesn't match sum: ${MD5SUM}"
+            exit 2
+        }
+    fi
+    if [ ! -d "${WINEPREFIX}" ]; then
+        ( cd "$(dirname "${WINEPREFIX}")" && tar xf "${WINEPREFIX}.tar" )
+        chown root -R "${WINEPREFIX}"
+    fi
+fi
+
+wine "${BIN}"
+E=O=F
+
+chmod +x ~/.aoe2/bin/aoe2.sh
+
+docker run  --rm                                \
+            --privileged                        \
+            -v /tmp/.X11-unix:/tmp/.X11-unix:ro \
+            -v /etc/localtime:/etc/localtime:ro \
+            -v ~/.aoe2/data:/data/              \
+            -v ~/.aoe2/bin:/opt/                \
+            -ti                                 \
+            -e DISPLAY="${DISPLAY}"             \
+            jlpz/wine                           \
+            /bin/bash -c "initialize-graphics; vglrun /opt/aoe2.sh"
