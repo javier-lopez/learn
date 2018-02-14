@@ -65,7 +65,7 @@ printf "%s\\n" "${OLD_EMAIL}"     > ~/.gca.old-email
 printf "%s\\n" "${CORRECT_NAME}"  > ~/.gca.new-name
 printf "%s\\n" "${CORRECT_EMAIL}" > ~/.gca.new-email
 
-git filter-branch --env-filter '
+git filter-branch -f --env-filter '
 OLD_EMAIL="$(cat ~/.gca.old-email)"
 CORRECT_NAME="$(cat ~/.gca.new-name)"
 CORRECT_EMAIL="$(cat ~/.gca.new-email)"
