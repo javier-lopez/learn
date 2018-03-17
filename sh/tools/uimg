@@ -5,7 +5,7 @@
 #example: uimg img.png
 #http://i.imgur.com/image.png
 
-version="2016.04.03-13:25"
+version="2018.03.17-17:56"
 
 #TODO 04-11-2015 12:53 >> add more image sharing sites
 sites="imgur"
@@ -147,7 +147,7 @@ _uimg() {
             -F "image=@${1}" https://api.imgur.com/3/image.xml)"
         _uimgur__response="$(printf "%s" "${_uimgur__response}" | \
             egrep -o "<link>(.)*</link>" 2>/dev/null |            \
-            egrep -o "http://i.imgur.com/[^<]*" 2>/dev/null)"
+            egrep -o "http[s]://i.imgur.com/[^<]*" 2>/dev/null)"
 
         if [ -z "${_uimgur__response}" ];then
             printf "%s\\n" "https://api.imgur.com/3/image.xml api timeout" >&2
