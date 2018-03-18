@@ -1,4 +1,6 @@
 #!/bin/sh
 
 port="${1:-8080}"
-docker run --rm -p 8080:"${port}" jlpz/gotty:1.0.1-tmux
+image="${2:-2.0.0-alpha.3-tmux}"
+
+docker run --rm -p "${port}:8080" "jlpz/gotty:${image}"
