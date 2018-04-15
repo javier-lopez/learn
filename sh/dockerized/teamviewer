@@ -1,0 +1,9 @@
+#!/bin/sh
+
+PS4="> "; set -x
+
+xhost +
+
+docker run -it                       \
+    -v /tmp/.X11-unix:/tmp/.X11-unix \
+    bbinet/teamviewer
