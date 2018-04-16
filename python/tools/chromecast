@@ -1,0 +1,1273 @@
+#!/usr/bin/env python
+"""
+stream2chromecast.py: Chromecast media streamer for Linux
+author: Pat Carter - https://github.com/Pat-Carter/stream2chromecast
+version: 0.6.3
+"""
+VERSION = "0.6.3"
+
+import sys, os, errno, signal, time, urllib, mimetypes, subprocess
+import httplib, urlparse, socket, tempfile, optparse, BaseHTTPServer
+from   threading import Thread
+
+PIDFILE = os.path.join(tempfile.gettempdir(), "stream2chromecast_%s.pid")
+
+FFMPEG = 'ffmpeg %s -i "%s" -preset ultrafast -f mp4 -frag_duration 3000 -b:v 2000k -loglevel error %s -'
+AVCONV = 'avconv %s -i "%s" -preset ultrafast -f mp4 -frag_duration 3000 -b:v 2000k -loglevel error %s -'
+
+###############################################################################
+# Translates messages sent to & received from a Chromecast in the protocol-buffers format.
+# See https://developers.google.com/protocol-buffers/docs/encoding?hl=en
+# Thanks to TheCrazyT for this very helpful gist : https://gist.github.com/TheCrazyT/11263599
+###############################################################################
+from struct import pack, unpack
+
+#Sent messages
+class CCMessage():
+    def format_field_id(self, field_no, field_type):
+        """ returns a field number & type for packing into the message """
+        return (field_no << 3) | field_type
+
+    def format_varint_value(self, int_value):
+        """ returns a varint type integer from a python integer """
+        varint_result = ""
+
+        while(int_value > 127):
+            varint_result += pack("B", int_value & 127 | 128)
+            int_value >>= 7
+
+        varint_result += pack("B", int_value & 127)  #  & 127 unnecessary?
+
+        return varint_result
+
+    def format_int_field(self, field_number, field_data):
+        """ formats a protocol buffers Int field """
+
+        field =  pack("B", self.format_field_id(field_number, 0))   #  0 = Int field type
+        field += pack("B", field_data)
+
+        return field
+
+    def format_string_field(self, field_number, field_data):
+        """ formats a protocol buffers length-delimited field """
+
+        field_data_len = self.format_varint_value(len(field_data))
+
+        field =  pack("B", self.format_field_id(field_number, 2))   #  2 = Length-delimited field type
+        field += pack("%ds" % len(field_data_len), field_data_len)
+        field += pack("%ds" % len(field_data), field_data)
+
+        return field
+
+    def prepend_length_header(self, msg):
+        """ prepends the message with a length value """
+
+        return pack(">I%ds" % len(msg), len(msg), msg)
+
+    def format_message(self, source_id, destination_id, namespace, data):
+        """ formats a message to be sent to the Chromecast """
+        msg  = ""
+        msg += self.format_int_field(1, 0)   # Protocol Version  =  0
+        msg += self.format_string_field(2, source_id)
+        msg += self.format_string_field(3, destination_id)
+        msg += self.format_string_field(4, namespace)
+        msg += self.format_int_field(5, 0)   # payload type : string  =  0
+        msg += self.format_string_field(6, data)
+
+        msg  = self.prepend_length_header(msg)
+
+        return msg
+
+    #Received messages
+    def extract_length_header(self, msg):
+        """ extracts the length header from the first 4 bytes of a received message """
+
+        if len(msg) < 4:
+            return None
+
+        len_data = msg[:4]
+        remainder = ""
+        if len(msg) > 4:
+            remainder = msg[4:]
+
+        length = unpack(">I", len_data)[0]
+
+        return length, remainder
+
+    def extract_field_id(self, data):
+        """ extracts a field id from a received message """
+
+        byte = unpack("B", data)[0]
+        return byte >> 3, (byte & 7)
+
+    def extract_int_field(self, data):
+        """ extracts a protocol buffers Int field from a received message """
+
+        field_id = self.extract_field_id(data[0])
+        int_value = unpack("B", data[1])[0]
+
+        remainder = ""
+        if len(data) > 2:
+            remainder = data[2:]
+
+        return field_id, int_value, remainder
+
+    def extract_varint(self, data):
+        # extract varint
+        # LSB first
+        value = 0
+        ptr = 0
+        mul = 1
+        while True:
+            byte = unpack("B", data[ptr])[0]
+            value += mul * (byte & 127)
+            ptr += 1
+            if not byte & 128:
+                break
+            mul *= 128
+
+        remainder = data[ptr:]
+        return value, remainder
+
+    def extract_string_field(self, data):
+        """ extracts a protocol buffers length-delimited field from a received message """
+
+        field_id = self.extract_field_id(data[0])
+        data = data[1:]
+
+        # extract varint length
+        length, data = self.extract_varint(data)
+        string = data[:length]
+        remainder = data[length:]
+        return field_id, string, remainder
+
+    def extract_message(self, data):
+        """ extracts the message data from a Chromecast response message """
+
+        resp = {}
+
+        field_id, resp['protocol'], data       = self.extract_int_field(data)
+        field_id, resp['source_id'], data      = self.extract_string_field(data)
+        field_id, resp['destination_id'], data = self.extract_string_field(data)
+        field_id, resp['namespace'], data      = self.extract_string_field(data)
+        field_id, resp['payload_type'], data   = self.extract_int_field(data)
+        field_id, resp['data'], data           = self.extract_string_field(data)
+
+        return resp
+
+###############################################################################
+# Locates Chromecast devices on the local network.
+# Parts of this are adapted from code found in PyChromecast - https://github.com/balloob/pychromecast
+###############################################################################
+import select, datetime, struct, json
+from xml.etree import ElementTree
+
+CACHE_FILE = "~/.cc_device_cache"
+
+SSDP_ENABLED = False
+MDNS_ENABLED = True
+
+class CCDeviceFinder:
+    def search_network(self, device_limit=None, time_limit=5):
+        """ Search network for Chromecast devices using mDNS and SSDP """
+        addrs = []
+
+        if MDNS_ENABLED:
+            addrs += self.search_network_mdns(device_limit=device_limit, time_limit=time_limit)
+            if device_limit and len(addrs) >= device_limit:
+                return addrs
+
+        if SSDP_ENABLED or len(addrs) == 0:
+            addrs += search_network_ssdp(device_limit=device_limit, time_limit=time_limit)
+
+        return addrs
+
+    def search_network_ssdp(self, device_limit=None, time_limit=5):
+        """ SSDP discovery """
+        addrs = []
+        start_time  = datetime.datetime.now()
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.setblocking(0)
+
+        req = "\r\n".join(['M-SEARCH * HTTP/1.1',
+                           'HOST: 239.255.255.250:1900',
+                           'MAN: "ssdp:discover"',
+                           'MX: 1',
+                           'ST: urn:dial-multiscreen-org:service:dial:1',
+                           '',''])
+
+        sock.sendto(req, ("239.255.255.250", 1900))
+
+        while True:
+            time_remaining = time_limit - (datetime.datetime.now() - start_time).seconds
+            if time_remaining <= 0:
+                break
+
+            readable = select.select([sock], [], [], time_remaining)[0]
+
+            if sock in readable:
+                st, addr = None, None
+                data = sock.recv(1024)
+
+                for line in data.split("\r\n"):
+                    line = line.replace(" ", "")
+
+                    if line.upper().startswith("LOCATION:"):
+                        addr = urlparse.urlparse(line[9:].strip()).hostname
+
+                    elif line.upper().startswith("ST:"):
+                        st = line[3:].strip()
+
+                if addr is not None and st == "urn:dial-multiscreen-org:service:dial:1":
+                    addrs.append(addr)
+
+                    if device_limit and len(addrs) == device_limit:
+                        break
+        sock.close()
+        return addrs
+
+    def search_network_mdns(self, device_limit=None, time_limit=5):
+        """ mDNS discovery """
+        addrs = []
+        # A rough and ready quick-hack mDNS client - this should be improved
+        # build query
+        query_format = "\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00%s\x00\x00\x0c\x00\x01"
+        service_type = "_googlecast._tcp.local."
+        query_data   = ""
+
+        for query_part in service_type.split("."):
+            if len(query_part) > 0:
+                query_data += struct.pack("b", len(query_part)) + query_part
+
+        query = query_format % query_data
+
+        # setup multicast socket
+        m_addr, m_port = ('224.0.0.251', 5353)
+
+        intf = socket.gethostbyname(socket.gethostname())
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+        sock.setsockopt(socket.SOL_IP, socket.IP_MULTICAST_TTL, 255)
+        sock.setsockopt(socket.SOL_IP, socket.IP_MULTICAST_LOOP, 1)
+        sock.bind(('', m_port))
+        sock.setsockopt(socket.SOL_IP, socket.IP_MULTICAST_IF, socket.inet_aton(intf) + socket.inet_aton('0.0.0.0'))
+        sock.setsockopt(socket.SOL_IP, socket.IP_ADD_MEMBERSHIP, socket.inet_aton(m_addr) + socket.inet_aton('0.0.0.0'))
+        sock.settimeout(time_limit)
+
+        try:
+            print "Sending mDNS query"
+            sock.sendto(query, 0, (m_addr, m_port))
+
+            while True:
+                try:
+                    data, addr = sock.recvfrom(1024)
+                    # TODO parse the response properly, but for now this should identify chromecast responses
+                    if query_data in data and "md=Chromecast" in data and addr[0] not in addrs:
+                        print "chromecast found:", addr[0]
+                        addrs.append(addr[0])
+
+                        if device_limit and len(addrs) == device_limit:
+                            print "enough devices found"
+                            break
+                except socket.timeout:
+                    break
+        finally:
+            sock.close()
+        return addrs
+
+    def get_device_name(self, ip_addr):
+        """ get the device friendly name for an IP address """
+        try:
+            conn = httplib.HTTPConnection(ip_addr + ":8008")
+            conn.request("GET", "/setup/eureka_info?options=detail")
+            resp = conn.getresponse()
+
+            if resp.status == 200:
+                status_doc = resp.read()
+                message = json.loads(status_doc)
+                return message['name']
+            else:
+                if resp.status == 404:
+                    # eureka info not found, falling back to try SSDP description
+                    conn = httplib.HTTPConnection(ip_addr + ":8008")
+                    conn.request("GET", "/ssdp/device-desc.xml")
+                    resp = conn.getresponse()
+
+                    if resp.status == 200:
+                        status_doc = resp.read()
+                        try:
+                            xml = ElementTree.fromstring(status_doc)
+                            device_element = xml.find("{urn:schemas-upnp-org:device-1-0}" + "device")
+                            return device_element.find("{urn:schemas-upnp-org:device-1-0}" + "friendlyName").text
+                        except ElementTree.ParseError:
+                            return ""
+                else:
+                    return ""
+        except:
+            # unable to get a name - this might be for many reasons
+            # e.g. a non chromecast device on the network that responded to the search
+            return ""
+
+    def check_cache(self, name):
+        """ check the search results cache file """
+        result   = None
+        filepath = os.path.expanduser(CACHE_FILE)
+
+        try:
+            with open(filepath, "r") as f:
+                for line in f.readlines():
+                    if "\t" in line:
+                        line_split = line.strip().split("\t", 1)
+                        if len(line_split) > 1:
+                            hostname, host = line_split
+                            if name == hostname:
+                                # name is found - check that the host responds with the same name
+                                device_name = self.get_device_name(host)
+                                print "Device name response:", device_name
+                                if name == device_name and device_name != "":
+                                    result = host
+                                    break
+        except IOError:
+            pass
+
+        return result
+
+    def save_cache(self, host_map):
+        """ save the search results for quick access later """
+        filepath = os.path.expanduser(CACHE_FILE)
+        with open(filepath, "w") as f:
+            for key in host_map.keys():
+                if len(key) > 0 and len(host_map[key]) > 0:
+                    # file format: hostname[tab]ip_addr
+                    f.write(key + "\t" + host_map[key] + "\n")
+
+    def find_device(self, name=None, time_limit=6):
+        """ find the first device (quick) or search by name (slower)"""
+        if name is None or name == "":
+            # no name specified so find the first device that responds
+            print "searching the network for a Chromecast device"
+            hosts = self.search_network(device_limit=1)
+            if len(hosts) > 0:
+                return hosts[0], self.get_device_name(hosts[0])
+            else:
+                return None, None
+        else:
+            # name specified, check the cached network search results file
+            ip_addr = self.check_cache(name)
+            if ip_addr is not None:
+                # address found in cache
+                print "found device in cache:", name
+                return ip_addr, name
+            else:
+                # no cached results found run a full network search
+                print "searching the network for:", name
+                result_map = {}
+
+                hosts = search_network(time_limit=time_limit)
+                for host in hosts:
+                    device_name =get_device_name(host)
+                    if device_name != "":
+                        result_map[device_name] = host
+
+                save_cache(result_map)
+
+                if name in result_map.keys():
+                    print "found device:", name
+                    return result_map[name], name
+                else:
+                    return None, None
+
+##############################################################################
+# Provides a control interface to the Chromecast Media Player app
+##############################################################################
+import ssl, re
+MEDIAPLAYER_APPID = "CC1AD845"
+
+class CCMediaController():
+    def __init__(self, device_name=None):
+        """ initialise """
+        self.host = self.get_device(device_name)
+        self.sock = None
+
+        self.request_id = 1
+        self.source_id = "sender-0"
+
+        self.receiver_app_status = None
+        self.media_status = None
+        self.volume_status = None
+        self.current_applications = None
+
+    def get_device(self, device_name):
+        """ get the device ip address """
+        host = None
+        is_ip_addr = device_name is not None and re.match( "[0-9]+.[0-9]+.[0-9]+.[0-9]+$", device_name) is not None
+
+        if is_ip_addr:
+            host = device_name
+            try:
+                print "ip_addr:", host, "device name:", get_device_name(host)
+            except socket.error:
+                sys.exit("No Chromecast found on ip:" + host)
+        else:
+            chromecast = CCDeviceFinder()
+            host, name = chromecast.find_device(name=device_name)
+            if host is None:
+                sys.exit("No Chromecast found on the network")
+            print "device name:", name
+
+        return host
+
+    def open_socket(self):
+        """ open a socket if there is not currently one open """
+        if self.sock is None:
+            self.sock = socket.socket()
+            self.sock = ssl.wrap_socket(self.sock)
+
+            self.sock.connect((self.host,8009))
+
+    def close_socket(self):
+        """ close the socket if there is one open """
+        if self.sock is not None:
+            self.sock.close()
+        self.sock = None
+
+    def send_data(self, namespace, data_dict):
+        """ send data to the device in binary format"""
+        data = json.dumps(data_dict)
+        #print "Sending: ", namespace, data
+        chromecastChannel = CCMessage()
+        msg = chromecastChannel.format_message(self.source_id, self.destination_id, namespace, data)
+        self.sock.write(msg)
+
+    def read_message(self):
+        """ read a complete message from the device """
+        data = ""
+        while len(data) < 4:
+            data += self.sock.recv(4)
+
+        chromecastChannel = CCMessage()
+        msg_length, data = chromecastChannel.extract_length_header(data)
+        while len(data) < msg_length:
+            data += self.sock.recv(2048)
+
+        message_dict = chromecastChannel.extract_message(data)
+        message = {}
+
+        try:
+            message = json.loads(message_dict['data'])
+        except:
+            pass
+
+        #print message_dict['namespace']
+        #print json.dumps(message, indent=4, separators=(',', ': '))
+
+        return message
+
+    def get_response(self, request_id):
+        """ get the response matching the original request id """
+        resp  = {}
+        count = 0
+        while len(resp) == 0:
+            msg = self.read_message()
+            msg_type = msg.get("type", msg.get("responseType", ""))
+            if msg_type == "PING":
+                data = {"type":"PONG"}
+                namespace = "urn:x-cast:com.google.cast.tp.heartbeat"
+                self.send_data(namespace, data)
+
+                # if 30 ping/pong messages are received without a response to the request_id,
+                # assume no response is coming
+                count += 1
+                if count == 30:
+                    return resp
+
+            elif msg_type == "RECEIVER_STATUS":
+                self.update_receiver_status_data(msg)
+
+            elif msg_type == "MEDIA_STATUS":
+                self.update_media_status_data(msg)
+
+            if "requestId" in msg.keys() and msg['requestId'] == request_id:
+                resp = msg
+
+        return resp
+
+    def send_msg_with_response(self, namespace, data):
+        """ send a request to the device and wait for a response matching the request id """
+        self.request_id += 1
+        data['requestId'] = self.request_id
+        self.send_data(namespace, data)
+        return self.get_response(self.request_id)
+
+    def update_receiver_status_data(self, msg):
+        """ update the status for the Media Player app if it is running """
+        self.receiver_app_status = None
+
+        if msg.has_key('status'):
+            status = msg['status']
+            if status.has_key('applications'):
+                self.current_applications = status['applications']
+                for application in self.current_applications:
+                    if application.get("appId") == MEDIAPLAYER_APPID:
+                        self.receiver_app_status = application
+
+            if status.has_key('volume'):
+                self.volume_status = status['volume']
+
+    def update_media_status_data(self, msg):
+        """ update the media status if there is any media loaded """
+        self.media_status = None
+
+        status = msg.get("status", [])
+        if len(status) > 0:
+            self.media_status = status[0] # status is an array - selecting the first result..?
+
+    def connect(self, destination_id):
+        """ connect to to the receiver or the media transport """
+        if self.sock is None:
+            self.open_socket()
+        self.destination_id = destination_id
+
+        data = {"type":"CONNECT","origin":{}}
+        namespace = "urn:x-cast:com.google.cast.tp.connection"
+        self.send_data(namespace, data)
+
+    def get_receiver_status(self):
+        """ send a status request to the receiver """
+        data = {"type":"GET_STATUS"}
+        namespace = "urn:x-cast:com.google.cast.receiver"
+        self.send_msg_with_response(namespace, data)
+
+    def get_media_status(self):
+        """ send a status request to the media player """
+        data = {"type":"GET_STATUS"}
+        namespace = "urn:x-cast:com.google.cast.media"
+        self.send_msg_with_response(namespace, data)
+
+    def load(self, content_url, content_type, sub, sub_language):
+        """ Launch the player app, load & play a URL """
+        self.connect("receiver-0")
+        self.get_receiver_status()
+
+        # we only set the receiver status for MEDIAPLAYER - so if it is set, the app is currenty running
+        if self.receiver_app_status is None:
+            data = {"type":"LAUNCH","appId":MEDIAPLAYER_APPID}
+            namespace = "urn:x-cast:com.google.cast.receiver"
+            self.send_msg_with_response(namespace, data)
+
+            # if there is still no receiver app status the launch failed.
+            if self.receiver_app_status is None:
+                self.close_socket()
+                sys.exit("Cannot launch the Media Player app")
+
+        session_id = str(self.receiver_app_status['sessionId'])
+        transport_id = str(self.receiver_app_status['transportId'])
+
+        self.connect(transport_id)
+
+        data = {"type":"LOAD",
+                "sessionId":session_id,
+                "media":{
+                    "contentId":content_url,
+                    "streamType":"buffered",
+                    "contentType":content_type,
+                    },
+                "autoplay":True,
+                "currentTime":0,
+                "customData":{
+                    "payload":{
+                        "title:":""
+                        }
+                    }
+                }
+
+        if sub:
+            if sub_language is None:
+                sub_language = "en-US"
+
+            data["media"].update({
+                                "textTrackStyle":{
+                                    'backgroundColor':'#FFFFFF00'
+                                },
+                                "tracks": [{"trackId": 1,
+                                            "trackContentId": sub,
+                                            "type": "TEXT",
+                                            "language": sub_language,
+                                            "subtype": "SUBTITLES",
+                                            "name": "Englishx",
+                                            "trackContentType": "text/vtt",
+                                           }],
+                                })
+            data["activeTrackIds"] = [1]
+
+        namespace = "urn:x-cast:com.google.cast.media"
+        resp = self.send_msg_with_response(namespace, data)
+
+        # wait for the player to return "BUFFERING", "PLAYING" or "IDLE"
+        if resp.get("type", "") == "MEDIA_STATUS":
+            player_state = ""
+            while player_state != "PLAYING" and player_state != "IDLE" and player_state != "BUFFERING":
+                time.sleep(2)
+
+                self.get_media_status()
+
+                if self.media_status != None:
+                    player_state = self.media_status.get("playerState", "")
+
+        self.close_socket()
+
+    def control(self, command, parameters={}):
+        """ send a control command to the player """
+        self.connect("receiver-0")
+        self.get_receiver_status()
+
+        if self.receiver_app_status is None:
+            print "No media player app running"
+            self.close_socket()
+            return
+
+        transport_id = str(self.receiver_app_status['transportId'])
+        self.connect(transport_id)
+        self.get_media_status()
+        media_session_id = 1
+
+        if self.media_status is not None:
+            media_session_id = self.media_status['mediaSessionId']
+
+        data = {"type":command, "mediaSessionId":media_session_id}
+        data.update(parameters)  # for additional parameters
+        namespace = "urn:x-cast:com.google.cast.media"
+        self.send_msg_with_response(namespace, data)
+        self.close_socket()
+
+    def get_status(self):
+        """ get the receiver and media status """
+        self.connect("receiver-0")
+        self.get_receiver_status()
+
+        if self.receiver_app_status is not None:
+            transport_id = str(self.receiver_app_status['transportId'])
+            self.connect(transport_id)
+            self.get_media_status()
+
+        application_list = []
+        if self.current_applications is not None:
+            for application in self.current_applications:
+                application_list.append({
+                    'appId':application.get('appId', ""),
+                    'displayName':application.get('displayName', ""),
+                    'statusText':application.get('statusText', "")})
+
+        status = {'receiver_status':self.receiver_app_status,
+                  'media_status':self.media_status,
+                  'host':self.host,
+                  'client':self.sock.getsockname(),
+                  'applications':application_list}
+
+        self.close_socket()
+        return status
+
+    def is_idle(self):
+        """ return the IDLE state of the player """
+        status = self.get_status()
+
+        if status['media_status']  is None:
+            if status['receiver_status'] is None:
+                return True
+            else:
+                return status['receiver_status'].get("statusText", "") == u"Ready To Cast"
+        else:
+            return status['media_status'].get("playerState", "") == u"IDLE"
+
+    def pause(self):
+        """ pause """
+        self.control("PAUSE")
+
+    def play(self):
+        """ unpause """
+        self.control("PLAY")
+
+    def stop(self):
+        """ stop """
+        self.control("STOP")
+
+    def set_volume(self, level):
+        """ set the receiver volume - a float value in level for absolute level or "+" / "-" indicates up or down"""
+        self.connect("receiver-0")
+
+        if level in ("+", "-"):
+            self.get_receiver_status()
+
+            if self.volume_status is not None:
+                curr_level = self.volume_status['level']
+                if level == "+":
+                    level = 0.1 + curr_level
+                elif level == "-":
+                    level = curr_level - 0.1
+
+        data = {"type":"SET_VOLUME", "volume":{"muted":False, "level":level} }
+        namespace = "urn:x-cast:com.google.cast.receiver"
+        self.send_msg_with_response(namespace, data)
+        self.close_socket()
+
+    def get_volume(self):
+        """ get the current volume level """
+        self.get_status()
+        vol = None
+
+        if self.volume_status is not None:
+            vol = self.volume_status.get('level', None)
+        return vol
+
+    def set_volume_up(self):
+        """ increase volume by one step """
+        self.set_volume("+")
+
+    def set_volume_down(self):
+        """ decrease volume by one step """
+        self.set_volume("-")
+
+    def toggle_mute(self):
+        """ toggle receiver mute"""
+        self.connect("receiver-0")
+        self.get_receiver_status()
+
+        if self.volume_status['muted']:
+            data = {"type":"SET_VOLUME", "volume":{"muted":False} }
+        else:
+            data = {"type":"SET_VOLUME", "volume":{"muted":True} }
+
+        namespace = "urn:x-cast:com.google.cast.receiver"
+        self.send_msg_with_response(namespace, data)
+        self.close_socket()
+
+
+##############################################################################
+class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+    """ Handle HTTP requests for files which do not need transcoding """
+
+    content_type = "video/mp4"
+
+    def do_GET(self):
+
+        query = self.path.split("?",1)[-1]
+        filepath = urllib.unquote_plus(query)
+
+        self.suppress_socket_error_report = None
+
+        self.send_headers(filepath)
+
+        print "sending data"
+        try:
+            self.write_response(filepath)
+        except socket.error, e:
+            if isinstance(e.args, tuple):
+                if e[0] in (errno.EPIPE, errno.ECONNRESET):
+                    print "disconnected"
+                    self.suppress_socket_error_report = True
+                    return
+            raise
+
+    def handle_one_request(self):
+        try:
+            return BaseHTTPServer.BaseHTTPRequestHandler.handle_one_request(self)
+        except socket.error:
+            if not self.suppress_socket_error_report:
+                raise
+
+    def finish(self):
+        try:
+            return BaseHTTPServer.BaseHTTPRequestHandler.finish(self)
+        except socket.error:
+            if not self.suppress_socket_error_report:
+                raise
+
+    def send_headers(self, filepath):
+        self.protocol_version = "HTTP/1.1"
+        self.send_response(200)
+        self.send_header("Content-type", self.content_type)
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header("Transfer-Encoding", "chunked")
+        self.end_headers()
+
+    def write_response(self, filepath):
+        with open(filepath, "rb") as f:
+            while True:
+                line = f.read(1024)
+                if len(line) == 0:
+                    break
+
+                chunk_size = "%0.2X" % len(line)
+                self.wfile.write(chunk_size)
+                self.wfile.write("\r\n")
+                self.wfile.write(line)
+                self.wfile.write("\r\n")
+
+        self.wfile.write("0")
+        self.wfile.write("\r\n\r\n")
+
+class TranscodingRequestHandler(RequestHandler):
+    """ Handle HTTP requests for files which require realtime transcoding with ffmpeg """
+    transcoder_command = FFMPEG
+    transcode_output_options = ""
+    transcode_input_options = ""
+    bufsize = 0
+
+    def write_response(self, filepath):
+        if self.bufsize != 0:
+            print "transcode buffer size:", self.bufsize
+
+        ffmpeg_command = self.transcoder_command % (self.transcode_input_options, filepath, self.transcode_output_options)
+
+        ffmpeg_process = subprocess.Popen(ffmpeg_command, stdout=subprocess.PIPE, shell=True, bufsize=self.bufsize)
+
+        for line in ffmpeg_process.stdout:
+            chunk_size = "%0.2X" % len(line)
+            self.wfile.write(chunk_size)
+            self.wfile.write("\r\n")
+            self.wfile.write(line)
+            self.wfile.write("\r\n")
+
+        self.wfile.write("0")
+        self.wfile.write("\r\n\r\n")
+
+class SubRequestHandler(RequestHandler):
+    """ Handle HTTP requests for subtitles files """
+    content_type = "text/vtt;charset=utf-8"
+
+def get_transcoder_cmds(preferred_transcoder=None):
+    """ establish which transcoder utility to use depending on what is installed """
+    probe_cmd = None
+    transcoder_cmd = None
+
+    ffmpeg_installed = is_transcoder_installed("ffmpeg")
+    avconv_installed = is_transcoder_installed("avconv")
+
+    # if anything other than avconv is preferred, try to use ffmpeg otherwise use avconv
+    if preferred_transcoder != "avconv":
+        if ffmpeg_installed:
+            transcoder_cmd = "ffmpeg"
+            probe_cmd = "ffprobe"
+        elif avconv_installed:
+            print "unable to find ffmpeg - using avconv"
+            transcoder_cmd = "avconv"
+            probe_cmd = "avprobe"
+
+    # otherwise, avconv is preferred, so try to use avconv, followed by ffmpeg
+    else:
+        if avconv_installed:
+            transcoder_cmd = "avconv"
+            probe_cmd = "avprobe"
+        elif ffmpeg_installed:
+            print "unable to find avconv - using ffmpeg"
+            transcoder_cmd = "ffmpeg"
+            probe_cmd = "ffprobe"
+
+    return transcoder_cmd, probe_cmd
+
+def is_transcoder_installed(transcoder_application):
+    """ check for an installation of either ffmpeg or avconv """
+    try:
+        subprocess.check_output([transcoder_application, "-version"])
+        return True
+    except OSError:
+        return False
+
+def kill_old_pid(device_ip):
+    """ attempts to kill a previously running instance of this application casting to the specified device. """
+    pid_file = PIDFILE % device_ip
+    try:
+        with open(pid_file, "r") as pidfile:
+            pid = int(pidfile.read())
+            os.killpg(pid, signal.SIGTERM)
+    except:
+        pass
+
+def save_pid(device_ip):
+    """ saves the process id of this application casting to the specified device in a pid file. """
+    pid_file = PIDFILE % device_ip
+    with open(pid_file, "w") as pidfile:
+        pidfile.write("%d" %  os.getpid())
+
+def get_mimetype(filename, ffprobe_cmd=None):
+    """ find the container format of the file """
+    mimetype = "video/mp4" # default value
+
+    # guess based on filename extension
+    guess = mimetypes.guess_type(filename)[0]
+    if guess is not None:
+        if guess.lower().startswith("video/") or guess.lower().startswith("audio/"):
+            mimetype = guess
+
+    # use the OS file command...
+    try:
+        file_cmd = 'file --mime-type -b "%s"' % filename
+        file_mimetype = subprocess.check_output(file_cmd, shell=True).strip().lower()
+
+        if file_mimetype.startswith("video/") or file_mimetype.startswith("audio/"):
+            mimetype = file_mimetype
+
+            print "OS identifies the mimetype as :", mimetype
+            return mimetype
+    except:
+        pass
+
+    # use ffmpeg/avconv if installed
+    if ffprobe_cmd is None:
+        return mimetype
+
+    # ffmpeg/avconv is installed
+    has_video = False
+    has_audio = False
+    format_name = None
+
+    ffprobe_cmd = '%s -show_streams -show_format "%s"' % (ffprobe_cmd, filename)
+    ffmpeg_process = subprocess.Popen(ffprobe_cmd, stdout=subprocess.PIPE, shell=True)
+
+    for line in ffmpeg_process.stdout:
+        if line.startswith("codec_type=audio"):
+            has_audio = True
+        elif line.startswith("codec_type=video"):
+            has_video = True
+        elif line.startswith("format_name="):
+            name, value = line.split("=")
+            format_name = value.strip().lower().split(",")
+
+    # use the default if it isn't possible to identify the format type
+    if format_name is None:
+        return mimetype
+
+    if has_video:
+        mimetype = "video/"
+    else:
+        mimetype = "audio/"
+
+    if "mp4" in format_name:
+        mimetype += "mp4"
+    elif "webm" in format_name:
+        mimetype += "webm"
+    elif "ogg" in format_name:
+        mimetype += "ogg"
+    elif "mp3" in format_name:
+        mimetype = "audio/mpeg"
+    elif "wav" in format_name:
+        mimetype = "audio/wav"
+    else:
+        mimetype += "mp4"
+
+    return mimetype
+
+def play(filenames, transcode=False, transcoder=None, transcode_output_options=None, transcode_input_options=None,
+         transcode_bufsize=0, device_name=None, server_port=None,
+         subtitles=None, subtitles_port=None, subtitles_language=None):
+    """ play a local file or transcode from a file or URL and stream to the chromecast """
+
+    cast = CCMediaController(device_name=device_name)
+
+    kill_old_pid(cast.host)
+    save_pid(cast.host)
+
+    for filename in filenames:
+        if os.path.isfile(filename):
+            filename = os.path.abspath(filename)
+            print "source is file: %s" % filename
+        else:
+            if transcode and (filename.lower().startswith("http://") or filename.lower().startswith("https://") or filename.lower().startswith("rtsp://")):
+                print "source is URL: %s" % filename
+            else:
+                sys.exit("media file %s not found" % filename)
+
+        transcoder_cmd, probe_cmd = get_transcoder_cmds(preferred_transcoder=transcoder)
+
+        status = cast.get_status()
+        webserver_ip = status['client'][0]
+
+        print "local ip address:", webserver_ip
+
+        req_handler = RequestHandler
+
+        if transcode:
+            if transcoder_cmd in ("ffmpeg", "avconv"):
+                req_handler = TranscodingRequestHandler
+
+                if transcoder_cmd == "ffmpeg":
+                    req_handler.transcoder_command = FFMPEG
+                else:
+                    req_handler.transcoder_command = AVCONV
+
+                if transcode_output_options is not None:
+                    req_handler.transcode_output_options = transcode_output_options
+
+                if transcode_input_options is not None:
+                    req_handler.transcode_input_options = transcode_input_options
+
+                req_handler.bufsize = transcode_bufsize
+            else:
+                print "No transcoder is installed. Attempting standard playback"
+
+        if req_handler == RequestHandler:
+            req_handler.content_type = get_mimetype(filename, probe_cmd)
+
+        # create a webserver to handle a single request for the media file on
+        # either a free port or on a specific port if passed in the port parameter
+        port = 0
+
+        if server_port is not None:
+            port = int(server_port)
+
+        server = BaseHTTPServer.HTTPServer((webserver_ip, port), req_handler)
+
+        thread = Thread(target=server.handle_request)
+        thread.start()
+
+        url = "http://%s:%s?%s" % (webserver_ip, str(server.server_port), urllib.quote_plus(filename, "/"))
+
+        print "URL & content-type: ", url, req_handler.content_type
+
+        # create another webserver to handle a request for the subtitles file, if specified in the subtitles parameter
+        sub = None
+
+        if subtitles:
+            if os.path.isfile(subtitles):
+                sub_port = 0
+
+                if subtitles_port is not None:
+                    sub_port = int(subtitles_port)
+
+                sub_server = BaseHTTPServer.HTTPServer((webserver_ip, sub_port), SubRequestHandler)
+                thread2 = Thread(target=sub_server.handle_request)
+                thread2.start()
+
+                sub = "http://%s:%s?%s" % (webserver_ip, str(sub_server.server_port), urllib.quote_plus(subtitles, "/"))
+                print "sub URL: ", sub
+            else:
+                print "Subtitles file %s not found" % subtitles
+
+        load(cast, url, req_handler.content_type, sub, subtitles_language)
+
+def load(cast, url, mimetype, sub=None, sub_language=None):
+    """ load a chromecast instance with a url and wait for idle state """
+    try:
+        print "loading media..."
+        cast.load(url, mimetype, sub, sub_language)
+
+        # wait for playback to complete before exiting
+        print "waiting for player to finish - press ctrl-c to stop..."
+
+        idle = False
+        while not idle:
+            time.sleep(1)
+            idle = cast.is_idle()
+
+    except KeyboardInterrupt:
+        print
+        print "stopping..."
+        cast.stop()
+
+    finally:
+        print "done"
+
+def playurl(url, device_name=None):
+    """ play a remote HTTP resource on the chromecast """
+    def get_resp(url):
+        url_parsed = urlparse.urlparse(url)
+
+        scheme = url_parsed.scheme
+        host = url_parsed.netloc
+        path = url.split(host, 1)[-1]
+
+        conn = None
+        if scheme == "https":
+            conn = httplib.HTTPSConnection(host)
+        else:
+            conn = httplib.HTTPConnection(host)
+
+        conn.request("HEAD", path)
+
+        resp = conn.getresponse()
+        return resp
+
+    def get_full_url(url, location):
+        url_parsed = urlparse.urlparse(url)
+
+        scheme = url_parsed.scheme
+        host = url_parsed.netloc
+
+        if location.startswith("/") is False:
+            path = url.split(host, 1)[-1]
+            if path.endswith("/"):
+                path = path.rsplit("/", 2)[0]
+            else:
+                path = path.rsplit("/", 1)[0] + "/"
+            location = path + location
+
+        full_url = scheme + "://" + host + location
+        return full_url
+
+    resp = get_resp(url)
+
+    if resp.status != 200:
+        redirect_codes = [ 301, 302, 303, 307, 308 ]
+        if resp.status in redirect_codes:
+            redirects = 0
+            while resp.status in redirect_codes:
+                redirects += 1
+                if redirects > 9:
+                    sys.exit("HTTP Error: Too many redirects")
+                headers = resp.getheaders()
+                for header in headers:
+                    if len(header) > 1:
+                        if header[0].lower() == "location":
+                            redirect_location = header[1]
+                if redirect_location.startswith("http") is False:
+                    redirect_location = get_full_url(url, redirect_location)
+                print "Redirecting to " + redirect_location
+                resp = get_resp(redirect_location)
+            if resp.status != 200:
+                sys.exit("HTTP error:" + str(resp.status) + " - " + resp.reason)
+        else:
+            sys.exit("HTTP error:" + str(resp.status) + " - " + resp.reason)
+
+    print "Found HTTP resource"
+
+    headers = resp.getheaders()
+
+    mimetype = None
+
+    for header in headers:
+        if len(header) > 1:
+            if header[0].lower() == "content-type":
+                mimetype = header[1]
+
+    if mimetype != None:
+        print "content-type:", mimetype
+    else:
+        mimetype = "video/mp4"
+        print "resource does not specify mimetype - using default:", mimetype
+
+    cast = CCMediaController(device_name=device_name)
+    load(cast, url, mimetype)
+
+def pause(device_name=None):
+    """ pause playback """
+    CCMediaController(device_name=device_name).pause()
+
+def unpause(device_name=None):
+    """ continue playback """
+    CCMediaController(device_name=device_name).play()
+
+def stop(device_name=None):
+    """ stop playback and quit the media player app on the chromecast """
+    CCMediaController(device_name=device_name).stop()
+
+def get_status(device_name=None):
+    """ print the status of the chromecast device """
+    print CCMediaController(device_name=device_name).get_status()
+
+def set_volume_up(device_name=None):
+    """ raise the volume by 0.01 """
+    CCMediaController(device_name=device_name).set_volume_up()
+
+def set_volume_down(device_name=None):
+    """ lower the volume by 0.01 """
+    CCMediaController(device_name=device_name).set_volume_down()
+
+def set_volume(v, device_name=None):
+    """ set the volume to level between 0 and 1 """
+    CCMediaController(device_name=device_name).set_volume(v)
+
+def toggle_mute(device_name=None):
+    CCMediaController(device_name=device_name).toggle_mute()
+
+def list_devices():
+    print "Searching for devices, please wait..."
+    chromecast = CCDeviceFinder()
+    device_ips = chromecast.search_network(device_limit=None, time_limit=10)
+
+    print "%d devices found" % len(device_ips)
+
+    for device_ip in device_ips:
+        print device_ip, ":", chromecast.get_device_name(device_ip)
+
+def main():
+    usage  = "Usage: %prog [options] FILE ...\n"
+    usage += "Stream multimedia files to chromecast devices."
+
+    volume_up = False; volume_down = False
+    if sys.argv[1] == '+':
+        volume_up = True
+    elif sys.argv[1] == '-':
+        volume_down = True
+
+    parser = optparse.OptionParser(usage=usage, version="%prog " + VERSION)
+    parser.add_option('-d', '--device-name', dest='device_name', help='specify chromecast device by name or ip address')
+    parser.add_option('-S', '--stop', action="store_true", dest='stop', help='stop streaming')
+    parser.add_option('-P', '--pause', action="store_true", dest='pause', help='pause current file')
+    parser.add_option('-C', '--continue', action="store_true", dest='unpause', help='resume current file')
+    parser.add_option('-V', '--volume', dest='volume', help='specify volume between 0 and 1')
+    parser.add_option('--volume-up', dest='volume_up', action="store_true", help='adjust volume up by n, default 0.1')
+    parser.add_option('--volume-down', dest='volume_down', action="store_true", help='adjust volume down by n, default 0.1')
+    parser.add_option('-M', '--mute', action="store_true", dest='mute', help='toggle mute / unmute')
+    parser.add_option('--status', action="store_true", help='display chromecast status')
+    parser.add_option('--play-url', dest='play_url', help='play remote url file, eg. a web video')
+    parser.add_option('-p', '--port', dest='server_port', type='int', help='specify the port to listen on')
+    parser.add_option('-l', '--list-devices', action="store_true", help='list detected chromecast devices')
+    parser.add_option('-t', '--transcode', dest='transcoder', default='ffmpeg', help='specify transcoder, either ffmpeg or avconv')
+    parser.add_option('--transcode-out-opts', dest='transcode_output_options', help='specify transcoder output options')
+    parser.add_option('--transcode-in-opts', dest='transcode_input_options', help='specify transcoder input options')
+    parser.add_option('--transcode-bufsize', dest='transcode_bufsize', type='int', help='specify transcoder bufsize')
+    parser.add_option('-s', '--subtitles', dest='subtitles', help='specify subtitles, only WebVTT format is supported, eg: /path/to/subtitles.vtt <file>')
+    parser.add_option('--subtitles-port', dest='subtitles_port', help='specify subtitles port')
+    parser.add_option('--subtitles-language', dest='subtitles_language', default='en-US', help='specify subtitles language defined by RFC 5646')
+
+    opts, args = parser.parse_args()
+
+    if len(sys.argv) == 1: #if only 1 argument, it's the script name
+        parser.print_help()
+        exit()
+
+    device_name = opts.device_name
+
+    if opts.stop:
+        stop(device_name=device_name)
+
+    elif opts.pause:
+        pause(device_name=device_name)
+
+    elif opts.unpause:
+        unpause(device_name=device_name)
+
+    elif opts.status:
+        get_status(device_name=device_name)
+
+    elif opts.volume:
+        set_volume(float(opts.volume), device_name=device_name)
+
+    elif opts.volume_up or volume_up:
+        set_volume_up(device_name=device_name)
+
+    elif opts.volume_down or volume_down:
+        set_volume_down(device_name=device_name)
+
+    elif opts.mute:
+        toggle_mute(device_name=device_name)
+
+    # elif opts.transcode:
+        # arg2 = args[1]
+        # play(arg2, transcode=True, transcoder=transcoder, transcode_output_options=transcode_output_options, transcode_input_options=transcode_input_options, transcode_bufsize=transcode_bufsize,
+             # device_name=device_name, server_port=server_port, subtitles=subtitles, subtitles_port=subtitles_port,
+             # subtitles_language=subtitles_language)
+
+    elif opts.play_url:
+        playurl(play_url, device_name=device_name)
+
+    elif opts.list_devices:
+        list_devices()
+
+    else:
+        play(args, device_name=device_name, server_port=opts.server_port, subtitles=opts.subtitles,
+             subtitles_port=opts.subtitles_port, subtitles_language=opts.subtitles_language)
+
+if __name__ == "__main__":
+    main()
