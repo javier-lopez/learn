@@ -299,8 +299,6 @@ class BaseHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
   def transfer_file(self, fpath, include_body=True):
     self.send_response(200)
     size = os.path.getsize(fpath)
-    range_start = 0
-    range_end = size
     mimetype, encoding = guess_type(fpath)
     if not mimetype:
       mimetype = 'application/octet-stream'
@@ -308,45 +306,69 @@ class BaseHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
     if encoding:
       self.send_header('Content-Encoding', encoding)
-
-    self.send_header('Accept-Ranges', 'bytes')
-
-    if 'Range' in self.headers:
-      s, e = self.headers['range'][6:].split('-', 1)
-      # Ranges may be given as "a-b,c-d,e-f".
-      # TODO
-      # Handle this properly (probably better to wait until code is rewritten).
-      e = e.split(',', 1)[0]
-      sl = len(s)
-      el = len(e)
-      if sl > 0:
-        range_start = int(s)
-        if el > 0:
-          range_end = int(e) + 1
-      elif el > 0:
-        ei = int(e)
-        if ei < size:
-          range_start = size - ei
-
-    self.send_header('Content-Range', 'bytes ' + str(range_start) + '-' + str(range_end - 1) + '/' + str(size))
-    self.send_header('Content-Length', range_end - range_start)
+    if size:
+      self.send_header('Content-Length', size)
     self.end_headers()
 
     if include_body:
       f = open(fpath, 'rb')
-      f.seek(range_start, 0)
-      step = 0x8000
-      total = 0
-      while step > 0:
-        if range_start + step > range_end:
-          step = range_end - range_start
-        try:
-          self.wfile.write( f.read(step) )
-        except:
-          break
-        total += step
-        range_start += step
+      self.wfile.write(f.read())
       f.close()
+
+  # BROKEN #################################################################
+  # Convenience method for transfering files and file headers. Range version
+  # BROKEN #################################################################
+  # def transfer_file(self, fpath, include_body=True):
+    # self.send_response(200)
+    # size = os.path.getsize(fpath)
+    # range_start = 0
+    # range_end = size
+    # mimetype, encoding = guess_type(fpath)
+    # if not mimetype:
+      # mimetype = 'application/octet-stream'
+    # self.send_header('Content-Type', mimetype)
+
+    # if encoding:
+      # self.send_header('Content-Encoding', encoding)
+
+    # self.send_header('Accept-Ranges', 'bytes')
+
+    # if 'Range' in self.headers:
+      # s, e = self.headers['range'][6:].split('-', 1)
+      # Ranges may be given as "a-b,c-d,e-f".
+      # TODO
+      # Handle this properly (probably better to wait until code is rewritten).
+      # e = e.split(',', 1)[0]
+      # sl = len(s)
+      # el = len(e)
+      # if sl > 0:
+        # range_start = int(s)
+        # if el > 0:
+          # range_end = int(e) + 1
+      # elif el > 0:
+        # ei = int(e)
+        # if ei < size:
+          # range_start = size - ei
+
+    # self.send_header('Content-Range', 'bytes ' + str(range_start) + '-' + str(range_end - 1) + '/' + str(size))
+    # self.send_header('Content-Length', range_end - range_start)
+    # self.end_headers()
+
+    # if include_body:
+      # f = open(fpath, 'rb')
+      # f.seek(range_start, 0)
+      # step = 0x8000
+      # total = 0
+      # while step > 0:
+        # if range_start + step > range_end:
+          # step = range_end - range_start
+        # try:
+          # self.wfile.write( f.read(step) )
+        # except:
+          # break
+        # total += step
+        # range_start += step
+      # f.close()
 
   def local_redirect(self, path='/', response_code=303, message=None):
     self.send_response(response_code, message)
