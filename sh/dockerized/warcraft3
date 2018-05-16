@@ -40,7 +40,9 @@ docker run  --rm                                \
             -v /etc/localtime:/etc/localtime:ro \
             -v ~/.warcraft3/data:/data/         \
             -v ~/.warcraft3/bin:/opt/           \
+            -v ~/.asoundrc:/etc/asound.conf     \
             -ti                                 \
             -e DISPLAY="${DISPLAY}"             \
+            --device /dev/snd                   \
             jlpz/wine                           \
             /bin/bash -c "initialize-graphics; vglrun /opt/warcraft3.sh"

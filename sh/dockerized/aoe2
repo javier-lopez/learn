@@ -40,7 +40,9 @@ docker run  --rm                                \
             -v /etc/localtime:/etc/localtime:ro \
             -v ~/.aoe2/data:/data/              \
             -v ~/.aoe2/bin:/opt/                \
+            -v ~/.asoundrc:/etc/asound.conf     \
             -ti                                 \
             -e DISPLAY="${DISPLAY}"             \
+            --device /dev/snd                   \
             jlpz/wine                           \
             /bin/bash -c "initialize-graphics; vglrun /opt/aoe2.sh"
