@@ -1,0 +1,13 @@
+#!/bin/sh
+PS4="> "; set -x
+
+xhost +
+
+docker run --rm                             \
+           -it                              \
+           -v /tmp/.X11-unix:/tmp/.X11-unix \
+           -v ~/.asoundrc:/etc/asound.conf  \
+           -e DISPLAY=unix$DISPLAY          \
+           --device /dev/snd                \
+           --device /dev/dri                \
+           jess/nes /games/supermariobros.rom
