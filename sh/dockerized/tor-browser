@@ -1,0 +1,14 @@
+#!/bin/sh
+PS4="> "; set -x
+
+xhost +
+
+docker run --rm                                  \
+           -it                                   \
+           -v /tmp/.X11-unix:/tmp/.X11-unix      \
+           -v ~/.asoundrc:/etc/asound.conf       \
+           -v /dev/shm:/dev/shm                  \
+           -v /etc/machine-id:/etc/machine-id:ro \
+           -e DISPLAY=unix$DISPLAY               \
+           --device /dev/snd                     \
+           jess/tor-browser
