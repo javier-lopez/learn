@@ -15,6 +15,7 @@ _chromecast() {
              COMPREPLY=($(compgen -W "${long_opts}" -- ${cur}));  return ;;
         -*)  short_opts="$(printf "%s\\n" "${cmd_help_output}" | awk 'match($0,/-[0-9A-Za-z_-][, ]/) {sub(/,/, ""); print substr($0,RSTART,RLENGTH)}')"
              COMPREPLY=($(compgen -W "${short_opts}" -- ${cur})); return ;;
+         *)  _filedir; return ;;
     esac
 } && complete -F _chromecast chromecast
 
