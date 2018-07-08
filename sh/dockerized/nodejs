@@ -1,0 +1,6 @@
+#!/bin/sh
+PS4="> "; set -x
+
+docker run --rm \
+           -it  \
+           node:alpine "${@}"
