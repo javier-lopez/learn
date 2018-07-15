@@ -1,0 +1,68 @@
+#!/bin/sh
+_usage() {
+    printf "%s\\n" "Usage: ${progname} Electrum-LTC-3.1.3.1.tar.gz"
+    printf "%s\\n" "Dockerized Litecoin thin client"
+}
+
+_die() {
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage; >&2; exit 1
+}
+
+progname="$(basename "${0}")"
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add it to the end of $@
+    set -- "${@}" $(cat)
+fi
+
+[ "${#}" -eq "0" ] && _die
+
+electrum_ltc_archive="${1}"
+electrum_ltc_dir="$(basename "${electrum_ltc_archive}" .tar.gz)"
+secs="10"
+
+case "${electrum_ltc_archive}" in
+    *.tar.gz)
+        if [ ! -s "${electrum_ltc_archive}" ]; then
+            _die "Archive is corrupted: ${electrum_ltc_archive}"
+        fi
+        ;;
+    *)
+        _die "Invalid archive: ${electrum_ltc_archive}"
+        ;;
+esac
+
+tmpdir="/tmp/dockerized-${progname}"
+docker_image_label="ubuntu-electrum-ltc-base"
+
+printf "%s\\n" "Verify the archive before continuing!!!"
+printf "%s\\n"
+printf "%s\\n" "$(sha256sum "${electrum_ltc_archive}")"
+printf "%s\\n"
+printf "%s\\n" "Waiting $secs seconds.., press Ctrl-C to cancel"
+#sleep "${secs}"
+
+PS4="> "; set -xe
+mkdir -p "${tmpdir}"
+cat <<EOF > "${tmpdir}/Dockerfile"
+FROM ubuntu:16.04
+RUN apt-get update && apt-get -y install python3-pyqt5 python3-pip libssl-dev
+RUN pip3 install scrypt
+EOF
+
+docker build --label "${docker_image_label}" --tag "${docker_image_label}" "${tmpdir}"
+cp "${electrum_ltc_archive}" "${tmpdir}"
+
+(cd "${tmpdir}"; tar zxf $(basename "${electrum_ltc_archive}"))
+
+xhost +
+
+docker run --rm                             \
+           -it                              \
+           -v "${tmpdir}/${electrum_ltc_dir}:/${electrum_ltc_dir}" \
+           -v /tmp/.X11-unix:/tmp/.X11-unix \
+           -e DISPLAY=unix$DISPLAY          \
+           "${docker_image_label}"          \
+           /bin/bash -c "/${electrum_ltc_dir}/electrum-ltc"
+
+sudo rm -rf "${tmpdir}"
