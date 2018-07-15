@@ -40,7 +40,7 @@ printf "%s\\n"
 printf "%s\\n" "$(sha256sum "${electrum_ltc_archive}")"
 printf "%s\\n"
 printf "%s\\n" "Waiting $secs seconds.., press Ctrl-C to cancel"
-#sleep "${secs}"
+sleep "${secs}"
 
 PS4="> "; set -xe
 mkdir -p "${tmpdir}"
