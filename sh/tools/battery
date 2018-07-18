@@ -9,6 +9,7 @@ battery usage:
     -z            output zsh prompt format
     -e            don't output the emoji
     -a            output ascii instead of spark
+    -r            output remaining time
     -s            only output when battery is the primary energy source
     -b            battery path            default: /sys/class/power_supply/BAT0
     -p            use pmset (more accurate)
@@ -88,14 +89,47 @@ battery_charge() {
                     battery_current=$battery_path/charge_now
                     ;;
             esac
+
             if [ $battery_state == 'Discharging' ]; then
                 BATT_CONNECTED=0
             else
                 BATT_CONNECTED=1
             fi
-                now=$(cat $battery_current)
-                full=$(cat $battery_full)
-                BATT_PCT=$((100 * $now / $full))
+
+            now=$(cat $battery_current)
+            full=$(cat $battery_full)
+            BATT_PCT=$((100 * $now / $full))
+
+            if ((remaining_time)); then
+                BATT_REMAINING_TIME="$(acpi | awk '{print $5}')"
+
+                BATT_REMAINING_TIME_HOURS="${BATT_REMAINING_TIME%%:*}"
+                BATT_REMAINING_TIME_MINUTES="${BATT_REMAINING_TIME%:*}"
+                BATT_REMAINING_TIME_MINUTES="${BATT_REMAINING_TIME_MINUTES##*:}"
+                BATT_REMAINING_TIME_SECONDS="${BATT_REMAINING_TIME##*:}"
+
+                if [ "${BATT_REMAINING_TIME_HOURS}"   != "00" ]; then
+                    BATT_REMAINING_TIME="${BATT_REMAINING_TIME_HOURS}h"
+                else
+                    BATT_REMAINING_TIME=""
+                fi
+
+                if [ "${BATT_REMAINING_TIME_MINUTES}" != "00" ]; then
+                    if [ -z "${BATT_REMAINING_TIME}" ]; then
+                        BATT_REMAINING_TIME="${BATT_REMAINING_TIME_MINUTES}m"
+                    else
+                        BATT_REMAINING_TIME="${BATT_REMAINING_TIME} ${BATT_REMAINING_TIME_MINUTES}m"
+                    fi
+                fi
+
+                if [ "${BATT_REMAINING_TIME_SECONDS}" != "00" ]; then
+                    if [ -z "${BATT_REMAINING_TIME}" ]; then
+                        BATT_REMAINING_TIME="${BATT_REMAINING_TIME_SECONDS}s"
+                    else
+                        BATT_REMAINING_TIME="${BATT_REMAINING_TIME} ${BATT_REMAINING_TIME_SECONDS}s"
+                    fi
+                fi
+            fi
             ;;
     esac
 }
@@ -158,23 +192,37 @@ print_status() {
     fi
 
     if ((output_tmux)); then
-            #printf "%s%s%s%s" "$COLOR" "[$BATT_PCT%]" "$GRAPH" "#[default]"
-            printf "%s%s%s%s" "$COLOR" "$GRAPH $BATT_PCT%"  "#[default]"
+        if ((remaining_time)); then
+            printf "%s%s%s%s" "$COLOR" "$GRAPH $BATT_PCT% $BATT_REMAINING_TIME" "#[default]"
+        else
+            printf "%s%s%s%s" "$COLOR" "$GRAPH $BATT_PCT%" "#[default]"
+        fi
     elif ((output_zsh)); then
-        printf "%%B%s%s %s" "$COLOR" "[$BATT_PCT%%]" "$GRAPH"
+        if ((remaining_time)); then
+            printf "%%B%s%s %s" "$COLOR" "$GRAPH" "$BATT_PCT%% $BATT_REMAINING_TIME"
+        else
+            printf "%%B%s%s %s" "$COLOR" "$GRAPH" "$BATT_PCT%%"
+        fi
     else
-        printf "\e[0;%sm%s %s \e[m\n"  "$COLOR" "[$BATT_PCT%]"  "$GRAPH"
+        if ((remaining_time)); then
+            printf "\e[0;%sm%s %s \e[m\n"  "$COLOR" "$GRAPH" "$BATT_PCT% $BATT_REMAINING_TIME"
+        else
+            printf "\e[0;%sm%s %s \e[m\n"  "$COLOR" "$GRAPH" "$BATT_PCT%"
+        fi
     fi
 }
 
 # Read args
-while getopts ":g:m:w:tzeasb:p" opt; do
+while getopts ":g:m:w:tzeasrb:p" opt; do
     case $opt in
         g)
             good_color=$OPTARG
             ;;
         s)
             show_only_on_discharging=1
+            ;;
+        r)
+            remaining_time=1
             ;;
         m)
             middle_color=$OPTARG
