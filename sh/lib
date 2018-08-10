@@ -1261,7 +1261,7 @@ _subchar() { #print n character in string
     i="0"; while [ "${i}" -le "${_subchar__pos}" ]; do
         _subchar__char="${_subchar__string#?}"
         _subchar__char="${_subchar__string%$_subchar__char}"
-        i="$(($i+1))"
+        i="$((i+1))"
         _subchar__string="${_subchar__string#?}"
     done
     #_subchar__retval="${_subchar__char}"
