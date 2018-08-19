@@ -1,0 +1,65 @@
+#!/bin/sh
+_usage() {
+    printf "%s\\n" "Usage: ${progname} Neon-0.2.6-x86_64.Linux.AppImage"
+    printf "%s\\n" "Dockerized Neo thin client"
+}
+
+_die() {
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage; >&2; exit 1
+}
+
+progname="$(basename "${0}")"
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add it to the end of $@
+    set -- "${@}" $(cat)
+fi
+
+[ "${#}" -eq "0" ] && _die
+
+wallet_archive="${1}"
+secs="10"
+
+[ -s "${wallet_archive}" ] || _die "Archive is empty: ${wallet_archive}"
+
+case "${wallet_archive}" in
+    *Neon-*) : ;;
+    *) _die "Invalid archive: ${wallet_archive}" ;;
+esac
+
+tmpdir="/tmp/dockerized-${progname}"
+docker_image_label="ubuntu-wallet-base"
+
+printf "%s\\n" "Verify the archive before continuing!!!"
+printf "%s\\n"
+printf "%s\\n" "$(sha256sum "${wallet_archive}")"
+printf "%s\\n"
+printf "%s\\n" "Waiting $secs seconds.., press Ctrl-C to cancel"
+sleep "${secs}"
+
+PS4="> "; set -xe
+mkdir -p "${tmpdir}"
+cat <<EOF > "${tmpdir}/Dockerfile"
+FROM ubuntu:16.04
+#Electrum deps
+RUN apt-get update && apt-get -y install python3-pyqt5 python3-pip libssl-dev
+RUN pip3 install scrypt
+#Neo deps
+RUN apt-get update && apt-get -y install libfuse2 libgtk2.0-0 libnss3-dev libasound2 libdbus-glib-1-2
+EOF
+
+docker build --label "${docker_image_label}" --tag "${docker_image_label}" "${tmpdir}"
+cp "${wallet_archive}" "${tmpdir}"
+
+xhost +
+
+docker run --rm                             \
+           -it                              \
+           -v "${tmpdir}/$(basename $wallet_archive):/${wallet_archive}" \
+           --cap-add SYS_ADMIN --device /dev/fuse \
+           -v /tmp/.X11-unix:/tmp/.X11-unix \
+           -e DISPLAY=unix$DISPLAY          \
+           "${docker_image_label}"          \
+           /bin/bash -c "/${wallet_archive}"
+
+sudo rm -rf "${tmpdir}"
