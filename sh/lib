@@ -887,7 +887,8 @@ _printfc() { #print command
 #=================================================================
 
 _printfl() { #print lines
-    _printfl__max_len="80"
+    command -v "tput" >/dev/null 2>&1 && _printfl_var_max_len="$(tput cols)"
+    _printfl_var_max_len="${_printfl_var_max_len:-80}"
     if [ -n "${1}" ]; then
         _printfl__word_len="$((${#*} + 2))"
         _printfl__sub="$((${_printfl__max_len} - ${_printfl__word_len}))"
