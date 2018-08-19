@@ -148,6 +148,12 @@ _create_minos_default_desktop_settings() {
         _cmd "sed -i 's:^include.*:include \"/home/muser/.gtkrc-2.0.mine\":' ${1}/etc##skel##.gtkrc-2.0"
     fi
 
+    if _file_or_directory_exist ~/.config/gtk-3.0/settings.ini; then
+        echo
+        _cmd "printf \"%s\\n\\n\" \"# ${file_header}\" > \"${1}\"/etc##skel##.config##gtk-3.0##settings.ini"
+        _cmd "cat ~/.config/gtk-3.0/settings.ini       >>    ${1}/etc##skel##.config##gtk-3.0##settings.ini"
+    fi
+
     if _file_or_directory_exist ~/.config/Trolltech.conf; then
         echo
         _cmd cp -r ~/.config/Trolltech.conf "${1}/etc##xdg##Trolltech.conf"
