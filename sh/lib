@@ -748,6 +748,15 @@ _is_int() { #look for an integer, returns 0 on success, 1 otherwise
 #exit 0
 #=================================================================
 
+_is_root() { #current user is root?
+    [ X"$(whoami)" = X"root" ]
+}
+#==================================================== Example ====
+#if _is_root; then
+    #apt-get install -y htop
+#fi
+#=================================================================
+
 _lastchar() { #return last char of a string
     [ -z "${1}" ] && return 1
     for i in "${@}"; do :; done
@@ -1315,12 +1324,9 @@ _substr() { #print a substring
 
 _unprintf() { #unprint sentence
     [ -z "${1}" ] && return 1
-    _unprintf__word_len="${#1}"
-    _unprintf__i="0"
-    while [ "${_unprintf__i}" -lt "${_unprintf__word_len}" ]; do
-        _unprintf__i="$((${_unprintf__i} + 1))"
-        printf "%b" "\b"
-    done
+    printf "\\r"
+    for i in $(seq 0 "${#1}"); do printf " "  ; done
+    printf "\\r"
 }
 #==================================================== Example ====
 #printf "hello world"
