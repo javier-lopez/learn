@@ -121,6 +121,10 @@ _verify_and_wait() {
     _printf_sleep "Waiting X seconds.., press Ctrl-C to cancel" "${secs}"
 }
 
+_cleanup() {
+    sudo rm -rf "${tmpdir}"
+}
+
 _electrum() {
     case "${archive}" in
         *Electrum-LTC-*.tar.gz) flavor="-ltc" ;;
@@ -197,7 +201,8 @@ fi
 archive="${1}"
 _verify_and_wait "${archive}"
 
-PS4="> "; set -xe
+PS4="> "; set -xe; trap _cleanup INT QUIT #trap ctrl-c
 _build_common_docker_image
 _${wallet}
+
 sudo rm -rf "${tmpdir}"
