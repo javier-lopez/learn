@@ -1,0 +1,203 @@
+#!/bin/sh
+progname="$(basename "${0}")"
+docker_wallet_label="ubuntu-${progname}-common"
+tmpdir="/tmp/dockerized-${progname}-${$}"
+secs="10"
+
+DEFAULT="$(printf "\\033[0;39m")"
+WHITE_BOLD="$(printf "\\033[1m")"
+WHITE_BG="$(printf "\\033[7m")"
+RED="$(printf "\\033[0;31m")"
+GREEN="$(printf "\\033[0;32m")"
+LIGHT_GREEN="$(printf "\\033[1;32m")"
+YELLOW="$(printf "\\033[0;33m")"
+HG="${LIGHT_GREEN}"
+
+_usage() {
+    printf "%s\\n" "Usage: ${progname} ARCHIVE"
+    printf "%s\\n" "Dockerized [BTC|LTC|NEO|RIPPLE|ETHEREUM] thin clients."
+    printf "\\n"
+    printf "%s\\n" "Examples:"
+    printf "\\n"
+    printf "%s\\n" "  $ ${progname} Electrum-3.2.2.tar.gz            #BTC"
+    printf "%s\\n" "  $ ${progname} Electrum-LTC-3.1.3.1.tar.gz      #LTC"
+    printf "%s\\n" "  $ ${progname} Neon-0.2.6-x86_64.Linux.AppImage #NEO"
+    printf "%s\\n" "  $ ${progname} etherwallet-v3.21.03.zip         #ETH"
+    printf "%s\\n" "  $ ${progname} minimalist-ripple-client.html    #XRP"
+}
+
+_die() {
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage; >&2; exit 1
+}
+
+_unprintf() {
+    [ -z "${1}" ] && return 1
+    printf "\\r"
+    for i in $(seq 0 "${#1}"); do printf " "  ; done
+    printf "\\r"
+}
+
+_printf_sleep() {
+    [ -z "${2}" ] && return 1
+    _ps__string="${1} "
+    _ps__secs="${2}"
+
+    while [ "${_ps__secs}" -gt "0" ]; do
+        _unprintf "${_ps__string}"
+        printf "%s\\n" "${_ps__string}" | sed "s:X:${_ps__secs}:g" | tr -d '\n'
+        sleep 1 || {
+            _unprintf "${_ps__string}"
+            return 1
+        }
+        _ps__secs="$((_ps__secs - 1))"
+    done
+    _unprintf "${_ps__string}"
+}
+
+_build_common_docker_image() {
+    mkdir -p "${tmpdir}"
+    cat <<EOF > "${tmpdir}/Dockerfile"
+FROM ubuntu:16.04
+#Electrum deps
+RUN apt-get update && \
+    apt-get -y install python3-pyqt5 python3-pip libssl-dev && \
+    apt-get clean
+RUN pip3 install scrypt
+#Neo deps
+RUN apt-get update && \
+    apt-get -y install libfuse2 libgtk2.0-0 libnss3-dev libasound2 libdbus-glib-1-2 && \
+    apt-get clean
+#Browser for eth|xrp html based wallets
+RUN apt-get install -y --no-install-recommends wget && \
+    wget -q -c https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb && \
+    apt-get install -y --no-install-recommends gdebi-core && \
+    gdebi -o APT::Install-Recommends=0 -o APT::Install-Suggests=0 --non-interactive google-chrome-stable_current_amd64.deb && \
+    rm -rf google-chrome-stable_current_amd64.deb && \
+    apt-get clean
+EOF
+
+    docker build --label "${docker_wallet_label}" --tag "${docker_wallet_label}" "${tmpdir}"
+}
+
+_verify_and_wait() {
+    [ -s "${archive}" ] || _die "Archive is empty: ${archive}"
+
+    case "${archive}" in
+                *Electrum-*.tar.gz) wallet="electrum"    ;;
+                           *Neon-*) wallet="neo"         ;;
+                    *etherwallet-*) wallet="etherwallet" ;;
+        *minimalist-ripple-client*) wallet="xrp"         ;;
+        *) _die "Invalid archive: ${archive}" ;;
+    esac
+
+    printf "%s\\n" "Verify the archive before continuing!!!"
+    printf "%s\\n"
+
+    sha256="$(sha256sum "${archive}"|awk '{print $1}')"
+
+    sha256_first_3_chars="$(printf "%s\\n" "${sha256}" | grep -o "^...")"
+    sha256_first_3_chars="${HG}${sha256_first_3_chars}${DEFAULT}"
+    sha256_last_3_chars="$(printf "%s\\n"  "${sha256}" | grep -o "...$")"
+    sha256_last_3_chars="${HG}${sha256_last_3_chars}${DEFAULT}"
+
+    sha256="$(printf "%s\\n" "${sha256}"|sed "s:^...:${sha256_first_3_chars}:g")"
+    sha256="$(printf "%s\\n" "${sha256}"|sed "s:...$:${sha256_last_3_chars}:g")"
+
+    printf "%b\\n" "${WHITE_BOLD}SHA256${DEFAULT}: ${sha256}"
+
+    sha512="$(sha512sum "${archive}"|awk '{print $1}')"
+
+    sha512_first_3_chars="$(printf "%s\\n" "${sha512}" | grep -o "^...")"
+    sha512_first_3_chars="${HG}${sha512_first_3_chars}${DEFAULT}"
+    sha512_last_3_chars="$(printf "%s\\n"  "${sha512}" | grep -o "...$")"
+    sha512_last_3_chars="${HG}${sha512_last_3_chars}${DEFAULT}"
+
+    sha512="$(printf "%s\\n" "${sha512}"|sed "s:^...:${sha512_first_3_chars}:g")"
+    sha512="$(printf "%s\\n" "${sha512}"|sed "s:...$:${sha512_last_3_chars}:g")"
+
+    printf "%b\\n" "${WHITE_BOLD}SHA512${DEFAULT}: ${sha512}"
+    printf "%s\\n"
+    _printf_sleep "Waiting X seconds.., press Ctrl-C to cancel" "${secs}"
+}
+
+_electrum() {
+    case "${archive}" in
+        *Electrum-LTC-*.tar.gz) flavor="-ltc" ;;
+        *Electrum-*.tar.gz) : ;;
+        *) _die "Invalid archive: ${archive}" ;;
+    esac
+
+    wallet_dir="$(basename "${archive}" .tar.gz)"
+
+    cp "${archive}" "${tmpdir}"
+
+    (cd "${tmpdir}"; tar zxf $(basename "${archive}"))
+
+    xhost +
+    docker run --rm -it                  \
+        -v "${tmpdir}/${wallet_dir}:/${wallet_dir}" \
+        -v /tmp/.X11-unix:/tmp/.X11-unix \
+        -e DISPLAY=unix$DISPLAY          \
+        "${docker_wallet_label}"          \
+        /bin/bash -c "/${wallet_dir}/electrum${flavor}"
+}
+
+_neo() {
+    cp "${archive}" "${tmpdir}"
+    wallet="$(basename "${archive}")"
+
+    xhost +
+    docker run --rm -it                         \
+               -v "${tmpdir}/${wallet}:/${wallet}"    \
+               --cap-add SYS_ADMIN --device /dev/fuse \
+               -v /tmp/.X11-unix:/tmp/.X11-unix \
+               -e DISPLAY=unix$DISPLAY          \
+               "${docker_wallet_label}"         \
+               /bin/bash -c "/${wallet}"
+}
+
+_etherwallet() {
+    wallet_dir="$(basename "${archive}" .zip)"
+
+    cp "${archive}" "${tmpdir}"
+
+    (cd "${tmpdir}"; unzip $(basename "${archive}"))
+
+    xhost +
+    docker run --rm -it                  \
+        -v "${tmpdir}/${wallet_dir}:/${wallet_dir}" \
+        -v /tmp/.X11-unix:/tmp/.X11-unix \
+        -e DISPLAY=unix$DISPLAY          \
+        "${docker_wallet_label}"         \
+        /bin/bash -c "google-chrome --no-sandbox --incognito /${wallet_dir}/index.html"
+}
+
+_xrp() {
+    wallet="$(basename "${archive}")"
+
+    cp "${archive}" "${tmpdir}"
+
+    xhost +
+    docker run --rm -it                  \
+        -v "${tmpdir}/${wallet}:/${wallet}" \
+        -v /tmp/.X11-unix:/tmp/.X11-unix \
+        -e DISPLAY=unix$DISPLAY          \
+        "${docker_wallet_label}"         \
+        /bin/bash -c "google-chrome --no-sandbox --incognito /${wallet}"
+}
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add it to the end of $@
+    set -- "${@}" $(cat)
+fi
+
+[ "${#}" -eq "0" ] && _die
+
+archive="${1}"
+_verify_and_wait "${archive}"
+
+PS4="> "; set -xe
+_build_common_docker_image
+_${wallet}
+sudo rm -rf "${tmpdir}"
