@@ -15,12 +15,13 @@ HG="${LIGHT_GREEN}"
 
 _usage() {
     printf "%s\\n" "Usage: ${progname} ARCHIVE"
-    printf "%s\\n" "Dockerized [BTC|LTC|NEO|RIPPLE|ETHEREUM] thin clients."
+    printf "%s\\n" "Dockerized [BTC|LTC|BTCP|NEO|ETH|XRP] thin clients."
     printf "\\n"
     printf "%s\\n" "Examples:"
     printf "\\n"
     printf "%s\\n" "  $ ${progname} Electrum-3.2.2.tar.gz            #BTC"
     printf "%s\\n" "  $ ${progname} Electrum-LTC-3.1.3.1.tar.gz      #LTC"
+    printf "%s\\n" "  $ ${progname} Electrum-BTCP-1.1.1.tar.gz       #BTCP"
     printf "%s\\n" "  $ ${progname} Neon-0.2.6-x86_64.Linux.AppImage #NEO"
     printf "%s\\n" "  $ ${progname} etherwallet-v3.21.03.zip         #ETH"
     printf "%s\\n" "  $ ${progname} minimalist-ripple-client.html    #XRP"
@@ -64,6 +65,8 @@ RUN apt-get update && \
     apt-get -y install python3-pyqt5 python3-pip libssl-dev && \
     apt-get clean
 RUN pip3 install scrypt
+#BTCP deps
+RUN pip3 install pyblake2
 #Neo deps
 RUN apt-get update && \
     apt-get -y install libfuse2 libgtk2.0-0 libnss3-dev libasound2 libdbus-glib-1-2 && \
@@ -127,7 +130,8 @@ _cleanup() {
 
 _electrum() {
     case "${archive}" in
-        *Electrum-LTC-*.tar.gz) flavor="-ltc" ;;
+         *Electrum-LTC-*.tar.gz) flavor="-ltc" ;;
+        *Electrum-BTCP-*.tar.gz) flavor="-btcp" ;;
         *Electrum-*.tar.gz) : ;;
         *) _die "Invalid archive: ${archive}" ;;
     esac
