@@ -5,10 +5,10 @@
 #example: pxe pxe_env
 #pxe: created directory `pxe_env'
 
-progname="$(expr "${0}" : '.*/\([^/]*\)')"
+PROGNAME="$(expr "${0}" : '.*/\([^/]*\)')"
 
 _usage() {
-    printf "%s\\n" "Usage: ${progname} [options] [dir]"
+    printf "%s\\n" "Usage: ${PROGNAME} [options] [dir]"
     printf "%s\\n" "Setup a pxe environment."
     printf "\\n"
     printf "%s\\n" "  dir          creates pxe environment in dir, default ./pxe_setup"
@@ -1216,7 +1216,7 @@ _pxe() {
     _verbose "- setting pxe environment in ${1} ..."
     _create_deps      "${1}" #memdisk,menu.c32,pxelinux.0,simple-dhcpd,simple-tftpd
     _write_conf "${1}"       #pxelinux.cfg/default,ubuntu,fedora,tools
-    printf "%s\\n" "${progname}: created directory \`${1}'"
+    printf "%s\\n" "${PROGNAME}: created directory \`${1}'"
 }
 
 if [ ! -t 0 ]; then
@@ -1228,7 +1228,7 @@ for arg in "${@}"; do #parse options
     case "${arg}" in
         -h|--help) _usage && exit ;;
         -v|--verbose) _verbose_flag="seen"; ;;
-        -*) _die "${progname}: unrecognized option '${arg}'" ;;
+        -*) _die "${PROGNAME}: unrecognized option '${arg}'" ;;
         *)  _pxe__default_dir="${arg}"; break;;
     esac
 done

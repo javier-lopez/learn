@@ -6,10 +6,10 @@
 #this
 #code
 #...
-progname="$(expr "${0}" : '.*/\([^/]*\)')"
+PROGNAME="$(expr "${0}" : '.*/\([^/]*\)')"
 
 _usage() {
-    printf "Usage: %s\\n" "${progname} script"
+    printf "Usage: %s\\n" "${PROGNAME} script"
 }
 
 _die() {
@@ -27,7 +27,7 @@ fi
 for arg in "${@}"; do #parse options
     case "${arg}" in
         -h|--help) _usage && exit ;;
-        -*) _die "${progname}: unrecognized option '${arg}'" ;;
+        -*) _die "${PROGNAME}: unrecognized option '${arg}'" ;;
     esac
 done
 
@@ -35,10 +35,10 @@ script="${1}"
 
 if command -v "${script}" >/dev/null 2>&1; then
     [ -z "${EDITOR}" ] && { printf "%s\\n" \
-        "${progname}: variable EDITOR was not found" >&2
+        "${PROGNAME}: variable EDITOR was not found" >&2
         exit 1; }
     ${EDITOR} "$(command -v "${script}" 2>/dev/null)"
 else
-    printf "${progname}: %s\\n" "'${script}' was not found in \$PATH" >&2
+    printf "${PROGNAME}: %s\\n" "'${script}' was not found in \$PATH" >&2
     exit 1
 fi

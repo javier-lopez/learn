@@ -2,10 +2,10 @@
 #description: create a secure password with 8 chars by default
 #usage: mkpass [LENGTH]
 
-progname="$(expr "${0}" : '.*/\([^/]*\)')"
+PROGNAME="$(expr "${0}" : '.*/\([^/]*\)')"
 
 _usage() {
-    printf "%s\\n" "Usage: ${progname} [length]"
+    printf "%s\\n" "Usage: ${PROGNAME} [length]"
     printf "%s\\n" "Create secure passwords."
 }
 
@@ -52,7 +52,7 @@ fi
 for arg in "${@}"; do #parse options
     case "${arg}" in
         -h|--help) _usage && exit ;;
-        -*) _die "${progname}: unrecognized option '${arg}'" ;;
+        -*) _die "${PROGNAME}: unrecognized option '${arg}'" ;;
     esac
 done
 
@@ -71,7 +71,7 @@ passwd="$(strings /dev/urandom | grep -o '[0-9a-Z_./~:,;()!?%*#$%&+=@-]' | \
           head -n "${mkpasswd_length}" | tr -d '\n' 2>/dev/null)"
 
 if [ -z "${passwd}" ];then
-    _die "${progname}: couldn't generate password"
+    _die "${PROGNAME}: couldn't generate password"
 else
     clipboard_text="Copied to clipboard!"
 fi

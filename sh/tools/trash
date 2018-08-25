@@ -4,11 +4,11 @@
 
 #Inspired by 'Wicked Cool Shell Scripts: 101 Scripts for Linux, Mac OS X, and Unix Systems'
 
-trash_dir="${HOME}"/.local/share/Trash
-progname="$(expr "${0}" : '.*/\([^/]*\)')"
+TRASH_DIR="${HOME}"/.local/share/Trash
+PROGNAME="$(expr "${0}" : '.*/\([^/]*\)')"
 
 _usage() {
-    printf "%b\\n" "Usage: ${progname} [options] file ..."
+    printf "%b\\n" "Usage: ${PROGNAME} [options] file ..."
     printf "%b\\n" "rm wrapper compatible with nautilus|pcmanfm file managers."
     printf "\\n"
     printf "%b\\n" "  -l [pattern]   list archived files, use -ll or -lll to increase verbosity"
@@ -18,7 +18,7 @@ _usage() {
     printf "%b\\n" "  -f             force to remove files, \`rm' is executed directly"
     printf "%b\\n" "  -h             shows this message, use --help to see \`rm' help"
     printf "\\n"
-    printf "%b\\n" "${progname} deletes directories and files without distintion, an -r option is not provided"
+    printf "%b\\n" "${PROGNAME} deletes directories and files without distintion, an -r option is not provided"
 }
 
 _str2lower() {
@@ -90,7 +90,7 @@ _list() {
     OLDIFS="${IFS}"; IFS='
    ' #fix case where files have spaces
     for _list__data in $(grep -A 1 -Hri "path.*${1}" \
-        "${trash_dir}"/info/*.trashinfo "${trash_dir}"/info/.*.trashinfo 2>/dev/null  \
+        "${TRASH_DIR}"/info/*.trashinfo "${TRASH_DIR}"/info/.*.trashinfo 2>/dev/null  \
         | sed -e 's:.*-Deletion.*=:|:g' -e 's:\.trashinfo.*=:|:g' | tr -d '\n'        \
         | sed -e 's:--:\n:g' -e 's: :%%%%%:g' | sort); do
 
@@ -110,7 +110,7 @@ _list() {
                 [ -e "${_list__real_file}" ] && _list__size="$(du -sh "${_list__real_file}" | awk '{print $1}')" || _list__size="0.0K"
                 printf "%b\\n" "${_list__number_files}\t${_list__size}\t${_list__general_date} ${_list__detail_date} ${_list__name}/"
                 if [ "${verbose}" -gt "2" ]; then
-                    find "${_list__real_file}" | sed -e "s:${trash_dir}/files/::g" -e 's:^:\t\t\t\t    |_ ./:g'
+                    find "${_list__real_file}" | sed -e "s:${TRASH_DIR}/files/::g" -e 's:^:\t\t\t\t    |_ ./:g'
                 fi
             else
                 printf "%s\\n" "${_list__name}/"
@@ -129,30 +129,30 @@ _list() {
 }
 
 _archive() {
-    # Make sure that the $trash_dir exists
+    # Make sure that the $TRASH_DIR exists
     if [ ! -w "${HOME}" ]; then
-        printf "%s\\n" "${progname} failed: can't create ${trash_dir} in ${HOME}" >&2
+        printf "%s\\n" "${PROGNAME} failed: can't create ${TRASH_DIR} in ${HOME}" >&2
         exit 1
     fi
 
-    [ ! -d "${trash_dir}"/expunged ] && mkdir -p "${trash_dir}"/expunged
-    [ ! -d "${trash_dir}"/files ]    && mkdir -p "${trash_dir}"/files
-    [ ! -d "${trash_dir}"/info ]     && mkdir -p "${trash_dir}"/info
-    chmod -R 700 "${trash_dir}"
+    [ ! -d "${TRASH_DIR}"/expunged ] && mkdir -p "${TRASH_DIR}"/expunged
+    [ ! -d "${TRASH_DIR}"/files ]    && mkdir -p "${TRASH_DIR}"/files
+    [ ! -d "${TRASH_DIR}"/info ]     && mkdir -p "${TRASH_DIR}"/info
+    chmod -R 700 "${TRASH_DIR}"
 
     #TODO 08-08-2011 01:19 => report nautilus bug: recovering foo/1, foo/bar/1, foo/bar/rar/1
     #                         gives foo/1 foo/bar/1.2 foo/bar/rar/1.3
     for _archive__file; do
         if [ -e "${_archive__file}" ] ; then
             [ -d "${_archive__file}" ] && _archive__file="${_archive__file%*/}"
-            _archive__trashfile="${trash_dir}/files/${_archive__file##*/}"
-            _archive__trashinfo="${trash_dir}/info/${_archive__file##*/}.trashinfo"
+            _archive__trashfile="${TRASH_DIR}/files/${_archive__file##*/}"
+            _archive__trashinfo="${TRASH_DIR}/info/${_archive__file##*/}.trashinfo"
 
             _archive__num="2"
 
             while [ -e "${_archive__trashfile}" ]; do
-                _archive__trashfile="${trash_dir}/files/${_archive__file##*/}.${_archive__num}"
-                _archive__trashinfo="${trash_dir}/info/${_archive__file##*/}.${_archive__num}.trashinfo"
+                _archive__trashfile="${TRASH_DIR}/files/${_archive__file##*/}.${_archive__num}"
+                _archive__trashinfo="${TRASH_DIR}/info/${_archive__file##*/}.${_archive__num}.trashinfo"
                 _archive__num="$((${_archive__num} + 1))"
             done
 
@@ -186,7 +186,7 @@ _recover() {
         OLDIFS="${IFS}"; IFS='
         ' #fix case where files have spaces
         for _recover__data in $(grep -A 1 -Hri "path.*${1}" \
-            "${trash_dir}"/info/*.trashinfo "${trash_dir}"/info/.*.trashinfo 2>/dev/null  \
+            "${TRASH_DIR}"/info/*.trashinfo "${TRASH_DIR}"/info/.*.trashinfo 2>/dev/null  \
             | sed -e 's:.*-Deletion.*=:|:g' -e 's:\.trashinfo.*=:|:g' | tr -d '\n'        \
             | sed -e 's:--:\n:g' -e 's: :%%%%%:g' | sort); do
 
@@ -199,8 +199,8 @@ _recover() {
             _recover__real_file="${_recover__data%%|*}"
             _recover__real_file="$(printf "%s" "${_recover__real_file}"|sed -e 's:%%%%%: :g' -e 's:\/info\/:\/files\/:')"
 
-            _recover__info_file="${trash_dir}/info/${_recover__real_file##*/}.trashinfo"
-            _recover__file_file="${trash_dir}/files/${_recover__real_file##*/}"
+            _recover__info_file="${TRASH_DIR}/info/${_recover__real_file##*/}.trashinfo"
+            _recover__file_file="${TRASH_DIR}/files/${_recover__real_file##*/}"
 
             if [ ! -d "$(_dirname "${_recover__name}")" ]; then
                 mkdir -p $(_dirname "${_recover__name}")
@@ -235,12 +235,12 @@ _clean() {
     if [ ! X"${_clean__answer}" = X"y" ]; then
         printf "%s\\n" "Nothing done" && exit
     else
-        [ -z "${1}" ] && { rm -rf "${trash_dir}"/files/.* "${trash_dir}"/files/* 2>/dev/null ; \
-                rm -rf "${trash_dir}"/info/* rm -rf "${trash_dir}"/info/.* 2>/dev/null ; exit 0; }
+        [ -z "${1}" ] && { rm -rf "${TRASH_DIR}"/files/.* "${TRASH_DIR}"/files/* 2>/dev/null ; \
+                rm -rf "${TRASH_DIR}"/info/* rm -rf "${TRASH_DIR}"/info/.* 2>/dev/null ; exit 0; }
         OLDIFS="${IFS}"; IFS='
         ' #fix case where files have spaces
         for _clean__data in $(grep -A 1 -Hri "path.*${1}" \
-            "${trash_dir}"/info/*.trashinfo "${trash_dir}"/info/.*.trashinfo 2>/dev/null  \
+            "${TRASH_DIR}"/info/*.trashinfo "${TRASH_DIR}"/info/.*.trashinfo 2>/dev/null  \
             | sed -e 's:.*-Deletion.*=:|:g' -e 's:\.trashinfo.*=:|:g' | tr -d '\n'        \
             | sed -e 's:--:\n:g' -e 's: :%%%%%:g' | sort); do
 
@@ -248,8 +248,8 @@ _clean() {
 
             _clean__real_file="${_clean__data%%|*}"
             _clean__real_file="$(printf "%s" "${_clean__real_file}"|sed -e 's:%%%%%: :g' -e 's:\/info\/:\/files\/:')"
-            _clean__info_file="${trash_dir}/info/${_clean__real_file##*/}.trashinfo"
-            _clean__file_file="${trash_dir}/files/${_clean__real_file##*/}"
+            _clean__info_file="${TRASH_DIR}/info/${_clean__real_file##*/}.trashinfo"
+            _clean__file_file="${TRASH_DIR}/files/${_clean__real_file##*/}"
 
             rm -rf "${_clean__info_file}"
             rm -rf "${_clean__file_file}"

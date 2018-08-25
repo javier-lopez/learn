@@ -48,7 +48,7 @@ _num() {
 }
 
 _usage() {
-    printf "%b\\n" "Usage: ${progname} [options] [stop] [directory|file]"
+    printf "%b\\n" "Usage: ${PROGNAME} [options] [stop] [directory|file]"
     printf "%s\\n" "Share a directory over http."
     printf "\\n"
     printf "%b\\n" "  stop             stop sharing"
@@ -60,7 +60,7 @@ _usage() {
     printf "%b\\n" "  -h, --help       show this help message and exit"
 }
 
-progname="$(_basename "${0}")"
+PROGNAME="$(_basename "${0}")"
 #because of being used over ssh stdin gets blocked
 #so I'll disable reading from pipes till I figure out a solution
 #if [ ! -t 0 ]; then
@@ -104,7 +104,7 @@ for arg in "${@}"; do #parse options
             else
                 _die "Option '${arg}' requires a parameter"
             fi ;;
-        -*) _die "${progname}: unrecognized option '${arg}'" ;;
+        -*) _die "${PROGNAME}: unrecognized option '${arg}'" ;;
     esac
 done
 
@@ -113,7 +113,7 @@ if ! command -v "simple-httpd" >/dev/null 2>&1; then
     wget -q --no-check-certificate "${upstream_url_httpd}" -O- > /tmp/simple-httpd 2>/dev/null || \
     curl -s -f -L "${upstream_url_httpd}" > /tmp/simple-httpd 2>/dev/null || \
     curl -s -f -L -k "${upstream_url_httpd}" > /tmp/simple-httpd 2>/dev/null || {
-        printf "%s\\n" "${progname}: simple-httpd was not found!" >&2
+        printf "%s\\n" "${PROGNAME}: simple-httpd was not found!" >&2
         printf "%s\\n" "download it from ${upstream_url_httpd}" >&2
         exit 1
     }
@@ -123,10 +123,10 @@ else
     httpd="simple-httpd"
 fi
 
-exec 9> /tmp/"${progname}".lock #verify only one instance is running
-[ X"${LOGNAME}" = X"root" ] && chmod 666 /tmp/"${progname}".lock
+exec 9> /tmp/"${PROGNAME}".lock #verify only one instance is running
+[ X"${LOGNAME}" = X"root" ] && chmod 666 /tmp/"${PROGNAME}".lock
 if ! flock -n 9; then
-    _die "${progname}: another instance is running"
+    _die "${PROGNAME}: another instance is running"
 fi
 
 [ -z "${user}" ]   && user="guest"
@@ -157,7 +157,7 @@ fi
 printf "%s\\n"
 printf "%s\\n" "  serving:  ${files}"
 printf "%s\\n"
-printf "%s\\n" "Run: ${progname} stop, to stop sharing"
+printf "%s\\n" "Run: ${PROGNAME} stop, to stop sharing"
 
 if [ -d "${files}" ]; then
     eval "${httpd}" -p "${port}" --username="${user}" \

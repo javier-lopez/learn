@@ -4,6 +4,16 @@
 
 INDENTATION="4"
 
+_usage() {
+    printf "%s\\n" "Usage: ${PROGNAME} testcase ..."
+    printf "%s\\n" "https://wiki.ubuntu.com/Testing/TestCaseFormat"
+}
+
+_die() {
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
+}
+
 _basename() {
     [ -z "${1}" ] && return 1 || _basename__name="${1}"
     [ -z "${2}" ] || _basename__suffix="${2}"
@@ -21,21 +31,11 @@ _basename() {
     printf "%s\\n" "${_basename__name}"
 }
 
-_usage() {
-    printf "%s\\n" "Usage: ${progname} testcase ..."
-    printf "%s\\n" "https://wiki.ubuntu.com/Testing/TestCaseFormat"
-}
-
-_die() {
-    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
-    _usage >&2; exit 1
-}
-
 _tmp_files() {
-    mkdir -p /tmp/"${progname}"/indent
+    mkdir -p /tmp/"${PROGNAME}"/indent
     #this file can also be copied to ~/.vim/indent/html.vim so
     #vim indent html files the testcase way <dl>/<dt>/<dd>
-    cat > /tmp/"${progname}"/indent/html.vim << EOF
+    cat > /tmp/"${PROGNAME}"/indent/html.vim << EOF
 " Description:	html indenter
 " Author:	Johannes Zellner <johannes@zellner.org>
 " Last Change:	Mo, 05 Jun 2006 22:32:41 CEST
@@ -300,8 +300,8 @@ unlet s:cpo_save
 " [-- EOF <runtime>/indent/html.vim --]
 EOF
 
-    cat > /tmp/"${progname}"/vimrc << EOF
-set runtimepath=/tmp/${progname},\$VIMRUNTIME
+    cat > /tmp/"${PROGNAME}"/vimrc << EOF
+set runtimepath=/tmp/${PROGNAME},\$VIMRUNTIME
 syntax on
 set ffs=unix,dos
 set encoding=utf-8          "utf is able to represent any character
@@ -315,15 +315,15 @@ EOF
 _format() {
     for _format__testcase; do
         printf "%s\\n" "${_format__testcase}"
-        tidy -f /tmp/"${progname}"/testcase -xml \
+        tidy -f /tmp/"${PROGNAME}"/testcase -xml \
             -i "${_format__testcase}" > /dev/null
-        [ "${?}" -eq "2" ] && { cat /tmp/"${progname}"/testcase; exit 1; }
-        vim -es -u /tmp/"${progname}"/vimrc \
+        [ "${?}" -eq "2" ] && { cat /tmp/"${PROGNAME}"/testcase; exit 1; }
+        vim -es -u /tmp/"${PROGNAME}"/vimrc \
             -c "set ft=html" -c "normal gg=G" -c wq "${_format__testcase}"
     done
 }
 
-progname="$(_basename "${0}")"
+PROGNAME="$(_basename "${0}")"
 
 if [ ! -t 0 ]; then
     #there is input comming from pipe or file, add to the end of $@
@@ -340,10 +340,10 @@ for arg in "${@}"; do #parse options
 done
 
 [ -f "$(command -v "vim")" ]  || { printf "%b\\n" \
-    "${progname}: install 'vim' & 'tidy' to run this program\n$ sudo apt-get install vim tidy" >&2
+    "${PROGNAME}: install 'vim' & 'tidy' to run this program\n$ sudo apt-get install vim tidy" >&2
     exit 1; }
 [ -f "$(command -v "tidy")" ] || { printf "%b\\n" \
-    "${progname}: install 'tidy' to run this program\n$ sudo apt-get install tidy" >&2
+    "${PROGNAME}: install 'tidy' to run this program\n$ sudo apt-get install tidy" >&2
     exit 1; }
 
 _tmp_files

@@ -7,15 +7,15 @@
 
 VERSION="2018.03.17-17:56"
 
-#TODO 04-11-2015 12:53 >> add more image sharing sites
-sites="imgur"
+#TODO 04-11-2015 12:53 >> add more image sharing SITES
+SITES="imgur"
 
 _usage() {
-    printf "%s\\n" "Usage: ${progname} image.[png|jpg] ..."
+    printf "%s\\n" "Usage: ${PROGNAME} image.[png|jpg] ..."
     printf "%s\\n" "Upload images to internet"
     printf "\\n"
     printf "%s\\n" "  -s, --site         prefer a site"
-    printf "%s\\n" "  -l, --list-sites   list supported sites"
+    printf "%s\\n" "  -l, --list-SITES   list supported SITES"
     printf "%b\\n" "  -U, --update       update this program to latest version"
     printf "%s\\n" "  -v, --version      display version"
     printf "%b\\n" "  -h, --help         show this help message and exit"
@@ -81,10 +81,10 @@ _notify() {
 _validate() {
     case "${1}" in
         site) if [ -z "${2}" ]; then
-                  printf "%s\\n" "${progname}: supported sites are"
-                  exec "${0}" --list-sites
-              elif [ -z "$(printf "%s\\n" "${sites}" | tr ' ' '\n' | awk "/^$2\$/")" ]; then
-                  printf "%s\\n" "${progname}: '${2}' is not a supported site" >&2
+                  printf "%s\\n" "${PROGNAME}: supported SITES are"
+                  exec "${0}" --list-SITES
+              elif [ -z "$(printf "%s\\n" "${SITES}" | tr ' ' '\n' | awk "/^$2\$/")" ]; then
+                  printf "%s\\n" "${PROGNAME}: '${2}' is not a supported site" >&2
                   exit 1
               fi
               ;;
@@ -97,21 +97,21 @@ _validate() {
 }
 
 _update() {
-    _u__current_file="$(cd "$(dirname "${0}")" && pwd)/${progname}"
+    _u__current_file="$(cd "$(dirname "${0}")" && pwd)/${PROGNAME}"
     _u__current_version_long="$(awk -F\" \
         '/VERSION=/{print $2;exit}' "${_u__current_file}" 2>/dev/null)"
     _u__current_version="$(printf "%s\\n" "${_u__current_version_long}" | \
         awk '{gsub(/[\.:]/,"");gsub(/-/,"");print;exit}' 2>/dev/null)"
     [ -z "${_u__current_version}" ] && printf "%s\\n%s\\n%s\\n"           \
         "ERROR: Failed to detect current version, please update manually" \
-        "${progname}         = ${_u__current_file}"                       \
-        "${progname} version = ${_u__current_version}" >&2 && return 1
+        "${PROGNAME}         = ${_u__current_file}"                       \
+        "${PROGNAME} version = ${_u__current_version}" >&2 && return 1
 
     command -v "wget" >/dev/null 2>&1 || command -v "curl" >/dev/null 2>&1 || \
         { printf "%s\\n" "ERROR: Install either 'wget' or 'curl' to upgrade" >&2; return 1; }
 
-    _u__url="https://raw.githubusercontent.com/javier-lopez/learn/master/sh/tools/${progname}"
-    _u__tmpfile="/tmp/${progname}.${$}.update"
+    _u__url="https://raw.githubusercontent.com/javier-lopez/learn/master/sh/tools/${PROGNAME}"
+    _u__tmpfile="/tmp/${PROGNAME}.${$}.update"
 
     _u__error_msg="$(wget -q -O- --no-check-certificate "${_u__url}" \
         > "${_u__tmpfile}" 2>&1   || curl -s "${_u__url}"  \
@@ -140,15 +140,15 @@ _update() {
                 return 1
             fi
         fi
-        printf "%s %s\\n" "${progname} is up-to-date (${_u__update_version_long})"
+        printf "%s %s\\n" "${PROGNAME} is up-to-date (${_u__update_version_long})"
         return 0
     fi
-    printf "%s %s\\n" "${progname} is up-to-date (${_u__current_version_long})"
+    printf "%s %s\\n" "${PROGNAME} is up-to-date (${_u__current_version_long})"
     rm -rf "${_u__tmpfile}"
 }
 
 _show_version() {
-    printf "%s\\n" "${progname} ${VERSION}"
+    printf "%s\\n" "${PROGNAME} ${VERSION}"
 }
 
 _uimg() {
@@ -194,7 +194,7 @@ _uimg() {
     for _uimg__img; do
         if [ -f "${_uimg__img}" ] ; then
             if _validate img "${_uimg__img}"; then
-                for api in $(printf "%s" "${sites}" | \
+                for api in $(printf "%s" "${SITES}" | \
                     tr ' ' '\n' | _shuf | tr '\n' ' '); do
                     if [ -z "${_uimg__response}" ]; then
                         _uimg__response="$(_uimg_"${api}" "${_uimg__img}")"
@@ -218,7 +218,7 @@ _uimg() {
     done
 }
 
-progname="$(_basename "${0}")"
+PROGNAME="$(_basename "${0}")"
 
 if [ ! -t 0 ]; then
     #there is input comming from pipe or file, add to the end of $@
@@ -233,11 +233,11 @@ for arg in "${@}"; do #parse options
         -U|--update) _update; exit "${?}" ;;
         -v|--version) _show_version; exit "${?}" ;;
         '-s'|'--site') shift; site="${1}"; [ -n "${1}" ] && shift
-                  _validate site "${site}" && sites="${site}";;
+                  _validate site "${site}" && SITES="${site}";;
         -s*) site="${1#-s}"; shift
-            _validate site "${site}" && sites="${site}" ;;
-        -l|--list-sites) printf "%s\\n" "${sites}" | tr ' ' '\n'; exit 0; ;;
-        -*) _die "${progname}: unrecognized option '${arg}'" ;;
+            _validate site "${site}" && SITES="${site}" ;;
+        -l|--list-SITES) printf "%s\\n" "${SITES}" | tr ' ' '\n'; exit 0; ;;
+        -*) _die "${PROGNAME}: unrecognized option '${arg}'" ;;
     esac
 done
 

@@ -8,14 +8,14 @@
 #libc6-armhf-cross
 #libc6-i386
 
-progname="$(expr "${0}" : '.*/\([^/]*\)')"
+PROGNAME="$(expr "${0}" : '.*/\([^/]*\)')"
 
 _false() {
     return 1
 }
 
 _rdeps() {
-    for _rdeps__binary; do
+    for _rdeps__binary in "${@}"; do
         fpath="$(command -v "${_rdeps__binary}")"
         if [ -z "${fpath}" ]; then
             fpath="${_rdeps__binary}"
@@ -29,7 +29,7 @@ _rdeps() {
                 done
                 printf "%s\\n" "${_rdeps__pkgs}" | cut -d':' -f1 | sort | uniq | awk 'NF { sub(/^[ \t]+/, ""); print }'
             else
-                printf "${progname}: %s\\n" "not a dynamic executable '${fpath}'" >&2 && _false
+                printf "${PROGNAME}: %s\\n" "not a dynamic executable '${fpath}'" >&2 && _false
             fi
         fi
     done
@@ -40,13 +40,13 @@ if [ ! -t 0 ]; then
     set -- "${@}" $(cat)
 fi
 
-[ "${#}" -eq "0" ] && { printf "Usage: %s\\n" "${progname} binary ..." >&2; exit 1; }
+[ "${#}" -eq "0" ] && { printf "Usage: %s\\n" "${PROGNAME} binary ..." >&2; exit 1; }
 
 for arg in "${@}"; do #parse options
     case "${arg}" in
-        -h|--help) { printf "Usage: %s\\n" "${progname} binary ..."; exit; } ;;
-        -*) printf "%s\\n" "${progname}: unrecognized option '${arg}'" >&2
-            printf "Usage: %s\\n" "${progname} binary ..." >&2
+        -h|--help) { printf "Usage: %s\\n" "${PROGNAME} binary ..."; exit; } ;;
+        -*) printf "%s\\n" "${PROGNAME}: unrecognized option '${arg}'" >&2
+            printf "Usage: %s\\n" "${PROGNAME} binary ..." >&2
             exit 1 ;;
     esac
 done

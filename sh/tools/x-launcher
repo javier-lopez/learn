@@ -5,25 +5,25 @@
 #example: $ x-launcher -w openbox-session firefox
 #open firefox inside openbox inside an ephemeral X server (xephyr by default)
 
-progname="$(expr "${0}" : '.*/\([^/]*\)')"
-xserver="Xephyr"
+PROGNAME="$(expr "${0}" : '.*/\([^/]*\)')"
+XSERVER="Xephyr"
 wm=""
 displayn="-1"
 
 _usage() {
-    printf "%s\\n" "Usage: ${progname} [OPTION] CMD ..."
+    printf "%s\\n" "Usage: ${PROGNAME} [OPTION] CMD ..."
     printf "%s\\n" "Ephemeral X launcher."
     printf "%s\\n"
-    printf "%s\\n" "  -x, --xserver   X server (and args) to run, default '${xserver}'"
+    printf "%s\\n" "  -x, --xserver   X server (and args) to run, default '${XSERVER}'"
     printf "%s\\n" "  -w, --wm        window manager to use inside ephemeral X server, default 'none'"
     printf "%s\\n" "  -q, --quiet     quiet mode"
     printf "%s\\n" "  -h, --help      show this message and exit"
     printf "%s\\n"
     printf "%s\\n" "Examples:"
     printf "%s\\n"
-    printf "%s\\n" "  ${progname} xterm"
-    printf "%s\\n" "  ${progname} -x Xvfb -w openbox-session firefox"
-    printf "%s\\n" "  ${progname} -x 'Xephyr -screen 1280x720' -w openbox-session firefox http://domain.tld"
+    printf "%s\\n" "  ${PROGNAME} xterm"
+    printf "%s\\n" "  ${PROGNAME} -x Xvfb -w openbox-session firefox"
+    printf "%s\\n" "  ${PROGNAME} -x 'Xephyr -screen 1280x720' -w openbox-session firefox http://domain.tld"
 }
 
 _die() {
@@ -105,18 +105,18 @@ for arg in "${@}"; do #parse options
         -h|--help)  _usage && exit ;;
         -q|--quiet) qflag="true" && shift ;;
         '-x'|'--xserver') xserver_user_defined="true"
-            shift; [ -n "${1}" ] && xserver="${1}" && shift ;;
-        -x*) xserver_user_defined="true"; xserver="${1#-x}"; shift ;;
-        --xserver*) xserver_user_defined="true"; xserver="${1#--xserver}"; shift ;;
+            shift; [ -n "${1}" ] && XSERVER="${1}" && shift ;;
+        -x*) xserver_user_defined="true"; XSERVER="${1#-x}"; shift ;;
+        --xserver*) xserver_user_defined="true"; XSERVER="${1#--xserver}"; shift ;;
         '-w'|'--wm') shift; [ -n "${1}" ] && wm="${1}" && shift ;;
         -w*) wm="${1#-w}"; shift ;;
         --wm*) wm="${1#--wm}"; shift ;;
         --) shift; break ;;
-        #-*) _die "${progname}: unrecognized option '${arg}'" ;;
+        #-*) _die "${PROGNAME}: unrecognized option '${arg}'" ;;
     esac
 done
 
-xserver_bin="$(printf "%s\\n" "${xserver}" | awk '{print $1}')"
+xserver_bin="$(printf "%s\\n" "${XSERVER}" | awk '{print $1}')"
 wm_bin="$(printf "%s\\n" "${wm}" | awk '{print $1}')"
 _check_bins_are_installed "${xserver_bin}" "${wm_bin}"
 
@@ -127,7 +127,7 @@ if [ -z "${xserver_user_defined}" ]; then
     else
         xserver_options="-ac -screen ${xserver_resolution} -reset"
     fi
-    xserver="${xserver} ${xserver_options}"
+    XSERVER="${XSERVER} ${xserver_options}"
 fi
 
 while :; do
@@ -143,7 +143,7 @@ while :; do
             exec >  /dev/null
             exec 2> /dev/null
         fi
-        exec ${xserver} ":${displayn}"
+        exec ${XSERVER} ":${displayn}"
     ) &
     x_pid="${!}"
 

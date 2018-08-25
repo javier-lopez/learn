@@ -6,11 +6,11 @@
 #no output, it however sets the best governator for performance
 
 #https://bbs.archlinux.org/viewtopic.php?pid=431775#p431775
-progname="$(expr "${0}" : '.*/\([^/]*\)')"
+PROGNAME="$(expr "${0}" : '.*/\([^/]*\)')"
 
 _usage() {
-    printf "%s\\n" "Usage: ${progname} get"
-    printf "%s\\n" "       ${progname} set powersave|conservative|ondemand|performance"
+    printf "%s\\n" "Usage: ${PROGNAME} get"
+    printf "%s\\n" "       ${PROGNAME} set powersave|conservative|ondemand|performance"
 }
 
 _exec() {

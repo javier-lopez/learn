@@ -14,7 +14,7 @@
 #ヽ(`Д´)ﾉ⌒ xoɟǝɹᴉɟ
 
 _usage() {
-    printf "%s\\n" "Usage: ${progname} [you|off] [program ...]"
+    printf "%s\\n" "Usage: ${PROGNAME} [you|off] [program ...]"
     printf "%s\\n" "Correct commands and kill processes by name."
     printf "\\n"
     printf "%s\\n" "  -c, --command-not-found   run not found hooks"
@@ -366,7 +366,7 @@ _fuck() {
     :
 }
 
-progname="$(expr "${0}" : '.*/\([^/]*\)')"
+PROGNAME="$(expr "${0}" : '.*/\([^/]*\)')"
 
 if [ ! -t 0 ]; then
     #there is input comming from pipe or file, add to the end of $@
@@ -401,7 +401,7 @@ case "${1}" in
         esac
         ;;
 
-    -*) _die "${progname}: unrecognized option '${1}'" ;;
+    -*) _die "${PROGNAME}: unrecognized option '${1}'" ;;
      *) _fuck_process "${@}"; exit "${?}"
 esac
 

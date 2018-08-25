@@ -8,7 +8,7 @@
 
 #TODO 17-03-2015 10:59 >> add support for arpegios "A1~A4~A7"
 
-title="$(printf "%s" \
+TITLE="$(printf "%s" \
 "         __                                __
  .-----.|__|.---.-.-----.-----.----.---.-.|  |_
  |  _  ||  ||  _  |     |  _  |  __|  _  ||   _|
@@ -28,12 +28,12 @@ Press any key to play, 1..7 to select an octave
                or Esc to exit")"
 
 _usage() {
-    printf "%s\\n" "Usage: ${progname} [options] [file]"
+    printf "%s\\n" "Usage: ${PROGNAME} [options] [file]"
     printf "%s\\n" "A piano emulator."
     printf "\\n"
     printf "%s\\n" "  -b, --beat          beat time in seconds (0.5)"
     printf "%s\\n" "  -s, --sound [s|d]   set method to generate sound (static with fallback to dynamic)"
-    printf "%s\\n" "                      by default, ${progname} will look for wav files or other static"
+    printf "%s\\n" "                      by default, ${PROGNAME} will look for wav files or other static"
     printf "%s\\n" "                      files matching the notes played, eg: A4.wav, if no static files"
     printf "%s\\n" "                      are found then it'll use sox to generate the sounds dinamically"
     printf "%s\\n" "  -d, --directory     base directory   (~/.pianocat)"
@@ -247,7 +247,7 @@ _pianocat() {
     esac
 
     tput smcup # save current terminal view
-    printf "%s\\n\\n" "${title}"
+    printf "%s\\n\\n" "${TITLE}"
     printf "%s" "> "
 
     [ -z "${input}" ] || input="$(_sanitize "${input}")"
@@ -344,7 +344,7 @@ _pianocat() {
 }
 
 trap _cleanup 1 15
-_basename "${0}"; progname="${_basename__retval}"
+_basename "${0}"; PROGNAME="${_basename__retval}"
 
 if [ ! -t 0 ]; then
     #there is input comming from pipe or file, save it
@@ -401,7 +401,7 @@ for arg in "${@}"; do #parse options
             fi ;;
         -f*) format="${1#-f}"; shift ;;
         --format*) format="${1#--format}"; shift ;;
-        -?*) _die "${progname}: unrecognized option '${arg}'" ;;
+        -?*) _die "${PROGNAME}: unrecognized option '${arg}'" ;;
     esac
 done
 

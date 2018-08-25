@@ -6,10 +6,10 @@
 # $ mvs *  #rename all files
 # $ mvs a* #rename all files starting with 'a'
 
-progname="$(expr "${0}" : '.*/\([^/]*\)')"
+PROGNAME="$(expr "${0}" : '.*/\([^/]*\)')"
 
 _usage() {
-    printf "%s\\n" "Usage: ${progname} [options] file ..."
+    printf "%s\\n" "Usage: ${PROGNAME} [options] file ..."
     printf "%s\\n" "Rename lots of files using your favorite text editor."
     printf "\\n"
     printf "%b\\n" "  -e, --editor   use this editor instead of the default \$EDITOR"
@@ -83,7 +83,7 @@ for arg in "${@}"; do #parse options
                 _die "Option '${arg}' requires a parameter"
             fi
             ;;
-        -*) _die "${progname}: unrecognized option '${arg}'" ;;
+        -*) _die "${PROGNAME}: unrecognized option '${arg}'" ;;
     esac
 done
 

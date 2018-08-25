@@ -4,8 +4,8 @@
 
 set -e #exit as soon as any command fail
 
-default_ssh_passwd="c2VjcmV0Cg=="
-default_mysql_passwd="c2VjcmV0Cg=="
+DEFAULT_SSH_PASSWD="c2VjcmV0Cg=="
+DEFAULT_MYSQL_PASSWD="c2VjcmV0Cg=="
 
 _basename() {
     [ -z "${1}" ] && return 1 || _basename__name="${1}"
@@ -225,8 +225,8 @@ _trunk() {
             fi
             elastix_ssh_host="$(printf "%s\\n" "${elastix_ssh_host}" | cut -f1 -d:)"
 
-            [ -z "${elastix_ssh_passwd}" ] && elastix_ssh_passwd="$(_decode64 "${default_ssh_passwd}")"
-            [ -z "${elastix_mysql_passwd}" ] && elastix_mysql_passwd="$(_decode64 "${default_mysql_passwd}")"
+            [ -z "${elastix_ssh_passwd}" ] && elastix_ssh_passwd="$(_decode64 "${DEFAULT_SSH_PASSWD}")"
+            [ -z "${elastix_mysql_passwd}" ] && elastix_mysql_passwd="$(_decode64 "${DEFAULT_MYSQL_PASSWD}")"
 
             if ! sshpass -p "${elastix_ssh_passwd}" ssh -o StrictHostKeyChecking=no -o Port="${elastix_ssh_port}" "${elastix_ssh_host}" "mysql -uroot -p${elastix_mysql_passwd} -e 'use asterisk'" ; then
                 _die "${elastix_credentials}: invalid credentials for ${elastix_ssh_host}"
@@ -246,8 +246,8 @@ _trunk() {
             fi
             elastix_ssh_host="$(printf "%s\\n" "${elastix_ssh_host}" | cut -f1 -d:)"
 
-            [ -z "${elastix_ssh_passwd}" ]   && elastix_ssh_passwd="$(_decode64 "${default_ssh_passwd}")"
-            [ -z "${elastix_mysql_passwd}" ] && elastix_mysql_passwd="$(_decode64 "${default_mysql_passwd}")"
+            [ -z "${elastix_ssh_passwd}" ]   && elastix_ssh_passwd="$(_decode64 "${DEFAULT_SSH_PASSWD}")"
+            [ -z "${elastix_mysql_passwd}" ] && elastix_mysql_passwd="$(_decode64 "${DEFAULT_MYSQL_PASSWD}")"
 
             elastix_ssh_host_array+=("${elastix_ssh_host}")
             elastix_ssh_port_array+=("${elastix_ssh_port}")
@@ -258,8 +258,8 @@ _trunk() {
         printf "%s\\n" "Verifying credentials ..."
 
         [ -z "${elastix_ssh_host}" ] && elastix_ssh_host="localhost"
-        [ -z "${elastix_ssh_passwd}" ] && elastix_ssh_passwd="$(_decode64 "${default_ssh_passwd}")"
-        [ -z "${elastix_mysql_passwd}" ] && elastix_mysql_passwd="$(_decode64 "${default_mysql_passwd}")"
+        [ -z "${elastix_ssh_passwd}" ] && elastix_ssh_passwd="$(_decode64 "${DEFAULT_SSH_PASSWD}")"
+        [ -z "${elastix_mysql_passwd}" ] && elastix_mysql_passwd="$(_decode64 "${DEFAULT_MYSQL_PASSWD}")"
 
         if _isnum "$(printf "%s\\n" "${elastix_ssh_host}" | cut -f2 -d:)" ; then
             elastix_ssh_port="$(printf "%s\\n" "${elastix_ssh_host}" | cut -f2 -d:)"

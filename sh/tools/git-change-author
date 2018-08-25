@@ -7,7 +7,7 @@
 VERSION="2018.01.29-11:29"
 
 _usage() {
-    printf "%s\\n" "Usage: ${progname} WRONG_EMAIL AUTHOR_NAME EMAIL"
+    printf "%s\\n" "Usage: ${PROGNAME} WRONG_EMAIL AUTHOR_NAME EMAIL"
     printf "%s\\n" "Fix wrong author data in git repositories."
     printf "\\n"
     printf "%s\\n" "  -y, --yes       don't ask confirmation"
@@ -21,10 +21,10 @@ _die() {
 }
 
 _show_version() {
-    printf "%s\\n" "${progname} ${VERSION}"
+    printf "%s\\n" "${PROGNAME} ${VERSION}"
 }
 
-progname="$(basename "${0}")"
+PROGNAME="$(basename "${0}")"
 
 if [ ! -t 0 ]; then
     #there is input comming from pipe or file, add it to the end of $@
@@ -38,7 +38,7 @@ for arg in "${@}"; do #parse options
         -h|--help)    _usage;  exit ;;
         -V|--version) _show_version; exit "${?}" ;;
         -y|--yes) skip_confirmation="yes"; shift ;;
-        -*) _die "${progname}: unrecognized option '${arg}'" >&2 ;;
+        -*) _die "${PROGNAME}: unrecognized option '${arg}'" >&2 ;;
     esac
 done
 

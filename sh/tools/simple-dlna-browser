@@ -7,7 +7,7 @@
 #http://192.168.1.254:8200/MediaItems/22.mp4
 
 _usage() {
-    printf "%s\\n" "Usage: ${progname} [options] [pattern]"
+    printf "%s\\n" "Usage: ${PROGNAME} [options] [pattern]"
     printf "%s\\n" "Query dlna media servers."
     printf "\\n"
     printf "%s\\n" "  -L, --list-servers       list available dlna media servers, require 'socat'"
@@ -21,34 +21,34 @@ _usage() {
     printf "\\n"
     printf "%s\\n" "Examples:"
     printf "\\n"
-    printf "%s\\n" "  $ ${progname} video1"
+    printf "%s\\n" "  $ ${PROGNAME} video1"
     printf "%s\\n" "  http://192.168.1.254:8200/MediaItems/22.mp4"
     printf "\\n"
-    printf "%s\\n" "  $ ${progname} -s 192.168.1.254:8200 -v video"
+    printf "%s\\n" "  $ ${PROGNAME} -s 192.168.1.254:8200 -v video"
     printf "%s\\n" "  http://192.168.1.254:8200/MediaItems/22.mp4 - video1"
     printf "%s\\n" "  http://192.168.1.254:8200/MediaItems/23.mp4 - Other video file"
     printf "%s\\n" "  http://192.168.1.254:8200/MediaItems/24.mp4 - Yet another video file"
     printf "\\n"
-    printf "%s\\n" "  $ ${progname} -s 192.168.1.254:8200 -v -f upnp:artist foo"
+    printf "%s\\n" "  $ ${PROGNAME} -s 192.168.1.254:8200 -v -f upnp:artist foo"
     printf "%s\\n" "  http://192.168.1.254:8200/MediaItems/22.mp4 - video1 by foo"
     printf "%s\\n" "  http://192.168.1.254:8200/MediaItems/23.mp4 - Other video file by foo"
     printf "\\n"
     printf "%s\\n" "  Search pattern in all detected media servers, require 'socat' or specify"
     printf "%s\\n" "  a media server IP (-s|--server) and port (-p|--port)"
     printf "\\n"
-    printf "%s\\n" "  $ ${progname} -l -v"
+    printf "%s\\n" "  $ ${PROGNAME} -l -v"
     printf "%s\\n" "  http://192.168.1.111:8200/Desc.xml (Multimedia)"
     printf "%s\\n" "     File1 - 64\$0"
     printf "%s\\n" "     File2 - 64\$1"
     printf "%s\\n" "     Folder/ - 64\$2"
     printf "\\n"
-    printf "%s\\n" "  $ ${progname} -l '64\$2'"
+    printf "%s\\n" "  $ ${PROGNAME} -l '64\$2'"
     printf "%s\\n" "  http://192.168.1.111:8200/Desc.xml (Multimedia)"
     printf "%s\\n" "     File1"
     printf "%s\\n" "     File2"
     printf "%s\\n" "     File3"
     printf "\\n"
-    printf "%s\\n" "  $ ${progname} -L"
+    printf "%s\\n" "  $ ${PROGNAME} -L"
     printf "%s\\n" "  http://192.168.1.254:8200/rootDesc.xml (MiniDLNA)"
     printf "%s\\n" "  http://192.168.1.111:8200/Desc.xml (Multimedia)"
 }
@@ -288,7 +288,7 @@ _search_media() {
     done
 }
 
-_basename "${0}"; progname="${_basename__retval}"
+_basename "${0}"; PROGNAME="${_basename__retval}"
 if [ ! -t 0 ]; then
     #there is input comming from pipe or file, add to the end of $@
     set -- "${@}" $(cat)
@@ -338,7 +338,7 @@ for arg in "${@}"; do #parse options
         --field*) search_type="${1#--field}"; shift ;;
         -v*) verbose_lvl="verbose" ; shift ;;
         -h|--help) _usage && exit ;;
-        -*) _die "${progname}: unrecognized option '${arg}'" ;;
+        -*) _die "${PROGNAME}: unrecognized option '${arg}'" ;;
     esac
 done
 

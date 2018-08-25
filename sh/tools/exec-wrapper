@@ -28,7 +28,7 @@
 #
 ################################################################################
 
-progname="$(expr "${0}" : '.*/\([^/]*\)')"
+PROGNAME="$(expr "${0}" : '.*/\([^/]*\)')"
 CC="${CC:-cc}" #default compiler
 
 DEST="."
@@ -272,7 +272,7 @@ for arg in "${@}"; do #parse options
     case "${arg}" in
         -h|--help) _usage && exit ;;
         --*) printf "%s\\n" "Illegal option '${arg}'" >&2
-             _die "Try ${progname} -h" ;;
+             _die "Try ${PROGNAME} -h" ;;
     esac
 done
 
@@ -292,7 +292,7 @@ while getopts "hqAEsd:m:o:g:a:e:u:" opt >&2; do
              eval ENV_$ENV_NUM=\"\${OPTARG}\" ;;
         "u") UENV_NUM="$(($UENV_NUM + 1))"
              eval UENV_$UENV_NUM=\"\${OPTARG}\" ;;
-          *) _die "Try ${progname} -h" ;;
+          *) _die "Try ${PROGNAME} -h" ;;
     esac
 done
 

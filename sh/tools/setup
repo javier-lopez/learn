@@ -7,10 +7,10 @@
 #sudo cp dmenu-killall /usr/local/bin
 
 #Don't forget to update _usage when adding new functions
-progname="$(expr "${0}" : '.*/\([^/]*\)')"
+PROGNAME="$(expr "${0}" : '.*/\([^/]*\)')"
 
 _usage() {
-    printf "%s\\n" "Usage: ${progname} module"
+    printf "%s\\n" "Usage: ${PROGNAME} module"
     printf "%s\\n" "Setup my common tasks."
     printf "\\n"
     printf "%s\\n" "Modules:"
@@ -36,7 +36,7 @@ _exec() {
 }
 
 _script() {
-    [ -z "${1}" ] && _die "${progname}: Missing argument, looking for a .sh|.py|.rb|etc script"
+    [ -z "${1}" ] && _die "${PROGNAME}: Missing argument, looking for a .sh|.py|.rb|etc script"
 
     for file; do
         _exec chmod +x "${file}"
@@ -45,7 +45,7 @@ _script() {
 }
 
 _autocp() {
-    [ -n "${1}" ] || _die "${progname}: Missing parameter, looking for an .autocp file"
+    [ -n "${1}" ] || _die "${PROGNAME}: Missing parameter, looking for an .autocp file"
 
     for file; do
         if [ -d /usr/share/bash-completion/completions/ ]; then
@@ -66,7 +66,7 @@ if [ X"${#}" != X"0" ]; then
         -h|--help) _usage && exit ;;
         script)    shift; _script "${@}" ;;
         autocp)    shift; _autocp "${@}" ;;
-        *)         _die "${progname}: unrecognized option '${1}'" ;;
+        *)         _die "${PROGNAME}: unrecognized option '${1}'" ;;
     esac
 else
     _die
