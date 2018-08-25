@@ -7,6 +7,19 @@
 #files/file2
 #...
 
+_usage() {
+    printf "%s\\n" "Usage: ${PROGNAME} [options] files ... file.[tar.gz,tar.bz2,zip...]"
+    printf "%s\\n" "Compress files."
+    printf "\\n"
+    printf "%s\\n" "  -v, --verbose   verbose mode"
+    printf "%s\\n" "  -h, --help      show this help message and exit"
+}
+
+_die() {
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
+}
+
 _basename() {
     [ -z "${1}" ] && return 1 || _basename__name="${1}"
     [ -z "${2}" ] || _basename__suffix="${2}"
@@ -26,19 +39,6 @@ _basename() {
     printf "%s\\n" "${_basename__name}"
 }
 
-_usage() {
-    printf "%s\\n" "Usage: $(_basename "${0}") [options] files ... file.[tar.gz,tar.bz2,zip...]"
-    printf "%s\\n" "Compress files."
-    printf "\\n"
-    printf "%s\\n" "  -v, --verbose   verbose mode"
-    printf "%s\\n" "  -h, --help      show this help message and exit"
-}
-
-_die() {
-    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
-    _usage >&2; exit 1
-}
-
 _compress() {
     for _compress__compression; do :; done
     i=0; for _compress__file; do
@@ -46,7 +46,7 @@ _compress() {
         [ "${#}" -eq "${i}" ] && continue
         [ ! -r "${_compress__file}" ] && {
             printf "%s\\n" \
-            "$(_basename "${0}"): '${_compress__file}' does not exist or is not readable" >&2
+            "${PROGNAME}: '${_compress__file}' does not exist or is not readable" >&2
             return 1; }
         _compress__files="${_compress__file}|${_compress__files}"
     done
@@ -75,7 +75,7 @@ _compress() {
                     x="$((${x} + 1))"
                 done
                 [ "${x}" -gt "1" ] && { printf "%s\\n" \
-                    "$(_basename "${0}"): bz2 files can only be compressed one by one, use tar.bz2 if you require to compress several files at the same time" >&2
+                    "${PROGNAME}: bz2 files can only be compressed one by one, use tar.bz2 if you require to compress several files at the same time" >&2
                      exit 1; }
                 bzip2 -c ${_compress__files} | dd of="${_compress__compression}" ;;
             *.rar) rar a "${_compress__compression}" ${_compress__files} ;;
@@ -83,7 +83,7 @@ _compress() {
                     x="$((${x} + 1))"
                   done
                   [ "${x}" -gt "1" ] && { printf "%s\\n" \
-                    "$(_basename "${0}"): gz files can only be compressed one by one, use tar.gz if you require to compress several files at the same time" >&2
+                    "${PROGNAME}: gz files can only be compressed one by one, use tar.gz if you require to compress several files at the same time" >&2
                     exit 1; }
                 gzip -c ${_compress__files} | dd of="${_compress__compression}" ;;
             *.tar) tar cf "${_compress__compression}" ${_compress__files} ;;
@@ -132,7 +132,7 @@ _compress() {
                     x="$((${x} + 1))"
                 done
                 [ "${x}" -gt "1" ] && { printf "%s\\n" \
-                    "$(_basename "${0}"): bz2 files can only be compressed one by one, use tar.bz2 if you require to compress several files at the same time" >&2
+                    "${PROGNAME}: bz2 files can only be compressed one by one, use tar.bz2 if you require to compress several files at the same time" >&2
                     exit 1; }
                 printf "%s " "[+] bzip2 -cv ${_compress__files_format} | dd of=${_compress__compression}"
                 printf "\\n"
@@ -149,7 +149,7 @@ _compress() {
                     x="$((${x} + 1))"
                 done
                 [ "${x}" -gt "1" ] && { printf "%s\\n" \
-                    "$(_basename "${0}"): gz files can only be compressed one by one, use tar.gz if you require to compress several files at the same time" >&2
+                    "${PROGNAME}: gz files can only be compressed one by one, use tar.gz if you require to compress several files at the same time" >&2
                     exit 1; }
                 printf "%s " "[+] gzip -cv ${_compress__files_format} | dd of=${_compress__compression}"
                 printf "\\n"
@@ -186,6 +186,8 @@ _compress() {
     IFS="${OLDIFS}"
 }
 
+PROGNAME="$(_basename "${0}")"
+
 if [ ! -t 0 ]; then
     #there is input comming from pipe or file, add to the end of $@
     set -- "${@}" $(cat)
@@ -197,11 +199,11 @@ for arg in "${@}"; do #parse options
         -v|--verbose)
             VFLAG="true" && shift
             if [ -z "${2}" ]; then
-                _die "$(_basename "${0}"): missing parameters"
+                _die "${PROGNAME}: missing parameters"
             else
                 _compress "${@}"; exit "${?}"
             fi ;;
-        -*) _die "$(_basename "${0}"): unrecognized option '${arg}'" ;;
+        -*) _die "${PROGNAME}: unrecognized option '${arg}'" ;;
     esac
 done
 

@@ -5,10 +5,10 @@
 #example: fix webcam
 #$ sudo chmod o+rw /dev/video0
 
-progname="$(expr "${0}" : '.*/\([^/]*\)')"
+PROGNAME="$(expr "${0}" : '.*/\([^/]*\)')"
 
 _usage() {
-    printf "%s\\n" "Usage: ${progname} [options] module"
+    printf "%s\\n" "Usage: ${PROGNAME} [options] module"
     printf "%s\\n" "Fix common problems."
     printf "%s\\n"
     printf "%s\\n" "  -h, --help   show this help message and exit"
@@ -89,6 +89,6 @@ for arg in "${@}"; do #parse options
         iwlagn)    _iwlagn  ;;
         mpd)       _mpd     ;;
         webcam)    _webcam  ;;
-        *)         _die "${progname}: unrecognized option '${1}'" ;;
+        *)         _die "${PROGNAME}: unrecognized option '${1}'" ;;
     esac
 done

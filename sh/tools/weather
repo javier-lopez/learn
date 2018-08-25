@@ -4,10 +4,10 @@
 
 #example: weather
 #79 °F °C Partly sunny Precipitation 0% Wind 4 MPH Humidity 71% Wed 4
-progname="$(expr "${0}" : '.*/\([^/]*\)')"
+PROGNAME="$(expr "${0}" : '.*/\([^/]*\)')"
 
 _usage() {
-    printf "%s\\n" "Usage: ${progname} [options]"
+    printf "%s\\n" "Usage: ${PROGNAME} [options]"
     printf "%s\\n" "Notify weather status."
     printf "\\n"
     printf "%s\\n" "  -q, --quiet   quiet mode, the default is verbose mode"
@@ -97,7 +97,7 @@ for arg in "${@}"; do #parse options
     case "${arg}" in
         -h|--help)  _usage && exit ;;
         -q|--quiet) QFLAG="true" && shift ;;
-        -*) _die "${progname}: unrecognized option '${arg}'" ;;
+        -*) _die "${PROGNAME}: unrecognized option '${arg}'" ;;
     esac
 done
 

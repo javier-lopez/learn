@@ -89,7 +89,7 @@ _realpath() {
 }
 
 _usage() {
-    printf "%s\\n" "Usage: ${progname} -r DOMAIN[:/PATH] [OPTIONS] [LOCAL DIR|FILE ...]"
+    printf "%s\\n" "Usage: ${PROGNAME} -r DOMAIN[:/PATH] [OPTIONS] [LOCAL DIR|FILE ...]"
     printf "%s\\n" "Backup directories to a remote system."
     printf "\\n"
     printf "%s\\n" "Required arguments:"
@@ -102,7 +102,7 @@ _usage() {
     printf "%s\\n" "  -u, --user USER               remote user    [${USER}]"
     printf "%s\\n" "  -p, --port PORT               remote port    [22]"
     printf "%s\\n" "  -i, --identity-file FILE      ssh public key [${HOME}/.ssh/id_rsa]"
-    printf "%s\\n" "  -l, --log-file FILE           log file       [/tmp/${progname}.log ]"
+    printf "%s\\n" "  -l, --log-file FILE           log file       [/tmp/${PROGNAME}.log ]"
     printf "%s\\n" "  -v, --verbose                 verbose"
     printf "%s\\n" "  -h, --help                    show this help message and exit"
     printf "\\n"
@@ -227,7 +227,7 @@ _backup() {
         "${_backup__logfile}" "${_backup__remote_user}@${_backup__remote_server}"
 }
 
-progname="$(_basename "${0}")"
+PROGNAME="$(_basename "${0}")"
 
 if [ ! -t 0 ]; then
     #there is input comming from pipe or file, add to the end of $@
@@ -298,7 +298,7 @@ for arg in "${@}"; do #parse options
             fi ;;
         -l*)         logfile="${1#-l}";         shift ;;
         --log-file*) logfile="${1#--log-file}"; shift ;;
-        -*) _die "${progname}: unrecognized option '${arg}'" ;;
+        -*) _die "${PROGNAME}: unrecognized option '${arg}'" ;;
     esac
 done
 
@@ -308,19 +308,19 @@ elif ! command -v "ssh" >/dev/null; then
     printf "%s\\n" "install 'ssh' to run this program" >&2; exit 1
 fi
 
-exec 9>/tmp/"${progname}".lock #verify that only one instance is running
-[ X"${LOGNAME}" = X"root" ] && chmod 666 /tmp/"${progname}".lock
+exec 9>/tmp/"${PROGNAME}".lock #verify that only one instance is running
+[ X"${LOGNAME}" = X"root" ] && chmod 666 /tmp/"${PROGNAME}".lock
 if ! flock -n 9; then #http://mywiki.wooledge.org/BashFAQ/045
-    printf "%s\\n" "${progname}: another instance is running";
+    printf "%s\\n" "${PROGNAME}: another instance is running";
     exit 1
 fi
 
-[ -z "${logfile}" ]     && logfile="/tmp/${progname}.log"
+[ -z "${logfile}" ]     && logfile="/tmp/${PROGNAME}.log"
 [ -z "${remote_user}" ] && remote_user="${USER}"
 [ -z "${remote_port}" ] && remote_port="22"
 
 if [ -z "${remote_server}" ]; then
-    _die "${progname}: no remote server specified"
+    _die "${PROGNAME}: no remote server specified"
 else
     if [ -z "$(printf "%s" "${remote_server}" | awk -F":" '{print $2}')" ]; then
         remote_server="${remote_server}:/home/${remote_user}/backup/$(hostname -f)"
@@ -329,7 +329,7 @@ fi
 
 if [ -z "${ommit_flag}" ]; then
     if ! _internetavailable; then
-        printf "%s\\n" "${progname}: no internet access, exiting." >&2
+        printf "%s\\n" "${PROGNAME}: no internet access, exiting." >&2
         exit 1
     fi
 fi

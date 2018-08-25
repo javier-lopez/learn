@@ -15,7 +15,7 @@ compression=""
 backup_dir=""
 
 _usage() {
-    printf "%s\\n" "Usage: ${progname} [options] -u USER -p PASSWD [database]..."
+    printf "%s\\n" "Usage: ${PROGNAME} [options] -u USER -p PASSWD [database]..."
     printf "%s\\n" "Dump available databases."
     printf "\\n"
     printf "%s\\n" "Required arguments:"
@@ -131,13 +131,13 @@ _mysql() {
     }
 
     if ! command -v "mysql" >/dev/null; then
-        printf "%s\\n" "${progname}: there are no mysql dbs on this host" >&2; return 1
+        printf "%s\\n" "${PROGNAME}: there are no mysql dbs on this host" >&2; return 1
     elif ! command -v "mysqldump" >/dev/null; then
-        printf "%s\\n" "${progname}: mysqldump is not available!" >&2; return 1
+        printf "%s\\n" "${PROGNAME}: mysqldump is not available!" >&2; return 1
     fi
 
     if ! mysql -u"${user}" -p${passwd} -ANe"SHOW PROCESSLIST" > /dev/null 2>&1; then
-        printf "%s\\n" "${progname}: invalid db credentials (user=${user}, passwd=${passwd}" >&2; return 1
+        printf "%s\\n" "${PROGNAME}: invalid db credentials (user=${user}, passwd=${passwd}" >&2; return 1
     fi
 
     case "${compression}" in
@@ -151,7 +151,7 @@ _mysql() {
     _mysql_backup "${@}"
 }
 
-_basename "${0}"; progname="${_basename__retval}"
+_basename "${0}"; PROGNAME="${_basename__retval}"
 if [ ! -t 0 ]; then
     #there is input comming from pipe or file, add to the end of $@
     set -- "${@}" $(cat)
@@ -201,7 +201,7 @@ for arg in "${@}"; do #parse options
             else
                 _die "Option '${arg}' requires a parameter"
             fi ;;
-        -*) _die "${progname}: unrecognized option '${arg}'" ;;
+        -*) _die "${PROGNAME}: unrecognized option '${arg}'" ;;
     esac
 done
 
@@ -235,10 +235,10 @@ if [ -z "${database}" ] || [ -z "${user}" ] || [ -z "${passwd}" ] || [ -z "${bac
     _die
 fi
 
-exec 9>/tmp/"${progname}".lock #http://mywiki.wooledge.org/BashFAQ/045
-[ X"${LOGNAME}" = X"root" ] && chmod 666 /tmp/"${progname}".lock
+exec 9>/tmp/"${PROGNAME}".lock #http://mywiki.wooledge.org/BashFAQ/045
+[ X"${LOGNAME}" = X"root" ] && chmod 666 /tmp/"${PROGNAME}".lock
 if ! flock -n 9  ; then
-    printf "%s\\n" "${progname}: another instance is running";
+    printf "%s\\n" "${PROGNAME}: another instance is running";
     exit 1
 fi
 

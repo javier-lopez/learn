@@ -6,8 +6,8 @@
 #example: cpb64 ~/.bashrc
 #H4sIAPzxXlkAA...  #copy and execute output to a remote shell
 
-progname="$(expr "${0}" : '.*/\([^/]*\)')"
-decodestr="$(
+PROGNAME="$(expr "${0}" : '.*/\([^/]*\)')"
+DECODE_STR="$(
 cat - <<'EOF'
 _decode64() { #decode a base64 string
     [ ! -t 0 ] && set -- "${@}" "$(cat)"
@@ -76,7 +76,7 @@ EOF
 )" #'
 
 _usage() {
-    printf "%s\\n" "Usage: ${progname} [options] file ..."
+    printf "%s\\n" "Usage: ${PROGNAME} [options] file ..."
     printf "%s\\n" "Copy files using base64."
     printf "\\n"
     printf "%s\\n" "  -p, --portable   produce extra portable output, useful"
@@ -93,7 +93,7 @@ _die() {
 _cpb64() {
     for file; do
         [ ! -r "${file}" ] && {
-            printf "%s\\n" "${progname}: '${file}' does not exist or is not readable" >&2; exit 1; }
+            printf "%s\\n" "${PROGNAME}: '${file}' does not exist or is not readable" >&2; exit 1; }
     done
 
     if command -v "base64" >/dev/null 2>&1; then
@@ -101,7 +101,7 @@ _cpb64() {
     elif command -v "openssl" >/dev/null 2>&1; then
         str="$(tar cf - "${@}" | gzip | openssl enc -base64)"
     else
-        printf "%s\\n" "${progname}: unable to encode files, install either base64 or openssl to continue" >&2
+        printf "%s\\n" "${PROGNAME}: unable to encode files, install either base64 or openssl to continue" >&2
         exit 1
     fi
 
@@ -112,20 +112,20 @@ _cpb64() {
 
     if [ -z "${portable}" ]; then
         cmd="${line1}"'\n'"${line2}"'\n'"${line3}"'\n'
-        decodestr=""
+        DECODE_STR=""
     else
         cmd='\n'"${line1p}"'\n'"${line2}"'\n'"${line3}"'\n'
     fi
 
     if command -v "xclip" >/dev/null 2>&1; then
         if [ ! -t 1 ] || [ -z "${DISPLAY}" ]; then
-            printf "%s%b" "${decodestr}" "${cmd}"
+            printf "%s%b" "${DECODE_STR}" "${cmd}"
         else
-            printf "%s%b" "${decodestr}" "${cmd}" | xclip -selection clipboard; xclip -o -selection clipboard 2>/dev/null || \
-            printf "%s%b" "${decodestr}" "${cmd}"
+            printf "%s%b" "${DECODE_STR}" "${cmd}" | xclip -selection clipboard; xclip -o -selection clipboard 2>/dev/null || \
+            printf "%s%b" "${DECODE_STR}" "${cmd}"
         fi
     else
-        printf "%s%b" "${decodestr}" "${cmd}"
+        printf "%s%b" "${DECODE_STR}" "${cmd}"
     fi
 }
 
@@ -140,8 +140,8 @@ for arg in "${@}"; do #parse options
     case "${arg}" in
         -h|--help) _usage && exit ;;
         -p|--portable) portable="true"; shift
-            [ -z "${1}" ] && _die "${progname}: missing parameters" ;;
-        -*) _die "${progname}: unrecognized option '${arg}'" ;;
+            [ -z "${1}" ] && _die "${PROGNAME}: missing parameters" ;;
+        -*) _die "${PROGNAME}: unrecognized option '${arg}'" ;;
     esac
 done
 

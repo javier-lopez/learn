@@ -2,10 +2,10 @@
 #description: send and watch messages in your "ke estas haciendo?" in mononeurona.org
 #usage: im "string"
 
-progname="$(expr "${0}" : '.*/\([^/]*\)')"
+PROGNAME="$(expr "${0}" : '.*/\([^/]*\)')"
 
 _usage() {
-    printf "%s\\n" "Usage: ${progname} [options] string ..."
+    printf "%s\\n" "Usage: ${PROGNAME} [options] string ..."
     printf "%s\\n" "Send and watch messages in your \"ke estas haciendo?\" in mononeurona.org."
     printf "\\n"
     printf "%s\\n" "Positional arguments:"
@@ -62,7 +62,7 @@ if [ ! -z "${1}" ]; then
             curl --max-time 2 --connect-timeout 5 -s http://mononeurona.org/waydings/addwayd | html2text
             exit ;;
         -h|--help) _usage && exit ;;
-        -*) _die "${progname}: unrecognized option '${1}'" ;;
+        -*) _die "${PROGNAME}: unrecognized option '${1}'" ;;
     esac
 fi
 
@@ -95,7 +95,7 @@ curl -s -c /tmp/MNc \
 SIZE_log="$(du /tmp/MN.log| awk '{print $1}')"
 
 if [ "${SIZE_log}" -gt "0" ]; then
-    printf "%s\\n" "${progname}: user or password incorrect"
+    printf "%s\\n" "${PROGNAME}: user or password incorrect"
     exit 0
 fi
 

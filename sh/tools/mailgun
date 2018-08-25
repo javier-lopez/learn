@@ -9,10 +9,10 @@ to=""
 api=""    #mailgun api, required
 domain="" #mailgun registered domain, required
 
-progname="$(expr "${0}" : '.*/\([^/]*\)')"
+PROGNAME="$(expr "${0}" : '.*/\([^/]*\)')"
 
 _usage() {
-    printf "Usage: %s\\n" "${progname} [options] to@address.tld message ..."
+    printf "Usage: %s\\n" "${PROGNAME} [options] to@address.tld message ..."
     printf "%s\\n" "Send emails using mailgun infraestructure."
     printf "%s\\n"
     printf "%s\\n" "  -a, --api       mailgun api"
@@ -86,7 +86,7 @@ for arg in "${@}"; do #parse options
                   fi ;;
         -f|--from)if [ "${#}" -gt "1" ]; then
                      shift; from="${1}"; shift
-                    _validmail "${from}" || _die "${progname}: Invalid email address: '${from}'"
+                    _validmail "${from}" || _die "${PROGNAME}: Invalid email address: '${from}'"
                   else
                      _die "Option '${arg}' requires a parameter"
                   fi ;;
@@ -101,14 +101,14 @@ for arg in "${@}"; do #parse options
                         _die "Option '${arg}' requires a parameter"
                      fi ;;
         -h|--help) _usage && exit ;;
-        -*) _die "${progname}: unrecognized option '${arg}'" ;;
+        -*) _die "${PROGNAME}: unrecognized option '${arg}'" ;;
     esac
 done
 
 [ "${#}" -lt "2" ] && _die
 
 to="${1}"; shift
-_validmail "${to}" || _die "${progname}: Invalid email address: '${to}'"
+_validmail "${to}" || _die "${PROGNAME}: Invalid email address: '${to}'"
 msg="${*}"
 
 #TODO 01-10-2014 12:50 >> no source options when they had already been provided

@@ -5,17 +5,17 @@
 #example: wget-finder libssh2-1.3.0.tar.gz:6425331899ccf1015f1ed79448cb4709
 #libssh2-1.3.0.tar.gz
 
-#TODO 27-02-2015 08:23 >> try to match checksums without downloading files (Content-MD5, md5sum.txt, etc)
-search_engines="google ftplike mmnt"
-checksums="md5 sha1 sha256 sha512"
+#TODO 27-02-2015 08:23 >> try to match CHECKSUMS without downloading files (Content-MD5, md5sum.txt, etc)
+SEARCH_ENGINES="google ftplike mmnt"
+CHECKSUMS="md5 sha1 sha256 sha512"
 
 _usage() {
-    printf "%s\\n" "Usage: ${progname} [OPTION]... FILE:CHECKSUM..."
+    printf "%s\\n" "Usage: ${PROGNAME} [OPTION]... FILE:CHECKSUM..."
     printf "%s\\n" "A wrapper around the wget non-interactive network retriever."
     printf "\\n"
     printf "%s\\n" "  --search-engine        prefer a search engine"
     printf "%s\\n" "  --list-search-engine   list supported search engines"
-    printf "%s\\n" "  --list-checksum        list supported checksums functions"
+    printf "%s\\n" "  --list-checksum        list supported CHECKSUMS functions"
     printf "%s\\n" "  --list-links           print links and exit"
     printf "%s\\n" "  --clean-cache          remove temporal files"
     printf "\\n"
@@ -202,16 +202,16 @@ _wget_finder() {
         fi
 
         if [ -z "${only_links}" ] && \
-           [ -f "/tmp/${progname}.${_wget_finder__file}/${_wget_finder__file}" ]; then
-            if [ X"$(_checksum "${_wget_finder__checktype}" "/tmp/${progname}.${_wget_finder__file}/${_wget_finder__file}")" = \
+           [ -f "/tmp/${PROGNAME}.${_wget_finder__file}/${_wget_finder__file}" ]; then
+            if [ X"$(_checksum "${_wget_finder__checktype}" "/tmp/${PROGNAME}.${_wget_finder__file}/${_wget_finder__file}")" = \
                  X"${_wget_finder__checksum}" ]; then
-                _cat /tmp/"${progname}.${_wget_finder__file}/${_wget_finder__file}"
+                _cat /tmp/"${PROGNAME}.${_wget_finder__file}/${_wget_finder__file}"
                 _drop_current_archive; continue
             fi
         fi
 
         #shuffle default search engines
-        _wget_finder__engines=$(printf "%s" "${search_engines}" | tr ' ' '\n' | _shuf | tr '\n' '/')
+        _wget_finder__engines=$(printf "%s" "${SEARCH_ENGINES}" | tr ' ' '\n' | _shuf | tr '\n' '/')
         if [ "${search_engine}" ]; then
             [ "${only_links}" ] && _wget_finder__engines="${search_engine}" || \
                 #promote user defined search engine to the first place, remove it from the default array
@@ -233,19 +233,19 @@ _wget_finder() {
                 _drop_current_engine; continue
             fi
 
-            [ -d /tmp/"${progname}.${_wget_finder__file}" ] || mkdir /tmp/"${progname}.${_wget_finder__file}"
+            [ -d /tmp/"${PROGNAME}.${_wget_finder__file}" ] || mkdir /tmp/"${PROGNAME}.${_wget_finder__file}"
             for _wget_finder__link in ${_wget_finder__links}; do
-                rm -rf "/tmp/${progname}.${_wget_finder__file}/${_wget_finder__file}"
+                rm -rf "/tmp/${PROGNAME}.${_wget_finder__file}/${_wget_finder__file}"
                 case "${_wget_finder__link}" in
                     https:*) cert_option="--no-check-certificate" ;;
                         *)   cert_option="" ;;
                 esac
                 wget -q ${cert_option} ${extra_args} -t1 -T3 \
                     "${_wget_finder__link}${_wget_finder__file}" \
-                     -O "/tmp/${progname}.${_wget_finder__file}/${_wget_finder__file}"
-                [ X"$(_checksum "${_wget_finder__checktype}" "/tmp/${progname}.${_wget_finder__file}/${_wget_finder__file}")" = \
+                     -O "/tmp/${PROGNAME}.${_wget_finder__file}/${_wget_finder__file}"
+                [ X"$(_checksum "${_wget_finder__checktype}" "/tmp/${PROGNAME}.${_wget_finder__file}/${_wget_finder__file}")" = \
                   X"${_wget_finder__checksum}" ] && {
-                    _cat /tmp/"${progname}.${_wget_finder__file}/${_wget_finder__file}"; break 2; }
+                    _cat /tmp/"${PROGNAME}.${_wget_finder__file}/${_wget_finder__file}"; break 2; }
             done
             _drop_current_engine
         done
@@ -254,7 +254,7 @@ _wget_finder() {
     [ "${_wget_finder__status}" ] && return "${_wget_finder__status}" || return 0
 }
 
-progname="$(_basename "${0}")"
+PROGNAME="$(_basename "${0}")"
 
 if [ ! -t 0 ]; then
     #there is input comming from pipe or file, add it to the end of $@
@@ -284,22 +284,22 @@ for arg in "${@}"; do #parse options
             fi
             ;;
         --clean-cache)
-            rm -rf "/tmp/${progname}".* && [ -z "${quiet}" ] && \
+            rm -rf "/tmp/${PROGNAME}".* && [ -z "${quiet}" ] && \
                 printf "%s\\n" "Cache cleared successfully"
             exit "${?}"
             ;;
         --search-engine)
             shift; search_engine="${1}"; [ -n "${1}" ] && shift
             if [ -z "${search_engine}" ]; then
-                printf "%s\\n" "${progname}: available search engines are"
+                printf "%s\\n" "${PROGNAME}: available search engines are"
                 exec "${0}" --list-search-engine
-            elif [ -z "$(printf "%s\\n" "${search_engines}" | tr ' ' '\n' | awk "/^$search_engine\$/")" ]; then
-                printf "%s\\n" "${progname}: '${search_engine}' is not a recognized search engine" >&2
+            elif [ -z "$(printf "%s\\n" "${SEARCH_ENGINES}" | tr ' ' '\n' | awk "/^$search_engine\$/")" ]; then
+                printf "%s\\n" "${PROGNAME}: '${search_engine}' is not a recognized search engine" >&2
                 exit 1
             fi
             ;;
-        --list-search-engine) printf "%s\\n" "${search_engines}" | tr ' ' '\n'; exit 0; ;;
-        --list-checksum) printf "%s\\n" "${checksums}" | tr ' ' '\n'; exit 0; ;;
+        --list-search-engine) printf "%s\\n" "${SEARCH_ENGINES}" | tr ' ' '\n'; exit 0; ;;
+        --list-checksum) printf "%s\\n" "${CHECKSUMS}" | tr ' ' '\n'; exit 0; ;;
         --list-links) only_links="1"; shift ;;
         -O)  shift; output="${1}"; shift; global_output="1" ;;
         -O*) output="${1#-O}"; shift; global_output="1"     ;;

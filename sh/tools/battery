@@ -1,7 +1,7 @@
 #!/bin/sh
 
 _usage() {
-    printf "%s\\n" "Usage: ${progname} [OPTION]"
+    printf "%s\\n" "Usage: ${PROGNAME} [OPTION]"
     printf "%s\\n" "Battery info script."
     printf "\\n"
     printf "%s\\n" "  -a   output ascii instead of spark"
@@ -221,7 +221,7 @@ _set_defaults() { #default behavior
     battery_path="/sys/class/power_supply/BAT0"
 }
 
-progname="$(expr "${0}" : '.*/\([^/]*\)')"
+PROGNAME="$(expr "${0}" : '.*/\([^/]*\)')"
 _set_defaults
 
 for arg in "${@}"; do #parse options
@@ -290,7 +290,7 @@ for arg in "${@}"; do #parse options
                 _die "Option '${arg}' requires a parameter"
             fi
             ;;
-        -*) _die "${progname}: unrecognized option '${arg}'" ;;
+        -*) _die "${PROGNAME}: unrecognized option '${arg}'" ;;
     esac
 done
 
