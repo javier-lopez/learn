@@ -1,6 +1,6 @@
 #!/bin/sh
 VERSION="2018.08.23-05:19"
-PKGS="docker docker-compose virtualbox vagrant terraform ansible"
+PKGS="ansible docker docker-compose google-chrome terraform vagrant virtualbox"
 
 #colors
 DEFAULT="$(printf "\\033[0;39m")"
@@ -351,6 +351,22 @@ _ansible() {
         apt-add-repository -y ppa:ansible/ansible
         apt-get update
         apt-get install -y ansible
+    fi
+    "${pkg}" --version
+}
+
+_google_chrome() {
+    _printfl "${pkg}"
+
+    if _is_installed "${pkg}" && [ -z "${UPGRADE}" ]; then
+        printf "%s\\n" "${pkg} is already installed, skipping"
+    else
+        if [ ! -f /etc/apt/sources.list.d/google-chrome.list ]; then
+            printf "%s\\n" 'deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main' | \
+                tee /etc/apt/sources.list.d/google-chrome.list
+        fi
+        apt-get update
+        apt-get install -y google-chrome-stable
     fi
     "${pkg}" --version
 }
