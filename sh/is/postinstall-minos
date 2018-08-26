@@ -270,6 +270,7 @@ _virtualbox() {
 
             wget -O "/tmp/${latest_deb}" "${latest_url}"
             _is_installed "gdebi" || apt-get install -y gdebi-core
+            apt-get install linux-headers-generic dkms
             gdebi --non-interactive "/tmp/${latest_deb}" && rm -rf "/tmp/${latest_deb}"
         fi
     fi
@@ -283,8 +284,9 @@ _vagrant() {
     if _is_installed "${pkg}" && [ -z "${UPGRADE}" ]; then
         printf "%s\\n" "${pkg} is already installed, skipping"
     else
-        current_version="$(vagrant version 2>/dev/null| awk '/Installed/ {print $NF; exit}')"
-        latest_version="$(vagrant version 2>/dev/null | awk '/Latest/ {print $NF; exit}')"
+        current_version="$(vagrant version 2>/dev/null | awk '/Installed/ {print $NF; exit}')"
+        latest_version="$(wget -q -O- https://releases.hashicorp.com/vagrant/ | \
+            grep "vagrant_" | awk 'NR==1' | cut -d_ -f2 | sed 's:<.*::g')"
 
         if [ X"${current_version}" = X"${latest_version}" ]; then
             printf "%s\\n" "${pkg} is latest version"
@@ -301,6 +303,7 @@ _vagrant() {
                 unzip "$(basename "${latest_url}")"
                 mv vagrant /usr/bin/vagrant
                 chmod +x /usr/bin/vagrant
+                rm -rf "${tmp_dir}"
             )
         fi
     fi
@@ -348,6 +351,10 @@ _ansible() {
     if _is_installed "${pkg}" && [ -z "${UPGRADE}" ]; then
         printf "%s\\n" "${pkg} is already installed, skipping"
     else
+        _is_installed "apt-add-repository" || {
+            apt-get update
+            apt-get install -y software-properties-common
+        }
         apt-add-repository -y ppa:ansible/ansible
         apt-get update
         apt-get install -y ansible
@@ -364,6 +371,7 @@ _google_chrome() {
         if [ ! -f /etc/apt/sources.list.d/google-chrome.list ]; then
             printf "%s\\n" 'deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main' | \
                 tee /etc/apt/sources.list.d/google-chrome.list
+            apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 1397BC53640DB551
         fi
         apt-get update
         apt-get install -y google-chrome-stable
