@@ -1,0 +1,402 @@
+#!/bin/sh
+VERSION="2018.08.23-05:19"
+PKGS="docker docker-compose virtualbox vagrant terraform ansible"
+
+#colors
+DEFAULT="$(printf "\\033[0;39m")"
+WHITE_BOLD="$(printf "\\033[1m")"
+WHITE_BG="$(printf "\\033[7m")"
+RED="$(printf "\\033[0;31m")"
+
+USERS="$(busybox cat /etc/passwd | busybox awk -F: '{if ($3 >= 1000 && $3 < 60000) print $1}')"
+
+_usage() {
+    printf "%s\\n" "Usage: ${PROGNAME} [OPTIONS] [+PKG ...] [-PKG ...] now"
+    printf "%s\\n" "My favorite programs one command away."
+    printf "\\n"
+    printf "%s\\n" "Packages:"
+    printf "%s\\n" "  +pkg            install none but this package"
+    printf "%s\\n" "  -pkg            install all  but this package"
+    printf "\\n"
+    printf "%s\\n" "Options:"
+    printf "%s\\n" "  -u, --upgrade   force upgrade"
+    printf "%s\\n" "  -l, --list      list available packages"
+    printf "%s\\n" "  -V, --version   output version and exit"
+    printf "%s\\n" "  -h, --help      show this help message and exit"
+}
+
+_print_version() {
+    printf "%s\\n" "${VERSION}"
+}
+
+_list_available_pkgs() {
+    for pkg in $PKGS; do
+        printf "%s\\n" "${pkg}"
+    done
+}
+
+_none_but_this_pkg() {
+    [ -z "${1}" ] && return 1
+
+    _list_available_pkgs | grep "^${1}$" >/dev/null 2>&1 || return 1
+
+    if [ -z "${PKG_QUEUE}" ]; then
+        PKG_QUEUE="${1}"
+    else
+        PKG_QUEUE="${PKG_QUEUE} ${1}"
+    fi
+}
+
+_all_but_this_pkg() {
+    [ -z "${1}" ] && return 1
+
+    _list_available_pkgs | grep "^${1}$" >/dev/null 2>&1 || return 1
+
+    if [ -z "${PKG_QUEUE}" ]; then
+        PKG_QUEUE="$(printf "%s\\n" "${PKGS}"      | sed "s: ${1}::g")"
+    else
+        PKG_QUEUE="$(printf "%s\\n" "${PKG_QUEUE}" | sed "s: ${1}::g")"
+    fi
+}
+
+_die() {
+    if [ -z "${2}" ]; then
+       [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+        _usage >&2
+    else
+        printf "%b\\n" "${2}${*}${DEFAULT}" >&2
+    fi
+    exit 1
+}
+
+_lock() {
+    #locks the execution of a program, it should be used at the
+    #beggining of it, exit on failure
+    _lock__file="/tmp/${PROGNAME}.lock"
+    exec 9>"${_lock__file}" #verify only one instance is running
+    _is_root && chmod 666 "${_lock__file}"
+    if ! flock -n 9; then
+        printf "%s\\n" "${PROGNAME}: another instance is running" >&2
+        exit 1
+    fi
+}
+
+_printfl() { #print lines
+    command -v "tput" >/dev/null 2>&1 && _printfl_var_max_len="$(tput cols)"
+    _printfl_var_max_len="${_printfl_var_max_len:-80}"
+    if [ -n "${1}" ]; then
+        _printfl_var_word_len="$(expr "${#1}" + 2)"
+        _printfl_var_sub="$(expr "${_printfl_var_max_len}" - "${_printfl_var_word_len}")"
+        _printfl_var_half="$(expr "${_printfl_var_sub}" / 2)"
+        _printfl_var_other_half="$(expr "${_printfl_var_sub}" - "${_printfl_var_half}")"
+        printf "%b" "${WHITE_BOLD}"
+        printf '%*s' "${_printfl_var_half}" '' | tr ' ' -
+        printf "%b" "${WHITE_BG}" #white background
+        printf " %s " "${1}"
+        printf "%b" "${DEFAULT}${WHITE_BOLD}"
+        printf '%*s' "${_printfl_var_other_half}" '' | tr ' ' -
+        printf "%b" "${DEFAULT}" #back to normal
+        printf "\\n"
+    else
+        printf "%b" "${WHITE_BOLD}"
+        printf '%*s' "${_printfl_var_max_len}" '' | tr ' ' -
+        printf "%b" "${DEFAULT}"
+        printf "\\n"
+    fi
+}
+
+_unprint_previous_line() {
+    printf "\033[1A" #override previous line
+}
+
+_unprintf() { #unprint sentence
+    [ -z "${1}" ] && return 1
+    printf "\\r"
+    for i in $(seq 0 "${#1}"); do printf " "  ; done
+    printf "\\r"
+}
+
+_printf_sleep() {
+    [ -z "${2}" ] && return 1
+    _ps__string="${1} "
+    _ps__secs="${2}"
+
+    while [ "${_ps__secs}" -gt "0" ]; do
+        _unprintf "${_ps__string}"
+        printf "%s\\n" "${_ps__string}" | sed "s:X:${_ps__secs}:g" | tr -d '\n'
+        sleep 1 || {
+            _unprintf "${_ps__string}"
+            return 1
+        }
+        _ps__secs="$((_ps__secs - 1))"
+    done
+    _unprintf "${_ps__string}"
+}
+
+_is_root() {
+    [ X"$(whoami)" = X"root" ]
+}
+
+_is_installed() {
+    command -v "${1}" >/dev/null 2>&1
+}
+
+_last_cmd_ok() {
+    [ X"${?}" = X"0" ]
+}
+
+_cmd_verbose() {
+    [ -z "${1}" ] && return 1
+    printf "%s \\n" "    $ ${*}"
+    $@ || _die "there was an error with the above command, exiting ..." "${RED}"
+}
+
+_get_arch() {
+    if [ -n "${ARCH}" ]; then
+        _garch="${ARCH}"
+    elif command -v "dpkg" 1>/dev/null 2>&1; then
+        _garch="$(dpkg --print-architecture)"
+    else
+        if [ -z "${MACHTYPE}" ]; then
+            _garch="$(uname -m)"
+        else
+            _garch="$(printf "%s\\n" "${MACHTYPE}" | cut -d- -f1)"
+        fi
+
+        case "${_garch}" in
+            x86_64) _garch="amd64" ;;
+                 *) _garch="i386"  ;;
+        esac
+    fi
+
+    printf "%s\\n" "${_garch}"
+}
+
+_get_release() {
+    if [ -n "${RELEASE}" ]; then
+        _grelease__release="${RELEASE}"
+    elif command -v "lsb_release" 1>/dev/null 2>&1; then
+        _grelease__release="$(lsb_release -cs)"
+    else
+        if [ -f /etc/apt/sources.list ]; then
+            _grelease__release="$(awk -F" " '/^deb .*/ {print $3; exit}' /etc/apt/sources.list)"
+        fi
+    fi
+
+    if [ -z "${_grelease__release}" ]; then
+        _die "Release cannot be determinated, please specify --release" "${RED}"
+    fi
+
+    printf "%s\\n" "${_grelease__release}"
+}
+
+_header() {
+    _printfl "PostInstall Minos Setup"
+    if [ -z "${UPGRADE}" ]; then
+        printf "%b\\n" "About to ${WHITE_BOLD}install${DEFAULT} ..."
+    else
+        printf "%b\\n" "About to ${WHITE_BOLD}install and upgrade${DEFAULT} ..."
+    fi
+    printf "\\n"
+    for pkg in $@; do printf " %b\\n" "${pkg}"; done
+    printf "\\n"
+    _printfl
+}
+
+###############################################################################
+###############################################################################
+###############################################################################
+
+_docker() {
+    _printfl "${pkg}"
+
+    if _is_installed "${pkg}" && [ -z "${UPGRADE}" ]; then
+        printf "%s\\n" "${pkg} is already installed, skipping"
+    else
+        wget -q -O- https://download.docker.com/linux/ubuntu/gpg | apt-key add -
+        apt-get install -y software-properties-common apt-transport-https
+        add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+        apt-get update
+        apt-get install -y docker-ce
+
+        #don't require sudo to run docker
+        for user in ${USERS}; do
+            usermod -aG docker "${user}" || :
+        done
+    fi
+    "${pkg}" --version
+}
+
+_docker_compose() {
+    _printfl "${pkg}"
+
+    if _is_installed "${pkg}" && [ -z "${UPGRADE}" ]; then
+        printf "%s\\n" "${pkg} is already installed, skipping"
+    else
+        latest_url=$(wget -q -O- https://api.github.com/repos/docker/compose/releases/latest | \
+            awk '/browser_download_url/ {gsub("\"", ""); print $2}' | \
+            grep Linux | grep -v sha)
+
+        latest_version="$(basename "$(dirname "${latest_url}")")"
+
+        if "${pkg}" --version 2>/dev/null | grep "${latest_version}" >/dev/null 2>&1; then
+            printf "%s\\n" "${pkg} is latest version"
+        else
+            wget -O /usr/bin/docker-compose "${latest_url}"
+            chmod +x /usr/bin/docker-compose
+        fi
+    fi
+    "${pkg}" --version
+}
+
+_virtualbox() {
+    _printfl "${pkg}"
+
+    if _is_installed "${pkg}" && [ -z "${UPGRADE}" ]; then
+        printf "%s\\n" "${pkg} is already installed, skipping"
+    else
+        base_url="https://download.virtualbox.org/virtualbox"
+        latest_version="$(wget -q -O- "${base_url}/LATEST.TXT")"
+
+        if vboxmanage --version 2>/dev/null | grep "${latest_version}" >/dev/null 2>&1; then
+            printf "%s\\n" "${pkg} is latest version"
+        else
+            arch="$(_get_arch)"
+            release="$(_get_release)"
+            latest_deb="$(wget -q -O- "${base_url}/${latest_version}/MD5SUMS" | \
+                awk "/${latest_version}/" | awk "/${release}/" | \
+                awk "/${arch}/ {gsub(\"\*\", \"\"); print \$2; exit}")"
+            latest_url="${base_url}/${latest_version}/${latest_deb}"
+
+            wget -O "/tmp/${latest_deb}" "${latest_url}"
+            _is_installed "gdebi" || apt-get install -y gdebi-core
+            gdebi --non-interactive "/tmp/${latest_deb}" && rm -rf "/tmp/${latest_deb}"
+        fi
+    fi
+
+    printf "%s\\n" "${pkg} $(vboxmanage --version)"
+}
+
+_vagrant() {
+    _printfl "${pkg}"
+
+    if _is_installed "${pkg}" && [ -z "${UPGRADE}" ]; then
+        printf "%s\\n" "${pkg} is already installed, skipping"
+    else
+        current_version="$(vagrant version 2>/dev/null| awk '/Installed/ {print $NF; exit}')"
+        latest_version="$(vagrant version 2>/dev/null | awk '/Latest/ {print $NF; exit}')"
+
+        if [ X"${current_version}" = X"${latest_version}" ]; then
+            printf "%s\\n" "${pkg} is latest version"
+        else
+            base_url="https://releases.hashicorp.com/vagrant"
+            latest_url="${base_url}/${latest_version}/vagrant_${latest_version}_linux_amd64.zip"
+            tmp_dir="/tmp/$$"
+            mkdir -p "${tmp_dir}"
+
+            (
+                cd "${tmp_dir}"
+                wget "${latest_url}"
+                _is_installed "unzip" || apt-get install -y unzip
+                unzip "$(basename "${latest_url}")"
+                mv vagrant /usr/bin/vagrant
+                chmod +x /usr/bin/vagrant
+            )
+        fi
+    fi
+
+    "${pkg}" --version
+}
+
+_terraform() {
+    _printfl "${pkg}"
+
+    if _is_installed "${pkg}" && [ -z "${UPGRADE}" ]; then
+        printf "%s\\n" "${pkg} is already installed, skipping"
+    else
+        current_version="$(terraform --version 2>/dev/null | \
+            awk 'NR==1 {gsub("v","");print $2;exit}')"
+        latest_version="$(wget -q -O- \
+            https://api.github.com/repos/hashicorp/terraform/releases/latest | \
+            awk '/tag_name/ {gsub("[\"v,]","");print $2;exit}')"
+
+        if [ X"${current_version}" = X"${latest_version}" ]; then
+            printf "%s\\n" "${pkg} is latest version"
+        else
+            base_url="https://releases.hashicorp.com/terraform"
+            latest_url="${base_url}/${latest_version}/terraform_${latest_version}_linux_amd64.zip"
+            tmp_dir="/tmp/$$"
+            mkdir -p "${tmp_dir}"
+
+            (
+                cd "${tmp_dir}"
+                wget "${latest_url}"
+                _is_installed "unzip" || apt-get install -y unzip
+                unzip "$(basename "${latest_url}")"
+                mv terraform /usr/bin/terraform
+                chmod +x /usr/bin/terraform
+            )
+        fi
+    fi
+
+    "${pkg}" --version | awk 'NR==1'
+}
+
+_ansible() {
+    _printfl "${pkg}"
+
+    if _is_installed "${pkg}" && [ -z "${UPGRADE}" ]; then
+        printf "%s\\n" "${pkg} is already installed, skipping"
+    else
+        apt-add-repository -y ppa:ansible/ansible
+        apt-get update
+        apt-get install -y ansible
+    fi
+    "${pkg}" --version
+}
+
+_install_pkgs() {
+    for pkg in ${@}; do
+        [ -z "${first}" ] && { _unprint_previous_line; first="done"; }
+        _"$(printf "%s\\n" "${pkg}"|sed 's:-:_:g')"
+    done
+}
+
+###############################################################################
+###############################################################################
+###############################################################################
+
+PROGNAME="$(basename "${0}")"
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- "${@}" $(cat)
+fi
+
+[ "${#}" -eq "0" ] && _die
+
+for arg in "${@}"; do #parse options
+    case "${arg}" in
+        -h|--help)    _usage; exit ;;
+        -V|--version) _print_version; exit ;;
+        -l|--list)    _list_available_pkgs; exit ;;
+        -u|--upgrade) UPGRADE=1; shift ;;
+        +*) if ! _none_but_this_pkg "${arg#?}"; then
+                _die "${PROGNAME}: '${arg} is not a valid pkg, use --list to see available recipes"
+            fi
+            ;;
+        -*) if ! _all_but_this_pkg "${arg#?}"; then
+                _die "${PROGNAME}: unrecognized option '${arg}'"
+            fi
+            ;;
+        --*) _die "${PROGNAME}: unrecognized option '${arg}'" ;;
+    esac
+done
+
+[ -z "${PKG_QUEUE}" ] && PKG_QUEUE="${PKGS}"
+
+_header "${PKG_QUEUE}"
+_is_root || _die "You aren't root!, re-run with admin privileges" "${RED}"
+#give the user a chance to cancel before starting
+_printf_sleep "Please take a moment to review your changes, continuing in X ..." "10" || exit 1
+_install_pkgs "${PKG_QUEUE}"
