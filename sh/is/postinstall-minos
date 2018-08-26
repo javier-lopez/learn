@@ -301,6 +301,17 @@ _vagrant() {
                 wget "${latest_url}"
                 _is_installed "unzip" || apt-get install -y unzip
                 unzip "$(basename "${latest_url}")"
+
+                _is_installed "mount.fuse" || {
+                    apt-get install fuse
+                    modprobe fuse
+                    groupadd fuse || :
+                    #don't require sudo to run it
+                    for user in ${USERS}; do
+                        usermod -aG fuse "${user}" || :
+                    done
+                }
+
                 mv vagrant /usr/bin/vagrant
                 chmod +x /usr/bin/vagrant
                 rm -rf "${tmp_dir}"
