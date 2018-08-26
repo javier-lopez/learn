@@ -270,7 +270,7 @@ _virtualbox() {
 
             wget -O "/tmp/${latest_deb}" "${latest_url}"
             _is_installed "gdebi" || apt-get install -y gdebi-core
-            apt-get install linux-headers-generic dkms
+            apt-get install -y linux-headers-generic dkms
             gdebi --non-interactive "/tmp/${latest_deb}" && rm -rf "/tmp/${latest_deb}"
         fi
     fi
