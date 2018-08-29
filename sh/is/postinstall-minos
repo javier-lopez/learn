@@ -1,6 +1,6 @@
 #!/bin/sh
 VERSION="2018.08.23-05:19"
-PKGS="ansible docker docker-compose google-chrome terraform vagrant virtualbox"
+PKGS="ansible docker docker-compose gotty google-chrome ngrok terraform vagrant virtualbox"
 
 #colors
 DEFAULT="$(printf "\\033[0;39m")"
@@ -8,6 +8,7 @@ WHITE_BOLD="$(printf "\\033[1m")"
 WHITE_BG="$(printf "\\033[7m")"
 RED="$(printf "\\033[0;31m")"
 
+TMPDIR="/tmp/$$"
 USERS="$(busybox cat /etc/passwd | busybox awk -F: '{if ($3 >= 1000 && $3 < 60000) print $1}')"
 
 _usage() {
@@ -242,7 +243,7 @@ _docker_compose() {
         if "${pkg}" --version 2>/dev/null | grep "${latest_version}" >/dev/null 2>&1; then
             printf "%s\\n" "${pkg} is latest version"
         else
-            wget -O /usr/bin/docker-compose "${latest_url}"
+            wget -O  /usr/bin/docker-compose "${latest_url}"
             chmod +x /usr/bin/docker-compose
         fi
     fi
@@ -285,37 +286,45 @@ _vagrant() {
         printf "%s\\n" "${pkg} is already installed, skipping"
     else
         current_version="$(vagrant version 2>/dev/null | awk '/Installed/ {print $NF; exit}')"
-        latest_version="$(wget -q -O- https://releases.hashicorp.com/vagrant/ | \
-            grep "vagrant_" | awk 'NR==1' | cut -d_ -f2 | sed 's:<.*::g')"
+        latest_version="2.0.4" #newer versions break ansible integration
+        #latest_version="$(wget -q -O- https://releases.hashicorp.com/vagrant/ | \
+            #grep "vagrant_" | awk 'NR==1' | cut -d_ -f2 | sed 's:<.*::g')"
 
         if [ X"${current_version}" = X"${latest_version}" ]; then
             printf "%s\\n" "${pkg} is latest version"
         else
             base_url="https://releases.hashicorp.com/vagrant"
-            latest_url="${base_url}/${latest_version}/vagrant_${latest_version}_linux_amd64.zip"
-            tmp_dir="/tmp/$$"
-            mkdir -p "${tmp_dir}"
+            latest_url="${base_url}/${latest_version}/vagrant_${latest_version}_x86_64.deb"
+            latest_deb="$(basename "${latest_url}")"
+            #latest_url="${base_url}/${latest_version}/vagrant_${latest_version}_linux_amd64.zip"
 
-            (
-                cd "${tmp_dir}"
-                wget "${latest_url}"
-                _is_installed "unzip" || apt-get install -y unzip
-                unzip "$(basename "${latest_url}")"
+            wget -O "/tmp/${latest_deb}" "${latest_url}"
+            _is_installed "gdebi" || apt-get install -y gdebi-core
+            gdebi --non-interactive "/tmp/${latest_deb}" && rm -rf "/tmp/${latest_deb}"
 
-                _is_installed "mount.fuse" || {
-                    apt-get install fuse
-                    modprobe fuse
-                    groupadd fuse || :
-                    #don't require sudo to run it
-                    for user in ${USERS}; do
-                        usermod -aG fuse "${user}" || :
-                    done
-                }
+            #TMPDIR="/tmp/$$"
+            #mkdir -p "${TMPDIR}"
 
-                mv vagrant /usr/bin/vagrant
-                chmod +x /usr/bin/vagrant
-                rm -rf "${tmp_dir}"
-            )
+            #(
+                #cd "${TMPDIR}"
+                #wget "${latest_url}"
+                #_is_installed "unzip" || apt-get install -y unzip
+                #unzip "$(basename "${latest_url}")"
+
+                #_is_installed "mount.fuse" || {
+                    #apt-get install fuse
+                    #modprobe fuse
+                    #groupadd fuse || :
+                    ##don't require sudo to run it
+                    #for user in ${USERS}; do
+                        #usermod -aG fuse "${user}" || :
+                    #done
+                #}
+
+                #mv vagrant /usr/bin/vagrant
+                #chmod +x /usr/bin/vagrant
+                #rm -rf "${TMPDIR}"
+            #)
         fi
     fi
 
@@ -339,11 +348,11 @@ _terraform() {
         else
             base_url="https://releases.hashicorp.com/terraform"
             latest_url="${base_url}/${latest_version}/terraform_${latest_version}_linux_amd64.zip"
-            tmp_dir="/tmp/$$"
-            mkdir -p "${tmp_dir}"
+            TMPDIR="/tmp/$$"
+            mkdir -p "${TMPDIR}"
 
             (
-                cd "${tmp_dir}"
+                cd "${TMPDIR}"
                 wget "${latest_url}"
                 _is_installed "unzip" || apt-get install -y unzip
                 unzip "$(basename "${latest_url}")"
@@ -386,6 +395,65 @@ _google_chrome() {
         fi
         apt-get update
         apt-get install -y google-chrome-stable
+    fi
+    "${pkg}" --version
+}
+
+_gotty() {
+    _printfl "${pkg}"
+
+    if _is_installed "${pkg}" && [ -z "${UPGRADE}" ]; then
+        printf "%s\\n" "${pkg} is already installed, skipping"
+    else
+        latest_url=$(wget -q -O- https://api.github.com/repos/yudai/gotty/releases | \
+            awk '/browser_download_url/ {gsub("\"", ""); print $2}' | \
+            grep linux | grep -v sha | awk '/amd64/ {print $0;exit}')
+
+        latest_version="$(basename "$(dirname "${latest_url}")")"
+
+        if "${pkg}" --version 2>/dev/null | grep "${latest_version}" >/dev/null 2>&1; then
+            printf "%s\\n" "${pkg} is latest version"
+        else
+            mkdir -p "${TMPDIR}"
+
+            (
+                cd "${TMPDIR}"
+                wget "${latest_url}"
+                _is_installed "tar" || apt-get install -y tar
+                tar zxf "$(basename "${latest_url}")"
+                mv "${pkg}" "/usr/bin/${pkg}"
+                chmod +x    "/usr/bin/${pkg}"
+            )
+        fi
+    fi
+    "${pkg}" --version
+}
+
+_ngrok() {
+    _printfl "${pkg}"
+
+    if _is_installed "${pkg}" && [ -z "${UPGRADE}" ]; then
+        printf "%s\\n" "${pkg} is already installed, skipping"
+    else
+        latest_url="$(wget -O- -q https://ngrok.com/download | \
+            awk -F\" '/dl-linux-amd/ {print $4;exit}')"
+
+        latest_version="doesn't provide a mechanism to check for latest version"
+
+        if "${pkg}" --version 2>/dev/null | grep "${latest_version}" >/dev/null 2>&1; then
+            printf "%s\\n" "${pkg} is latest version"
+        else
+            mkdir -p "${TMPDIR}"
+
+            (
+                cd "${TMPDIR}"
+                wget "${latest_url}"
+                _is_installed "unzip" || apt-get install -y unzip
+                unzip "$(basename "${latest_url}")"
+                mv "${pkg}" "/usr/bin/${pkg}"
+                chmod +x    "/usr/bin/${pkg}"
+            )
+        fi
     fi
     "${pkg}" --version
 }
