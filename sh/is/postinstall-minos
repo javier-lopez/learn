@@ -215,6 +215,7 @@ _docker() {
         printf "%s\\n" "${pkg} is already installed, skipping"
     else
         wget -q -O- https://download.docker.com/linux/ubuntu/gpg | apt-key add -
+        apt-get update
         apt-get install -y software-properties-common apt-transport-https
         add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
         apt-get update
