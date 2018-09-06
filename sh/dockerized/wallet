@@ -15,7 +15,7 @@ HG="${LIGHT_GREEN}"
 
 _usage() {
     printf "%s\\n" "Usage: ${progname} ARCHIVE"
-    printf "%s\\n" "Dockerized [BTC|LTC|BTCP|NEO|ETH|XRP] thin clients."
+    printf "%s\\n" "Dockerized [BTC|LTC|BTCP|NEO|ETH|XRP|ADA] thin clients."
     printf "\\n"
     printf "%s\\n" "Examples:"
     printf "\\n"
@@ -25,6 +25,7 @@ _usage() {
     printf "%s\\n" "  $ ${progname} Neon-0.2.6-x86_64.Linux.AppImage #NEO"
     printf "%s\\n" "  $ ${progname} etherwallet-v3.21.03.zip         #ETH"
     printf "%s\\n" "  $ ${progname} minimalist-ripple-client.html    #XRP"
+    printf "%s\\n" "  $ ${progname} daedalus-0.11.0-cardano.exe      #ADA"
 }
 
 _die() {
@@ -91,6 +92,7 @@ _verify_and_wait() {
                            *Neon-*) wallet="neo"         ;;
                     *etherwallet-*) wallet="etherwallet" ;;
         *minimalist-ripple-client*) wallet="xrp"         ;;
+            *daedalus*cardano*.exe) wallet="ada"         ;;
         *) _die "Invalid archive: ${archive}" ;;
     esac
 
@@ -193,6 +195,34 @@ _xrp() {
         -e DISPLAY=unix$DISPLAY          \
         "${docker_wallet_label}"         \
         /bin/bash -c "google-chrome --no-sandbox --incognito /${wallet}"
+}
+
+_ada() {
+    wallet="$(basename "${archive}")"
+
+    cp "${archive}" "${tmpdir}"
+
+    cat <<EOF > "${tmpdir}/Vagrantfile"
+Vagrant.configure("2") do |config|
+  config.vm.box          = "jhakonen/windows-10-n-pro-en-x86_64"
+  config.vm.guest        = :windows
+  config.vm.communicator = "winrm"
+  config.vm.provider "virtualbox" do |vbox|
+    vbox.linked_clone = true
+    vbox.gui          = true
+
+    vbox.customize ["modifyvm", :id, "--memory", "2048" ] #MB
+    vbox.customize ['modifyvm', :id, '--clipboard', 'bidirectional']
+  end
+  config.vm.provision "shell", inline: "\\\\\\\\VBOXSVR\\\\vagrant\\\\$(basename ${archive})"
+end
+EOF
+    (
+        cd "${tmpdir}"
+        vagrant up
+        sleep 300m
+        vagrant destroy -f
+    )
 }
 
 if [ ! -t 0 ]; then
