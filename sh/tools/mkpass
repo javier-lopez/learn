@@ -66,8 +66,7 @@ else
     esac
 fi
 
-#http://unix.stackexchange.com/questions/28503/how-can-i-send-stdout-to-multiple-commands
-passwd="$(strings /dev/urandom | grep -o '[0-9a-Z_./~:,;()!?%*#$%&+=@-]' | \
+passwd="$(cat /dev/urandom | tr -d '\000' | grep -o '[0-9a-Z_./~:,;()!?%*#$%&+=@-]' | \
           head -n "${mkpasswd_length}" | tr -d '\n' 2>/dev/null)"
 
 if [ -z "${passwd}" ];then
