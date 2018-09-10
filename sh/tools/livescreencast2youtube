@@ -1,0 +1,134 @@
+#!/bin/sh
+#description: live screencast to youtube using ffmpeg
+#usage: livescreencast2youtube
+
+#example: $ livescreencast2youtube
+#Press [q] to stop, [?] for help
+#[alsa @ 0x1181840] ALSA buffer xrun.
+#[swscaler @ 0x11b8c80] Warning: data is not aligned! This can lead to a speedloss
+#frame= 7396 fps= 30 q=29.0 size=   46042kB time=00:04:05.80 bitrate=1534.5kbits/s
+
+VERSION="2018.09.08-14:38"
+SRC_URL="https://raw.githubusercontent.com/javier-lopez/learn/master/sh/tools/"
+
+_usage() {
+    printf "%s\\n" "Usage: ${PROGNAME} go"
+    printf "%s\\n" "Live screencast to YouTube."
+    printf "\\n"
+    printf "%b\\n" "  -U, --update    update this program to latest version"
+    printf "%s\\n" "  -V, --version   display version"
+    printf "%b\\n" "  -h, --help      show this message and exit"
+}
+
+_die() {
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage; >&2; exit 1
+}
+
+_basename() {
+    [ -z "${1}" ] && return 1 || _basename__name="${1}"
+    [ -z "${2}" ] || _basename__suffix="${2}"
+    case "${_basename__name}" in
+        /*|*/*) _basename__name="${_basename__name##*/}"
+    esac
+
+    if [ -n "${_basename__suffix}" ] && [ "${#_basename__name}" -gt "${#2}" ]; then
+        _basename__name="${_basename__name%$_basename__suffix}"
+    fi
+
+    printf "%s\\n" "${_basename__name}"
+}
+
+_update() {
+    _u__current_file="$(cd "$(dirname "${0}")" && pwd)/${PROGNAME}"
+    _u__current_version_long="$(awk -F\" \
+        '/VERSION=/{print $2;exit}' "${_u__current_file}" 2>/dev/null)"
+    _u__current_version="$(printf "%s\\n" "${_u__current_version_long}" | \
+        awk '{gsub(/[\.:]/,"");gsub(/-/,"");print;exit}' 2>/dev/null)"
+    [ -z "${_u__current_version}" ] && printf "%s\\n%s\\n%s\\n"           \
+        "ERROR: Failed to detect current version, please update manually" \
+        "${PROGNAME}         = ${_u__current_file}"                       \
+        "${PROGNAME} version = ${_u__current_version}" >&2 && return 1
+
+    command -v "wget" >/dev/null 2>&1 || command -v "curl" >/dev/null 2>&1 || \
+        { printf "%s\\n" "ERROR: Install either 'wget' or 'curl' to upgrade" >&2; return 1; }
+
+    _u__url="${SRC_URL}/${PROGNAME}"
+    _u__tmpfile="/tmp/${PROGNAME}.${$}.update"
+
+    _u__error_msg="$(wget -q -O- --no-check-certificate "${_u__url}" \
+        > "${_u__tmpfile}" 2>&1   || curl -s -L "${_u__url}"  \
+        > "${_u__tmpfile}" 2>&1)" || { printf "%s\\n%s\\n" \
+        "ERROR: Failed to fetch update, please try later or update manually" \
+        "${_u__error_msg}" >&2; return 1; }
+
+    _u__update_version_long="$(awk -F\" \
+        '/VERSION=/{print $2;exit}' "${_u__tmpfile}" 2>/dev/null)"
+    _u__update_version="$(printf "%s\\n" "${_u__update_version_long}" | awk \
+        '{gsub(/[\.:]/,"");gsub(/-/,"");print;exit}' 2>/dev/null)"
+    [ -n "${_u__update_version}" ] || _u__update_version="0"
+
+    if [ "${_u__current_version}" -lt "${_u__update_version}" ]; then
+        printf "%s %s\\n" "Updating from version" \
+            "${_u__current_version_long} to ${_u__update_version_long} ..."
+        chmod +x "${_u__tmpfile}"
+        if ! mv -f "${_u__tmpfile}" "${_u__current_file}" 2>/dev/null; then
+            printf "%s\\n" "ERROR: no write permissions on ${_u__current_file}" >&2
+            printf "%s\\n" "INFO : trying with sudo ..." >&2
+            if command -v "sudo" >/dev/null 2>&1; then
+                sudo mv "${_u__tmpfile}" "${_u__current_file}" || return 1
+            else
+                printf "%s\\n" "ERROR: sudo isn't available, exiting ..." >&2
+                rm -rf "${_u__tmpfile}"
+                return 1
+            fi
+        fi
+        printf "%s %s\\n" "${PROGNAME} is up-to-date (${_u__update_version_long})"
+        return 0
+    fi
+    printf "%s %s\\n" "${PROGNAME} is up-to-date (${_u__current_version_long})"
+    rm -rf "${_u__tmpfile}"
+}
+
+_show_version() {
+    printf "%s\\n" "${PROGNAME} ${VERSION}"
+}
+
+_livescreencast2youtube() {
+    if [ -z "${YOUTUBE_STREAM_KEY}" ]; then
+        _die "Couldn't find \$YOUTUBE_STREAM_KEY variable, please configure it and try again."
+    fi
+
+    ffmpeg \
+        -thread_queue_size 512 -f alsa -ac 2 -i hw:1,0 \
+        -f x11grab -r 30 -s "$(xrandr | awk '/\*/{print $1}')" -thread_queue_size 512 -i :0 \
+        -c:v libx264 -pix_fmt yuv420p -preset veryfast -g 20 -b:v 2500k \
+        -c:a aac -ar 44100 \
+        -strict -2 \
+        -threads 0 -bufsize 512k \
+        -f flv "rtmp://a.rtmp.youtube.com/live2/${YOUTUBE_STREAM_KEY}"
+}
+
+PROGNAME="$(_basename "${0}")"
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add it to the end of $@
+    set -- "${@}" $(cat)
+fi
+
+[ "${#}" -eq "0" ] && _die
+
+for arg in "${@}"; do #parse options
+    case "${arg}" in
+        -h|--help)    _usage;  exit ;;
+        -U|--update)  _update; exit "${?}" ;;
+        -V|--version) _show_version; exit "${?}" ;;
+        -*) _die "${PROGNAME}: unrecognized option '${arg}'" ;;
+    esac
+done
+
+if ! command -v "ffmpeg" >/dev/null 2>&1; then
+    _die "Couldn't found 'ffmpeg', install it and try again."
+fi
+
+_livescreencast2youtube
