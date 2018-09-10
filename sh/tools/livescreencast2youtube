@@ -102,7 +102,7 @@ _livescreencast2youtube() {
     ffmpeg \
         -thread_queue_size 512 -f alsa -ac 2 -i hw:1,0 \
         -f x11grab -r 30 -s "$(xrandr | awk '/\*/{print $1}')" -thread_queue_size 512 -i :0 \
-        -c:v libx264 -pix_fmt yuv420p -preset veryfast -g 20 -b:v 2500k \
+        -c:v libx264 -pix_fmt yuv420p -preset fast -g 20 -b:v 2500k \
         -c:a aac -ar 44100 \
         -strict -2 \
         -threads 0 -bufsize 512k \
