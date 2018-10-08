@@ -220,6 +220,7 @@ _backup() {
     _backup_total_time="$((${_backup_end_time} - ${_backup_start_time}))"
 
     _logger "$(printf "%*s\\n" "34" ''  | tr ' ' =)"
+    _logger "$(date)"
     _logger "Total time: $(_printtime "${_backup_total_time}")"
     _logger "$(printf "%*s\\n" "34" ''  | tr ' ' =)"
 
