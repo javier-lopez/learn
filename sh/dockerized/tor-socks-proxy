@@ -1,0 +1,156 @@
+#!/bin/sh
+#https://github.com/PeterDaveHello/tor-socks-proxy
+VERSION="2018.10.09-10:39"
+SRC_URL="https://raw.githubusercontent.com/javier-lopez/learn/master/sh/tools/"
+
+PROGNAME="$(basename "${0}")"
+TOR_SOCKS_IMAGE_LABEL="tor-socks-proxy"
+TMPDIR="/tmp/dockerized-${PROGNAME}-${$}"
+
+DEFAULT="$(printf "\\033[0;39m")"
+WHITE_BOLD="$(printf "\\033[1m")"
+WHITE_BG="$(printf "\\033[7m")"
+RED="$(printf "\\033[0;31m")"
+GREEN="$(printf "\\033[0;32m")"
+LIGHT_GREEN="$(printf "\\033[1;32m")"
+YELLOW="$(printf "\\033[0;33m")"
+HG="${LIGHT_GREEN}"
+
+_usage() {
+    printf "%s\\n" "Usage: ${PROGNAME} go"
+    printf "%s\\n" "Dockerized tor socks proxy"
+    printf "\\n"
+    printf "%s\\n" "Options:"
+    printf "\\n"
+    printf "%b\\n" "  -U, --update    update this program to latest version"
+    printf "%s\\n" "  -v, --version   display version"
+    printf "%b\\n" "  -h, --help      show this message and exit"
+    printf "\\n"
+    printf "%s\\n" "Examples:"
+    printf "\\n"
+    printf "%s\\n" "  $ curl --socks5-hostname 127.0.0.1:9150 ipinfo.io/ip"
+    printf "%s\\n" "  $ curl --socks5-hostname 127.0.0.1:9150 icanhazip.com"
+    printf "%s\\n" "  $ curl --socks5-hostname 127.0.0.1:9150 whatismyip.akamai.com"
+    printf "\\n"
+    printf "%s\\n" "  $ ssh -o ProxyCommand='nc -x 127.0.0.1:9150 %h %p' target.hostname.blah"
+    printf "\\n"
+    printf "%s\\n" "  $ docker restart tor-socks-proxy #renew Tor IP"
+}
+
+_die() {
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage; >&2; exit 1
+}
+
+_update() {
+    _u__current_file="$(cd "$(dirname "${0}")" && pwd)/${PROGNAME}"
+    _u__current_version_long="$(awk -F\" \
+        '/VERSION=/{print $2;exit}' "${_u__current_file}" 2>/dev/null)"
+    _u__current_version="$(printf "%s\\n" "${_u__current_version_long}" | \
+        awk '{gsub(/[\.:]/,"");gsub(/-/,"");print;exit}' 2>/dev/null)"
+    [ -z "${_u__current_version}" ] && printf "%s\\n%s\\n%s\\n"           \
+        "ERROR: Failed to detect current version, please update manually" \
+        "${PROGNAME}         = ${_u__current_file}"                       \
+        "${PROGNAME} version = ${_u__current_version}" >&2 && return 1
+
+    command -v "wget" >/dev/null 2>&1 || command -v "curl" >/dev/null 2>&1 || \
+        { printf "%s\\n" "ERROR: Install either 'wget' or 'curl' to upgrade" >&2; return 1; }
+
+    _u__url="${SRC_URL}/${PROGNAME}"
+    _u__tmpfile="/tmp/${PROGNAME}.${$}.update"
+
+    _u__error_msg="$(wget -q -O- --no-check-certificate "${_u__url}" \
+        > "${_u__tmpfile}" 2>&1   || curl -s -L "${_u__url}"  \
+        > "${_u__tmpfile}" 2>&1)" || { printf "%s\\n%s\\n" \
+        "ERROR: Failed to fetch update, please try later or update manually" \
+        "${_u__error_msg}" >&2; return 1; }
+
+    _u__update_version_long="$(awk -F\" \
+        '/VERSION=/{print $2;exit}' "${_u__tmpfile}" 2>/dev/null)"
+    _u__update_version="$(printf "%s\\n" "${_u__update_version_long}" | awk \
+        '{gsub(/[\.:]/,"");gsub(/-/,"");print;exit}' 2>/dev/null)"
+    [ -n "${_u__update_version}" ] || _u__update_version="0"
+
+    if [ "${_u__current_version}" -lt "${_u__update_version}" ]; then
+        printf "%s %s\\n" "Updating from version" \
+            "${_u__current_version_long} to ${_u__update_version_long} ..."
+        chmod +x "${_u__tmpfile}"
+        if ! mv -f "${_u__tmpfile}" "${_u__current_file}" 2>/dev/null; then
+            printf "%s\\n" "ERROR: no write permissions on ${_u__current_file}" >&2
+            printf "%s\\n" "INFO : trying with sudo ..." >&2
+            if command -v "sudo" >/dev/null 2>&1; then
+                sudo mv "${_u__tmpfile}" "${_u__current_file}" || return 1
+            else
+                printf "%s\\n" "ERROR: sudo isn't available, exiting ..." >&2
+                rm -rf "${_u__tmpfile}"
+                return 1
+            fi
+        fi
+        printf "%s %s\\n" "${PROGNAME} is up-to-date (${_u__update_version_long})"
+        return 0
+    fi
+    printf "%s %s\\n" "${PROGNAME} is up-to-date (${_u__current_version_long})"
+    rm -rf "${_u__tmpfile}"
+}
+
+_show_version() {
+    printf "%s\\n" "${PROGNAME} ${VERSION}"
+}
+
+_build_common_docker_image() {
+    mkdir -p "${TMPDIR}"
+    cat <<EOF > "${TMPDIR}/Dockerfile"
+FROM alpine:3.8
+
+#LABEL maintainer="Peter Dave Hello <hsu@peterdavehello.org>"
+LABEL name="tor-socks-proxy"
+LABEL version="latest"
+
+RUN echo '@edge http://dl-cdn.alpinelinux.org/alpine/edge/community' >> /etc/apk/repositories && \
+    apk -v add tor@edge curl && \
+    rm -rf /var/cache/apk/*
+RUN printf "Log notice stdout\\nSocksPort 0.0.0.0:9150\\n" > /etc/tor/torrc
+RUN tor --version
+
+HEALTHCHECK --timeout=10s --start-period=60s \
+    CMD curl --fail --socks5-hostname localhost:9150 -I -L 'https://cdnjs.com/' || exit 1
+
+EXPOSE 9150
+
+CMD ["/usr/bin/tor", "-f", "/etc/tor/torrc"]
+EOF
+
+    docker build --label "${TOR_SOCKS_IMAGE_LABEL}" --tag "${TOR_SOCKS_IMAGE_LABEL}" "${TMPDIR}"
+}
+
+_cleanup() {
+    rm -rf "${TMPDIR}"
+}
+
+_tor_socks_proxy() {
+    xhost +
+    docker run --rm -it              \
+        -p 127.0.0.1:9150:9150       \
+        "${TOR_SOCKS_IMAGE_LABEL}"
+}
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add it to the end of $@
+    set -- "${@}" $(cat)
+fi
+
+[ "${#}" -eq "0" ] && _die
+
+for arg in "${@}"; do #parse options
+    case "${arg}" in
+        -h|--help)    _usage;  exit ;;
+        -U|--update)  _update; exit "${?}" ;;
+        -v|--version) _show_version; exit "${?}" ;;
+        -*) _die "${PROGNAME}: unrecognized option '${arg}'" ;;
+    esac
+done
+
+PS4="> "; set -xe; trap _cleanup INT QUIT #trap ctrl-c
+_build_common_docker_image
+_tor_socks_proxy
+_cleanup
