@@ -3,10 +3,49 @@ PS4="> "; set -x
 
 xhost +
 
-docker run --rm                                  \
-           -it                                   \
-           -v /tmp/.X11-unix:/tmp/.X11-unix      \
-           -v $HOME:/home/user                   \
-           -e DISPLAY=unix$DISPLAY               \
-           --device /dev/dri                     \
-           jess/vscode
+#docker rm vscode || true
+
+#1.17.2
+#docker run -it \
+    #--net="host" \
+    #--name=vscode \
+    #-h vscode \
+    #-e DISPLAY=$DISPLAY \
+    #-e MYUID=$(id -u) \
+    #-e MYGID=$(id -g) \
+    #-e MYUSERNAME=$(id -un) \
+    #-e SSH_AUTH_SOCK=$SSH_AUTH_SOCK \
+    #-v $(dirname $SSH_AUTH_SOCK):$(dirname $SSH_AUTH_SOCK) \
+    #-v /tmp/.X11-unix:/tmp/.X11-unix \
+    #-v $HOME:$HOME \
+    #-w $HOME \
+    #sebmoule/docker-vscode
+
+#1.23.1
+docker run -it \
+    --net="host" \
+    --name=vscode \
+    -h vscode \
+    -e DISPLAY=$DISPLAY \
+    -e MYUID=$(id -u) \
+    -e MYGID=$(id -g) \
+    -e MYUSERNAME=$(id -un) \
+    -e SSH_AUTH_SOCK=$SSH_AUTH_SOCK \
+    -v $(dirname $SSH_AUTH_SOCK):$(dirname $SSH_AUTH_SOCK) \
+    -v /tmp/.X11-unix:/tmp/.X11-unix \
+    -v $HOME:$HOME \
+    -w $HOME \
+    joengenduvel/docker-vscode
+
+#docker run --rm -e "DISPLAY=$DISPLAY" \
+    #-v /tmp/.X11-unix:/tmp/.X11-unix  \
+    #--name vscode2 joengenduvel/docker-vscode
+
+#NOT WORKING ===============================================
+#docker run --rm                                  \
+           #-it                                   \
+           #-v /tmp/.X11-unix:/tmp/.X11-unix      \
+           #-v $HOME:/home/user                   \
+           #-e DISPLAY=unix$DISPLAY               \
+           #--device /dev/dri                     \
+           #jess/vscode
