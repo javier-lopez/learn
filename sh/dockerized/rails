@@ -1,0 +1,5 @@
+#!/bin/sh
+PS4="> "; set -x
+
+docker run -it --rm --user "$(id -u):$(id -g)" \
+      -v "${PWD}":/usr/src/app -w /usr/src/app rails:4 rails "${@}"
