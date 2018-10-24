@@ -1,5 +1,5 @@
 #!/bin/sh
-VERSION="2018.09.08-14:38"
+VERSION="2018.10.24-09:53"
 SRC_URL="https://raw.githubusercontent.com/javier-lopez/learn/master/sh/tools/"
 
 PROGNAME="$(basename "${0}")"
@@ -18,7 +18,7 @@ HG="${LIGHT_GREEN}"
 
 _usage() {
     printf "%s\\n" "Usage: ${PROGNAME} ARCHIVE"
-    printf "%s\\n" "Dockerized [BTC|LTC|BTCP|NEO|ETH|XRP|ADA] thin clients."
+    printf "%s\\n" "Dockerized [BTC|BCC|BTCP|LTC|NEO|ETH|XRP|ADA] thin client launcher."
     printf "\\n"
     printf "%s\\n" "Options:"
     printf "\\n"
@@ -31,6 +31,7 @@ _usage() {
     printf "%s\\n" "  $ ${PROGNAME} Electrum-3.2.2.tar.gz            #BTC"
     printf "%s\\n" "  $ ${PROGNAME} Electrum-LTC-3.1.3.1.tar.gz      #LTC"
     printf "%s\\n" "  $ ${PROGNAME} Electrum-BTCP-1.1.1.tar.gz       #BTCP"
+    printf "%s\\n" "  $ ${PROGNAME} ElectronCash-3.3.1.tar.gz        #BCC"
     printf "%s\\n" "  $ ${PROGNAME} Neon-0.2.6-x86_64.Linux.AppImage #NEO"
     printf "%s\\n" "  $ ${PROGNAME} etherwallet-v3.21.03.zip         #ETH"
     printf "%s\\n" "  $ ${PROGNAME} minimalist-ripple-client.html    #XRP"
@@ -153,6 +154,7 @@ _verify_and_wait() {
 
     case "${archive}" in
                 *Electrum-*.tar.gz) wallet="electrum"    ;;
+            *ElectronCash-*.tar.gz) wallet="electron"    ;;
                            *Neon-*) wallet="neo"         ;;
                     *etherwallet-*) wallet="etherwallet" ;;
         *minimalist-ripple-client*) wallet="xrp"         ;;
@@ -216,6 +218,23 @@ _electrum() {
         -e DISPLAY=unix$DISPLAY          \
         "${DOCKER_WALLET_LABEL}"         \
         /bin/bash -c "/${wallet_dir}/electrum${flavor}"
+}
+
+_electron() {
+    wallet_dir="$(basename "${archive}" .tar.gz)"
+    flavor="-cash"
+
+    cp "${archive}" "${TMPDIR}"
+
+    (cd "${TMPDIR}"; tar zxf $(basename "${archive}"))
+
+    xhost +
+    docker run --rm -it                  \
+        -v "${TMPDIR}/${wallet_dir}:/${wallet_dir}" \
+        -v /tmp/.X11-unix:/tmp/.X11-unix \
+        -e DISPLAY=unix$DISPLAY          \
+        "${DOCKER_WALLET_LABEL}"         \
+        /bin/bash -c "/${wallet_dir}/${wallet}${flavor}"
 }
 
 _neo() {
