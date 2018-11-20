@@ -7,6 +7,9 @@ PROGNAME="$(expr "${0}" : '.*/\([^/]*\)')"
 _usage() {
     printf "%s\\n" "Usage: ${PROGNAME} [length]"
     printf "%s\\n" "Create secure passwords."
+    printf "\\n"
+    printf "%s\\n" "   -a, --alphanumeric  only use alphanumeric characters"
+    printf "%s\\n" "   -h, --help          show this message and exit"
 }
 
 _die() {
@@ -52,6 +55,7 @@ fi
 for arg in "${@}"; do #parse options
     case "${arg}" in
         -h|--help) _usage && exit ;;
+        -a|--alphanumeric) alphanumeric=1; shift ;;
         -*) _die "${PROGNAME}: unrecognized option '${arg}'" ;;
     esac
 done
@@ -66,8 +70,15 @@ else
     esac
 fi
 
-passwd="$(cat /dev/urandom | tr -d '\000' | grep -o '[0-9a-Z_./~:,;()!?%*#$%&+=@-]' | \
-          head -n "${mkpasswd_length}" | tr -d '\n' 2>/dev/null)"
+if [ "${alphanumeric}" ]; then
+    passwd="$(cat /dev/urandom | tr -d '\000'   | \
+        grep -o '[0-9a-Z]' | \
+        head -n "${mkpasswd_length}" | tr -d '\n' 2>/dev/null)"
+else
+    passwd="$(cat /dev/urandom | tr -d '\000'   | \
+        grep -o '[0-9a-Z_./~:,;()!?%*#$%&+=@-]' | \
+        head -n "${mkpasswd_length}" | tr -d '\n' 2>/dev/null)"
+fi
 
 if [ -z "${passwd}" ];then
     _die "${PROGNAME}: couldn't generate password"
