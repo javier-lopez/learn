@@ -1,0 +1,7 @@
+#!/bin/sh
+PS4="> "; set -x
+
+docker run --rm \
+           -it  \
+           -v "${PWD}":/usr/src/app -w /usr/src/app \
+           jlpz/surge
