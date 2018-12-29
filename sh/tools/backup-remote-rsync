@@ -186,6 +186,7 @@ _backup() {
 
     for file in ${_backup__files}; do
         _verbose " "
+        _backup_exclude_file="${file}.${PROGNAME}.exclude"
         _backup__realpath="$(_realpath "${file}")"
         _backup__remotepath="$(printf "%s" "${_backup__realpath}" |           \
             awk '{sub(/\//,"root-"); gsub(/\//,"-"); print $0}')"
@@ -194,14 +195,16 @@ _backup() {
             *-) _backup__remotepath="${_backup__remotepath%?}" ;;
         esac
 
+        _verbose "exclude file : ${_backup_exclude_file}"
         _verbose "realpath     : ${_backup__realpath}"
         _verbose "remotepath   : ${_backup__remotepath}"
 
         if [ -d "${_backup__realpath}" ]; then
-            _backup__rsync="$(printf "%s %s %s %s %s" "rsync ${_backup__dry_run} -avz"  \
+            _backup__rsync="$(printf "%s %s %s %s %s %s" "rsync ${_backup__dry_run} -avz"  \
                 "-e \"ssh -p ${_backup__remote_port} -i ${_backup__sshkey}\" --partial" \
-                "--one-file-system --delete --exclude=.gvfs ${_backup__realpath}/"      \
+                "--one-file-system --delete --exclude-from=${_backup_exclude_file}"     \
                 "${_backup__extra_flags}" \
+                "${_backup__realpath}/"   \
                 "${_backup__remote_user}@${_backup__remote_server}/${_backup__remotepath}")"
         elif [ -f "${_backup__realpath}" ]; then
             _backup__rsync="$(printf "%s %s %s %s %s" "rsync ${_backup__dry_run} -avz"   \
