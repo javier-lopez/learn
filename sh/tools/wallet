@@ -33,6 +33,7 @@ _usage() {
     printf "%s\\n" "  $ ${PROGNAME} Electrum-BTCP-1.1.1.tar.gz       #BTCP"
     printf "%s\\n" "  $ ${PROGNAME} ElectronCash-3.3.1.tar.gz        #BCC"
     printf "%s\\n" "  $ ${PROGNAME} Neon-0.2.6-x86_64.Linux.AppImage #NEO"
+    printf "%s\\n" "  $ ${PROGNAME} NanoVault-1.0.4-x86_64.AppImage  #NANO"
     printf "%s\\n" "  $ ${PROGNAME} etherwallet-v3.21.03.zip         #ETH"
     printf "%s\\n" "  $ ${PROGNAME} minimalist-ripple-client.html    #XRP"
     printf "%s\\n" "  $ ${PROGNAME} daedalus-0.11.0-cardano.exe      #ADA"
@@ -156,6 +157,7 @@ _verify_and_wait() {
                 *Electrum-*.tar.gz) wallet="electrum"    ;;
             *ElectronCash-*.tar.gz) wallet="electron"    ;;
                            *Neon-*) wallet="neo"         ;;
+                      *NanoVault-*) wallet="nano"        ;;
                     *etherwallet-*) wallet="etherwallet" ;;
         *minimalist-ripple-client*) wallet="xrp"         ;;
             *daedalus*cardano*.exe) wallet="ada"         ;;
@@ -237,18 +239,26 @@ _electron() {
         /bin/bash -c "/${wallet_dir}/${wallet}${flavor}"
 }
 
-_neo() {
+_AppImage() {
     cp "${archive}" "${TMPDIR}"
     wallet="$(basename "${archive}")"
 
     xhost +
-    docker run --rm -it                               \
-               -v "${TMPDIR}/${wallet}:/${wallet}"    \
-               --cap-add SYS_ADMIN --device /dev/fuse \
-               -v /tmp/.X11-unix:/tmp/.X11-unix \
-               -e DISPLAY=unix$DISPLAY          \
-               "${DOCKER_WALLET_LABEL}"         \
-               /bin/bash -c "/${wallet}"
+    docker run --rm -it                   \
+         -v "${TMPDIR}/${wallet}:/${wallet}"    \
+         --cap-add SYS_ADMIN --device /dev/fuse \
+         -v /tmp/.X11-unix:/tmp/.X11-unix \
+         -e DISPLAY=unix$DISPLAY          \
+         "${DOCKER_WALLET_LABEL}"         \
+         /bin/bash -c "/${wallet}"
+}
+
+_neo() {
+    _AppImage
+}
+
+_nano() {
+    _AppImage
 }
 
 _etherwallet() {
