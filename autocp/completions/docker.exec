@@ -1,0 +1,20 @@
+_docker_exec_completion() {
+    local cmd="docker"
+    if ! command -v "${cmd}" >/dev/null 2>&1; then
+        return
+    fi
+
+    #defining local vars
+    local cur prev words cword
+    _init_completion || return
+    [ -z "${cmd_help_output}" ] && cmd_help_output="$("${cmd}" ps | awk '!/CONTAINER/{print $1}' 2>&1)"
+
+    #general options
+    case "${cur}" in
+        -*)  return ;;
+        *)   short_opts="$(printf "%s\\n" "${cmd_help_output}")"
+             COMPREPLY=($(compgen -W "${short_opts}" -- ${cur})); return ;;
+    esac
+} && complete -F _docker_exec_completion docker.exec
+
+# vim: set ts=8 sw=4 tw=0 ft=sh :
