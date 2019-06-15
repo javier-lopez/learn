@@ -1,5 +1,5 @@
-_tor_socks_proxy() {
-    local cmd="tor-socks-proxy"
+_tor_socks_proxy_dockerized() {
+    local cmd="tor-socks-proxy.dockerized"
     if ! command -v "${cmd}" >/dev/null 2>&1; then
         return
     fi
@@ -16,6 +16,6 @@ _tor_socks_proxy() {
         -*)  short_opts="$(printf "%s\\n" "${cmd_help_output}" | awk 'match($0,/-[0-9A-Za-z_-],/) {sub(/,/, ""); print substr($0,RSTART,RLENGTH)}')"
              COMPREPLY=($(compgen -W "${short_opts}" -- ${cur})); return ;;
     esac
-} && complete -F _tor_socks_proxy tor-socks-proxy
+} && complete -F _tor_socks_proxy_dockerized tor-socks-proxy.dockerized
 
 # vim: set ts=8 sw=4 tw=0 ft=sh :
