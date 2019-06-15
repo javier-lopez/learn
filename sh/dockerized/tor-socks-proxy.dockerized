@@ -4,7 +4,7 @@ VERSION="2018.10.09-10:39"
 SRC_URL="https://raw.githubusercontent.com/javier-lopez/learn/master/sh/tools/"
 
 PROGNAME="$(basename "${0}")"
-TOR_SOCKS_IMAGE_LABEL="tor-socks-proxy"
+TOR_SOCKS_IMAGE_LABEL="${PROGNAME}"
 TMPDIR="/tmp/dockerized-${PROGNAME}-${$}"
 
 DEFAULT="$(printf "\\033[0;39m")"
