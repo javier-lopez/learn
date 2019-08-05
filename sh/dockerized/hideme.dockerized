@@ -1,0 +1,16 @@
+#!/bin/sh
+
+PS4="> "; set -x
+
+for param in "${@}"; do
+    if [ -f "${param}" ]; then
+        volumes="${volumes} -v "$(realpath "${param}")":/input/$(basename "${param}")"
+        args="${args} /input/$(basename "${param}")"
+    else
+        additional_args="${additional_args} ${param}"
+        continue
+    fi
+done
+
+docker run -it --rm ${volumes} -v "${PWD}:/data" \
+    jlpz/audiostego ${args} ${additional_args}
