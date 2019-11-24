@@ -1,0 +1,42 @@
+#!/bin/sh
+#description: export ssl certs from https sites
+#usage: ssl-get-cert domain.tld
+
+#example: ssl-get-cert google.com
+#-----BEGIN CERTIFICATE-----
+#...
+
+PROGNAME="$(expr "${0}" : '.*/\([^/]*\)')"
+
+_usage() {
+    printf "%s\\n" "Usage: ${PROGNAME} domain.tld"
+    printf "%s\\n" "Export ssl certificates from https domains."
+    printf "\\n"
+    printf "%s\\n" "  -h, --help       show this help message and exit"
+}
+
+_die() {
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
+}
+
+_ssl_get_cert() {
+    openssl s_client -connect "${1}:${2:-443}" -showcerts 2>/dev/null </dev/null | \
+        sed -n '/^-----BEGIN CERT/,/^-----END CERT/p'
+}
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- "${@}" $(cat)
+fi
+
+[ "${#}" -eq "0" ] && _die
+
+for arg in "${@}"; do #parse options
+    case "${arg}" in
+        -h|--help) _usage && exit ;;
+        -*) _die "${PROGNAME}: unrecognized option '${arg}'" ;;
+    esac
+done
+
+_ssl_get_cert "${@}"
