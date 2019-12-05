@@ -192,7 +192,7 @@ _get_release() {
 }
 
 _header() {
-    _printfl "PostInstall Minos Setup"
+    _printfl "Minos Post-Install Setup"
     if [ -z "${UPGRADE}" ]; then
         printf "%b\\n" "About to ${WHITE_BOLD}install${DEFAULT} ..."
     else
