@@ -225,6 +225,7 @@ _docker() {
         for user in ${USERS}; do
             usermod -aG docker "${user}" || :
         done
+        newgrp docker || :
     fi
     "${pkg}" --version
 }
