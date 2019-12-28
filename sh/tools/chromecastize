@@ -219,3 +219,147 @@ for FILENAME in "$@"; do
 		echo "Invalid file ($FILENAME). Skipping..."
 	fi
 done
+ation filename, stripping the original extension.
+		DESTINATION_FILENAME=${FILENAME%.$EXTENSION}.$OUTPUT_GFORMAT
+
+		# Make sure the encoder options are not escaped with quotes.
+		IFS=' ' read -r -a ENCODER_OPTIONS_ARRAY <<< "$ENCODER_OPTIONS"
+
+		$FFMPEG -loglevel error -stats -i "$FILENAME" -map 0 -scodec copy -vcodec "$OUTPUT_VCODEC" -acodec "$OUTPUT_ACODEC" ${ENCODER_OPTIONS_ARRAY[@]} "$FILENAME.$OUTPUT_GFORMAT" && on_success "$FILENAME" "$DESTINATION_FILENAME" || on_failure "$FILENAME"
+		echo ""
+	fi
+}
+
+################
+# MAIN PROGRAM #
+################
+
+# test if `mediainfo` is available
+MEDIAINFO=`which mediainfo 2> /dev/null`
+if [ -z $MEDIAINFO ]; then
+	echo '`mediainfo` is not available, please install it'
+	exit 1
+fi
+
+# test if `ffmpeg` is available
+FFMPEG=`which avconv 2> /dev/null || which ffmpeg 2> /dev/null`
+if [ -z $FFMPEG ]; then
+	echo '`avconv` (or `ffmpeg`) is not available, please install it'
+	exit 1
+fi
+
+# test if `grealpath` or `realpath` is available
+REALPATH=`which realpath 2> /dev/null || which grealpath 2> /dev/null`
+if [ -z $REALPATH ]; then
+	echo '`grealpath` (or `realpath`) is not available, please install it'
+	exit 1
+fi
+
+# Output help if no arguments were passed.
+if [ $# -lt 1 ]; then
+	print_help
+	exit 1
+fi
+
+# Process options.
+while :; do
+	case $1 in
+		-h|-\?|--help)
+			print_help
+			exit 0
+			;;
+		--mkv|--mp4)
+			OVERRIDE_GFORMAT=${1:2}
+			;;
+		--force-vencode)
+			FORCE_VENCODE=1
+			;;
+		--delete-on-success)
+			ONSUCCESS=delete
+			;;
+		--force-aencode)
+			FORCE_AENCODE=1
+			;;
+		--stereo)
+			STEREO=1
+			;;
+		--config=?*)
+			CONFIG_DIRECTORY=${1#*=}
+			;;
+		--config=)
+			missing_config_directory
+			exit 1
+			;;
+		--config)
+			if [ "$2" ]; then
+				CONFIG_DIRECTORY=$2
+				shift
+			else
+				missing_config_directory
+				exit 1
+			fi
+			;;
+		# Ends all options. Everything that follows is considered a
+		# filename.
+		--)
+			shift
+			break
+			;;
+		-?*)
+			echo "Unknown option $1"
+			print_help
+			exit 1
+			;;
+		*)
+			break
+	esac
+	shift
+done
+
+# Ensure that our config directory exists and is writable.
+if ! [ -e "$CONFIG_DIRECTORY" ]; then
+	if ! mkdir -p "$CONFIG_DIRECTORY" &> /dev/null; then
+		echo "Config directory $CONFIG_DIRECTORY does not exist and could not be created."
+		exit 1
+	fi
+fi
+
+if ! [ -d "$CONFIG_DIRECTORY" ]; then
+	echo "Supplied config directory $CONFIG_DIRECTORY is not a directory."
+	exit 1
+fi
+
+if ! [ -w "$CONFIG_DIRECTORY" ]; then
+	echo "Config directory $CONFIG_DIRECTORY is not writeable."
+	exit 1
+fi
+
+# Load default configuration if it exists.
+if [ -f "$CONFIG_DIRECTORY/config.sh" ]; then
+  . "$CONFIG_DIRECTORY/config.sh"
+fi
+
+# Ensure that the processed file list exists and is writeable.
+PROCESSED_FILES="$CONFIG_DIRECTORY/processed_files"
+if ! touch "$PROCESSED_FILES" &> /dev/null || ! [ -f "$PROCESSED_FILES" ] || ! [ -w "$PROCESSED_FILES" ]; then
+	echo "Could not write to settings file $PROCESSED_FILES."
+	exit 1
+fi
+
+# Process files.
+for FILENAME in "$@"; do
+	if ! [ -e "$FILENAME" ]; then
+		echo "File not found ($FILENAME). Skipping..."
+	elif [ -d "$FILENAME" ]; then
+		ORIG_IFS=$IFS
+		IFS=$(echo -en "\n\b")
+		for F in $(find "$FILENAME" -type f); do
+			process_file $F
+		done
+		IFS=$ORIG_IFS
+	elif [ -f "$FILENAME" ]; then
+		process_file "$FILENAME"
+	else
+		echo "Invalid file ($FILENAME). Skipping..."
+	fi
+done
