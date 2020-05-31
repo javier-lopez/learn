@@ -1,6 +1,6 @@
 #!/bin/sh
-VERSION="2018.08.23-05:19"
-PKGS="ansible docker docker-compose gotty google-chrome ngrok terraform vagrant virtualbox"
+VERSION="2020.05.30-18:49"
+PKGS="ansible docker docker-compose gotty google-chrome ngrok python3.7 terraform vagrant virtualbox"
 
 #colors
 DEFAULT="$(printf "\\033[0;39m")"
@@ -8,7 +8,7 @@ WHITE_BOLD="$(printf "\\033[1m")"
 WHITE_BG="$(printf "\\033[7m")"
 RED="$(printf "\\033[0;31m")"
 
-TMPDIR="/tmp/$$"
+TMPDIR="/tmp/${$}"
 USERS="$(busybox cat /etc/passwd | busybox awk -F: '{if ($3 >= 1000 && $3 < 60000) print $1}')"
 
 _usage() {
@@ -209,14 +209,14 @@ _header() {
 ###############################################################################
 
 _docker() {
-    _printfl "${pkg}"
-
     if _is_installed "${pkg}" && [ -z "${UPGRADE}" ]; then
         printf "%s\\n" "${pkg} is already installed, skipping"
     else
         wget -q -O- https://download.docker.com/linux/ubuntu/gpg | apt-key add -
-        apt-get update
-        apt-get install -y software-properties-common apt-transport-https
+        _is_installed "apt-add-repository" || {
+            apt-get update
+            apt-get install -y software-properties-common apt-transport-https
+        }
         add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
         apt-get update
         apt-get install -y docker-ce
@@ -225,14 +225,13 @@ _docker() {
         for user in ${USERS}; do
             usermod -aG docker "${user}" || :
         done
+        "${pkg}" --version
         newgrp docker || :
     fi
     "${pkg}" --version
 }
 
 _docker_compose() {
-    _printfl "${pkg}"
-
     if _is_installed "${pkg}" && [ -z "${UPGRADE}" ]; then
         printf "%s\\n" "${pkg} is already installed, skipping"
     else
@@ -253,8 +252,6 @@ _docker_compose() {
 }
 
 _virtualbox() {
-    _printfl "${pkg}"
-
     if _is_installed "${pkg}" && [ -z "${UPGRADE}" ]; then
         printf "%s\\n" "${pkg} is already installed, skipping"
     else
@@ -277,13 +274,10 @@ _virtualbox() {
             gdebi --non-interactive "/tmp/${latest_deb}" && rm -rf "/tmp/${latest_deb}"
         fi
     fi
-
     printf "%s\\n" "${pkg} $(vboxmanage --version)"
 }
 
 _vagrant() {
-    _printfl "${pkg}"
-
     if _is_installed "${pkg}" && [ -z "${UPGRADE}" ]; then
         printf "%s\\n" "${pkg} is already installed, skipping"
     else
@@ -329,13 +323,10 @@ _vagrant() {
             #)
         fi
     fi
-
     "${pkg}" --version
 }
 
 _terraform() {
-    _printfl "${pkg}"
-
     if _is_installed "${pkg}" && [ -z "${UPGRADE}" ]; then
         printf "%s\\n" "${pkg} is already installed, skipping"
     else
@@ -363,19 +354,16 @@ _terraform() {
             )
         fi
     fi
-
     "${pkg}" --version | awk 'NR==1'
 }
 
 _ansible() {
-    _printfl "${pkg}"
-
     if _is_installed "${pkg}" && [ -z "${UPGRADE}" ]; then
         printf "%s\\n" "${pkg} is already installed, skipping"
     else
         _is_installed "apt-add-repository" || {
             apt-get update
-            apt-get install -y software-properties-common
+            apt-get install -y software-properties-common apt-transport-https
         }
         apt-add-repository -y ppa:ansible/ansible
         apt-get update
@@ -385,8 +373,6 @@ _ansible() {
 }
 
 _google_chrome() {
-    _printfl "${pkg}"
-
     if _is_installed "${pkg}" && [ -z "${UPGRADE}" ]; then
         printf "%s\\n" "${pkg} is already installed, skipping"
     else
@@ -402,22 +388,18 @@ _google_chrome() {
 }
 
 _gotty() {
-    _printfl "${pkg}"
-
     if _is_installed "${pkg}" && [ -z "${UPGRADE}" ]; then
         printf "%s\\n" "${pkg} is already installed, skipping"
     else
         latest_url=$(wget -q -O- https://api.github.com/repos/yudai/gotty/releases | \
             awk '/browser_download_url/ {gsub("\"", ""); print $2}' | \
             grep linux | grep -v sha | awk '/amd64/ {print $0;exit}')
-
         latest_version="$(basename "$(dirname "${latest_url}")")"
 
         if "${pkg}" --version 2>/dev/null | grep "${latest_version}" >/dev/null 2>&1; then
             printf "%s\\n" "${pkg} is latest version"
         else
             mkdir -p "${TMPDIR}"
-
             (
                 cd "${TMPDIR}"
                 wget "${latest_url}"
@@ -432,21 +414,16 @@ _gotty() {
 }
 
 _ngrok() {
-    _printfl "${pkg}"
-
     if _is_installed "${pkg}" && [ -z "${UPGRADE}" ]; then
         printf "%s\\n" "${pkg} is already installed, skipping"
     else
-        latest_url="$(wget -O- -q https://ngrok.com/download | \
-            awk -F\" '/dl-linux-amd/ {print $4;exit}')"
+        latest_url="$(wget -O- -q https://ngrok.com/download | awk -F\" '/dl-linux-amd/ {print $4;exit}')"
+        latest_version_errror="doesn't provide a mechanism to check for latest version"
 
-        latest_version="doesn't provide a mechanism to check for latest version"
-
-        if "${pkg}" --version 2>/dev/null | grep "${latest_version}" >/dev/null 2>&1; then
+        if "${pkg}" --version 2>/dev/null | grep "${latest_version_error}" >/dev/null 2>&1; then
             printf "%s\\n" "${pkg} is latest version"
         else
             mkdir -p "${TMPDIR}"
-
             (
                 cd "${TMPDIR}"
                 wget "${latest_url}"
@@ -460,10 +437,29 @@ _ngrok() {
     "${pkg}" --version
 }
 
+_python3.7() {
+    if _is_installed "${pkg}" && [ -z "${UPGRADE}" ]; then
+        printf "%s\\n" "${pkg} is already installed, skipping"
+    else
+        apt-get update
+        _is_installed "apt-add-repository" || {
+            apt-get update
+            apt-get install -y software-properties-common apt-transport-https
+        }
+        add-apt-repository -y ppa:deadsnakes/ppa
+        apt-get update
+        apt-get install -y "${pkg}"
+    fi
+    "${pkg}" --version
+}
+
 _install_pkgs() {
     for pkg in ${@}; do
         [ -z "${first}" ] && { _unprint_previous_line; first="done"; }
+        _printfl "${pkg}"
+        set -x
         _"$(printf "%s\\n" "${pkg}"|sed 's:-:_:g')"
+        set +x
     done
 }
 
