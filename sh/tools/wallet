@@ -306,7 +306,7 @@ Vagrant.configure("2") do |config|
     vbox.linked_clone = true
     vbox.gui          = true
 
-    vbox.customize ["modifyvm", :id, "--memory", "2048" ] #MB
+    vbox.customize ["modifyvm", :id, "--memory", "4096" ] #MB
     vbox.customize ['modifyvm', :id, '--clipboard', 'bidirectional']
   end
   config.vm.provision "shell", inline: "\\\\\\\\VBOXSVR\\\\vagrant\\\\$(basename ${archive})"
