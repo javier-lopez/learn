@@ -32,10 +32,10 @@ _usage() {
     printf "%s\\n" "  $ ${PROGNAME} Electrum-LTC-3.1.3.1.tar.gz      #LTC"
     printf "%s\\n" "  $ ${PROGNAME} Electrum-BTCP-1.1.1.tar.gz       #BTCP"
     printf "%s\\n" "  $ ${PROGNAME} ElectronCash-3.3.1.tar.gz        #BCC"
-    printf "%s\\n" "  $ ${PROGNAME} Neon-0.2.6-x86_64.Linux.AppImage #NEO"
+    printf "%s\\n" "  $ ${PROGNAME} Neon-2.5.0-x86_64.Linux.AppImage #NEO"
     printf "%s\\n" "  $ ${PROGNAME} NanoVault-1.0.4-x86_64.AppImage  #NANO"
     printf "%s\\n" "  $ ${PROGNAME} Nault-1.7.3.AppImage             #NANO"
-    printf "%s\\n" "  $ ${PROGNAME} etherwallet-v3.21.03.zip         #ETH"
+    printf "%s\\n" "  $ ${PROGNAME} MyEtherWallet-v5.7.12.zip        #ETH"
     printf "%s\\n" "  $ ${PROGNAME} minimalist-ripple-client.html    #XRP"
     printf "%s\\n" "  $ ${PROGNAME} daedalus-0.11.0-cardano.exe      #ADA"
 }
@@ -159,7 +159,7 @@ _verify_and_wait() {
             *ElectronCash-*.tar.gz) wallet="electron"    ;;
                            *Neon-*) wallet="neo"         ;;
               *NanoVault-*|*Nault*) wallet="nano"        ;;
-                    *etherwallet-*) wallet="etherwallet" ;;
+    *etherwallet-*|*MyEtherWallet*) wallet="etherwallet" ;;
         *minimalist-ripple-client*) wallet="xrp"         ;;
             *daedalus*cardano*.exe) wallet="ada"         ;;
         *) _die "Invalid archive: ${archive}" ;;
@@ -267,7 +267,13 @@ _etherwallet() {
 
     cp "${archive}" "${TMPDIR}"
 
-    (cd "${TMPDIR}"; unzip $(basename "${archive}"))
+    (
+        cd "${TMPDIR}"
+        mkdir -p "${wallet_dir}"
+        cd "${wallet_dir}"
+        mv ../"$(basename "${archive}")" .
+        unzip "$(basename "${archive}")"
+    )
 
     xhost +
     docker run --rm -it                  \
