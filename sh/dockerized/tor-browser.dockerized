@@ -3,6 +3,7 @@ PS4="> "; set -x
 
 xhost +
 
+docker pull jess/tor-browser
 docker run --rm                                  \
            -it                                   \
            -v /tmp/.X11-unix:/tmp/.X11-unix      \
