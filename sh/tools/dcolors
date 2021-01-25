@@ -57,8 +57,8 @@ _kmeans_awk() {
     }
 
     function _calculate_center(plist) {
-        plist_array_len=split(plist, plist_array)
-        sumX=0; sumY=0; sumZ=0;
+        split(plist, plist_array)
+        count=0; sumX=0; sumY=0; sumZ=0;
         for (point in plist_array) {
             split(plist_array[point], coordinates, ",")
             for (coordinate in coordinates) {
@@ -66,6 +66,7 @@ _kmeans_awk() {
                     split(coordinates[coordinate], composed_coordinate, ":")
                     times=composed_coordinate[1]
                     coordinateX=composed_coordinate[2]
+                    count+=times
                     sumX+=coordinateX*times
                 }
                 else if (coordinate == 2) sumY+=coordinates[coordinate] * times
@@ -74,10 +75,10 @@ _kmeans_awk() {
         }
 
         //avoid division by zero
-        if(plist_array_len) {
-            sumX=int(sumX/plist_array_len)
-            sumY=int(sumY/plist_array_len)
-            sumZ=int(sumZ/plist_array_len)
+        if(count) {
+            sumX=int(sumX/count)
+            sumY=int(sumY/count)
+            sumZ=int(sumZ/count)
         }
         return sumX "," sumY "," sumZ
     }
