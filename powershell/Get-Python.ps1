@@ -3,7 +3,7 @@ function Source-Python-Version {
     param
     (
         [Parameter(Position=0, Mandatory=$false)]
-        [ValidateSet(“full”,”minimal”)]
+        [ValidateSet("full","minimal")]
         [string]$Type="full",
         [Parameter(Position=1, Mandatory=$true)]
         [string]$Version,
@@ -55,7 +55,7 @@ function Get-Python-Version {
     param
     (
         [Parameter(Position=0, Mandatory=$false)]
-        [ValidateSet(“full”,”minimal”)]
+        [ValidateSet("full","minimal")]
         [string]$Type="full",
         [Parameter(Position=1, Mandatory=$true)]
         [string]$Version,
