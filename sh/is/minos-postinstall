@@ -1,6 +1,8 @@
 #!/bin/sh
-VERSION="2020.05.30-18:49"
-PKGS="ansible docker docker-compose gotty google-chrome ngrok python3.7 terraform vagrant virtualbox"
+PROGNAME="$(basename "${0}")"
+
+VERSION="2022.02.12-17:42"
+SRC_URL="https://raw.githubusercontent.com/javier-lopez/learn/master/sh/is"
 
 #colors
 DEFAULT="$(printf "\\033[0;39m")"
@@ -10,6 +12,8 @@ RED="$(printf "\\033[0;31m")"
 
 TMPDIR="/tmp/${$}"
 USERS="$(busybox cat /etc/passwd | busybox awk -F: '{if ($3 >= 1000 && $3 < 60000) print $1}')"
+PKGS="$(grep "^___.*()" "${0}" | sed -e 's:___::g' -e 's:().*::g' -e 's:_:-:g' | \
+        sort | tr '\n' ' ')"
 
 _usage() {
     printf "%s\\n" "Usage: ${PROGNAME} [OPTIONS] [+PKG ...] [-PKG ...] now"
@@ -20,13 +24,65 @@ _usage() {
     printf "%s\\n" "  -pkg            install all  but this package"
     printf "\\n"
     printf "%s\\n" "Options:"
-    printf "%s\\n" "  -u, --upgrade   force upgrade"
+    printf "%s\\n" "  -u, --upgrade   force pkg replacement"
     printf "%s\\n" "  -l, --list      list available packages"
+    printf "%b\\n" "  -U, --update    update this program to latest version"
     printf "%s\\n" "  -V, --version   output version and exit"
     printf "%s\\n" "  -h, --help      show this help message and exit"
 }
 
-_print_version() {
+_update() {
+    _u__current_file="$(cd "$(dirname "${0}")" && pwd)/${PROGNAME}"
+    _u__current_version_long="$(awk -F\" \
+        '/VERSION=/{print $2;exit}' "${_u__current_file}" 2>/dev/null)"
+    _u__current_version="$(printf "%s\\n" "${_u__current_version_long}" | \
+        awk '{gsub(/[\.:]/,"");gsub(/-/,"");print;exit}' 2>/dev/null)"
+    [ -z "${_u__current_version}" ] && printf "%s\\n%s\\n%s\\n"           \
+        "ERROR: Failed to detect current version, please update manually" \
+        "${PROGNAME}         = ${_u__current_file}"                       \
+        "${PROGNAME} version = ${_u__current_version}" >&2 && return 1
+
+    command -v "wget" >/dev/null 2>&1 || command -v "curl" >/dev/null 2>&1 || \
+        { printf "%s\\n" "ERROR: Install either 'wget' or 'curl' to upgrade" >&2; return 1; }
+
+    _u__url="${SRC_URL}/${PROGNAME}"
+    _u__tmpfile="/tmp/${PROGNAME}.${$}.update"
+
+    _u__error_msg="$(wget -q -O- --no-check-certificate "${_u__url}" \
+        > "${_u__tmpfile}" 2>&1   || curl -s -L "${_u__url}"  \
+        > "${_u__tmpfile}" 2>&1)" || { printf "%s\\n%s\\n" \
+        "ERROR: Failed to fetch update, please try later or update manually" \
+        "${_u__error_msg}" >&2; return 1; }
+
+    _u__update_version_long="$(awk -F\" \
+        '/VERSION=/{print $2;exit}' "${_u__tmpfile}" 2>/dev/null)"
+    _u__update_version="$(printf "%s\\n" "${_u__update_version_long}" | awk \
+        '{gsub(/[\.:]/,"");gsub(/-/,"");print;exit}' 2>/dev/null)"
+    [ -n "${_u__update_version}" ] || _u__update_version="0"
+
+    if [ "${_u__current_version}" -lt "${_u__update_version}" ]; then
+        printf "%s %s\\n" "Updating from version" \
+            "${_u__current_version_long} to ${_u__update_version_long} ..."
+        chmod +x "${_u__tmpfile}"
+        if ! mv -f "${_u__tmpfile}" "${_u__current_file}" 2>/dev/null; then
+            printf "%s\\n" "ERROR: no write permissions on ${_u__current_file}" >&2
+            printf "%s\\n" "INFO : trying with sudo ..." >&2
+            if command -v "sudo" >/dev/null 2>&1; then
+                sudo mv "${_u__tmpfile}" "${_u__current_file}" || return 1
+            else
+                printf "%s\\n" "ERROR: sudo isn't available, exiting ..." >&2
+                rm -rf "${_u__tmpfile}"
+                return 1
+            fi
+        fi
+        printf "%s %s\\n" "${PROGNAME} is up-to-date (${_u__update_version_long})"
+        return 0
+    fi
+    printf "%s %s\\n" "${PROGNAME} is up-to-date (${_u__current_version_long})"
+    rm -rf "${_u__tmpfile}"
+}
+
+_show_version() {
     printf "%s\\n" "${VERSION}"
 }
 
@@ -58,6 +114,17 @@ _all_but_this_pkg() {
     else
         PKG_QUEUE="$(printf "%s\\n" "${PKG_QUEUE}" | sed "s: ${1}::g")"
     fi
+}
+
+_install_pkgs() {
+    for pkg in ${@}; do
+        [ -z "${first}" ] && { _unprint_previous_line; first="done"; }
+        _printfl "${pkg}"
+        pkgf="$(printf "%s\\n" "${pkg}"|sed 's:-:_:g')"
+        set -x
+        ___"${pkgf}"
+        set +x
+    done
 }
 
 _die() {
@@ -205,10 +272,10 @@ _header() {
 }
 
 ###############################################################################
-###############################################################################
+################################## P K G'S ####################################
 ###############################################################################
 
-_docker() {
+___docker() {
     if _is_installed "${pkg}" && [ -z "${UPGRADE}" ]; then
         printf "%s\\n" "${pkg} is already installed, skipping"
     else
@@ -231,7 +298,7 @@ _docker() {
     "${pkg}" --version
 }
 
-_docker_compose() {
+___docker_compose() {
     if _is_installed "${pkg}" && [ -z "${UPGRADE}" ]; then
         printf "%s\\n" "${pkg} is already installed, skipping"
     else
@@ -251,7 +318,7 @@ _docker_compose() {
     "${pkg}" --version
 }
 
-_virtualbox() {
+___virtualbox() {
     if _is_installed "${pkg}" && [ -z "${UPGRADE}" ]; then
         printf "%s\\n" "${pkg} is already installed, skipping"
     else
@@ -277,7 +344,7 @@ _virtualbox() {
     printf "%s\\n" "${pkg} $(vboxmanage --version)"
 }
 
-_vagrant() {
+___vagrant() {
     if _is_installed "${pkg}" && [ -z "${UPGRADE}" ]; then
         printf "%s\\n" "${pkg} is already installed, skipping"
     else
@@ -326,7 +393,7 @@ _vagrant() {
     "${pkg}" --version
 }
 
-_terraform() {
+___terraform() {
     if _is_installed "${pkg}" && [ -z "${UPGRADE}" ]; then
         printf "%s\\n" "${pkg} is already installed, skipping"
     else
@@ -357,7 +424,7 @@ _terraform() {
     "${pkg}" --version | awk 'NR==1'
 }
 
-_ansible() {
+___ansible() {
     if _is_installed "${pkg}" && [ -z "${UPGRADE}" ]; then
         printf "%s\\n" "${pkg} is already installed, skipping"
     else
@@ -372,7 +439,7 @@ _ansible() {
     "${pkg}" --version
 }
 
-_google_chrome() {
+___google_chrome() {
     if _is_installed "${pkg}" && [ -z "${UPGRADE}" ]; then
         printf "%s\\n" "${pkg} is already installed, skipping"
     else
@@ -387,7 +454,7 @@ _google_chrome() {
     "${pkg}" --version
 }
 
-_gotty() {
+___gotty() {
     if _is_installed "${pkg}" && [ -z "${UPGRADE}" ]; then
         printf "%s\\n" "${pkg} is already installed, skipping"
     else
@@ -413,7 +480,7 @@ _gotty() {
     "${pkg}" --version
 }
 
-_ngrok() {
+___ngrok() {
     if _is_installed "${pkg}" && [ -z "${UPGRADE}" ]; then
         printf "%s\\n" "${pkg} is already installed, skipping"
     else
@@ -437,7 +504,7 @@ _ngrok() {
     "${pkg}" --version
 }
 
-_python3.7() {
+___python37() {
     if _is_installed "${pkg}" && [ -z "${UPGRADE}" ]; then
         printf "%s\\n" "${pkg} is already installed, skipping"
     else
@@ -453,21 +520,9 @@ _python3.7() {
     "${pkg}" --version
 }
 
-_install_pkgs() {
-    for pkg in ${@}; do
-        [ -z "${first}" ] && { _unprint_previous_line; first="done"; }
-        _printfl "${pkg}"
-        set -x
-        _"$(printf "%s\\n" "${pkg}"|sed 's:-:_:g')"
-        set +x
-    done
-}
-
 ###############################################################################
 ###############################################################################
 ###############################################################################
-
-PROGNAME="$(basename "${0}")"
 
 if [ ! -t 0 ]; then
     #there is input comming from pipe or file, add to the end of $@
@@ -479,7 +534,8 @@ fi
 for arg in "${@}"; do #parse options
     case "${arg}" in
         -h|--help)    _usage; exit ;;
-        -V|--version) _print_version; exit ;;
+        -U|--update)  _update; exit "${?}" ;;
+        -V|--version) _show_version; exit ;;
         -l|--list)    _list_available_pkgs; exit ;;
         -u|--upgrade) UPGRADE=1; shift ;;
         +*) if ! _none_but_this_pkg "${arg#?}"; then
