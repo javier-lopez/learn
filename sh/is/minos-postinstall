@@ -304,7 +304,7 @@ ___docker_compose() {
     else
         latest_url=$(wget -q -O- https://api.github.com/repos/docker/compose/releases/latest | \
             awk '/browser_download_url/ {gsub("\"", ""); print $2}' | \
-            grep Linux | grep -v sha)
+            grep "linux-x86_64"| grep -v sha)
 
         latest_version="$(basename "$(dirname "${latest_url}")")"
 
