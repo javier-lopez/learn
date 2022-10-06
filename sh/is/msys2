@@ -23,5 +23,5 @@ case "${PWD}" in
         sed -i '/db_home:/d' /etc/nsswitch.conf
         echo 'db_home: windows' | tee -a /etc/nsswitch.conf
 
-        echo 'Restart the msys2 environment, close this window and open it again to continue ...'
+        echo 'Restart the msys2 environment and rerun this script to continue ...'
 esac
