@@ -1,0 +1,27 @@
+#!/bin/sh
+#https://www.msys2.org/#installation
+#$ choco install msys2
+
+_continue_installation_after_msys2_home_set() {
+    pacman -S git
+    pacman -S tmux
+    pacman -S vim
+    pacman -S rsync
+    pacman -S wcd
+
+    wget https://raw.githubusercontent.com/javier-lopez/dotfiles/master/.tmux.conf
+    wget https://raw.githubusercontent.com/javier-lopez/dotfiles/master/.bashrc
+    wget https://raw.githubusercontent.com/javier-lopez/dotfiles/master/.inputrc
+    wget https://raw.githubusercontent.com/javier-lopez/dotfiles/master/.vimrc
+}
+
+case "${PWD}" in
+    /c/Users/*)
+        _continue_installation_after_msys2_home_set
+        ;;
+    *)
+        sed -i '/db_home:/d' /etc/nsswitch.conf
+        echo 'db_home: windows' | tee -a /etc/nsswitch.conf
+
+        echo 'Restart the msys2 environment, close this window and open it again to continue ...'
+esac
