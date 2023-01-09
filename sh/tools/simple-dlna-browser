@@ -6,6 +6,10 @@
 #$ simple-dlna-browser "Video file"
 #http://192.168.1.254:8200/MediaItems/22.mp4
 
+#Copyright 2023 Javier López / Fair license - http://en.wikipedia.org/wiki/Fair_License
+#Usage of the works is permitted provided that this instrument is retained with the works, so that any entity that uses the works is notified of this instrument.
+#DISCLAIMER: THE WORKS ARE WITHOUT WARRANTY.
+
 _usage() {
     printf "%s\\n" "Usage: ${PROGNAME} [options] [pattern]"
     printf "%s\\n" "Query dlna media servers."
