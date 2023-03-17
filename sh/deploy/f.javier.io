@@ -136,9 +136,8 @@ case "$DISTRIB_ID" in
         _printfl "Installing deps ..."
         _apt_update 3600
         case "${DISTRIB_CODENAME}" in
-            trusty)       _apt_install apache2 libapache2-mod-php5 php5 php5-gd
-            xenial|focal) _apt_install apache2 libapache2-mod-php php php-gd php-xml
-                ;;
+            trusty)       _apt_install apache2 libapache2-mod-php5 php5 php5-gd ;;
+            xenial|focal) _apt_install apache2 libapache2-mod-php php php-gd php-xml ;;
         esac
         _printfs "Setting up apache2/php ..."
         _cmd "sudo sed -i '/^<Directory/,/^</d' /etc/apache2/apache2.conf"
