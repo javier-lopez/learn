@@ -128,15 +128,18 @@ case "$DISTRIB_ID" in
             _cmd sudo wget --no-check-certificate https://raw.githubusercontent.com/javier-lopez/dotfiles/master/.minos/config -O /etc/minos/config
 
             _printfs "Installing minos base ..."
-            _cmd wget javier.io/deploy -O deploy
-            _cmd_verbose sudo sh deploy minos core
-            _cmd rm -rf deploy
+            _cmd wget minos.io/s setup-minos
+            _cmd_verbose sudo sh setup-minos core
+            _cmd rm -rf setup-minos
         fi
 
         _printfl "Installing deps ..."
         _apt_update 3600
-        [ X"${DISTRIB_CODENAME}" = X"trusty" ] && _apt_install apache2 libapache2-mod-php5 php5 php5-gd
-        [ X"${DISTRIB_CODENAME}" = X"xenial" ] && _apt_install apache2 libapache2-mod-php php php-gd php-xml
+        case "${DISTRIB_CODENAME}" in
+            trusty)       _apt_install apache2 libapache2-mod-php5 php5 php5-gd
+            xenial|focal) _apt_install apache2 libapache2-mod-php php php-gd php-xml
+                ;;
+        esac
         _printfs "Setting up apache2/php ..."
         _cmd "sudo sed -i '/^<Directory/,/^</d' /etc/apache2/apache2.conf"
         for file in $(find /etc -name php.ini 2>/dev/null); do
@@ -145,32 +148,32 @@ case "$DISTRIB_ID" in
         done
 
         _printfs "Getting files"
-        _cmd_verbose 'rsync -avz -e "ssh -o StrictHostKeyChecking=no" admin@b.javier.io:/home/admin/backup/files.javier.io /tmp'
+        _cmd_verbose 'rsync -avz -e "ssh -o StrictHostKeyChecking=no" admin@b.javier.io:/home/admin/backup/001-ubuntu2004-3cpu-3gb-kvm.us-la.app.dev /opt/tmp'
 
         _printfs "Setting up sites"
-        _cmd_verbose sudo rsync --delete -av /tmp/files.javier.io/root-var-www/  /var/www/
-        _cmd_verbose sudo rsync --delete -av /tmp/files.javier.io/root-etc-apache2/sites-available/ /etc/apache2/sites-available/
+        _cmd_verbose sudo rsync --delete -av /opt/tmp/001-ubuntu2004-3cpu-3gb-kvm.us-la.app.dev/root-var-www/  /var/www/
+        _cmd_verbose sudo rsync --delete -av /opt/tmp/001-ubuntu2004-3cpu-3gb-kvm.us-la.app.dev/root-etc-apache2/sites-available/ /etc/apache2/sites-available/
         _cmd sudo chown -R www-data:www-data /var/www/
         for site in /etc/apache2/sites-enabled/*default*; do
             test -f "${site}" && _cmd sudo a2dissite "$(basename "${site}")"
         done
-        for site in /etc/apache2/sites-available/*javier*; do
+        for site in /etc/apache2/sites-available/*; do
             test -f "${site}" && _cmd sudo a2ensite "$(basename "${site}")"
         done
         _cmd sudo a2enmod rewrite #enable .htaccess files
 
         ##securing apache2
-        _cmd "sudo sed -i 's/^ServerTokens OS/ServerTokens Prod/g'     /etc/apache2/conf-enabled/security.conf"
-        _cmd "sudo sed -i 's/^ServerSignature On/ServerSignature Off/g /etc/apache2/conf-enabled/security.conf"
+        _cmd "sudo sed -i 's/^ServerTokens OS/ServerTokens Prod/g'      /etc/apache2/conf-enabled/security.conf"
+        _cmd "sudo sed -i 's/^ServerSignature On/ServerSignature Off/g' /etc/apache2/conf-enabled/security.conf"
 
         _cmd sudo service apache2 restart
 
         _printfs "Installing crons"
-        _cmd cp /var/www/crontabs.tar.gz /tmp/
-        _cmd "cd /tmp && tar zxf crontabs.tar.gz"
-        _cmd sudo mv /tmp/var/spool/cron/crontabs/admin /var/spool/cron/crontabs/admin
-        _cmd sudo mv /tmp/var/spool/cron/crontabs/root  /var/spool/cron/crontabs/root
-        _cmd rm -rf  /tmp/crontabs.tar.gz /tmp/var
+        _cmd cp /var/www/crontabs.tar.gz /opt/tmp/
+        _cmd "cd /opt/tmp && tar zxf crontabs.tar.gz"
+        _cmd sudo mv /opt/tmp/var/spool/cron/crontabs/admin /var/spool/cron/crontabs/admin
+        _cmd sudo mv /opt/tmp/var/spool/cron/crontabs/root  /var/spool/cron/crontabs/root
+        _cmd rm -rf  /opt/tmp/crontabs.tar.gz /opt/tmp/var
 
         ;;
     *) printf "%s\\n" "Distribution not supported, exiting..."; return 1;;
