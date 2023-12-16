@@ -1,0 +1,12 @@
+#!/bin/sh
+tmate -S /tmp/tmate.sock new-session -d   #launch tmate in a headless mode
+tmate -S /tmp/tmate.sock wait tmate-ready #blocks until the SSH connection is established
+#prints the SSH connection string
+tmate -S /tmp/tmate.sock display -p '#{tmate_ssh}' | tee /dev/tty | tail -1 | \
+if command -v pbcopy >/dev/null  >/dev/null 2>&1; then
+    pbcopy && echo ssh session copied to clipboard!    #osx copyboard
+fi
+
+#tmate -S /tmp/tmate.sock display -p '#{tmate_ssh_ro}' #prints the read-only SSH connection string
+#tmate -S /tmp/tmate.sock display -p '#{tmate_web}'    #prints the web connection string
+#tmate -S /tmp/tmate.sock display -p '#{tmate_web_ro}' #prints the read-only web connection string
