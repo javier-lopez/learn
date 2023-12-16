@@ -37,7 +37,11 @@ if command -v "${script}" >/dev/null 2>&1; then
     [ -z "${EDITOR}" ] && { printf "%s\\n" \
         "${PROGNAME}: variable EDITOR was not found" >&2
         exit 1; }
-    ${EDITOR} "$(command -v "${script}" 2>/dev/null)"
+    if command -v "${EDITOR}" >/dev/null 2>&1; then
+        ${EDITOR} "$(command -v "${script}" 2>/dev/null)"
+    else
+        vim "$(command -v "${script}" 2>/dev/null)"
+    fi
 else
     printf "${PROGNAME}: %s\\n" "'${script}' was not found in \$PATH" >&2
     exit 1
