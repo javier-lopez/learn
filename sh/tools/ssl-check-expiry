@@ -1,0 +1,88 @@
+#!/bin/sh
+#description: check ssl expiration dates
+#usage: ssl-check-expiry [-d DAYS] https://domain.tld
+
+#example: ssl-check-expiry -d 15 https://google.com #check if domain ssl expires in less than 15 days
+# https://google.com is OK, ssl certificate expires in: 250 days
+
+PROGNAME="$(expr "${0}" : '.*/\([^/]*\)')"
+
+_usage() {
+    printf "%s\\n" "Usage: ${PROGNAME} [-d DAYS] https://domain.tld"
+    printf "%s\\n" "Check ssl expiration dates."
+    printf "\\n"
+    printf "%s\\n" "  -h, --help    show this help message and exit"
+    printf "%s\\n" "  -d, --days    domain expires in less than N days, default 7 days"
+    printf "%s\\n" "  -q, --quiet   quiet mode"
+}
+
+_error() {
+    printf "%s\\n" "${*}" >&2
+}
+
+_error_msg() {
+    [ -z "${quiet}" ] && _error "${*}"
+}
+
+_msg() {
+    [ -z "${quiet}" ] && printf "%s\\n" "${*}" || :
+}
+
+_die() {
+    [ -z "${1}" ] || _error "${*}"
+    _usage >&2; exit 1
+}
+
+_is_int() {
+    case "${1}" in
+        *[!0-9]*|"") return 1 ;;
+    esac
+}
+
+_ssl_check_expiry() {
+    expiration_date="$(date -d "$(echo | openssl s_client -connect ${1}:443 2>/dev/null | \
+        openssl x509 -noout -dates|grep notAfter|cut -d= -f2)" +%s)"
+    today_date="$(date +%s)"
+    days_to_expire="$((($expiration_date - $today_date)/86400))"
+
+    if [ "${days_to_expire}" -lt "${2}" ]; then
+        _error_msg "${1}" WARNING, ssl certificate expires in: "${days_to_expire}" days
+        return 1
+    else
+        _msg "${1}" is OK, ssl certificate expires in: "${days_to_expire}" days
+    fi
+}
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- "${@}" $(cat)
+fi
+
+[ "${#}" -eq "0" ] && _die
+
+for arg in "${@}"; do #parse options
+    case "${arg}" in
+        '-d'|'--days')
+            if [ "${#}" -gt "1" ]; then
+                case "${2}" in
+                    -*) _die "Option '${arg}' requires a parameter"
+                esac
+                shift; days="${1}"; [ "${1}" ] && shift
+            else
+                _die "Option '${arg}' requires a parameter"
+            fi
+            ;;
+        -d*) days="${1#-d}"; shift ;;
+        --days*) days="${1#--days}"; shift ;;
+        -q*) quiet="on" ; shift ;;
+        -h|--help) _usage && exit ;;
+        -*) _die "${PROGNAME}: unrecognized option '${arg}'" ;;
+    esac
+done
+
+### validate options ###
+[ -z "${days}" ]  && days="7"
+_is_int "${days}" || _die "Invalid days parameters: '${days}'"
+########################
+
+_ssl_check_expiry "${@}" "${days}"
