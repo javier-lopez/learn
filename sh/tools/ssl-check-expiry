@@ -1,14 +1,14 @@
 #!/bin/sh
 #description: check ssl expiration dates
-#usage: ssl-check-expiry [-d DAYS] https://domain.tld
+#usage: ssl-check-expiry [-d DAYS] domain.tld
 
-#example: ssl-check-expiry -d 15 https://google.com #check if domain ssl expires in less than 15 days
+#example: ssl-check-expiry -d 15 google.com #check if domain ssl expires in less than 15 days
 # https://google.com is OK, ssl certificate expires in: 250 days
 
 PROGNAME="$(expr "${0}" : '.*/\([^/]*\)')"
 
 _usage() {
-    printf "%s\\n" "Usage: ${PROGNAME} [-d DAYS] https://domain.tld"
+    printf "%s\\n" "Usage: ${PROGNAME} [-d DAYS] domain.tld"
     printf "%s\\n" "Check ssl expiration dates."
     printf "\\n"
     printf "%s\\n" "  -h, --help    show this help message and exit"
