@@ -1,0 +1,63 @@
+#!/usr/bin/env python
+import time
+import socket
+import random
+import string
+import argparse
+from multiprocessing import Process
+
+def main():
+	args = parseArgs()
+	startListener(args)
+
+def startListener(args):
+	lSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) 
+	lSock.bind((args.interface, args.port))
+	print("Slodns now listening on", args.interface, "port", args.port)
+	while True:
+		data, retAddr = lSock.recvfrom(4096) 
+		#dataString = list(filter(str.isalnum, data))
+		#print("Request:", dataString)
+		dataString="query"
+		p = Process(target=dnsProcess, args=(lSock, data, dataString, retAddr, args))
+		p.start()
+
+	lSock.close()
+
+def dnsProcess(lSock, data, dataString, retAddr, args):
+	if isLost(args.loss):
+		print("Response: ", dataString, "dropped")
+		return
+	sSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	print("sending")
+	sSock.sendto(data, (args.upstream_server, args.upstream_server_port))
+	dataR, addrR = sSock.recvfrom(4096)
+	sSock.close()
+	delay = getDelay(args.delay, args.jitter)
+	time.sleep(delay)
+	print("Response:", dataString, "delay", int(delay * 1000), "ms")
+	lSock.sendto(dataR, retAddr)
+
+def getDelay(delay, jitter):
+	if jitter > delay:
+		jitter = delay
+	randJit = random.randrange(jitter) if jitter > 0 else 0
+	return float(delay + randJit)  / 1000
+
+def isLost(percent):
+	return percent > random.randrange(99)
+
+def parseArgs():
+    parser = argparse.ArgumentParser("A forwarding DNS server to simulate slow, jittery, or problematic DNS implementations.")
+    parser.add_argument("-i", "--interface", default="127.0.0.1", help="interface for server to bind to. Defaults to localhost.")
+    parser.add_argument("-p", "--port", default="5053", type=int, help="port for server to listen on. Defaults to 5053.")
+    parser.add_argument("-u", "--upstream-server", default="8.8.8.8", help="upstream nameserver. Defaults to 8.8.8.8.")
+    parser.add_argument("-q", "--upstream-server-port", default="53", type=int, help="upstream nameserver port. Defaults to 53.")
+    parser.add_argument("-d", "--delay", default="1000", type=int, help="delay of requests in milliseconds. Defaults to 1000ms.")
+    parser.add_argument("-l", "--loss", default="0", type=int, help="percent of requests which will be 'lost'. Defaults to 0")
+    parser.add_argument("-j", "--jitter", default="0", type=int, help="quantity of random variation +/- base in ms. Defaults to 0 (no jitter). Should not be larger than delay.")
+    args = parser.parse_args()
+    return args
+
+if __name__ == "__main__":
+    main()
