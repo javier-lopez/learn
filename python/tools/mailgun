@@ -1,0 +1,126 @@
+#!/usr/bin/env python3
+"""Send emails via AWS SES SMTP.
+
+Drop-in replacement for the old mailgun shell script.
+Reads SES_ACCESS_KEY_ID and SES_SECRET_ACCESS_KEY from ~/.credentials.
+
+Usage:
+    mailgun [options] to@domain.tld "message body"
+    echo "message" | mailgun to@domain.tld
+    mailgun -s "Subject" --html to@domain.tld "<h1>Report</h1>"
+
+Options:
+    -f, --from      From address (default: no-reply@tucastigo.com)
+    -s, --subject   Subject line
+    -c, --config    Credentials file (default: ~/.credentials)
+    --html          Treat message body as HTML
+    -h, --help      Show this help
+"""
+
+import argparse
+import os
+import smtplib
+import sys
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
+DEFAULTS = {
+    "from_addr": "TuCastigo <no-reply@tucastigo.com>",
+    "subject": f"Automated mail from {os.uname().nodename}",
+    "config": os.path.expanduser("~/.credentials"),
+    "smtp_host": "email-smtp.us-east-1.amazonaws.com",
+    "smtp_port": 587,
+}
+
+
+def load_credentials(path: str) -> tuple[str, str]:
+    """Read SES_ACCESS_KEY_ID and SES_SECRET_ACCESS_KEY from file."""
+    creds = {}
+    with open(path) as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                key, _, value = line.partition("=")
+                creds[key.strip()] = value.strip()
+
+    access_key = creds.get("SES_ACCESS_KEY_ID")
+    secret_key = creds.get("SES_SECRET_ACCESS_KEY")
+    if not access_key or not secret_key:
+        print(f"error: SES_ACCESS_KEY_ID or SES_SECRET_ACCESS_KEY not found in {path}", file=sys.stderr)
+        sys.exit(1)
+    return access_key, secret_key
+
+
+def send_email(
+    *,
+    smtp_host: str,
+    smtp_port: int,
+    username: str,
+    password: str,
+    from_addr: str,
+    to_addr: str,
+    subject: str,
+    body: str,
+    html: bool = False,
+) -> None:
+    """Send an email via SES SMTP with STARTTLS."""
+    msg = MIMEMultipart("alternative")
+    msg["From"] = from_addr
+    msg["To"] = to_addr
+    msg["Subject"] = subject
+
+    if html:
+        msg.attach(MIMEText(body, "html", "utf-8"))
+    else:
+        msg.attach(MIMEText(body, "plain", "utf-8"))
+
+    with smtplib.SMTP(smtp_host, smtp_port) as server:
+        server.starttls()
+        server.login(username, password)
+        server.sendmail(from_addr, [to_addr], msg.as_string())
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        prog="mailgun",
+        description="Send emails via AWS SES SMTP.",
+    )
+    parser.add_argument("to", help="Recipient email address")
+    parser.add_argument("message", nargs="*", help="Message body")
+    parser.add_argument("-f", "--from", dest="from_addr", default=DEFAULTS["from_addr"])
+    parser.add_argument("-s", "--subject", default=DEFAULTS["subject"])
+    parser.add_argument("-c", "--config", default=DEFAULTS["config"])
+    parser.add_argument("--html", action="store_true", help="Treat body as HTML")
+
+    args = parser.parse_args()
+
+    # Read from pipe if no message args
+    if args.message:
+        body = " ".join(args.message)
+    elif not sys.stdin.isatty():
+        body = sys.stdin.read()
+    else:
+        print("error: no message provided", file=sys.stderr)
+        sys.exit(1)
+
+    if not body.strip():
+        print("error: empty message", file=sys.stderr)
+        sys.exit(1)
+
+    access_key, secret_key = load_credentials(args.config)
+
+    send_email(
+        smtp_host=DEFAULTS["smtp_host"],
+        smtp_port=DEFAULTS["smtp_port"],
+        username=access_key,
+        password=secret_key,
+        from_addr=args.from_addr,
+        to_addr=args.to,
+        subject=args.subject,
+        body=body,
+        html=args.html,
+    )
+
+
+if __name__ == "__main__":
+    main()
