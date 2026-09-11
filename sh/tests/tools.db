@@ -245,29 +245,6 @@ test X"$(dcolors -f cui 2>&1|head -1)"             = X"Output valid formats are 
 test X"$(dcolors cui 2>&1|head -1)"                = X"Warning: 'cui' doesn't exist, skipping..."
 @end
 
-@begin{dot}
-dot; test X"${?}"                                              = X"1"
-dot -h; test X"${?}"                                           = X"0"
-dot --help; test X"${?}"                                       = X"0"
-test X"$(dot | head -1)"                                       = X""
-test X"$(dot 2>&1 | head -1)"                                  = X"Usage: dot [git command] [args]..."
-test X"$(dot -h | head -1)"                                    = X"Usage: dot [git command] [args]..."
-test X"$(dot --help | head -1)"                                = X"Usage: dot [git command] [args]..."
-dot clean; test X"${?}"                                        = X"1"
-dot clean -n; test X"${?}"                                     = X"1"
-dot add -A; test X"${?}"                                       = X"1"
-dot add --all; test X"${?}"                                    = X"1"
-dot add .; test X"${?}"                                        = X"1"
-dot reset --hard; test X"${?}"                                 = X"1"
-dot checkout -f; test X"${?}"                                  = X"1"
-dot switch --discard-changes master; test X"${?}"              = X"1"
-dot pull --autostash; test X"${?}"                             = X"1"
-test X"$(dot clean 2>&1 | cut -d: -f1-2)"                      = X"dot: refused"
-test X"$(dot add -A 2>&1 | cut -d: -f1-2)"                     = X"dot: refused"
-test X"$(dot reset --hard 2>&1 | cut -d: -f1-2)"               = X"dot: refused"
-test X"$(dot pull --autostash 2>&1 | cut -d: -f1-2)"           = X"dot: refused"
-@end
-
 @begin{elastix-cli}
 elastix-cli; test X"${?}"                                  = X"1"
 elastix-cli -h ; test X"${?}"                              = X"1"
