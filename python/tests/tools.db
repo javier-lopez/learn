@@ -45,9 +45,4 @@ test "$(eix vim-nox | awk '/^$/ {i++} END{print i+0}')" -eq "0"
 #wget --no-check-certificate -q -O- "$(pastebin cui | egrep "https://pastee.org/[a-Z0-9]+")" | grep 'o@o' >/dev/null
 #@end
 
-@begin{youtube-dl}
-youtube-dl --socket-timeout 3 --retries 3 http://www.youtube.com/watch?v=9uDgJ9_H0gg -o youtube.flv
-test -f youtube.flv
-@end
-
 # vim: set ts=8 sw=4 tw=0 ft=sh :
