@@ -1,0 +1,279 @@
+#!/bin/sh
+#description: show a local port to the internet over ssh, with nothing to install
+#usage: tunnel [-s SUBDOMAIN] [-p PROVIDER] [-Q] [host:]port
+
+#example: tunnel 5000 #hand someone a url that reaches your localhost:5000
+#Forwarding https://tunnel-e4c5f215.serveousercontent.com -> 127.0.0.1:5000
+
+#example: tunnel -s mydemo 5000 #a name you choose instead of a made up one
+#Forwarding https://mydemo.serveousercontent.com -> 127.0.0.1:5000
+
+#the tunnel lives as long as this command does: Ctrl-C closes it. Every
+#provider here is plain ssh, which is why there is nothing to install: no
+#account, no daemon, no binary. The price is that the other end is somebody
+#else's machine, so do not expose what you would not put on the open web
+
+VERSION="2026.09.12-23:15"
+
+PROGNAME="$(expr "${0}" : '.*/\([^/]*\)')"
+
+_usage() {
+    printf "%s\\n" "Usage: ${PROGNAME} [-s SUBDOMAIN] [-p PROVIDER] [-Q] [host:]port"
+    printf "%s\\n" "Show a local port to the internet over ssh, with nothing to install."
+    printf "\\n"
+    printf "%s\\n" "  -s, --subdomain  the name to ask for, serveo only, default made up"
+    printf "%s\\n" "  -p, --provider   serveo (default) or localhost.run"
+    printf "%s\\n" "  -Q, --no-qr      do not draw the qr code"
+    printf "\\n"
+    printf "%s\\n" "  -U, --update     update this program to latest version"
+    printf "%s\\n" "  -v, --version    display version"
+    printf "%s\\n" "  -h, --help       show this help message and exit"
+    printf "\\n"
+    printf "%s\\n" "The url is known before the tunnel is up, because the name is asked"
+    printf "%s\\n" "for instead of taken, so the qr is drawn right away: with qrencode"
+    printf "%s\\n" "when it is installed, by asking qrenco.de when it is not. That last"
+    printf "%s\\n" "one hands the url to a third party, which is what --no-qr is for."
+}
+
+_die() {
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
+}
+
+_is_int() {
+    case "${1}" in
+        *[!0-9]*|"") return 1 ;;
+    esac
+}
+
+_update() { #replace this file with the one in the repo, when that one is newer
+    _u__current_file="$(cd "$(dirname "${0}")" && pwd)/${PROGNAME}"
+
+    #a link into a checkout is not ours to overwrite: mv would put a regular
+    #file where the link was and quietly detach it from the repo that owns it,
+    #leaving a copy nobody updates again
+    if [ -L "${_u__current_file}" ]; then
+        _u__target="$(readlink "${_u__current_file}" 2>/dev/null)"
+        printf "%s\\n%s\\n" \
+            "ERROR: ${_u__current_file} is a link to ${_u__target:-somewhere else}" \
+            "INFO : update what it points at, replacing the link would orphan it" >&2
+        return 1
+    fi
+
+    _u__current_version_long="$(awk -F\" \
+        '/VERSION=/{print $2;exit}' "${_u__current_file}" 2>/dev/null)"
+    _u__current_version="$(printf "%s\\n" "${_u__current_version_long}" | \
+        awk '{gsub(/[\.:]/,"");gsub(/-/,"");print;exit}' 2>/dev/null)"
+    [ -z "${_u__current_version}" ] && printf "%s\\n%s\\n%s\\n"           \
+        "ERROR: Failed to detect current version, please update manually" \
+        "${PROGNAME}         = ${_u__current_file}"                       \
+        "${PROGNAME} version = ${_u__current_version}" >&2 && return 1
+
+    command -v "wget" >/dev/null 2>&1 || command -v "curl" >/dev/null 2>&1 || \
+        { printf "%s\\n" "ERROR: Install either 'wget' or 'curl' to upgrade" >&2; return 1; }
+
+    _u__url="https://raw.githubusercontent.com/javier-lopez/learn/master/sh/tools/${PROGNAME}"
+
+    #it never lands in /tmp. A predictable name in a world writable directory
+    #is a file somebody else can turn into a link before we write through it,
+    #and this one gets chmod +x and becomes the program. It is held in a
+    #variable, and only written next to the file it is going to replace, where
+    #the rename is atomic because it never crosses a filesystem. The
+    #certificate is checked and curl is told to fail on a 404 instead of
+    #handing over the error page. stderr is left alone so you read why it failed
+    _u__new="$(wget -q -O- "${_u__url}" || curl -fsS "${_u__url}")" || { \
+        printf "%s\\n" \
+        "ERROR: Failed to fetch update, please try later or update manually" >&2
+        return 1; }
+
+    #and what came down has to look like the program, not like a web page
+    case "${_u__new}" in
+        "#!"*) ;;
+        *) printf "%s\\n" "ERROR: what came down is not a script, not touching ${PROGNAME}" >&2
+           return 1 ;;
+    esac
+
+    _u__update_version_long="$(printf "%s\\n" "${_u__new}" | awk -F\" \
+        '/VERSION=/{print $2;exit}' 2>/dev/null)"
+    _u__update_version="$(printf "%s" "${_u__update_version_long}" | awk \
+        '{gsub(/[\.:]/,"");gsub(/-/,"");print;exit}' 2>/dev/null)"
+    #no VERSION upstream is not the same as being current, and saying
+    #up-to-date there is the most expensive kind of lie: the one you believe
+    [ -z "${_u__update_version}" ] && printf "%s\\n" \
+        "ERROR: the copy upstream carries no VERSION, cannot tell if it is newer" >&2 && return 1
+
+    if [ "${_u__current_version}" -lt "${_u__update_version}" ]; then
+        printf "%s %s\\n" "Updating from version" \
+            "${_u__current_version_long} to ${_u__update_version_long} ..."
+
+        #checked again, right here: between the check at the top and this line
+        #the file could have become a link, and this is the moment it matters
+        [ -L "${_u__current_file}" ] && printf "%s\\n" \
+            "ERROR: ${_u__current_file} became a link, not replacing it" >&2 && return 1
+
+        _u__tmpfile="${_u__current_file}.update"
+        if printf "%s\\n" "${_u__new}" > "${_u__tmpfile}" 2>/dev/null; then
+            chmod +x "${_u__tmpfile}"
+            mv -f "${_u__tmpfile}" "${_u__current_file}" 2>/dev/null || { \
+                rm -f "${_u__tmpfile}"
+                printf "%s\\n" "ERROR: cannot replace ${_u__current_file}" >&2
+                return 1; }
+        else
+            #no write permission in that directory, so the file has to be
+            #staged somewhere we do own, and mktemp is what makes that name
+            #unguessable and the file ours alone
+            printf "%s\\n" "ERROR: no write permissions on ${_u__current_file}" >&2
+            printf "%s\\n" "INFO : trying with sudo ..." >&2
+            command -v "sudo" >/dev/null 2>&1 || { \
+                printf "%s\\n" "ERROR: sudo isn't available, exiting ..." >&2; return 1; }
+            _u__tmpfile="$(mktemp "${TMPDIR:-/tmp}/${PROGNAME}.XXXXXX")" || return 1
+            printf "%s\\n" "${_u__new}" > "${_u__tmpfile}" || { \
+                rm -f "${_u__tmpfile}"; return 1; }
+            chmod +x "${_u__tmpfile}"
+            sudo mv "${_u__tmpfile}" "${_u__current_file}" || { \
+                rm -f "${_u__tmpfile}"; return 1; }
+        fi
+        printf "%s\\n" "${PROGNAME} is up-to-date (${_u__update_version_long})"
+        return 0
+    fi
+    printf "%s\\n" "${PROGNAME} is up-to-date (${_u__current_version_long})"
+}
+
+_tunnel_listening() { #is anything answering there? a tunnel to nothing is a 502
+    command -v ss >/dev/null 2>&1 || return 0
+    ss -lntH 2>/dev/null | awk -v p=":${1}" 'index($4, p) == length($4) - length(p) + 1 {
+        found = 1; exit
+    } END { exit !found }'
+}
+
+_tunnel_rand() { #not awk's srand: it is seeded in whole seconds, and two
+                 #tunnels opened in the same second would ask for one name
+    if [ -r "/proc/sys/kernel/random/uuid" ]; then
+        awk -F"-" '{print $1; exit}' "/proc/sys/kernel/random/uuid"
+    else
+        printf "%s" "$$"
+    fi
+}
+
+_tunnel_qr() {
+    if command -v qrencode >/dev/null 2>&1; then
+        qrencode -t ANSIUTF8 "${1}"
+    elif command -v curl >/dev/null 2>&1; then
+        #a url that is about to be public, handed to a third party to draw. It
+        #is the reason --no-qr exists, and the reason qrencode goes first
+        curl -s --max-time 10 "qrenco.de/${1}"
+    else
+        printf "%s\\n" "${PROGNAME}: no qrencode and no curl, no qr" >&2
+    fi
+}
+
+_tunnel() {
+    case "${provider}" in
+        serveo)
+            #serveo answers on serveousercontent.com, not on serveo.net: the
+            #tunnel is named there, the ssh endpoint is the other host
+            host="serveo.net"
+            if [ -n "${subdomain}" ]; then
+                forward="${subdomain}:80:${target}"
+                url="https://${subdomain}.serveousercontent.com"
+            else
+                forward="80:${target}"
+            fi
+            ;;
+        localhost.run)
+            #no name to ask for without an account, so the url only shows up
+            #in the output of the session itself
+            host="nokey@localhost.run"
+            forward="80:${target}"
+            ;;
+    esac
+
+    if [ -n "${url}" ]; then
+        printf "%s\\n" "Forwarding ${url} -> ${target}"
+        [ X"${qr}" = X"no" ] || _tunnel_qr "${url}"
+    else
+        printf "%s\\n" "Forwarding -> ${target}, ${provider} prints the url below"
+        [ X"${qr}" = X"no" ] || printf "%s\\n" \
+            "${PROGNAME}: no qr, ${provider} names the tunnel and only it knows the url" >&2
+    fi
+
+    #no exec: the caller may want its shell back, and ssh already forwards the
+    #signals. StrictHostKeyChecking is left alone on purpose, a tunnel is not
+    #a reason to stop being told that a host key changed
+    ssh -o ServerAliveInterval=60 -o ConnectTimeout=15 -R "${forward}" "${host}"
+}
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- "${@}" $(cat)
+fi
+
+[ "${#}" -eq "0" ] && _die
+
+for arg in "${@}"; do #parse options
+    case "${arg}" in
+        '-s'|'--subdomain')
+            if [ "${#}" -gt "1" ]; then
+                case "${2}" in
+                    -*) _die "Option '${arg}' requires a parameter" ;;
+                esac
+                shift; subdomain="${1}"; [ "${1}" ] && shift
+            else
+                _die "Option '${arg}' requires a parameter"
+            fi
+            ;;
+        -s*)          subdomain="${1#-s}"; shift ;;
+        --subdomain*) subdomain="${1#--subdomain}"; shift ;;
+        '-p'|'--provider')
+            if [ "${#}" -gt "1" ]; then
+                case "${2}" in
+                    -*) _die "Option '${arg}' requires a parameter" ;;
+                esac
+                shift; provider="${1}"; [ "${1}" ] && shift
+            else
+                _die "Option '${arg}' requires a parameter"
+            fi
+            ;;
+        -p*)        provider="${1#-p}"; shift ;;
+        --provider*) provider="${1#--provider}"; shift ;;
+        -Q|--no-qr) qr="no"; shift ;;
+        -U|--update)  _update; exit "${?}" ;;
+        -v|--version) printf "%s\\n" "${PROGNAME} ${VERSION}"; exit ;;
+        -h|--help)  _usage && exit ;;
+        -*) _die "${PROGNAME}: unrecognized option '${arg}'" ;;
+    esac
+done
+
+### validate options ###
+[ -z "${provider}" ] && provider="serveo"
+#options only, with no port left, is the same as saying nothing at all
+[ "${#}" -eq "0" ]   && _die
+[ "${#}" -eq "1" ]   || _die "${PROGNAME}: one port at a time"
+
+#the arguments are settled before anything is probed or connected: a wrong
+#flag should not cost a look at the network first
+case "${provider}" in
+    serveo) ;;
+    localhost.run)
+        [ -n "${subdomain}" ] && _die "${PROGNAME}: localhost.run has no subdomains, drop -s" ;;
+    *) _die "${PROGNAME}: unknown provider '${provider}'" ;;
+esac
+
+port="${1##*:}"
+[ X"${port}" = X"${1}" ] && lhost="127.0.0.1" || lhost="${1%:*}"
+_is_int "${port}" || _die "${PROGNAME}: '${port}' is not a port"
+target="${lhost}:${port}"
+
+#a name has to exist before the url can be printed, and knowing the url before
+#the tunnel is up is worth more than whatever name serveo would have picked:
+#you can paste it, or draw it, without waiting
+[ -z "${subdomain}" ] && [ X"${provider}" = X"serveo" ] && \
+    subdomain="tunnel-$(_tunnel_rand)"
+
+if [ X"${lhost}" = X"127.0.0.1" ] || [ X"${lhost}" = X"localhost" ]; then
+    _tunnel_listening "${port}" || \
+        printf "%s\\n" "${PROGNAME}: nothing is listening on ${port} yet" >&2
+fi
+########################
+
+_tunnel

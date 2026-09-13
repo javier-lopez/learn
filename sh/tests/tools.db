@@ -601,6 +601,29 @@ test X"$(pianocat -c 2>&1|head -1)"      = X"Option '-c' requires a parameter"
 test X"$(pianocat -f 2>&1|head -1)"      = X"Option '-f' requires a parameter"
 @end
 
+@begin{ports}
+ports -h ; test X"${?}"                                 = X"0"
+printf "%s" '-h' | ports; test X"${?}"                  = X"0"
+ports --help ; test X"${?}"                             = X"0"
+printf "%s" '--help' | ports; test X"${?}"              = X"0"
+ports --cui; test X"${?}"                               = X"1"
+printf "%s" '--cui' | ports; test X"${?}"               = X"1"
+test X"$(ports -h | head -1)"                           = X"Usage: ports [-u] [-a] [port]"
+test X"$(printf "%s" '--help' | ports | head -1)"       = X"Usage: ports [-u] [-a] [port]"
+test X"$(ports --cui | head -1)"                        = X""
+test X"$(ports --cui 2>&1|head -1)"                     = X"ports: unrecognized option '--cui'"
+test X"$(ports foo 2>&1|head -1)"                       = X"ports: 'foo' is not a port"
+test X"$(ports 22 80 2>&1|head -1)"                     = X"ports: one port at a time"
+#port 1 needs root to bind, so nothing holds it on a machine running a test suite
+ports 1; test X"${?}"                                   = X"1"
+test X"$(ports 1 | head -1)"                            = X""
+test X"$(ports 1 2>&1|head -1)"                         = X"nothing is listening on 1"
+#-U is not tested: it reaches the network and rewrites the file under test
+ports -v; test X"${?}"                                  = X"0"
+test X"$(ports -v | awk '{print $1}')"                  = X"ports"
+test X"$(ports --version | awk 'NF==2{print $1}')"      = X"ports"
+@end
+
 @begin{pxe}
 pxe -h; test X"${?}"                              = X"0"
 printf "%s" '-h' | pxe; test X"${?}"              = X"0"
@@ -820,6 +843,35 @@ trash -uy XaMTWGfu89iQpJk6
 test X"$(cat foo/XaMTWGfu89iQpJk6)"         = X"1"
 test X"$(cat foo/bar/XaMTWGfu89iQpJk6)"     = X"2"
 test X"$(cat foo/bar/rar/XaMTWGfu89iQpJk6)" = X"3"
+@end
+
+@begin{tunnel}
+#nothing here may reach the network: every case below dies while reading its
+#own arguments, before a socket is opened
+tunnel; test X"${?}"                                            = X"1"
+tunnel -h ; test X"${?}"                                        = X"0"
+printf "%s" '-h' | tunnel; test X"${?}"                         = X"0"
+tunnel --help ; test X"${?}"                                    = X"0"
+printf "%s" '--help' | tunnel; test X"${?}"                     = X"0"
+tunnel --cui; test X"${?}"                                      = X"1"
+printf "%s" '--cui' | tunnel; test X"${?}"                      = X"1"
+test X"$(tunnel | head -1)"                                     = X""
+test X"$(tunnel 2>&1 | head -1)"                                = X"Usage: tunnel [-s SUBDOMAIN] [-p PROVIDER] [-Q] [host:]port"
+test X"$(tunnel -h | head -1)"                                  = X"Usage: tunnel [-s SUBDOMAIN] [-p PROVIDER] [-Q] [host:]port"
+test X"$(printf "%s" '--help' | tunnel | head -1)"              = X"Usage: tunnel [-s SUBDOMAIN] [-p PROVIDER] [-Q] [host:]port"
+test X"$(tunnel --cui | head -1)"                               = X""
+test X"$(tunnel --cui 2>&1|head -1)"                            = X"tunnel: unrecognized option '--cui'"
+test X"$(tunnel -s 2>&1|head -1)"                               = X"Option '-s' requires a parameter"
+test X"$(tunnel -p 2>&1|head -1)"                               = X"Option '-p' requires a parameter"
+test X"$(tunnel foo 2>&1|head -1)"                              = X"tunnel: 'foo' is not a port"
+test X"$(tunnel 80 8080 2>&1|head -1)"                          = X"tunnel: one port at a time"
+test X"$(tunnel -p cui 8080 2>&1|head -1)"                      = X"tunnel: unknown provider 'cui'"
+test X"$(tunnel --no-qr 2>&1|head -1)"                          = X"Usage: tunnel [-s SUBDOMAIN] [-p PROVIDER] [-Q] [host:]port"
+test X"$(tunnel -p localhost.run -s demo 8080 2>&1|head -1)"    = X"tunnel: localhost.run has no subdomains, drop -s"
+#-U is not tested: it reaches the network and rewrites the file under test
+tunnel -v; test X"${?}"                                         = X"0"
+test X"$(tunnel -v | awk '{print $1}')"                         = X"tunnel"
+test X"$(tunnel --version | awk 'NF==2{print $1}')"             = X"tunnel"
 @end
 
 @begin{uimg}

@@ -1,0 +1,298 @@
+#!/bin/sh
+#description: what is listening on this machine, and which command owns it
+#usage: ports [-u] [-a] [port]
+
+#example: ports #everything that listens, docker or not
+#PORT       PROCESS          PID      BIND             WHAT
+#5000       docker           -        0.0.0.0          javierio (javierio-jekyll-1)
+#38152      node             1271254  127.0.0.1        -
+
+#example: ports 5000 #who is using 5000
+#PORT       PROCESS          PID      BIND             WHAT
+#5000       docker           -        0.0.0.0          javierio (javierio-jekyll-1)
+
+VERSION="2026.09.12-23:15"
+
+PROGNAME="$(expr "${0}" : '.*/\([^/]*\)')"
+
+_usage() {
+    printf "%s\\n" "Usage: ${PROGNAME} [-u] [-a] [port]"
+    printf "%s\\n" "What is listening on this machine, and which command owns it."
+    printf "\\n"
+    printf "%s\\n" "  -u, --udp     listen on udp too, ports show up as 53/udp"
+    printf "%s\\n" "  -a, --all     one row per socket, ipv4 and ipv6 apart, nothing merged"
+    printf "\\n"
+    printf "%s\\n" "  -U, --update  update this program to latest version"
+    printf "%s\\n" "  -v, --version display version"
+    printf "%s\\n" "  -h, --help    show this help message and exit"
+    printf "\\n"
+    printf "%s\\n" "A port held by another user shows its owner as '?': the kernel"
+    printf "%s\\n" "only names a process to whoever may see it. Run it under sudo to"
+    printf "%s\\n" "fill those in. Docker's ports are the exception, they are named"
+    printf "%s\\n" "by asking docker instead of the kernel."
+}
+
+_die() {
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
+}
+
+_is_int() {
+    case "${1}" in
+        *[!0-9]*|"") return 1 ;;
+    esac
+}
+
+_update() { #replace this file with the one in the repo, when that one is newer
+    _u__current_file="$(cd "$(dirname "${0}")" && pwd)/${PROGNAME}"
+
+    #a link into a checkout is not ours to overwrite: mv would put a regular
+    #file where the link was and quietly detach it from the repo that owns it,
+    #leaving a copy nobody updates again
+    if [ -L "${_u__current_file}" ]; then
+        _u__target="$(readlink "${_u__current_file}" 2>/dev/null)"
+        printf "%s\\n%s\\n" \
+            "ERROR: ${_u__current_file} is a link to ${_u__target:-somewhere else}" \
+            "INFO : update what it points at, replacing the link would orphan it" >&2
+        return 1
+    fi
+
+    _u__current_version_long="$(awk -F\" \
+        '/VERSION=/{print $2;exit}' "${_u__current_file}" 2>/dev/null)"
+    _u__current_version="$(printf "%s\\n" "${_u__current_version_long}" | \
+        awk '{gsub(/[\.:]/,"");gsub(/-/,"");print;exit}' 2>/dev/null)"
+    [ -z "${_u__current_version}" ] && printf "%s\\n%s\\n%s\\n"           \
+        "ERROR: Failed to detect current version, please update manually" \
+        "${PROGNAME}         = ${_u__current_file}"                       \
+        "${PROGNAME} version = ${_u__current_version}" >&2 && return 1
+
+    command -v "wget" >/dev/null 2>&1 || command -v "curl" >/dev/null 2>&1 || \
+        { printf "%s\\n" "ERROR: Install either 'wget' or 'curl' to upgrade" >&2; return 1; }
+
+    _u__url="https://raw.githubusercontent.com/javier-lopez/learn/master/sh/tools/${PROGNAME}"
+
+    #it never lands in /tmp. A predictable name in a world writable directory
+    #is a file somebody else can turn into a link before we write through it,
+    #and this one gets chmod +x and becomes the program. It is held in a
+    #variable, and only written next to the file it is going to replace, where
+    #the rename is atomic because it never crosses a filesystem. The
+    #certificate is checked and curl is told to fail on a 404 instead of
+    #handing over the error page. stderr is left alone so you read why it failed
+    _u__new="$(wget -q -O- "${_u__url}" || curl -fsS "${_u__url}")" || { \
+        printf "%s\\n" \
+        "ERROR: Failed to fetch update, please try later or update manually" >&2
+        return 1; }
+
+    #and what came down has to look like the program, not like a web page
+    case "${_u__new}" in
+        "#!"*) ;;
+        *) printf "%s\\n" "ERROR: what came down is not a script, not touching ${PROGNAME}" >&2
+           return 1 ;;
+    esac
+
+    _u__update_version_long="$(printf "%s\\n" "${_u__new}" | awk -F\" \
+        '/VERSION=/{print $2;exit}' 2>/dev/null)"
+    _u__update_version="$(printf "%s" "${_u__update_version_long}" | awk \
+        '{gsub(/[\.:]/,"");gsub(/-/,"");print;exit}' 2>/dev/null)"
+    #no VERSION upstream is not the same as being current, and saying
+    #up-to-date there is the most expensive kind of lie: the one you believe
+    [ -z "${_u__update_version}" ] && printf "%s\\n" \
+        "ERROR: the copy upstream carries no VERSION, cannot tell if it is newer" >&2 && return 1
+
+    if [ "${_u__current_version}" -lt "${_u__update_version}" ]; then
+        printf "%s %s\\n" "Updating from version" \
+            "${_u__current_version_long} to ${_u__update_version_long} ..."
+
+        #checked again, right here: between the check at the top and this line
+        #the file could have become a link, and this is the moment it matters
+        [ -L "${_u__current_file}" ] && printf "%s\\n" \
+            "ERROR: ${_u__current_file} became a link, not replacing it" >&2 && return 1
+
+        _u__tmpfile="${_u__current_file}.update"
+        if printf "%s\\n" "${_u__new}" > "${_u__tmpfile}" 2>/dev/null; then
+            chmod +x "${_u__tmpfile}"
+            mv -f "${_u__tmpfile}" "${_u__current_file}" 2>/dev/null || { \
+                rm -f "${_u__tmpfile}"
+                printf "%s\\n" "ERROR: cannot replace ${_u__current_file}" >&2
+                return 1; }
+        else
+            #no write permission in that directory, so the file has to be
+            #staged somewhere we do own, and mktemp is what makes that name
+            #unguessable and the file ours alone
+            printf "%s\\n" "ERROR: no write permissions on ${_u__current_file}" >&2
+            printf "%s\\n" "INFO : trying with sudo ..." >&2
+            command -v "sudo" >/dev/null 2>&1 || { \
+                printf "%s\\n" "ERROR: sudo isn't available, exiting ..." >&2; return 1; }
+            _u__tmpfile="$(mktemp "${TMPDIR:-/tmp}/${PROGNAME}.XXXXXX")" || return 1
+            printf "%s\\n" "${_u__new}" > "${_u__tmpfile}" || { \
+                rm -f "${_u__tmpfile}"; return 1; }
+            chmod +x "${_u__tmpfile}"
+            sudo mv "${_u__tmpfile}" "${_u__current_file}" || { \
+                rm -f "${_u__tmpfile}"; return 1; }
+        fi
+        printf "%s\\n" "${PROGNAME} is up-to-date (${_u__update_version_long})"
+        return 0
+    fi
+    printf "%s\\n" "${PROGNAME} is up-to-date (${_u__current_version_long})"
+}
+
+_ports_listeners() { #every socket in the LISTEN state, one per line, proto first
+    if command -v ss >/dev/null 2>&1; then
+        ss -lnptH 2>/dev/null | awk '{print "L tcp " $0}'
+        [ -n "${udp}" ] && ss -lnpuH 2>/dev/null | awk '{print "L udp " $0}'
+    elif command -v lsof >/dev/null 2>&1; then
+        #lsof says the same thing in another shape: rebuild ss's columns from
+        #it so the parser below stays single
+        lsof -nP -iTCP -sTCP:LISTEN +c0 2>/dev/null | awk 'NR > 1 {
+            printf "L tcp LISTEN 0 0 %s *:* users:((\"%s\",pid=%s,fd=0))\n", $9, $1, $2
+        }'
+    elif command -v netstat >/dev/null 2>&1; then
+        netstat -lntp 2>/dev/null | awk '$1 ~ /^tcp/ {
+            printf "L tcp LISTEN 0 0 %s %s users:((\"-\",pid=%s,fd=0))\n", $4, $5, $7
+        }'
+    else
+        printf "%s\\n" "${PROGNAME}: no ss, lsof or netstat here, nothing to ask" >&2
+        exit 1
+    fi
+}
+
+_ports_docker() { #published host ports, so a docker-proxy owned by root still
+                  #gets a name. Skipped when docker is absent or not running
+    command -v docker >/dev/null 2>&1 || return 0
+    #--no-trunc, because docker's own truncation cuts the command at 20
+    #characters, which is where it stops answering "is this what I think it is"
+    docker ps --no-trunc \
+        --format '{{.Ports}}#{{.Names}}#{{.Label "com.docker.compose.project"}}#{{.Command}}' \
+        2>/dev/null | awk -F"#" '{
+            cmd = $4
+            gsub(/^"|"$/, "", cmd)                     #docker quotes it, we do not
+            n = split($1, p, ",")
+            for (i = 1; i <= n; i++) {
+                if (index(p[i], "->") == 0) continue   #not published, not ours
+                host = substr(p[i], 1, index(p[i], "->") - 1)
+                sub(/.*:/, "", host)                   #0.0.0.0:5000 and [::]:5000 alike
+                if (host == "" || seen[host]++) continue
+                printf "D %s %s %s %s\n", host, $2, ($3 == "" ? "-" : $3), cmd
+            }
+        }'
+}
+
+_ports() {
+    { _ports_docker; _ports_listeners; } | awk -v want="${1}" -v all="${all}" \
+                                               -v uid="$(id -u 2>/dev/null)" '
+    function pad(s, n) { while (length(s) < n) s = s " "; return s }
+
+    $1 == "D" {
+        dname[$2] = $3; dproj[$2] = $4
+        cmd = ""
+        for (i = 5; i <= NF; i++) cmd = (cmd == "") ? $i : cmd " " $i
+        dcmd[$2] = cmd
+        next
+    }
+
+    $1 == "L" {
+        proto = $2; addr = $6
+        port  = addr; sub(/.*:/, "", port)             #the last colon, so [::]:80 works
+        sub(/:[^:]*$/, "", addr)
+        if (addr == "" || addr == "*") addr = "0.0.0.0"
+        if (want != "" && port != want) next
+
+        proc = "?"; pid = "-"
+        if ($8 ~ /^users:/) {
+            proc = $8
+            sub(/^users:\(\("/, "", proc); sub(/".*/, "", proc)
+            if (match($8, /pid=[0-9]+/)) pid = substr($8, RSTART + 4, RLENGTH - 4)
+        }
+
+        what = "-"
+        if (port in dname) {
+            #docker knows this one: its proxy runs as root and the kernel would
+            #not have named it to us anyway
+            if (proc == "?") proc = "docker"
+            #compose names a container after its project, so saying the project
+            #as well is saying it twice. It only earns its place when the
+            #container was named something else
+            what = dname[port]
+            if (dproj[port] != "-" && index(dname[port], dproj[port] "-") != 1)
+                what = dproj[port] " (" dname[port] ")"
+            if (dcmd[port] != "") {
+                #a name says which container, the command says what it runs.
+                #Asking about one port is asking for the detail, listing them
+                #all is not: there the command is cut to keep the table a table
+                c = dcmd[port]
+                if (want == "" && length(c) > 45) c = substr(c, 1, 44) "\342\200\246"
+                what = what ": " c
+            }
+        }
+        if (proc == "?") hidden = 1
+
+        #one service reachable from everywhere is one row. The wildcards are
+        #the ipv4 and the ipv6 of the same thing, and docker even runs a
+        #separate proxy for each, so the pid cannot be what tells them apart.
+        #A bind to a particular address is a different matter and keeps its own
+        #row: 127.0.0.1 and 0.0.0.0 are not the same offer. -a shows sockets
+        if (!all && (addr == "0.0.0.0" || addr == "[::]" || addr == "::" || addr == "*"))
+            addr = "*"
+
+        key = all ? proto ":" port ":" pid ":" addr \
+                  : proto ":" port ":" proc ":" what ":" addr
+        if (key in row) next
+
+        row[key] = 1
+        n++
+        p_num[n] = port + 0
+        p_txt[n] = (proto == "udp") ? port "/udp" : port
+        p_prc[n] = proc; p_pid[n] = pid; p_adr[n] = addr; p_wht[n] = what
+    }
+
+    END {
+        if (n == 0) exit 1
+        printf "%s%s%s%s%s\n", pad("PORT",10), pad("PROCESS",17), pad("PID",8), pad("BIND",17), "WHAT"
+        #a selection sort: a handful of rows, and it keeps sort(1) out of a
+        #script that is already asking the kernel and docker
+        for (i = 1; i <= n; i++) {
+            m = i
+            for (j = i + 1; j <= n; j++) if (p_num[j] < p_num[m]) m = j
+            if (m != i) {
+                t = p_num[i]; p_num[i] = p_num[m]; p_num[m] = t
+                t = p_txt[i]; p_txt[i] = p_txt[m]; p_txt[m] = t
+                t = p_prc[i]; p_prc[i] = p_prc[m]; p_prc[m] = t
+                t = p_pid[i]; p_pid[i] = p_pid[m]; p_pid[m] = t
+                t = p_adr[i]; p_adr[i] = p_adr[m]; p_adr[m] = t
+                t = p_wht[i]; p_wht[i] = p_wht[m]; p_wht[m] = t
+            }
+            printf "%s%s%s%s%s\n", pad(p_txt[i],10), pad(p_prc[i],17), \
+                                   pad(p_pid[i],8), pad(p_adr[i],17), p_wht[i]
+        }
+        #already root: nothing is being hidden, whatever has no name has no
+        #process behind it, and telling root to use sudo is an insult
+        if (hidden && uid != "0") printf "\n%s\n", "some owners belong to another user, run: sudo ports"
+    }'
+}
+
+if [ ! -t 0 ]; then
+    #there is input comming from pipe or file, add to the end of $@
+    set -- "${@}" $(cat)
+fi
+
+for arg in "${@}"; do #parse options
+    case "${arg}" in
+        -u|--udp)  udp="1"; shift ;;
+        -a|--all)  all="1"; shift ;;
+        -U|--update)  _update; exit "${?}" ;;
+        -v|--version) printf "%s\\n" "${PROGNAME} ${VERSION}"; exit ;;
+        -h|--help) _usage && exit ;;
+        -*) _die "${PROGNAME}: unrecognized option '${arg}'" ;;
+    esac
+done
+
+### validate options ###
+[ "${#}" -gt "1" ] && _die "${PROGNAME}: one port at a time"
+[ -z "${1}" ] || _is_int "${1}" || _die "${PROGNAME}: '${1}' is not a port"
+########################
+
+if ! _ports "${1}"; then
+    [ -z "${1}" ] && printf "%s\\n" "nothing is listening" >&2 \
+                  || printf "%s\\n" "nothing is listening on ${1}" >&2
+    exit 1
+fi
