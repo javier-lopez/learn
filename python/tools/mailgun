@@ -3,26 +3,35 @@
 
 Drop-in replacement for the old mailgun shell script.
 Reads SES_ACCESS_KEY_ID and SES_SECRET_ACCESS_KEY from ~/.credentials.
+Optional SES_SMTP_PORT (env var or ~/.credentials, env wins) overrides the
+default port 587 — needed on networks whose ISP blocks outbound 587, where
+SES's alternate port 2587 is the only one that connects.
 
 Usage:
     mailgun [options] to@domain.tld "message body"
     echo "message" | mailgun to@domain.tld
     mailgun -s "Subject" --html to@domain.tld "<h1>Report</h1>"
+    mailgun -s "Reporte" --html -a report.pdf to@domain.tld "<h1>Ver adjunto</h1>"
+    mailgun -s "Multi" -a a.pdf -a b.png to@domain.tld "Dos adjuntos"
 
 Options:
     -f, --from      From address (default: no-reply@tucastigo.com)
     -s, --subject   Subject line
     -c, --config    Credentials file (default: ~/.credentials)
     --html          Treat message body as HTML
+    -a, --attach    File path to attach (repeatable for multiple files)
     -h, --help      Show this help
 """
 
 import argparse
+import mimetypes
 import os
 import smtplib
 import sys
+from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from pathlib import Path
 
 DEFAULTS = {
     "from_addr": "TuCastigo <no-reply@tucastigo.com>",
@@ -33,8 +42,8 @@ DEFAULTS = {
 }
 
 
-def load_credentials(path: str) -> tuple[str, str]:
-    """Read SES_ACCESS_KEY_ID and SES_SECRET_ACCESS_KEY from file."""
+def load_credentials(path: str) -> tuple[str, str, int | None]:
+    """Read SES_ACCESS_KEY_ID, SES_SECRET_ACCESS_KEY and optional SES_SMTP_PORT from file."""
     creds = {}
     with open(path) as f:
         for line in f:
@@ -48,7 +57,22 @@ def load_credentials(path: str) -> tuple[str, str]:
     if not access_key or not secret_key:
         print(f"error: SES_ACCESS_KEY_ID or SES_SECRET_ACCESS_KEY not found in {path}", file=sys.stderr)
         sys.exit(1)
-    return access_key, secret_key
+    smtp_port = creds.get("SES_SMTP_PORT")
+    return access_key, secret_key, int(smtp_port) if smtp_port else None
+
+
+def build_attachment(path: Path) -> MIMEApplication:
+    """Read a file and return a MIME part suitable for attachment."""
+    if not path.is_file():
+        print(f"error: attachment not found: {path}", file=sys.stderr)
+        sys.exit(1)
+    ctype, _ = mimetypes.guess_type(str(path))
+    _, _, subtype = (ctype or "application/octet-stream").partition("/")
+    with open(path, "rb") as f:
+        data = f.read()
+    part = MIMEApplication(data, _subtype=subtype)
+    part.add_header("Content-Disposition", "attachment", filename=path.name)
+    return part
 
 
 def send_email(
@@ -62,17 +86,31 @@ def send_email(
     subject: str,
     body: str,
     html: bool = False,
+    attachments: list[str] | None = None,
 ) -> None:
-    """Send an email via SES SMTP with STARTTLS."""
-    msg = MIMEMultipart("alternative")
-    msg["From"] = from_addr
-    msg["To"] = to_addr
-    msg["Subject"] = subject
+    """Send an email via SES SMTP with STARTTLS.
 
-    if html:
-        msg.attach(MIMEText(body, "html", "utf-8"))
+    When attachments are present, the email is built as multipart/mixed
+    (body + binary parts). When there are no attachments, the original
+    multipart/alternative envelope is preserved for backwards compatibility.
+    """
+    attachments = attachments or []
+    body_subtype = "html" if html else "plain"
+
+    if attachments:
+        msg = MIMEMultipart("mixed")
+        msg["From"] = from_addr
+        msg["To"] = to_addr
+        msg["Subject"] = subject
+        msg.attach(MIMEText(body, body_subtype, "utf-8"))
+        for attach_path in attachments:
+            msg.attach(build_attachment(Path(attach_path)))
     else:
-        msg.attach(MIMEText(body, "plain", "utf-8"))
+        msg = MIMEMultipart("alternative")
+        msg["From"] = from_addr
+        msg["To"] = to_addr
+        msg["Subject"] = subject
+        msg.attach(MIMEText(body, body_subtype, "utf-8"))
 
     with smtplib.SMTP(smtp_host, smtp_port) as server:
         server.starttls()
@@ -91,6 +129,13 @@ def main() -> None:
     parser.add_argument("-s", "--subject", default=DEFAULTS["subject"])
     parser.add_argument("-c", "--config", default=DEFAULTS["config"])
     parser.add_argument("--html", action="store_true", help="Treat body as HTML")
+    parser.add_argument(
+        "-a", "--attach",
+        action="append",
+        default=[],
+        metavar="FILE",
+        help="File to attach (repeatable for multiple files)",
+    )
 
     args = parser.parse_args()
 
@@ -107,11 +152,15 @@ def main() -> None:
         print("error: empty message", file=sys.stderr)
         sys.exit(1)
 
-    access_key, secret_key = load_credentials(args.config)
+    access_key, secret_key, config_port = load_credentials(args.config)
+
+    # A silently-blocked port hangs connect() until killed, so the override
+    # must fail loudly on garbage values rather than fall back to 587.
+    smtp_port = int(os.environ.get("SES_SMTP_PORT") or config_port or DEFAULTS["smtp_port"])
 
     send_email(
         smtp_host=DEFAULTS["smtp_host"],
-        smtp_port=DEFAULTS["smtp_port"],
+        smtp_port=smtp_port,
         username=access_key,
         password=secret_key,
         from_addr=args.from_addr,
@@ -119,6 +168,7 @@ def main() -> None:
         subject=args.subject,
         body=body,
         html=args.html,
+        attachments=args.attach,
     )
 
 
