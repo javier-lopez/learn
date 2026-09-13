@@ -6,6 +6,8 @@
 #example: cpb64 ~/.bashrc
 #H4sIAPzxXlkAA...  #copy and execute output to a remote shell
 
+VERSION="2026.09.12-23:15"
+
 PROGNAME="$(expr "${0}" : '.*/\([^/]*\)')"
 DECODE_STR="$(
 cat - <<'EOF'
@@ -129,6 +131,99 @@ _cpb64() {
     fi
 }
 
+_update() { #replace this file with the one in the repo, when that one is newer
+    _u__current_file="$(cd "$(dirname "${0}")" && pwd)/${PROGNAME}"
+
+    #a link into a checkout is not ours to overwrite: mv would put a regular
+    #file where the link was and quietly detach it from the repo that owns it,
+    #leaving a copy nobody updates again
+    if [ -L "${_u__current_file}" ]; then
+        _u__target="$(readlink "${_u__current_file}" 2>/dev/null)"
+        printf "%s\\n%s\\n" \
+            "ERROR: ${_u__current_file} is a link to ${_u__target:-somewhere else}" \
+            "INFO : update what it points at, replacing the link would orphan it" >&2
+        return 1
+    fi
+
+    _u__current_version_long="$(awk -F\" \
+        '/VERSION=/{print $2;exit}' "${_u__current_file}" 2>/dev/null)"
+    _u__current_version="$(printf "%s\\n" "${_u__current_version_long}" | \
+        awk '{gsub(/[\.:]/,"");gsub(/-/,"");print;exit}' 2>/dev/null)"
+    [ -z "${_u__current_version}" ] && printf "%s\\n%s\\n%s\\n"           \
+        "ERROR: Failed to detect current version, please update manually" \
+        "${PROGNAME}         = ${_u__current_file}"                       \
+        "${PROGNAME} version = ${_u__current_version}" >&2 && return 1
+
+    command -v "wget" >/dev/null 2>&1 || command -v "curl" >/dev/null 2>&1 || \
+        { printf "%s\\n" "ERROR: Install either 'wget' or 'curl' to upgrade" >&2; return 1; }
+
+    _u__url="https://raw.githubusercontent.com/javier-lopez/learn/master/sh/tools/${PROGNAME}"
+
+    #it never lands in /tmp. A predictable name in a world writable directory
+    #is a file somebody else can turn into a link before we write through it,
+    #and this one gets chmod +x and becomes the program. It is held in a
+    #variable, and only written next to the file it is going to replace, where
+    #the rename is atomic because it never crosses a filesystem. The
+    #certificate is checked and curl is told to fail on a 404 instead of
+    #handing over the error page. stderr is left alone so you read why it failed
+    _u__new="$(wget -q -O- "${_u__url}" || curl -fsS "${_u__url}")" || { \
+        printf "%s\\n" \
+        "ERROR: Failed to fetch update, please try later or update manually" >&2
+        return 1; }
+
+    #and what came down has to look like the program, not like a web page
+    case "${_u__new}" in
+        "#!"*) ;;
+        *) printf "%s\\n" "ERROR: what came down is not a script, not touching ${PROGNAME}" >&2
+           return 1 ;;
+    esac
+
+    _u__update_version_long="$(printf "%s\\n" "${_u__new}" | awk -F\" \
+        '/VERSION=/{print $2;exit}' 2>/dev/null)"
+    _u__update_version="$(printf "%s" "${_u__update_version_long}" | awk \
+        '{gsub(/[\.:]/,"");gsub(/-/,"");print;exit}' 2>/dev/null)"
+    #no VERSION upstream is not the same as being current, and saying
+    #up-to-date there is the most expensive kind of lie: the one you believe
+    [ -z "${_u__update_version}" ] && printf "%s\\n" \
+        "ERROR: the copy upstream carries no VERSION, cannot tell if it is newer" >&2 && return 1
+
+    if [ "${_u__current_version}" -lt "${_u__update_version}" ]; then
+        printf "%s %s\\n" "Updating from version" \
+            "${_u__current_version_long} to ${_u__update_version_long} ..."
+
+        #checked again, right here: between the check at the top and this line
+        #the file could have become a link, and this is the moment it matters
+        [ -L "${_u__current_file}" ] && printf "%s\\n" \
+            "ERROR: ${_u__current_file} became a link, not replacing it" >&2 && return 1
+
+        _u__tmpfile="${_u__current_file}.update"
+        if printf "%s\\n" "${_u__new}" > "${_u__tmpfile}" 2>/dev/null; then
+            chmod +x "${_u__tmpfile}"
+            mv -f "${_u__tmpfile}" "${_u__current_file}" 2>/dev/null || { \
+                rm -f "${_u__tmpfile}"
+                printf "%s\\n" "ERROR: cannot replace ${_u__current_file}" >&2
+                return 1; }
+        else
+            #no write permission in that directory, so the file has to be
+            #staged somewhere we do own, and mktemp is what makes that name
+            #unguessable and the file ours alone
+            printf "%s\\n" "ERROR: no write permissions on ${_u__current_file}" >&2
+            printf "%s\\n" "INFO : trying with sudo ..." >&2
+            command -v "sudo" >/dev/null 2>&1 || { \
+                printf "%s\\n" "ERROR: sudo isn't available, exiting ..." >&2; return 1; }
+            _u__tmpfile="$(mktemp "${TMPDIR:-/tmp}/${PROGNAME}.XXXXXX")" || return 1
+            printf "%s\\n" "${_u__new}" > "${_u__tmpfile}" || { \
+                rm -f "${_u__tmpfile}"; return 1; }
+            chmod +x "${_u__tmpfile}"
+            sudo mv "${_u__tmpfile}" "${_u__current_file}" || { \
+                rm -f "${_u__tmpfile}"; return 1; }
+        fi
+        printf "%s\\n" "${PROGNAME} is up-to-date (${_u__update_version_long})"
+        return 0
+    fi
+    printf "%s\\n" "${PROGNAME} is up-to-date (${_u__current_version_long})"
+}
+
 if [ ! -t 0 ]; then
     #there is input comming from pipe or file, add to the end of $@
     set -- "${@}" $(cat)
@@ -138,6 +233,8 @@ fi
 
 for arg in "${@}"; do #parse options
     case "${arg}" in
+        -U|--update)  _update; exit "${?}" ;;
+        -v|--version) printf "%s\\n" "${PROGNAME} ${VERSION}"; exit ;;
         -h|--help) _usage && exit ;;
         -p|--portable) portable="true"; shift
             [ -z "${1}" ] && _die "${PROGNAME}: missing parameters" ;;
