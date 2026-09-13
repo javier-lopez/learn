@@ -228,9 +228,16 @@ _update() { #replace this file with the one in the repo, when that one is newer
     #leaving a copy nobody updates again
     if [ -L "${_u__current_file}" ]; then
         _u__target="$(readlink "${_u__current_file}" 2>/dev/null)"
-        printf "%s\\n%s\\n" \
-            "ERROR: ${_u__current_file} is a link to ${_u__target:-somewhere else}" \
-            "INFO : update what it points at, replacing the link would orphan it" >&2
+        printf "%s\\n" "ERROR: ${_u__current_file} is a link to ${_u__target:-somewhere else}" >&2
+        #naming shundle here is duplication, and it is worth it: this branch is
+        #only ever reached when the file already is a link inside a bundle, so
+        #shundle is there by definition. Anyone who downloaded this script on
+        #its own never gets here, and never reads about a tool they lack
+        case "${_u__target}" in
+            "${SHUNDLE_HOME:-/dev/null}"/bundle/*|*/.shundle/bundle/*)
+                printf "%s\\n" "INFO : shundle update ${progname}" >&2 ;;
+            *)  printf "%s\\n" "INFO : update the file it points at, replacing the link would orphan it" >&2 ;;
+        esac
         return 1
     fi
 
