@@ -618,6 +618,9 @@ test X"$(ports 22 80 2>&1|head -1)"                     = X"ports: one port at a
 ports 1; test X"${?}"                                   = X"1"
 test X"$(ports 1 | head -1)"                            = X""
 test X"$(ports 1 2>&1|head -1)"                         = X"nothing is listening on 1"
+#an option written after the port used to eat the port
+test X"$(ports 1 -a 2>&1|head -1)"                      = X"nothing is listening on 1"
+test X"$(ports -a 1 2>&1|head -1)"                      = X"nothing is listening on 1"
 #-U is not tested: it reaches the network and rewrites the file under test
 ports -v; test X"${?}"                                  = X"0"
 test X"$(ports -v | awk '{print $1}')"                  = X"ports"

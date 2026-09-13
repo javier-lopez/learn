@@ -283,15 +283,20 @@ if [ ! -t 0 ]; then
 fi
 
 for arg in "${@}"; do #parse options
+    #an option takes what is not an option with it when it shifts, and a 'for'
+    #over "$@" walks the list it was handed, not the one being shifted. So the
+    #port is picked up here instead: 'ports 5000 -a' means what it reads like
     case "${arg}" in
-        -u|--udp)  udp="1"; shift ;;
-        -a|--all)  all="1"; shift ;;
+        -u|--udp)  udp="1" ;;
+        -a|--all)  all="1" ;;
         -U|--update)  _update; exit "${?}" ;;
         -v|--version) printf "%s\\n" "${PROGNAME} ${VERSION}"; exit ;;
         -h|--help) _usage && exit ;;
         -*) _die "${PROGNAME}: unrecognized option '${arg}'" ;;
+         *) ports="${ports:+${ports} }${arg}" ;;
     esac
 done
+set -- ${ports} #a port has no spaces in it, splitting is what we want here
 
 ### validate options ###
 [ "${#}" -gt "1" ] && _die "${PROGNAME}: one port at a time"
