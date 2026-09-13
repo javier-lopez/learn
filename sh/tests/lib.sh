@@ -65,13 +65,18 @@ for function in ${FUNCTIONS_WITH_TESTS}; do
     ran="$((${ran} + 1))"
 done
 
+#the sandbox goes whether the run passed or not. Keeping it after a failure
+#reads like forensics and is not: every tool wipes the directory before it
+#runs, so what survives to the end belongs to the last tool, not to the one
+#that failed. The script and the log of the failure are printed above, in full
+cd .. && rm -rf test.sd >/dev/null 2>&1
+
 #result
 if [ "${failed}" -gt "0" ]; then
     printf "FAILED: passed: ${passed}/${ran}, failed: ${failed}/${ran}\\n"
     exit 1
 else
     printf "OK: passed: ${passed}/${ran}\\n"
-    cd .. && rm -rf test.sd >/dev/null 2>&1
 fi
 
 # vim: set ts=8 sw=4 tw=0 ft=sh :
