@@ -608,8 +608,8 @@ ports --help ; test X"${?}"                             = X"0"
 printf "%s" '--help' | ports; test X"${?}"              = X"0"
 ports --cui; test X"${?}"                               = X"1"
 printf "%s" '--cui' | ports; test X"${?}"               = X"1"
-test X"$(ports -h | head -1)"                           = X"Usage: ports [-u] [-a] [port]"
-test X"$(printf "%s" '--help' | ports | head -1)"       = X"Usage: ports [-u] [-a] [port]"
+test X"$(ports -h | head -1)"                           = X"Usage: ports [-u] [-a] [-w] [port]"
+test X"$(printf "%s" '--help' | ports | head -1)"       = X"Usage: ports [-u] [-a] [-w] [port]"
 test X"$(ports --cui | head -1)"                        = X""
 test X"$(ports --cui 2>&1|head -1)"                     = X"ports: unrecognized option '--cui'"
 test X"$(ports foo 2>&1|head -1)"                       = X"ports: 'foo' is not a port"
@@ -621,6 +621,8 @@ test X"$(ports 1 2>&1|head -1)"                         = X"nothing is listening
 #an option written after the port used to eat the port
 test X"$(ports 1 -a 2>&1|head -1)"                      = X"nothing is listening on 1"
 test X"$(ports -a 1 2>&1|head -1)"                      = X"nothing is listening on 1"
+#-w is not tested past this: the loop it starts does not end on its own
+test X"$(ports -w -h | head -1)"                        = X"Usage: ports [-u] [-a] [-w] [port]"
 #-U is not tested: it reaches the network and rewrites the file under test
 ports -v; test X"${?}"                                  = X"0"
 test X"$(ports -v | awk '{print $1}')"                  = X"ports"

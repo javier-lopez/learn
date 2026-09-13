@@ -1,6 +1,6 @@
 #!/bin/sh
 #description: what is listening on this machine, and which command owns it
-#usage: ports [-u] [-a] [port]
+#usage: ports [-u] [-a] [-w] [port]
 
 #example: ports #everything that listens, docker or not
 #PORT       PROCESS          PID      BIND             WHAT
@@ -11,16 +11,22 @@
 #PORT       PROCESS          PID      BIND             WHAT
 #5000       docker           -        0.0.0.0          javierio (javierio-jekyll-1)
 
-VERSION="2026.09.12-23:15"
+#example: ports -w #leave it running, then bring a stack up in another terminal
+#04:12:31  + 5432      docker           -        *                gopana-db-1: postgres
+#04:12:33  + 6379      docker           -        *                gopana-redis-1: redis-server
+#04:13:07  - 5432      docker           -        *                gopana-db-1: postgres
+
+VERSION="2026.09.13-04:05"
 
 PROGNAME="$(expr "${0}" : '.*/\([^/]*\)')"
 
 _usage() {
-    printf "%s\\n" "Usage: ${PROGNAME} [-u] [-a] [port]"
+    printf "%s\\n" "Usage: ${PROGNAME} [-u] [-a] [-w] [port]"
     printf "%s\\n" "What is listening on this machine, and which command owns it."
     printf "\\n"
     printf "%s\\n" "  -u, --udp     listen on udp too, ports show up as 53/udp"
     printf "%s\\n" "  -a, --all     one row per socket, ipv4 and ipv6 apart, nothing merged"
+    printf "%s\\n" "  -w, --watch   keep running, print ports as they are taken and freed"
     printf "\\n"
     printf "%s\\n" "  -U, --update  update this program to latest version"
     printf "%s\\n" "  -v, --version display version"
@@ -186,6 +192,7 @@ _ports_docker() { #published host ports, so a docker-proxy owned by root still
 
 _ports() {
     { _ports_docker; _ports_listeners; } | awk -v want="${1}" -v all="${all}" \
+                                               -v watch="${2}" \
                                                -v uid="$(id -u 2>/dev/null)" '
     function pad(s, n) { while (length(s) < n) s = s " "; return s }
 
@@ -250,10 +257,14 @@ _ports() {
         p_num[n] = port + 0
         p_txt[n] = (proto == "udp") ? port "/udp" : port
         p_prc[n] = proc; p_pid[n] = pid; p_adr[n] = addr; p_wht[n] = what
+        p_key[n] = key
     }
 
     END {
-        if (n == 0) exit 1
+        #nothing listening is an answer when you are waiting for something to
+        #start, and an error when you asked what is running right now
+        if (n == 0) exit (watch == "" ? 1 : 0)
+        if (watch == "")
         printf "%s%s%s%s%s\n", pad("PORT",10), pad("PROCESS",17), pad("PID",8), pad("BIND",17), "WHAT"
         #a selection sort: a handful of rows, and it keeps sort(1) out of a
         #script that is already asking the kernel and docker
@@ -267,14 +278,52 @@ _ports() {
                 t = p_pid[i]; p_pid[i] = p_pid[m]; p_pid[m] = t
                 t = p_adr[i]; p_adr[i] = p_adr[m]; p_adr[m] = t
                 t = p_wht[i]; p_wht[i] = p_wht[m]; p_wht[m] = t
+                t = p_key[i]; p_key[i] = p_key[m]; p_key[m] = t
             }
-            printf "%s%s%s%s%s\n", pad(p_txt[i],10), pad(p_prc[i],17), \
+            #watch wants the same row with its identity in front of it, so the
+            #reading can be compared against the one before without looking at
+            #the text of a table
+            printf "%s%s%s%s%s%s\n", (watch == "" ? "" : p_key[i] "\t"), \
+                                   pad(p_txt[i],10), pad(p_prc[i],17), \
                                    pad(p_pid[i],8), pad(p_adr[i],17), p_wht[i]
         }
         #already root: nothing is being hidden, whatever has no name has no
         #process behind it, and telling root to use sudo is an insult
-        if (hidden && uid != "0") printf "\n%s\n", "some owners belong to another user, run: sudo ports"
+        if (watch == "" && hidden && uid != "0") printf "\n%s\n", "some owners belong to another user, run: sudo ports"
     }'
+}
+
+_ports_watch() {
+    #the identity of a row is the key the table already builds, and that key
+    #deliberately leaves the pid out: docker runs one proxy per ip stack and
+    #starts a new one on every restart, so a pid in the key would report a
+    #container coming back as a port that left and a different one arriving
+    _ports_watch__prev="$(_ports "${1}" watch)"
+
+    while :; do
+        sleep "${_ports_watch__every}"
+        _ports_watch__now="$(_ports "${1}" watch)"
+
+        _ports_watch__diff="$(printf "%s\\n@@\\n%s\\n" \
+            "${_ports_watch__prev}" "${_ports_watch__now}" | awk -F"\t" '
+            $0 == "@@" { now = 1; next }
+            NF < 2     { next }
+            !now       { was[$1] = $2; next }
+            { is[$1] = 1; if (!($1 in was)) printf "+ %s\n", $2 }
+            END { for (k in was) if (!(k in is)) printf "- %s\n", was[k] }')"
+
+        if [ -n "${_ports_watch__diff}" ]; then
+            #the clock is read once per change and not once per second: a quiet
+            #minute should cost thirty readings of the kernel, not thirty of
+            #those plus thirty processes asking what time it is
+            _ports_watch__at="$(date +%H:%M:%S 2>/dev/null)"
+            printf "%s\\n" "${_ports_watch__diff}" | while IFS= read -r _ports_watch__l; do
+                printf "%s  %s\\n" "${_ports_watch__at}" "${_ports_watch__l}"
+            done
+        fi
+
+        _ports_watch__prev="${_ports_watch__now}"
+    done
 }
 
 if [ ! -t 0 ]; then
@@ -289,6 +338,7 @@ for arg in "${@}"; do #parse options
     case "${arg}" in
         -u|--udp)  udp="1" ;;
         -a|--all)  all="1" ;;
+        -w|--watch) watch="1" ;;
         -U|--update)  _update; exit "${?}" ;;
         -v|--version) printf "%s\\n" "${PROGNAME} ${VERSION}"; exit ;;
         -h|--help) _usage && exit ;;
@@ -302,6 +352,17 @@ set -- ${ports} #a port has no spaces in it, splitting is what we want here
 [ "${#}" -gt "1" ] && _die "${PROGNAME}: one port at a time"
 [ -z "${1}" ] || _is_int "${1}" || _die "${PROGNAME}: '${1}' is not a port"
 ########################
+
+if [ -n "${watch}" ]; then
+    #two seconds and not one: every reading is a look at the kernel and a
+    #question to docker, some 85ms of it, and a watcher left running all
+    #afternoon should not be a tenth of a core
+    _ports_watch__every="2"
+    #what is already there, in the shape you know, before the changes start
+    _ports "${1}" || printf "%s\\n" "nothing is listening yet" >&2
+    _ports_watch "${1}"
+    exit 0
+fi
 
 if ! _ports "${1}"; then
     [ -z "${1}" ] && printf "%s\\n" "nothing is listening" >&2 \
