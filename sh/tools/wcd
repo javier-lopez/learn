@@ -1,18 +1,33 @@
 #!/bin/sh
-#cd wrapper function
+#description: go to a directory by a piece of its name
 
-#due to cd & subshells nature this script only works if it's sourced
+#due to cd & subshells nature the jumping half only works if it's sourced
 #alias cd=". this_script"
 #
-#usage: wcd NAME          go to the directory NAME matches
-#       wcd NAME PATH     teach the alias NAME -> PATH, go nowhere
-
-WICD_BIN="$(command -v "wcd.exec")"
-WICD_OPTIONS="-j -GN -c -i -f ${HOME}/.wcd/.treedata.wcd"
-#    -j      just go mode
-#    -GN     do not creat go script ($HOME/bin/wicd.go)
-#    -c      direct cd mode
-#    -i      case insensitve
+#and it needs a shell whose "." passes arguments through to the sourced file:
+#bash, ksh and zsh do, dash does not, so under dash every cd would look like a
+#cd with no argument at all. The maintenance half is plain sh and runs
+#anywhere, which is what cron and the shebang care about
+#
+#usage: cd                  go home
+#       cd PATH             plain cd, whenever PATH is one
+#       cd NAME             go to the directory NAME matches, through the index
+#       cd NAME PATH        teach the alias NAME -> PATH, go nowhere
+#       wcd --update        rebuild the index (also from cron)
+#       wcd --cron          rebuild it nightly at 23:00
+#       wcd --no-cron       stop suggesting that
+#       wcd --prune-aliases drop aliases whose directory is gone
+#       wcd --help
+#
+#the index, the alias list and the ban list are wcd(1)'s own files, kept in
+#its format under its WCDHOME, so a machine that has both can share one home.
+#The binary is never called even where it is installed: the matching below is
+#this shell and one awk, which is the whole reason it can be read and tested.
+#
+#one file, on purpose. The maintenance half costs ~1.6ms of parsing on every
+#cd, which is real and was measured; it buys one name, one link, and nothing
+#that can go missing or fall out of step with the other half. For scale, the
+#binary this replaces cost 76ms per cd on the same box
 
 #how many entries a directory may hold and still be worth listing on arrival.
 #The cost this guards is not cpu - ls is 4ms at ten entries and 14ms at a
@@ -20,52 +35,379 @@ WICD_OPTIONS="-j -GN -c -i -f ${HOME}/.wcd/.treedata.wcd"
 #names is seven lines at 120 columns and ten at 80: still a glance. Past that
 #the listing stops telling you where you are and starts scrolling away what
 #you were reading. 0 never lists, a large number restores the old behaviour
-[ -z "${WCD_LS_MAX}" ] && WCD_LS_MAX="40"
+[ -z "${WCD_LS_MAX:-}" ] && WCD_LS_MAX="80"
+
+_wcd_home() { printf "%s" "${WCDHOME:-${HOME}/.wcd}"; }
 
 _wcd_ls() {
-    #the glob runs inside a subshell on purpose: "set --" in a sourced file
+    #counting with "set -- *" would be shorter, but "set --" in a sourced file
     #overwrites the positional parameters of the shell that sourced it - bash
-    #and dash both, and bash does not put them back - and this file is sourced
-    #by design. Hidden entries are not counted, which is what ls shows anyway,
-    #and an empty directory expands to a literal "*" and counts as one
-    ( set -- *; [ "${#}" -le "${WCD_LS_MAX}" ] ) && ls
+    #and dash both - and containing that inside ( ) costs a fork, on every cd,
+    #to decide whether to fork. A for loop over the same glob reads the same
+    #directory, leaves $@ alone and stops the moment the answer is no. Hidden
+    #entries are not counted, which is what ls shows anyway, and an empty
+    #directory expands to a literal "*" and counts as one
+    _wcd_ls__n="0"
+    for _wcd_ls__f in *; do
+        _wcd_ls__n=$(( _wcd_ls__n + 1 ))
+        [ "${_wcd_ls__n}" -gt "${WCD_LS_MAX}" ] && break
+    done
+    [ "${_wcd_ls__n}" -le "${WCD_LS_MAX}" ] && ls
+    unset _wcd_ls__n _wcd_ls__f
 }
 
-if [ ! -f "${WICD_BIN}" ]; then
-    #without the binary this is a plain cd, and a plain cd is not broken - it
-    #just cannot jump by a piece of a name, which is the whole point of being
-    #here. So say so: once per shell, on stderr, and only when someone asked to
-    #go somewhere. Nobody runs "wcd" by hand to find out it is missing; they
-    #find out by typing cd and watching it behave like cd
-    if [ -n "${1}" ] && [ -z "${WCD_TOLD}" ] && [ -t 2 ]; then
-        WCD_TOLD="1"
-        printf "%s\n" \
-            "wcd: jumping by part of a directory name needs wcd.exec, which is not installed" \
-            "     sudo apt install wcd     then:  update-cd" \
-            "     (said once per shell; plain cd keeps working meanwhile)" >&2
+_wcd_find() { #NAME -> the one directory it means, on stdout. 2: no index yet
+    _wcd_find__h="$(_wcd_home)"
+    [ -f "${_wcd_find__h}/.treedata.wcd" ] || return 2
+    #awk is handed both files and told which is which by name, never by
+    #"FNR==NR": an empty alias list makes that trick swallow the first
+    #directory of the index instead, and an empty alias list is the normal
+    #state of a machine that was set up this morning
+    _wcd_find__a="${_wcd_find__h}/.alias.wcd"
+    [ -f "${_wcd_find__a}" ] || _wcd_find__a="/dev/null"
+    awk -F/ -v q="${1}" -v afile="${_wcd_find__a}" '
+function esc(s,   r, i, c) {
+    #* and ? are the only wildcards; everything else is a literal, including
+    #the dots and brackets that are all over a real directory name
+    r = ""
+    for (i = 1; i <= length(s); i++) {
+        c = substr(s, i, 1)
+        if (c == "*")                       r = r ".*"
+        else if (c == "?")                  r = r "."
+        else if (index("\\^$.[]|()+{}", c)) r = r "\\" c
+        else                                r = r c
+    }
+    return r
+}
+BEGIN {
+    lq = tolower(q); n = length(lq)
+    deep = (index(lq, "/") > 0)
+    #a query with no wildcard in it - which is nearly every query - is three
+    #string comparisons, not three regexes. Building "^" re "$" per record and
+    #handing it to the regex engine costs 40ms over 3000 paths under gawk and
+    #9ms under mawk; the same answer by == and index() costs neither
+    glob = (index(lq, "*") || index(lq, "?"))
+    if (glob) { re = esc(lq); rw = "^" re "$"; rp = "^" re; rt = "/" re "$" }
+    dq = "/" lq; dn = n + 1
+}
+FILENAME == afile {
+    #the fields here are cut on "/" like everywhere else, so the name and the
+    #path are taken by hand: the name is what comes before the first space and
+    #the path is all the rest, because a directory may hold spaces and a name
+    #may not
+    if ($0 ~ /^[ \t]*$/ || substr($0, 1, 1) == "#") next
+    i = index($0, " ")
+    if (i > 0 && tolower(substr($0, 1, i - 1)) == lq) ali = substr($0, i + 1)
+    next
+}
+{
+    if ($0 == "") next
+    #awk is told to cut fields on "/", so $NF is the basename and NF is the
+    #depth, both of them done in C before this line runs. Asking for the same
+    #two things from the script - split() into an array, or sub(/.*\//) - costs
+    #40ms and 115ms over these 3000 paths under gawk, against 26ms for this
+    d = NF
+    if (deep) {
+        lp = tolower($0)
+        #a name with a slash in it is asking about the tail of the path, the
+        #only way to separate two directories that share a basename
+        if (glob) s = (lp ~ rt) ? 1000 : ((lp ~ re) ? 100 : 0)
+        else      s = (substr(lp, length(lp) - dn + 1) == dq) ? 1000 : \
+                      (index(lp, lq) ? 100 : 0)
+    } else {
+        t = tolower($NF)
+        u = t; if (substr(u, 1, 1) == ".") u = substr(u, 2)  #a leading dot is
+        if (glob) {                                          #punctuation, not
+            if      (t ~ rw || u ~ rw) s = 1000              #a name: "claude"
+            else if (t ~ rp || u ~ rp) s = 500               #should reach
+            else if (t ~ re)           s = 100               #~/.claude
+            else                       s = 0
+        } else {
+            if      (t == lq || u == lq)                             s = 1000
+            else if (substr(t, 1, n) == lq || substr(u, 1, n) == lq) s = 500
+            else if (index(t, lq))                                   s = 100
+            else                                                     s = 0
+        }
+    }
+    if (s == 0) next
+
+    ln = length($0)
+    #the tier decides; then the shallowest wins, then the shortest, then
+    #whatever sorts first. The last two exist only so the same tree always
+    #gives the same answer instead of one that depends on the order it was read
+    if      (s > bs)  take = 1
+    else if (s < bs)  take = 0
+    else if (d < bd)  take = 1
+    else if (d > bd)  take = 0
+    else if (ln < bn) take = 1
+    else if (ln > bn) take = 0
+    else              take = ($0 < best)
+    if (take) { bs = s; bd = d; bn = ln; best = $0 }
+}
+END {
+    #an alias is a decision the user made by hand, one directory at a time.
+    #Nothing found by scanning gets to overrule it - the one place this parts
+    #company with wcd(1), where an exact basename anywhere on the disk beats
+    #the alias you wrote precisely because that basename kept winning
+    if (ali  != "") { print ali;  exit 0 }
+    if (best != "") { print best; exit 0 }
+    exit 1
+}' "${_wcd_find__a}" "${_wcd_find__h}/.treedata.wcd"
+}
+
+_wcd_teach() { #NAME PATH
+    [ -d "${2}" ] || { printf "%s\n" "wcd: ${2}: not a directory" >&2; return 1; }
+    case "${1}" in
+        ""|*[\ \	]*) printf "%s\n" "wcd: an alias cannot hold a space" >&2
+                        return 1 ;;
+    esac
+    #the list holds absolute paths: the caller may be standing anywhere, and an
+    #alias that only works from one directory is not an alias
+    _wcd_teach__p="$( \cd -- "${2}" 2>/dev/null && pwd )" || return 1
+    _wcd_teach__h="$(_wcd_home)"
+    mkdir -p "${_wcd_teach__h}" 2>/dev/null
+    _wcd_teach__f="${_wcd_teach__h}/.alias.wcd"
+    _wcd_teach__t="${_wcd_teach__f}.$$"
+    #teaching a name again replaces it instead of stacking a second line that
+    #nothing will ever read
+    { if [ -f "${_wcd_teach__f}" ]; then
+          while IFS= read -r _wcd_teach__l; do
+              case "${_wcd_teach__l}" in
+                  "${1} "*|"${1}	"*) ;;
+                  *) printf "%s\n" "${_wcd_teach__l}" ;;
+              esac
+          done < "${_wcd_teach__f}"
+      fi
+      printf "%s %s\n" "${1}" "${_wcd_teach__p}"
+    } > "${_wcd_teach__t}" && mv -f "${_wcd_teach__t}" "${_wcd_teach__f}" && \
+      printf "%s\n" "${1} -> ${_wcd_teach__p}"
+    _wcd_teach__r="${?}"
+    rm -f "${_wcd_teach__t}"
+    unset _wcd_teach__p _wcd_teach__h _wcd_teach__f _wcd_teach__t _wcd_teach__l
+    return "${_wcd_teach__r}"
+}
+
+_wcd_jump() { #NAME -> go where it points, or say why not
+    #a function and not four lines of the dispatch below because the cleanup
+    #would otherwise be the last command to run and "cd nowhere" would answer
+    #0: an unset that succeeds is still an unset that succeeded
+    _wcd_jump__d="$(_wcd_find "${1}")"; _wcd_jump__r="${?}"
+    if [ -n "${_wcd_jump__d}" ]; then
+        \cd -- "${_wcd_jump__d}" || return 1
+        _wcd_ls
+        return 0
     fi
-    if [ -z "${1}" ]; then
-        \cd
-    else
-        \cd "${@}" && _wcd_ls
+    if [ "${_wcd_jump__r}" -eq 2 ]; then
+        #no index is not the same as no match, and a fresh machine only ever
+        #meets the first one. Name the command that fixes it, once per shell
+        [ -z "${WCD_TOLD:-}" ] && [ -t 2 ] && { WCD_TOLD="1"; printf "%s\n" \
+            "wcd: there is no directory index yet, so this is a plain cd" \
+            "     wcd --update    builds it, and again whenever it goes stale" \
+            "     (said once per shell)" >&2; }
+        \cd -- "${1}"
+        return "${?}"
     fi
-elif [ -n "${2}" ] && [ -d "${2}" ]; then
-    #wcd NAME PATH teaches the alias instead of going anywhere. wcd.exec's -l
-    #only ever names the directory you are standing in, so the cd happens in a
-    #subshell: the caller does not move, and an alias can be taught for a path
-    #without leaving the one you are working in.
-    #
-    #This is the answer to a name that resolves to the wrong place. Beware that
-    #an alias does not outrank an exact directory-name match - if some other
-    #directory is literally called NAME, that one still wins, and the way out
-    #is a name nothing else already answers to
-    ( \cd "${2}" 2>/dev/null && "${WICD_BIN}" -GN "-l" "${1}" )
-else
-    if [ -z "${1}" ]; then
-        \cd "$("${WICD_BIN}" ${WICD_OPTIONS} "${HOME}")"
-    else
-        CD_PATH="$(printf "%s\\n" "$("${WICD_BIN}" ${WICD_OPTIONS} "${@}")" | \
-                   sed -e 's:\\::g')"
-        \cd "${CD_PATH}" && _wcd_ls
+    printf "%s\n" "wcd: no directory matches ${1}" >&2
+    return 1
+}
+
+#===============================================================================
+#the maintenance half. Nothing below runs on a cd; it is here so that there is
+#one file to install, one name to remember and no second half to go missing
+#===============================================================================
+
+_wcd_usage() {
+    printf "%s\n" "Usage: wcd [--update|--cron|--no-cron|--prune-aliases]" \
+        "  sourced, wcd is cd: cd NAME jumps, cd NAME PATH teaches an alias" \
+        "  --update         rebuild the index in $(_wcd_home)/.treedata.wcd" \
+        "  --cron           rebuild it nightly at 23:00, added once" \
+        "  --no-cron        stop suggesting that" \
+        "  --prune-aliases  drop aliases whose directory is gone"
+}
+
+_wcd_scan() { #rebuild the index with find, pruning what ~/.ban.wcd names
+    _wcd_scan__h="$(_wcd_home)"
+    mkdir -p "${_wcd_scan__h}" 2>/dev/null || return 1
+
+    #comments and blank lines go out here rather than to find, which would
+    #take "#added 2026-09-14" for a path and quietly prune nothing
+    _wcd_scan__pats=""
+    [ -f "${HOME}/.ban.wcd" ] && _wcd_scan__pats="$(sed -e 's/#.*//' \
+        -e 's/[ 	]*$//' -e '/^$/d' "${HOME}/.ban.wcd" 2>/dev/null)"
+
+    #find's argv is built a word at a time because the ban list is a file the
+    #user edits: one -path per pattern, all inside a single pruned group.
+    #Globbing goes off for the loop - every pattern is a glob and the shell
+    #would otherwise expand */.cache against the current directory - and it
+    #goes back exactly as it was, because this half can be reached by typing
+    #"cd --update" in an interactive shell that may have set -f on purpose
+    case "${-}" in *f*) _wcd_scan__g="1" ;; *) _wcd_scan__g="0" ;; esac
+    set -f
+    set -- "${HOME}"
+    if [ -n "${_wcd_scan__pats}" ]; then
+        set -- "${@}" "("
+        _wcd_scan__first="1"
+        _wcd_scan__ifs="${IFS}"; IFS="
+"
+        for _wcd_scan__p in ${_wcd_scan__pats}; do
+            [ "${_wcd_scan__first}" = "1" ] || set -- "${@}" "-o"
+            _wcd_scan__first="0"
+            #"*/name", with no slash left in the name, is a question about the
+            #basename, and -name answers it by comparing one string instead of
+            #globbing the whole path. Forty of this ban list's forty five
+            #patterns are that shape: 1613ms to 982ms, for a listing that
+            #matches the other one line for line. Two other shapes were tried
+            #and are slower for the identical answer - one combined -regex
+            #(1878ms) and no pruning at all with grep -vE afterwards (1769ms)
+            case "${_wcd_scan__p}" in
+                "*/"*) _wcd_scan__r="${_wcd_scan__p#\*/}" ;;
+                *)     _wcd_scan__r="" ;;
+            esac
+            case "${_wcd_scan__r}" in
+                ""|*/*) set -- "${@}" "-path" "${_wcd_scan__p}" ;;
+                *)      set -- "${@}" "-name" "${_wcd_scan__r}" ;;
+            esac
+        done
+        IFS="${_wcd_scan__ifs}"
+        set -- "${@}" ")" "-prune" "-o"
     fi
-fi
+    set -- "${@}" "-type" "d" "-print"
+
+    _wcd_scan__t="${_wcd_scan__h}/.treedata.wcd.$$"
+    find "${@}" 2>/dev/null | LC_ALL=C sort > "${_wcd_scan__t}"
+    [ "${_wcd_scan__g}" = "1" ] || set +f
+
+    #a scan that came back empty means find choked on its arguments, not that
+    #the disk is empty. Replacing a working index with nothing is the one
+    #failure here the user cannot see until a jump misses, hours later
+    if [ ! -s "${_wcd_scan__t}" ]; then
+        rm -f "${_wcd_scan__t}"
+        printf "%s\n" "wcd: the scan came back empty, keeping the old index" >&2
+        return 1
+    fi
+    mv -f "${_wcd_scan__t}" "${_wcd_scan__h}/.treedata.wcd" || { \
+        rm -f "${_wcd_scan__t}"; return 1; }
+    printf "%s directories indexed in %s\n" \
+        "$(wc -l < "${_wcd_scan__h}/.treedata.wcd")" \
+        "${_wcd_scan__h}/.treedata.wcd"
+}
+
+_wcd_cron_has() { #does the crontab already call us
+    [ -n "${1}" ] || return 1
+    crontab -l 2>/dev/null | awk -v s="${1}" 'index($0, s) { f = 1 } END { exit !f }'
+}
+
+_wcd_cron_install() {
+    command -v crontab >/dev/null 2>&1 || { \
+        printf "%s\n" "no crontab command on this system" >&2; return 1; }
+    _wcd_ci__self="$(command -v wcd 2>/dev/null)"
+    [ -n "${_wcd_ci__self}" ] || { \
+        printf "%s\n" "wcd is not on the PATH, cron could not find it either" >&2
+        return 1; }
+
+    if _wcd_cron_has "${_wcd_ci__self} --update"; then
+        printf "%s\n" "wcd is already in your crontab, nothing to do"
+        return 0
+    fi
+
+    #read the crontab before writing it. An empty listing that FAILED is not
+    #the same as an empty crontab: the first can mean the daemon is unhappy or
+    #that this user may not read it, and piping that into "crontab -" would
+    #replace whatever is really there with one line. Only the second is safe
+    _wcd_ci__cur="$(crontab -l 2>/dev/null)"; _wcd_ci__st="${?}"
+    if [ "${_wcd_ci__st}" -ne 0 ] && [ -n "${_wcd_ci__cur}" ]; then
+        printf "%s\n" "cannot read your crontab, refusing to rewrite it" >&2
+        return 1
+    fi
+
+    { [ -n "${_wcd_ci__cur}" ] && printf "%s\n" "${_wcd_ci__cur}"
+      printf "%s\n" "0 23 * * * ${_wcd_ci__self} --update"; } | crontab - || return 1
+    printf "%s\n" "added to your crontab: 0 23 * * * ${_wcd_ci__self} --update"
+}
+
+_wcd_cron_suggest() { #at most once, and never from cron itself
+    [ -t 1 ] || return 0
+    _wcd_cs__q="$(_wcd_home)/.nocron"
+    [ -f "${_wcd_cs__q}" ] && return 0
+    _wcd_cron_has "$(command -v wcd 2>/dev/null) --update" && return 0
+    printf "%s\n" "suggested once on $(date +%Y-%m-%d)" > "${_wcd_cs__q}"
+    printf "%s\n" "" \
+        "the tree just built goes stale as you make directories." \
+        "  wcd --cron     rebuild it nightly at 23:00" \
+        "this is said once and not again; --no-cron says so on purpose" >&2
+}
+
+_wcd_prune() {
+    #an alias whose directory is gone is not inert: the jump lands nowhere and
+    #you are left wondering which of the two things is broken. This is
+    #deliberately a flag and never automatic - running it right after cloning
+    #a machine, before the repositories are back, would delete exactly the
+    #aliases you are about to need again
+    _wcd_ap__f="$(_wcd_home)/.alias.wcd"
+    [ -f "${_wcd_ap__f}" ] || { \
+        printf "%s\n" "no alias file at ${_wcd_ap__f}, nothing to prune"; return 0; }
+
+    _wcd_ap__t="$(mktemp "${_wcd_ap__f}.XXXXXX")" || return 1
+    _wcd_ap__gone="0"
+    #the name is the first field and the path is all the rest: a directory may
+    #hold spaces and only the name is known not to
+    while IFS= read -r _wcd_ap__l; do
+        [ -n "${_wcd_ap__l}" ] || continue
+        _wcd_ap__n="${_wcd_ap__l%% *}"
+        _wcd_ap__p="${_wcd_ap__l#* }"
+        if [ -d "${_wcd_ap__p}" ]; then
+            printf "%s %s\n" "${_wcd_ap__n}" "${_wcd_ap__p}"
+        else
+            printf "%s\n" "[-] ${_wcd_ap__n} -> ${_wcd_ap__p}" >&2
+            _wcd_ap__gone=$(( _wcd_ap__gone + 1 ))
+        fi
+    done < "${_wcd_ap__f}" > "${_wcd_ap__t}"
+
+    if [ "${_wcd_ap__gone}" -eq 0 ]; then
+        rm -f "${_wcd_ap__t}"
+        printf "%s\n" "every alias still points at a directory, nothing to prune"
+        return 0
+    fi
+    #the old list is kept beside the new one: it was built by hand, one alias
+    #at a time, and a mistake here is not recoverable from anywhere else
+    cp -p "${_wcd_ap__f}" "${_wcd_ap__f}.bak" 2>/dev/null
+    mv -f "${_wcd_ap__t}" "${_wcd_ap__f}" || { rm -f "${_wcd_ap__t}"; return 1; }
+    printf "%s\n" "pruned ${_wcd_ap__gone}, previous list kept at ${_wcd_ap__f}.bak"
+}
+
+_wcd_meta() { #root rebuilds every real user's index, as their own user
+    for _wcd_meta__u in $(getent passwd | awk -F: \
+        '{if ($3 >= 1000 && $3 < 60000) print $1}'); do
+        su "${_wcd_meta__u}" -c "wcd --update"
+    done
+}
+
+#no "exit" anywhere below: typing "cd --update" sources this file, and an exit
+#there closes the terminal the user was working in
+case "${1:-}" in
+    -h|--help)       _wcd_usage ;;
+    --prune-aliases) _wcd_prune ;;
+    --cron)          _wcd_cron_install ;;
+    --no-cron)       mkdir -p "$(_wcd_home)" 2>/dev/null
+                     printf "%s\n" "declined on $(date +%Y-%m-%d)" \
+                         > "$(_wcd_home)/.nocron"
+                     printf "%s\n" "will not bring up cron again" ;;
+    --update)        if [ X"${LOGNAME:-}" = X"root" ]; then _wcd_meta
+                     else _wcd_scan && _wcd_cron_suggest; fi ;;
+    -*)              _wcd_usage >&2; false ;;
+    "")              \cd ;;
+    *)  if [ -n "${2:-}" ]; then
+            _wcd_teach "${1}" "${2}"
+        elif [ "${1}" = "-" ]; then
+            #wcd(1) reads this off a stack of its own, which is how "cd -"
+            #here used to answer with a directory nobody had just left.
+            #OLDPWD is what every other shell on earth means by it
+            \cd -
+        elif [ -d "${1}" ]; then
+            #a path that exists is not a riddle. This is also the fast lane:
+            #".", "..", "~/x" and anything tab completed never reach awk
+            \cd -- "${1}" && _wcd_ls
+        else
+            _wcd_jump "${1}"
+        fi ;;
+esac

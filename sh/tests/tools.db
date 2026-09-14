@@ -738,10 +738,6 @@ test X"$(base64 wb.png 2>&1 | head -1)"   = X"${b64_1line}"
 test X"$(uimg wb.png wb.png 2>&1 |wc -l)" = X"2"
 @end
 
-@begin{update-cd}
-#TODO 28-09-2014 14:52 >> is there any way to test this?
-@end
-
 @begin{ussh}
 #TODO 28-09-2014 14:52 >> is there any way to test this?
 @end
@@ -766,7 +762,24 @@ test X"$(printf "%s" 'cui' | vim-show 2>&1|head -1)"   = X"vim-show: 'cui' was n
 @end
 
 @begin{wcd}
-#TODO 28-09-2014 14:52 >> is there any way to test this?
+#only the maintenance half is reachable here: the jumping half has to be
+#sourced, and the runner is /bin/sh, whose "." takes no arguments. HOME points
+#at the sandbox, so the scan below indexes four directories and not a disk
+HOME="$(pwd)"; export HOME
+WCDHOME="${HOME}/.wcd"; export WCDHOME
+mkdir -p proyecto.com otro/deep/proyecto node_modules/x
+printf "%s\n" '*/node_modules' '#a comment is not a pattern' > .ban.wcd
+wcd --help >/dev/null; test X"${?}"                    = X"0"
+wcd --bogus 2>/dev/null; test X"${?}"                  = X"1"
+test X"$(wcd --help | head -1)" = X"Usage: wcd [--update|--cron|--no-cron|--prune-aliases]"
+wcd --update >/dev/null; test -s "${WCDHOME}/.treedata.wcd"
+test X"$(grep -c 'node_modules' "${WCDHOME}/.treedata.wcd")"        = X"0"
+test X"$(grep -c '/otro/deep/proyecto$' "${WCDHOME}/.treedata.wcd")" = X"1"
+test X"$(grep -c '/proyecto.com$' "${WCDHOME}/.treedata.wcd")"       = X"1"
+printf "%s\n" "gone ${HOME}/nothing-here" > "${WCDHOME}/.alias.wcd"
+wcd --prune-aliases >/dev/null 2>&1; test X"$(wc -l < "${WCDHOME}/.alias.wcd")" = X"0"
+printf "%s\n" "live ${HOME}/proyecto.com" > "${WCDHOME}/.alias.wcd"
+test X"$(wcd --prune-aliases)" = X"every alias still points at a directory, nothing to prune"
 @end
 
 #weather moved to sh/archived. It scraped bing and ask for a forecast, which is
