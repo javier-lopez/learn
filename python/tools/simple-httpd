@@ -1,4 +1,5 @@
-#!/usr/bin/env python2
+#!/bin/sh
+''''exec "$(command -v python3 || command -v python2 || command -v python)" "$0" "$@" # '''
 
 # Copyright (C) 2009,2010,2011,2012  Xyne
 #
@@ -16,16 +17,42 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-import BaseHTTPServer
-import cgi, os.path, re, sys, errno, socket, ssl
+from __future__ import print_function
 
-from SocketServer import ThreadingMixIn
+import os.path, re, sys, errno, socket, ssl
+
+#the standard library moved these between 2 and 3. Nothing here is imported
+#that both versions do not ship, so the file stays self contained: no pip, no
+#six, nothing to install on a machine where you have no root
+try:                                        #python 2
+    import BaseHTTPServer as http_server
+    from SocketServer import ThreadingMixIn
+    from urllib import quote, unquote
+except ImportError:                         #python 3
+    import http.server as http_server
+    from socketserver import ThreadingMixIn
+    from urllib.parse import quote, unquote
+
+#cgi carried the multipart parser and python 3.13 removed it. Uploads are the
+#only thing that needs it, so its absence costs uploads and not the server
+try:
+    import cgi
+except ImportError:
+    cgi = None
+
 from hashlib import md5
 from mimetypes import guess_type
 from optparse import OptionParser, OptionGroup
 from random import randint
 from time import gmtime, time, strftime
-from urllib import quote, unquote
+
+def _bytes(text):
+  """hashlib takes bytes on python 3 and str on python 2, and str IS bytes
+  there, so one conversion serves both without asking which one is running"""
+  if isinstance(text, bytes):
+    return text
+  return text.encode('utf-8')
+
 
 NAME = 'Simple-httpd'
 VERSION = '1.0'
@@ -34,7 +61,7 @@ VERSION = '1.0'
 # ThreadedHTTPServer
 ################################################################################
 
-class ThreadedHTTPServer(ThreadingMixIn, BaseHTTPServer.HTTPServer):
+class ThreadedHTTPServer(ThreadingMixIn, http_server.HTTPServer):
 
   ##### Logging #####
   def log_date_time_string(self):
@@ -88,7 +115,7 @@ class ThreadedHTTPServer(ThreadingMixIn, BaseHTTPServer.HTTPServer):
       self.shutdown_request(request)
 
   def __init__(self, server_address, HandlerClass, username=None, password=None, authfile=None, use_ssl=False, ssl_parameters = {}, cert_required=False):
-      BaseHTTPServer.HTTPServer.__init__(self, server_address, HandlerClass)
+      http_server.HTTPServer.__init__(self, server_address, HandlerClass)
 
       self.daemon_threads = True
       self.keep_serving = True
@@ -117,30 +144,30 @@ class ThreadedHTTPServer(ThreadingMixIn, BaseHTTPServer.HTTPServer):
     address, port = self.server_address
 
     if not address or address == '0.0.0.0':
-      print "  address: all interfaces"
+      print("  address: all interfaces")
     else:
-      print "  address: " + address
-    print "  port: " + str(port)
-    print "  pid: " + str(os.getpid())
+      print("  address: " + address)
+    print("  port: " + str(port))
+    print("  pid: " + str(os.getpid()))
 
     if self.username and self.password:
-      print "  authentication"
-      print "    username: " + self.username
-      print "    password: " + self.password
+      print("  authentication")
+      print("    username: " + self.username)
+      print("    password: " + self.password)
 
     if self.use_ssl:
-      print "  SSL enabled"
+      print("  SSL enabled")
       if self.ssl_parameters['certfile']:
-        print "    certificate: " + self.ssl_parameters['certfile']
+        print("    certificate: " + self.ssl_parameters['certfile'])
       if self.ssl_parameters['keyfile']:
-        print "    key: " + self.ssl_parameters['keyfile']
+        print("    key: " + self.ssl_parameters['keyfile'])
 
 
 ################################################################################
 # BaseHTTPRequestHandler
 ################################################################################
 
-class BaseHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+class BaseHTTPRequestHandler(http_server.BaseHTTPRequestHandler):
 
   ##### Logging #####
   def log_date_time_string(self):
@@ -176,7 +203,7 @@ class BaseHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
   def get_nonce(self,opaque,nc):
     # Purge values that have timed out or exceeded the limit
     t = time()
-    for k in self.opaques.keys():
+    for k in list(self.opaques.keys()):
      if t - self.opaques[k]['time'] > self.OPAQUE_TIMEOUT or int(self.opaques[k]['nc'],16) > self.NC_LIMIT:
        del self.opaques[k]
 
@@ -233,15 +260,15 @@ class BaseHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             return False
 
           m = md5()
-          m.update(username + ':' + self.address_string() + ':' + password)
+          m.update(_bytes(username + ':' + self.address_string() + ':' + password))
           ha1 = m.hexdigest()
 
           m = md5()
-          m.update(method + ':' + self.path)
+          m.update(_bytes(method + ':' + self.path))
           ha2 = m.hexdigest()
 
           m = md5()
-          m.update(ha1 + ':' + nonce + ':' + nc + ':' + cnonce + ':auth:' + ha2)
+          m.update(_bytes(ha1 + ':' + nonce + ':' + nc + ':' + cnonce + ':auth:' + ha2))
           response = m.hexdigest()
 
           if response == client_response:
@@ -270,9 +297,9 @@ class BaseHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
   # Convenience method for transfering content.
   def transfer_utf8_content(self, body, content_type, include_body=True, response_code=200):
-    try:
+    try:                     #already bytes on python 3: encode is not there
       body = body.encode('utf-8')
-    except UnicodeDecodeError:
+    except (UnicodeDecodeError, AttributeError):
       pass
 
     content_type += '; charset=UTF-8'
@@ -385,7 +412,7 @@ class BaseHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     self.send_header('Location', url)
 #    self.send_header('Connection', 'close')
     self.end_headers()
-    self.wfile.write('')
+    self.wfile.write(b'')
 
 
   ##### Request Handlers #####
@@ -394,14 +421,14 @@ class BaseHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
       self.do_authenticated_GET()
 
   def do_authenticated_GET(self):
-    BaseHTTPServer.BaseHTTPRequestHandler.do_GET(self)
+    http_server.BaseHTTPRequestHandler.do_GET(self)
 
   def do_HEAD(self):
     if self.authenticate('GET'):
       self.do_authenticated_HEAD()
 
   def do_authenticated_HEAD(self):
-    BaseHTTPServer.BaseHTTPRequestHandler.do_HEAD(self)
+    http_server.BaseHTTPRequestHandler.do_HEAD(self)
 
   def do_POST(self):
     if self.authenticate('POST'):
@@ -409,7 +436,7 @@ class BaseHTTPRequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
     return True
 
   def do_authenticated_POST(self):
-    BaseHTTPServer.BaseHTTPRequestHandler.do_POST(self)
+    http_server.BaseHTTPRequestHandler.do_POST(self)
 
 ################################################################################
 # Common Options
@@ -474,7 +501,7 @@ class MyHandler(BaseHTTPRequestHandler):
 
     self.path = unquote(self.path)
 
-    if options.upload_dir and query_args.has_key('upload'):
+    if options.upload_dir and 'upload' in query_args:
       try:
         n = int( query_args['upload'] )
         if n < 1:
@@ -513,7 +540,7 @@ class MyHandler(BaseHTTPRequestHandler):
       dirs = sorted(dirs)
       files = sorted(files)
       contents = dirs + files
-      contents = filter(include_file, contents)
+      contents = list(filter(include_file, contents))
       if query_args['text'] == 'plain':
         text = get_page_plain(self.path, contents)
         self.transfer_plaintext( text, is_GET )
@@ -538,7 +565,7 @@ class MyHandler(BaseHTTPRequestHandler):
         elif os.path.isdir(fpath):
           dirs, files = get_dirs_and_files(fpath)
           contents = dirs + files
-          contents = filter(lambda x: include_file(x, base_dir=fpath), contents)
+          contents = list(filter(lambda x: include_file(x, base_dir=fpath), contents))
           if query_args['text'] == 'plain':
             text = get_page_plain(self.path, contents)
             self.transfer_plaintext( text, is_GET )
@@ -559,7 +586,7 @@ class MyHandler(BaseHTTPRequestHandler):
           environ={'REQUEST_METHOD':'POST',
                    'CONTENT_TYPE':self.headers['Content-Type'],
                    })
-      if form.has_key('file_1'):
+      if 'file_1' in form:
         if not os.path.exists(options.upload_dir):
           try:
             os.makedirs(options.upload_dir)
@@ -573,7 +600,7 @@ class MyHandler(BaseHTTPRequestHandler):
       i = 1
       k = 'file_' + str(i)
       response = ''
-      while form.has_key(k):
+      while k in form:
         # this prevent attribute errors if the form reuses a name
         if type(form[k]) is list:
           field = form[k][0]
@@ -667,7 +694,8 @@ def get_page_html(server, path, contents, motd_fpath=None):
     try:
       with open(motd_fpath) as f:
         motd = f.read()
-    except IOError as (errno, strerror):
+    except IOError as _e:
+      errno, strerror = _e.args
       server.log_message("error: failed to load motd file %s: %s", motd_fpath, strerror)
       server.keep_serving = False
   if root != '':
@@ -919,7 +947,8 @@ def maybe_load_list(server, fpath):
         server.log_message("reloading filterlist (%s)", fpath)
         read_filterlist(server, fpath)
         mtimes[fpath] = mtime
-  except OSError as (errno, strerror):
+  except OSError as _e:
+    errno, strerror = _e.args
     server.log_message("error: failed to stat %s: %s", fpath, strerror)
     server.keep_serving = False
     paths = {}
@@ -928,13 +957,14 @@ def maybe_load_list(server, fpath):
 def read_filelist(server, fpath):
   try:
     f = open(fpath,'r')
-    ps = filter(lambda x: x, map(lambda x: x.rstrip('\r\n\0'), f.readlines()))
+    ps = list(filter(lambda x: x, map(lambda x: x.rstrip('\r\n\0'), f.readlines())))
     f.close()
     # return paths relative to the location of the filelist
     basedir = os.path.dirname(fpath)
-    ps = map(lambda p: os.path.join(basedir,p), ps)
+    ps = list(map(lambda p: os.path.join(basedir,p), ps))
     return ps
-  except IOError as (errno, strerror):
+  except IOError as _e:
+    errno, strerror = _e.args
     server.log_message("error: failed to open %s: %s", fpath, strerror)
     server.keep_serving = False
     exit(1)
@@ -956,7 +986,8 @@ def read_filterlist(server, fpath):
       elif line[:3] == '-i ':
         options.excludes.append( re.compile(line[3:], re.I) )
     f.close()
-  except IOError as (errno, strerror):
+  except IOError as _e:
+    errno, strerror = _e.args
     server.log_message("error: failed to open %s: %s", fpath, strerror)
     server.keep_serving = False
     exit(1)
@@ -992,7 +1023,7 @@ def include_file(fpath, base_dir=None):
 
 
 def display_filter_help(*args):
-  print '''FILTER OPTIONS
+  print(r'''FILTER OPTIONS
   By default, all files specified on the command line or in the filelist are
   served. These options allow you to filter the served files using regular
   expressions.
@@ -1040,7 +1071,7 @@ FILTERLIST
     +i \.pdf$
     +i \.mp3$
     - /private/
-'''
+''')
   sys.exit()
 
 def main(options):
@@ -1052,18 +1083,18 @@ def main(options):
 
   global paths
 
-  print "Starting %s..." % (os.path.basename(sys.argv[0]))
+  print("Starting %s..." % (os.path.basename(sys.argv[0])))
   server.display_status()
 
   if options.infopage:
-    print "  infopage: " + options.infopage
+    print("  infopage: " + options.infopage)
 
   if options.upload_dir:
-    print "  upload directory: " + options.upload_dir
+    print("  upload directory: " + options.upload_dir)
 
-  print "  serving:\n    " + ("\n    ").join(sorted(paths.values()))
-  print "Press <Ctrl-C> to exit.\n"
-  print server.run_server()
+  print("  serving:\n    " + ("\n    ").join(sorted(paths.values())))
+  print("Press <Ctrl-C> to exit.\n")
+  print(server.run_server())
 
 
 if __name__ == '__main__':
@@ -1101,8 +1132,8 @@ if __name__ == '__main__':
     options.upload_dir = os.path.abspath( options.upload_dir )
 
   # filtering
-  options.includes = map(re.compile, options.includes) + map(re.compile, options.Includes, [re.I] * len(options.Includes))
-  options.excludes = map(re.compile, options.excludes) + map(re.compile, options.Excludes, [re.I] * len(options.Excludes))
+  options.includes = list(map(re.compile, options.includes)) + list(map(re.compile, options.Includes, [re.I] * len(options.Includes)))
+  options.excludes = list(map(re.compile, options.excludes)) + list(map(re.compile, options.Excludes, [re.I] * len(options.Excludes)))
 
   global paths
   global mtimes
@@ -1110,8 +1141,9 @@ if __name__ == '__main__':
   if options.filelist:
     try:
       mtimes[options.filelist] = os.stat(options.filelist).st_mtime
-    except OSError as (errno, strerror):
-      print "error: failed to stat %s: %s" % (options.filelist,strerror)
+    except OSError as _e:
+      errno, strerror = _e.args
+      print("error: failed to stat %s: %s" % (options.filelist,strerror))
       exit(1)
     ps = read_filelist(server, options.filelist)
   else:
@@ -1120,8 +1152,9 @@ if __name__ == '__main__':
   if options.filterlist:
     try:
       mtimes[options.filterlist] = os.stat(options.filterlist).st_mtime
-    except OSError as (errno, strerror):
-      print "error: failed to stat %s: %s" % (options.filterlist,strerror)
+    except OSError as _e:
+      errno, strerror = _e.args
+      print("error: failed to stat %s: %s" % (options.filterlist,strerror))
       exit(1)
     read_filterlist(server, options.filterlist)
 

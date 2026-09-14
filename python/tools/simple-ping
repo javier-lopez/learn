@@ -1,3 +1,5 @@
+#!/bin/sh
+''''exec "$(command -v python3 || command -v python2 || command -v python)" "$0" "$@" # '''
 #
 # Ping - bounce ICMP identify packets off remote hosts
 #
@@ -20,6 +22,8 @@
 # Windows 8:
 #
 #   Right click icon in lower left of screen, use Command Prompt (Admin)
+
+from __future__ import print_function
 
 __date__ = "2014/02/27"
 __version__ = "v0.93"
@@ -89,7 +93,7 @@ class Poll(threading.Thread):
         """Human readable version of thread_list()"""
         for t in Poll.thread_list(): 
             if isinstance(t, Poll):
-                print "%-16s  %-8s  %4.3f" % (t, t.state(), t.uptime())
+                print("%-16s  %-8s  %4.3f" % (t, t.state(), t.uptime()))
 
     @staticmethod
     def killall():
@@ -139,7 +143,7 @@ class PingService(object):
         self.verbose = verbose
         self.persistent = persistent
         self.obituary_delay = its_dead_jim * delay
-        self.pad = "getoff my lawn"         # should be 14 chars or more
+        self.pad = b"getoff my lawn"        # should be 14 chars or more
         socket.setdefaulttimeout(0.01)
         self.started = 0
         self.thread = None
@@ -148,7 +152,7 @@ class PingService(object):
                                   socket.getprotobyname('icmp'))
         try:
             self.sock.connect((host, 22))
-        except socket.gaierror, ex:
+        except socket.gaierror as ex:
             self.log("ping socket cannot connect to %s: %s" % (host, ex[1]))
             self.sock.close()
             return
@@ -178,7 +182,7 @@ class PingService(object):
 
     def _icmp_checksum(self, pkt):
         n = len(pkt)
-        two_bytes = struct.unpack("!%sH" % (n/2), pkt)
+        two_bytes = struct.unpack("!%sH" % (n//2), pkt)
         chksum = sum(two_bytes)
         if n & 1 == 1:
             chksum += pkt[-1]
@@ -298,7 +302,8 @@ class PingService(object):
                 str = "%d bytes from %s: seq=%u" % (
                       len(rbuf),
                       # inet_ntop not available on windows
-                      '.'.join([('%d' % ord(c)) for c in list(rbuf[12:16])]),
+                      '.'.join([('%d' % (c if isinstance(c, int) else ord(c)))
+                                for c in list(rbuf[12:16])]),
                       self.seq)
 
                 # calculate rounttrip time
@@ -330,7 +335,7 @@ if __name__ == "__main__":
     import types
 
     if len(sys.argv) < 2:
-        print "usage: python2 ping.py <ip>"
+        print("usage: " + sys.argv[0] + " <ip>")
         sys.exit(1)
 
     ping_svc = PingService(sys.argv[1])
@@ -343,7 +348,7 @@ if __name__ == "__main__":
 
             # print log messages
             while len(PingService.msgs) > 0:
-                print PingService.msgs.pop(0)
+                print(PingService.msgs.pop(0))
 
     except KeyboardInterrupt:
         pass

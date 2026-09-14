@@ -1,4 +1,5 @@
-#!/usr/bin/env python
+#!/bin/sh
+''''exec "$(command -v python3 || command -v python2 || command -v python)" "$0" "$@" # '''
 
 ##################################################################
 # Copyright (c) 2012, Sergej Srepfler <sergej.srepfler@gmail.com>
@@ -7,7 +8,19 @@
 # This software is distributed under the terms of BSD license.
 ##################################################################
 
-import sys,os,time,socket,IN
+from __future__ import print_function
+
+import sys,os,time,socket
+
+#IN is a python 2, linux only module and the only thing taken from it is
+#SO_BINDTODEVICE, which python 3 keeps in socket. The shim leaves every call
+#site below untouched on either version
+try:
+    import IN
+except ImportError:
+    class IN(object):
+        SO_BINDTODEVICE = getattr(socket, 'SO_BINDTODEVICE', 25)
+
 from optparse import OptionParser
 
 if __name__ == "__main__":
@@ -72,7 +85,7 @@ if __name__ == "__main__":
         # socket is in blocking mode, so let's add a timeout
         s.settimeout(3)
         # Bind to Device
-        s.setsockopt(socket.SOL_SOCKET,IN.SO_BINDTODEVICE,interface+'\0')
+        s.setsockopt(socket.SOL_SOCKET,IN.SO_BINDTODEVICE, (interface + '\0').encode())
         # Enable ReuseAddr & Broadcast
         s.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
         s.setsockopt(socket.SOL_SOCKET,socket.SO_BROADCAST,1)
@@ -91,11 +104,11 @@ if __name__ == "__main__":
         rs.settimeout(timeout)
         rs.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         rs.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        #rs.setsockopt(socket.SOL_SOCKET,IN.SO_BINDTODEVICE,interface+'\0')
+        #rs.setsockopt(socket.SOL_SOCKET,IN.SO_BINDTODEVICE, (interface + '\0').encode())
         rs.bind(('',lport))
         #while True:
         msg,addr = rs.recvfrom(MSG_SIZE)
-        print "Answer from "+addr[0]
+        print("Answer from "+addr[0])
         #received = rs.recvfrom(MSG_SIZE)
         # Process response
         # Normally - this is the end.

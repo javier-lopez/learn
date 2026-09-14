@@ -1,8 +1,21 @@
-#!/usr/bin/env python
+#!/bin/sh
+''''exec "$(command -v python3 || command -v python2 || command -v python)" "$0" "$@" # '''
 
 #originally from https://github.com/psychomario/PyPXE
 
-import socket,binascii,time,os,sys,IN
+from __future__ import print_function
+
+import socket,binascii,time,os,sys
+
+#IN is a python 2, linux only module and the only thing taken from it is
+#SO_BINDTODEVICE, which python 3 keeps in socket. The shim leaves every call
+#site below untouched on either version
+try:
+    import IN
+except ImportError:
+    class IN(object):
+        SO_BINDTODEVICE = getattr(socket, 'SO_BINDTODEVICE', 25)
+
 from sys import exit
 from optparse import OptionParser
 
@@ -31,7 +44,7 @@ def reqparse(message): #handles either DHCPDiscover or DHCPRequest
         #DHCPOFFER creation:
         #options = \xcode \xlength \xdata
         lease=getlease(messagesplit[11])
-        print 'Leased:',lease
+        print('Leased:',lease)
         data='\x02\x01\x06\x00'+binascii.unhexlify(messagesplit[4])+'\x00\x04'
         data+='\x80\x00'+'\x00'*4+socket.inet_aton(lease)
         data+=socket.inet_aton(address)+'\x00'*4
@@ -66,7 +79,7 @@ def release(): #release a lease after timelimit has expired
           if time.time()+leasetime == leasetime:
               continue
           if lease[-1] > time.time()+leasetime:
-             print "Released",lease[0]
+             print("Released",lease[0])
              lease[1]=False
              lease[2]='000000000000'
              lease[3]=0
@@ -179,28 +192,28 @@ if __name__ == "__main__":
         leases.append([ip,False,'000000000000',0])
 
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    s.setsockopt(socket.SOL_SOCKET,IN.SO_BINDTODEVICE,interface+'\0') #experimental
+    s.setsockopt(socket.SOL_SOCKET,IN.SO_BINDTODEVICE, (interface + '\0').encode()) #experimental
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
     s.bind(('',port))
     #s.sendto(data,(ip,port))
 
     if not options.quiet:
-        print  "Starting %s..." % (os.path.basename(sys.argv[0]))
+        print( "Starting %s..." % (os.path.basename(sys.argv[0])))
         if not address or address == '0.0.0.0':
-          print "  address: all interfaces"
+          print("  address: all interfaces")
         else:
-          print "  address:      " + address
+          print("  address:      " + address)
 
-        print   "  tftp:         " + str(tftp)
-        print   "  gateway:      " + str(gateway)
-        print   "  dns:          " + str(dns)
-        print   "  netmask:      " + str(netmask)
-        print   "  port:         " + str(port)
-        print   "  pxe filename: " + str(pxefilename)
-        print   "  pid:          " + str(os.getpid())
-        print   "  serving:      " + str(offerfrom) + " - " + str(offerto)
-        print   "Press <Ctrl-C> to exit.\n"
+        print(  "  tftp:         " + str(tftp))
+        print(  "  gateway:      " + str(gateway))
+        print(  "  dns:          " + str(dns))
+        print(  "  netmask:      " + str(netmask))
+        print(  "  port:         " + str(port))
+        print(  "  pxe filename: " + str(pxefilename))
+        print(  "  pid:          " + str(os.getpid()))
+        print(  "  serving:      " + str(offerfrom) + " - " + str(offerto))
+        print(  "Press <Ctrl-C> to exit.\n")
 
     while 1: #main loop
         try:

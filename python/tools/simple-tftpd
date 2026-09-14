@@ -1,9 +1,17 @@
-#!/usr/bin/env python
+#!/bin/sh
+''''exec "$(command -v python3 || command -v python2 || command -v python)" "$0" "$@" # '''
 #originally from https://github.com/psychomario/PyPXE
+
+from __future__ import print_function
 
 import socket,binascii,os,sys
 from math import ceil
 from optparse import OptionParser
+
+try:                    #python 2 calls it xrange, and its range builds a list
+    xrange
+except NameError:
+    xrange = range
 
 def group(s, n): return [s[i:i+n] for i in xrange(0, len(s), n)]
 
@@ -26,7 +34,7 @@ else:
 
 if port < 1024:
     if not os.geteuid() == 0:
-        print (os.path.basename(__file__) + ": root permitions are necessary to bind to port " + str(port) + ", use -p to specify a non privileged port or run as root.\n")
+        print((os.path.basename(__file__) + ": root permitions are necessary to bind to port " + str(port) + ", use -p to specify a non privileged port or run as root.\n"))
         parser.print_help()
         sys.exit(1)
 
@@ -36,42 +44,42 @@ s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 s.bind(('', port))
 
 if not options.quiet:
-    print  "Starting %s..." % (os.path.basename(sys.argv[0]))
-    print  "  address: all interfaces"
-    print  "  port:    " + str(port)
-    print  "  timeout: " + str(timeout)
-    print  "  pid:     " + str(os.getpid())
-    print  "  serving: ./*"
-    print  ""
-    print  "Press <Ctrl-C> to exit."
+    print( "Starting %s..." % (os.path.basename(sys.argv[0])))
+    print( "  address: all interfaces")
+    print( "  port:    " + str(port))
+    print( "  timeout: " + str(timeout))
+    print( "  pid:     " + str(os.getpid()))
+    print( "  serving: ./*")
+    print( "")
+    print( "Press <Ctrl-C> to exit.")
 
 last=()
 while 1:
     try:
         message, address = s.recvfrom(8192)
         if last == address: continue
-        if message.startswith('\x00\x01'): #WRQ
-           message=message.split('\x00')
+        if message.startswith(b'\x00\x01'): #WRQ
+           message=message.split(b'\x00')
            filename=message[1][1:]
-           print address,"wants",repr(filename)
+           print(address,"wants",repr(filename))
            if not os.path.exists(filename):
-              s.sendto('\x00\x05\x00\x01no such file exists',address)
+              s.sendto(b'\x00\x05\x00\x01no such file exists',address)
               continue
            fsize=os.path.getsize(filename)
-           s.sendto('\x00\x06blksize\x00512\x00tsize\x00%s\x00' % fsize,address)
-        elif message.startswith('\x00\x04'): #OptACK
+           s.sendto(b'\x00\x06blksize\x00512\x00tsize\x00%s\x00' % str(fsize).encode(),address)
+        elif message.startswith(b'\x00\x04'): #OptACK
            last=address
-           f=open(filename,'r')
+           f=open(filename,'rb')
            data=f.read()
            dataset=group(data,512)
-           if len(dataset) > 65534: print "Won't work, too large... >64MB"
+           if len(dataset) > 65534: print("Won't work, too large... >64MB")
            for index,chunk in enumerate(dataset):
               try:
-                 s.sendto('\x00\x03'+binascii.unhexlify(hex(index+1)[2:].rjust(4,'0'))+chunk,address)
+                 s.sendto(b'\x00\x03'+binascii.unhexlify(hex(index+1)[2:].rjust(4,'0'))+chunk,address)
               except TypeError:
                  break
               s.recvfrom(128)
-           s.sendto('\x00\x03'+binascii.unhexlify(hex(index+2)[2:].rjust(4,'0')),address)
+           s.sendto(b'\x00\x03'+binascii.unhexlify(hex(index+2)[2:].rjust(4,'0')),address)
            f.close()
     except KeyboardInterrupt:
         exit()

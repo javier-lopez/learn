@@ -1,4 +1,7 @@
-#!/usr/bin/env python
+#!/bin/sh
+''''exec "$(command -v python3 || command -v python2 || command -v python)" "$0" "$@" # '''
+from __future__ import print_function
+
 """
 stream2chromecast.py: Chromecast media streamer for Linux
 author: Pat Carter - https://github.com/Pat-Carter/stream2chromecast
@@ -6,8 +9,22 @@ version: 0.6.3
 """
 VERSION = "0.6.3"
 
-import sys, os, errno, signal, time, urllib, mimetypes, subprocess
-import httplib, urlparse, socket, tempfile, optparse, BaseHTTPServer
+import sys, os, errno, signal, time, mimetypes, subprocess
+import socket, tempfile, optparse
+
+#four standard library modules changed address between 2 and 3 and nothing
+#else about them changed. Aliasing them here leaves every call site below
+#written the way it already was, and keeps the file dependency free
+try:                                        #python 2
+    import httplib
+    import urlparse
+    import urllib
+    import BaseHTTPServer as http_server
+except ImportError:                         #python 3
+    import http.client as httplib
+    import urllib.parse as urlparse
+    import urllib.parse as urllib
+    import http.server as http_server
 from   threading import Thread
 
 PIDFILE = os.path.join(tempfile.gettempdir(), "stream2chromecast_%s.pid")
@@ -256,7 +273,7 @@ class CCDeviceFinder:
         sock.settimeout(time_limit)
 
         try:
-            print "Sending mDNS query"
+            print("Sending mDNS query")
             sock.sendto(query, 0, (m_addr, m_port))
 
             while True:
@@ -264,11 +281,11 @@ class CCDeviceFinder:
                     data, addr = sock.recvfrom(1024)
                     # TODO parse the response properly, but for now this should identify chromecast responses
                     if query_data in data and "md=Chromecast" in data and addr[0] not in addrs:
-                        print "chromecast found:", addr[0]
+                        print("chromecast found:", addr[0])
                         addrs.append(addr[0])
 
                         if device_limit and len(addrs) == device_limit:
-                            print "enough devices found"
+                            print("enough devices found")
                             break
                 except socket.timeout:
                     break
@@ -324,7 +341,7 @@ class CCDeviceFinder:
                             if name == hostname:
                                 # name is found - check that the host responds with the same name
                                 device_name = self.get_device_name(host)
-                                print "Device name response:", device_name
+                                print("Device name response:", device_name)
                                 if name == device_name and device_name != "":
                                     result = host
                                     break
@@ -346,7 +363,7 @@ class CCDeviceFinder:
         """ find the first device (quick) or search by name (slower)"""
         if name is None or name == "":
             # no name specified so find the first device that responds
-            print "searching the network for a Chromecast device"
+            print("searching the network for a Chromecast device")
             hosts = self.search_network(device_limit=1)
             if len(hosts) > 0:
                 return hosts[0], self.get_device_name(hosts[0])
@@ -357,11 +374,11 @@ class CCDeviceFinder:
             ip_addr = self.check_cache(name)
             if ip_addr is not None:
                 # address found in cache
-                print "found device in cache:", name
+                print("found device in cache:", name)
                 return ip_addr, name
             else:
                 # no cached results found run a full network search
-                print "searching the network for:", name
+                print("searching the network for:", name)
                 result_map = {}
 
                 hosts = search_network(time_limit=time_limit)
@@ -373,7 +390,7 @@ class CCDeviceFinder:
                 save_cache(result_map)
 
                 if name in result_map.keys():
-                    print "found device:", name
+                    print("found device:", name)
                     return result_map[name], name
                 else:
                     return None, None
@@ -406,7 +423,7 @@ class CCMediaController():
         if is_ip_addr:
             host = device_name
             try:
-                print "ip_addr:", host, "device name:", get_device_name(host)
+                print("ip_addr:", host, "device name:", get_device_name(host))
             except socket.error:
                 sys.exit("No Chromecast found on ip:" + host)
         else:
@@ -414,7 +431,7 @@ class CCMediaController():
             host, name = chromecast.find_device(name=device_name)
             if host is None:
                 sys.exit("No Chromecast found on the network")
-            print "device name:", name
+            print("device name:", name)
 
         return host
 
@@ -504,15 +521,15 @@ class CCMediaController():
         """ update the status for the Media Player app if it is running """
         self.receiver_app_status = None
 
-        if msg.has_key('status'):
+        if 'status' in msg:
             status = msg['status']
-            if status.has_key('applications'):
+            if 'applications' in status:
                 self.current_applications = status['applications']
                 for application in self.current_applications:
                     if application.get("appId") == MEDIAPLAYER_APPID:
                         self.receiver_app_status = application
 
-            if status.has_key('volume'):
+            if 'volume' in status:
                 self.volume_status = status['volume']
 
     def update_media_status_data(self, msg):
@@ -623,7 +640,7 @@ class CCMediaController():
         self.get_receiver_status()
 
         if self.receiver_app_status is None:
-            print "No media player app running"
+            print("No media player app running")
             self.close_socket()
             return
 
@@ -744,7 +761,7 @@ class CCMediaController():
 
 
 ##############################################################################
-class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+class RequestHandler(http_server.BaseHTTPRequestHandler):
     """ Handle HTTP requests for files which do not need transcoding """
 
     content_type = "video/mp4"
@@ -758,27 +775,27 @@ class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
         self.send_headers(filepath)
 
-        print "sending data"
+        print("sending data")
         try:
             self.write_response(filepath)
-        except socket.error, e:
+        except socket.error as e:
             if isinstance(e.args, tuple):
                 if e[0] in (errno.EPIPE, errno.ECONNRESET):
-                    print "disconnected"
+                    print("disconnected")
                     self.suppress_socket_error_report = True
                     return
             raise
 
     def handle_one_request(self):
         try:
-            return BaseHTTPServer.BaseHTTPRequestHandler.handle_one_request(self)
+            return http_server.BaseHTTPRequestHandler.handle_one_request(self)
         except socket.error:
             if not self.suppress_socket_error_report:
                 raise
 
     def finish(self):
         try:
-            return BaseHTTPServer.BaseHTTPRequestHandler.finish(self)
+            return http_server.BaseHTTPRequestHandler.finish(self)
         except socket.error:
             if not self.suppress_socket_error_report:
                 raise
@@ -816,7 +833,7 @@ class TranscodingRequestHandler(RequestHandler):
 
     def write_response(self, filepath):
         if self.bufsize != 0:
-            print "transcode buffer size:", self.bufsize
+            print("transcode buffer size:", self.bufsize)
 
         ffmpeg_command = self.transcoder_command % (self.transcode_input_options, filepath, self.transcode_output_options)
 
@@ -850,7 +867,7 @@ def get_transcoder_cmds(preferred_transcoder=None):
             transcoder_cmd = "ffmpeg"
             probe_cmd = "ffprobe"
         elif avconv_installed:
-            print "unable to find ffmpeg - using avconv"
+            print("unable to find ffmpeg - using avconv")
             transcoder_cmd = "avconv"
             probe_cmd = "avprobe"
 
@@ -860,7 +877,7 @@ def get_transcoder_cmds(preferred_transcoder=None):
             transcoder_cmd = "avconv"
             probe_cmd = "avprobe"
         elif ffmpeg_installed:
-            print "unable to find avconv - using ffmpeg"
+            print("unable to find avconv - using ffmpeg")
             transcoder_cmd = "ffmpeg"
             probe_cmd = "ffprobe"
 
@@ -908,7 +925,7 @@ def get_mimetype(filename, ffprobe_cmd=None):
         if file_mimetype.startswith("video/") or file_mimetype.startswith("audio/"):
             mimetype = file_mimetype
 
-            print "OS identifies the mimetype as :", mimetype
+            print("OS identifies the mimetype as :", mimetype)
             return mimetype
     except:
         pass
@@ -971,10 +988,10 @@ def play(filenames, transcode=False, transcoder=None, transcode_output_options=N
     for filename in filenames:
         if os.path.isfile(filename):
             filename = os.path.abspath(filename)
-            print "source is file: %s" % filename
+            print("source is file: %s" % filename)
         else:
             if transcode and (filename.lower().startswith("http://") or filename.lower().startswith("https://") or filename.lower().startswith("rtsp://")):
-                print "source is URL: %s" % filename
+                print("source is URL: %s" % filename)
             else:
                 sys.exit("media file %s not found" % filename)
 
@@ -983,7 +1000,7 @@ def play(filenames, transcode=False, transcoder=None, transcode_output_options=N
         status = cast.get_status()
         webserver_ip = status['client'][0]
 
-        print "local ip address:", webserver_ip
+        print("local ip address:", webserver_ip)
 
         req_handler = RequestHandler
 
@@ -1004,7 +1021,7 @@ def play(filenames, transcode=False, transcoder=None, transcode_output_options=N
 
                 req_handler.bufsize = transcode_bufsize
             else:
-                print "No transcoder is installed. Attempting standard playback"
+                print("No transcoder is installed. Attempting standard playback")
 
         if req_handler == RequestHandler:
             req_handler.content_type = get_mimetype(filename, probe_cmd)
@@ -1016,14 +1033,14 @@ def play(filenames, transcode=False, transcoder=None, transcode_output_options=N
         if server_port is not None:
             port = int(server_port)
 
-        server = BaseHTTPServer.HTTPServer((webserver_ip, port), req_handler)
+        server = http_server.HTTPServer((webserver_ip, port), req_handler)
 
         thread = Thread(target=server.handle_request)
         thread.start()
 
         url = "http://%s:%s?%s" % (webserver_ip, str(server.server_port), urllib.quote_plus(filename, "/"))
 
-        print "URL & content-type: ", url, req_handler.content_type
+        print("URL & content-type: ", url, req_handler.content_type)
 
         # create another webserver to handle a request for the subtitles file, if specified in the subtitles parameter
         sub = None
@@ -1035,25 +1052,25 @@ def play(filenames, transcode=False, transcoder=None, transcode_output_options=N
                 if subtitles_port is not None:
                     sub_port = int(subtitles_port)
 
-                sub_server = BaseHTTPServer.HTTPServer((webserver_ip, sub_port), SubRequestHandler)
+                sub_server = http_server.HTTPServer((webserver_ip, sub_port), SubRequestHandler)
                 thread2 = Thread(target=sub_server.handle_request)
                 thread2.start()
 
                 sub = "http://%s:%s?%s" % (webserver_ip, str(sub_server.server_port), urllib.quote_plus(subtitles, "/"))
-                print "sub URL: ", sub
+                print("sub URL: ", sub)
             else:
-                print "Subtitles file %s not found" % subtitles
+                print("Subtitles file %s not found" % subtitles)
 
         load(cast, url, req_handler.content_type, sub, subtitles_language)
 
 def load(cast, url, mimetype, sub=None, sub_language=None):
     """ load a chromecast instance with a url and wait for idle state """
     try:
-        print "loading media..."
+        print("loading media...")
         cast.load(url, mimetype, sub, sub_language)
 
         # wait for playback to complete before exiting
-        print "waiting for player to finish - press ctrl-c to stop..."
+        print("waiting for player to finish - press ctrl-c to stop...")
 
         idle = False
         while not idle:
@@ -1062,11 +1079,11 @@ def load(cast, url, mimetype, sub=None, sub_language=None):
 
     except KeyboardInterrupt:
         print
-        print "stopping..."
+        print("stopping...")
         cast.stop()
 
     finally:
-        print "done"
+        print("done")
 
 def playurl(url, device_name=None):
     """ play a remote HTTP resource on the chromecast """
@@ -1122,14 +1139,14 @@ def playurl(url, device_name=None):
                             redirect_location = header[1]
                 if redirect_location.startswith("http") is False:
                     redirect_location = get_full_url(url, redirect_location)
-                print "Redirecting to " + redirect_location
+                print("Redirecting to " + redirect_location)
                 resp = get_resp(redirect_location)
             if resp.status != 200:
                 sys.exit("HTTP error:" + str(resp.status) + " - " + resp.reason)
         else:
             sys.exit("HTTP error:" + str(resp.status) + " - " + resp.reason)
 
-    print "Found HTTP resource"
+    print("Found HTTP resource")
 
     headers = resp.getheaders()
 
@@ -1141,10 +1158,10 @@ def playurl(url, device_name=None):
                 mimetype = header[1]
 
     if mimetype != None:
-        print "content-type:", mimetype
+        print("content-type:", mimetype)
     else:
         mimetype = "video/mp4"
-        print "resource does not specify mimetype - using default:", mimetype
+        print("resource does not specify mimetype - using default:", mimetype)
 
     cast = CCMediaController(device_name=device_name)
     load(cast, url, mimetype)
@@ -1163,7 +1180,7 @@ def stop(device_name=None):
 
 def get_status(device_name=None):
     """ print the status of the chromecast device """
-    print CCMediaController(device_name=device_name).get_status()
+    print(CCMediaController(device_name=device_name).get_status())
 
 def set_volume_up(device_name=None):
     """ raise the volume by 0.01 """
@@ -1181,14 +1198,14 @@ def toggle_mute(device_name=None):
     CCMediaController(device_name=device_name).toggle_mute()
 
 def list_devices():
-    print "Searching for devices, please wait..."
+    print("Searching for devices, please wait...")
     chromecast = CCDeviceFinder()
     device_ips = chromecast.search_network(device_limit=None, time_limit=10)
 
-    print "%d devices found" % len(device_ips)
+    print("%d devices found" % len(device_ips))
 
     for device_ip in device_ips:
-        print device_ip, ":", chromecast.get_device_name(device_ip)
+        print(device_ip, ":", chromecast.get_device_name(device_ip))
 
 def main():
     usage  = "Usage: %prog [options] FILE ...\n"

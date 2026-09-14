@@ -1,9 +1,22 @@
-#!/usr/bin/env python
+#!/bin/sh
+''''exec "$(command -v python3 || command -v python2 || command -v python)" "$0" "$@" # '''
 #usage: simple-mpc-remote [options]
 
 #based on mplayer-remote v0.0.4, http://www.gwenn.dk/mplayer-remote.html
 
-import BaseHTTPServer, commands, sys, os, pwd, grp, socket
+from __future__ import print_function
+
+import sys, os, pwd, grp, socket
+
+#the standard library renamed these between 2 and 3. getstatusoutput kept its
+#name and its behaviour, it only changed address
+try:                                       #python 2
+    import BaseHTTPServer as http_server
+    from commands import getstatusoutput
+except ImportError:                        #python 3
+    import http.server as http_server
+    from subprocess import getstatusoutput
+
 from optparse import OptionParser
 
 parser = OptionParser(description='%prog - a simple mpc web control', usage='%prog [options]')
@@ -160,21 +173,21 @@ def drop_privileges():
 
     #ensure a reasonable umask
     old_umask = os.umask(0o22)
-    print "Dropping user privileges: root -> " +  user_name
+    print("Dropping user privileges: root -> " +  user_name)
 
 def execute(cmd):
     """ Execute a shell command, while handling errors gracefully"""
-    (stat, out) = commands.getstatusoutput(cmd)
+    (stat, out) = getstatusoutput(cmd)
     if stat != 0:
-        print >>sys.stderr, "ERROR: '"+cmd+"' returned "+ str(out)
+        print("ERROR: '"+cmd+"' returned "+ str(out), file=sys.stderr)
     return out
 
-class myHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+class myHandler(http_server.BaseHTTPRequestHandler):
     """Handles all http requests."""
 
     def __init__(self, *args):
         """Initialise the handler (called each time we handle a request)"""
-        BaseHTTPServer.BaseHTTPRequestHandler.__init__(self, *args)
+        http_server.BaseHTTPRequestHandler.__init__(self, *args)
 
     def write(self, x):
         """Send some html code to the browser"""
@@ -186,11 +199,11 @@ class myHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         if "mpc" in param:
             if param["mpc"] in ctrlcmd:
                 self.write(execute("mpc " + ctrlcmd[param["mpc"]]))
-                print "exec: mpc " + ctrlcmd[param["mpc"]]
+                print("exec: mpc " + ctrlcmd[param["mpc"]])
         if "volume" in param:
             if param["volume"] in volcmd:
                 self.write(execute(volcmd[param["volume"]]))
-                print "exec: " + volcmd[param["volume"]]
+                print("exec: " + volcmd[param["volume"]])
 
     def volumebar(self):
         """Get the current volume setting and plot it as a "bar diagram", or
@@ -213,7 +226,7 @@ class myHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
         file = self.path.split('/')[-1]
         paramstr=file.split('?')
-        print "args:", paramstr
+        print("args:", paramstr)
         param = {}
         if len(paramstr) > 1:
             for p in paramstr[1].split('&'):
@@ -224,13 +237,13 @@ class myHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         self.write(pagectrl)
         self.write(pageend)
 
-class StoppableHTTPServer(BaseHTTPServer.HTTPServer):
+class StoppableHTTPServer(http_server.HTTPServer):
     """
     This is a simple change to the normal basehttp server which is
     not blocked waiting for HTTP connections
     """
     def server_bind(self):
-        BaseHTTPServer.HTTPServer.server_bind(self)
+        http_server.HTTPServer.server_bind(self)
         self.socket.settimeout(1)
         self.run = True
 
@@ -250,11 +263,11 @@ def run():
     """
     try:
         server = StoppableHTTPServer(('', port), myHandler)
-        print 'Started httpserver on port ' , port
+        print('Started httpserver on port ' , port)
         drop_privileges()
         server.serve_forever()
     except KeyboardInterrupt:
-        print '^C received, shutting down the web server'
+        print('^C received, shutting down the web server')
     finally:
         if 'server' in locals():
             server.socket.close()

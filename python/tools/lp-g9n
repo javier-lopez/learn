@@ -1,4 +1,7 @@
-#!/usr/bin/env python
+#!/bin/sh
+''''exec "$(command -v python3 || command -v python2 || command -v python)" "$0" "$@" # '''
+
+from __future__ import print_function
 
 import sys, time, random
 from os.path import expanduser, basename
@@ -52,13 +55,14 @@ if __name__ == "__main__":
 
     google  = geocoders.GoogleV3()
 
-    print "Member,City,Latitude,Longitude"
+    print("Member,City,Latitude,Longitude")
     for member in members:
       if member.time_zone != None:
         name=member.display_name
         name=name.replace('"', '')
         city=basename(member.time_zone)
-        coordinates = lookup(city.encode('utf-8'), google)
+        coordinates = lookup(city.encode('utf-8') if str is bytes else city, google)
         #randomize a litle bit to avoid melting members on the same city
         coordinates = randcoordinates(coordinates)
-        print name.encode('utf-8') + "," + city.encode('utf-8') + "," + coordinates
+        row = name + "," + city + "," + coordinates
+        print(row.encode('utf-8') if str is bytes else row)
