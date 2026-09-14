@@ -809,6 +809,10 @@ bash -c '. ../../tools/wcd proyecto "${HOME}/proyecto.com" >/dev/null 2>&1'
 test X"$(cat "${WCDHOME}/.alias.wcd")"                                 = X"proyecto ${HOME}/proyecto.com"
 test X"$(bash -c '. ../../tools/wcd proyecto >/dev/null 2>&1; pwd')"    = X"${HOME}/proyecto.com"
 test X"$(bash -c 'set -- a b c; . ../../tools/wcd otro >/dev/null 2>&1; echo "$*"')" = X"a b c"
+#"-" has to be read before the pattern that rejects unknown options, or the
+#most used argument cd has becomes an error message
+test X"$(bash -c '. ../../tools/wcd otro >/dev/null 2>&1; . ../../tools/wcd proyecto.com >/dev/null 2>&1; . ../../tools/wcd - >/dev/null 2>&1; pwd')" = X"${HOME}/otro"
+bash -c '. ../../tools/wcd --nonsense >/dev/null 2>&1'; test X"${?}" = X"1"
 @end
 
 #weather moved to sh/archived. It scraped bing and ask for a forecast, which is

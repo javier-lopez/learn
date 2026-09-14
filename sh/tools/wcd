@@ -437,15 +437,16 @@ case "${1:-}" in
                      printf "%s\n" "will not bring up cron again" ;;
     --update)        if [ X"${LOGNAME:-}" = X"root" ]; then _wcd_meta
                      else _wcd_scan && _wcd_cron_suggest; fi ;;
+    -)               #before -*), which would otherwise read it as an option
+                     #nobody knows. wcd(1) answers this off a stack of its own,
+                     #which is how "cd -" here used to land in a directory
+                     #nobody had just left; OLDPWD is what every other shell on
+                     #earth means by it
+                     \cd - ;;
     -*)              _wcd_usage >&2; false ;;
     "")              \cd ;;
     *)  if [ -n "${2:-}" ]; then
             _wcd_teach "${1}" "${2}"
-        elif [ "${1}" = "-" ]; then
-            #wcd(1) reads this off a stack of its own, which is how "cd -"
-            #here used to answer with a directory nobody had just left.
-            #OLDPWD is what every other shell on earth means by it
-            \cd -
         elif [ -d "${1}" ]; then
             #a path that exists is not a riddle. This is also the fast lane:
             #".", "..", "~/x" and anything tab completed never reach awk
