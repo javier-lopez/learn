@@ -11,11 +11,28 @@ WICD_OPTIONS="-j -GN -c -i -f ${HOME}/.wcd/.treedata.wcd"
 #    -c      direct cd mode
 #    -i      case insensitve
 
+#how many entries a directory may hold and still be worth listing on arrival.
+#The cost this guards is not cpu - ls is 4ms at ten entries and 14ms at a
+#thousand, which is the fork and not the listing - it is the screen. Forty
+#names is seven lines at 120 columns and ten at 80: still a glance. Past that
+#the listing stops telling you where you are and starts scrolling away what
+#you were reading. 0 never lists, a large number restores the old behaviour
+[ -z "${WCD_LS_MAX}" ] && WCD_LS_MAX="40"
+
+_wcd_ls() {
+    #the glob runs inside a subshell on purpose: "set --" in a sourced file
+    #overwrites the positional parameters of the shell that sourced it - bash
+    #and dash both, and bash does not put them back - and this file is sourced
+    #by design. Hidden entries are not counted, which is what ls shows anyway,
+    #and an empty directory expands to a literal "*" and counts as one
+    ( set -- *; [ "${#}" -le "${WCD_LS_MAX}" ] ) && ls
+}
+
 if [ ! -f "${WICD_BIN}" ]; then
     if [ -z "${1}" ]; then
         \cd
     else
-        \cd "${@}" && ls
+        \cd "${@}" && _wcd_ls
     fi
 else
     if [ -z "${1}" ]; then
@@ -23,6 +40,6 @@ else
     else
         CD_PATH="$(printf "%s\\n" "$("${WICD_BIN}" ${WICD_OPTIONS} "${@}")" | \
                    sed -e 's:\\::g')"
-        \cd "${CD_PATH}" && ls
+        \cd "${CD_PATH}" && _wcd_ls
     fi
 fi
