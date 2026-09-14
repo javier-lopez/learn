@@ -125,25 +125,11 @@ rm -rf outputfile
 xclip -selection clipboard -i /dev/null
 @end
 
-@begin{cconverter}
-cconverter ; test X"${?}"                                      = X"1"
-cconverter -h ; test X"${?}"                                   = X"0"
-printf "%s" '-h' | cconverter; test X"${?}"                    = X"0"
-cconverter --help ; test X"${?}"                               = X"0"
-cconverter --cui; test X"${?}"                                 = X"1"
-test X"$(cconverter | head -1)"                                = X""
-test X"$(cconverter 2>&1 | head -1)"                           = X"Usage: cconverter [options] int|float currency [to] currency"
-test X"$(printf "%s" '-h' | cconverter | head -1)"             = X"Usage: cconverter [options] int|float currency [to] currency"
-test X"$(printf "%s" '--help' | cconverter | head -1)"         = X"Usage: cconverter [options] int|float currency [to] currency"
-test X"$(printf "%s" '--cui'  | cconverter  | head -1)"        = X""
-test X"$(printf "%s" '--cui'  | cconverter 2>&1|head -1)"      = X"cconverter: unrecognized option '--cui'"
-test X"$(cconverter cui 2>&1  | head -1)"                      = X"cconverter: missing parameters"
-test X"$(cconverter cui cui 2>&1 | head -1)"                   = X"cconverter: missing parameters"
-test X"$(cconverter cui cui cui 2>&1 | head -1)"               = X"cconverter: invalid syntax 'cui cui cui'"
-test X"$(cconverter 1 usd mxn | awk '{print $1 $2 $3 $5}')"    = X"1USD=MXN"
-test X"$(cconverter 1 usd to mxn | awk '{print $1 $2 $3 $5}')" = X"1USD=MXN"
-test X"$(cconverter '1 usd to mxn' | awk '{print $1 $2 $3 $5}')" = X"1USD=MXN"
-@end
+#cconverter is GONE. It asked three currency APIs and all three are dead:
+#Google's finance converter, Yahoo's quotes.csv and webservicex answer nothing,
+#nothing and 403. Its job lives on inside fuck, which carries its own copy and
+#reaches for the same dead hosts - fixing that means finding one live API, and
+#the tests come back written against whatever it answers
 
 @begin{compress}
 compress; test X"${?}"                                 = X"1"
@@ -245,27 +231,9 @@ test X"$(dcolors -f cui 2>&1|head -1)"             = X"Output valid formats are 
 test X"$(dcolors cui 2>&1|head -1)"                = X"Warning: 'cui' doesn't exist, skipping..."
 @end
 
-@begin{elastix-cli}
-elastix-cli; test X"${?}"                                  = X"1"
-elastix-cli -h ; test X"${?}"                              = X"1"
-printf "%s" '-h' | elastix-cli; test X"${?}"               = X"1"
-elastix-cli --help ; test X"${?}"                          = X"0"
-printf "%s" '--help' | elastix-cli; test X"${?}"           = X"0"
-elastix-cli --cui; test X"${?}"                            = X"1"
-printf "%s" '--cui' | elastix-cli; test X"${?}"            = X"1"
-test X"$(elastix-cli | head -1 )"                          = X""
-test X"$(elastix-cli 2>&1|head -1)"                        = X"Usage: elastix-cli [options] type args..."
-test X"$(elastix-cli --help | head -1)"                    = X"Usage: elastix-cli [options] type args..."
-test X"$(printf "%s" '--help' | elastix-cli | head -1)"    = X"Usage: elastix-cli [options] type args..."
-test X"$(elastix-cli -cui | head -1)"                      = X""
-test X"$(elastix-cli -cui 2>&1|head -1)"                   = X"elastix-cli: unrecognized option '-cui'"
-test X"$(printf "%s" '-cui' | elastix-cli 2>&1|head -1)"   = X"elastix-cli: unrecognized option '-cui'"
-test X"$(elastix-cli -h 2>&1 | head -1)"                   = X"Option '-h' requires a Host string"
-test X"$(printf "%s" '-h' | elastix-cli 2>&1 | head -1)"   = X"Option '-h' requires a Host string"
-test X"$(elastix-cli -c 2>&1|head -1)"                     = X"Option '-c' requires a FILE parameter"
-test X"$(printf "%s" '-c o@o' | elastix-cli 2>&1|head -1)" = X"'o@o' doesn't exist"
-test X"$(elastix-cli -p 2>&1|head -1)"                     = X"Option '-p' requires a Password string"
-@end
+#elastix-cli moved to sh/archived. Elastix itself was discontinued; the tests
+#are kept out of the run rather than deleted from history, and come back with
+#the tool if it ever does
 
 @begin{exec-wrapper}
 exec-wrapper; test X"${?}"                              = X"1"
@@ -445,69 +413,18 @@ test X"$(governator get cui|awk '{print $1}')"                  = X"cat"
 test X"$(printf "%s" 'get cui' | governator |awk '{print $1}')" = X"cat"
 @end
 
-@begin{howdoi}
-howdoi; test X"${?}"                                  = X"1"
-howdoi -h ; test X"${?}"                              = X"0"
-printf "%s" '-h' | howdoi; test X"${?}"               = X"0"
-howdoi --help ; test X"${?}"                          = X"0"
-printf "%s" '--help' | howdoi; test X"${?}"           = X"0"
-howdoi --cui; test X"${?}"                            = X"1"
-printf "%s" '--cui' | howdoi; test X"${?}"            = X"1"
-test X"$(howdoi | head -1)"                           = X""
-test X"$(howdoi 2>&1 | head -1)"                      = X"Usage: howdoi [options] query ..."
-test X"$(howdoi -h   | head -1)"                      = X"Usage: howdoi [options] query ..."
-test X"$(printf "%s" '-h' | howdoi | head -1)"        = X"Usage: howdoi [options] query ..."
-test X"$(howdoi --help | head -1)"                    = X"Usage: howdoi [options] query ..."
-test X"$(printf "%s" '--help' | howdoi | head -1)"    = X"Usage: howdoi [options] query ..."
-test X"$(howdoi -cui | head -1)"                      = X""
-test X"$(howdoi -cui 2>&1|head -1)"                   = X"howdoi: unrecognized option '-cui'"
-test X"$(printf "%s" '-cui' | howdoi 2>&1|head -1)"   = X"howdoi: unrecognized option '-cui'"
-test X"$(howdoi -n | head -1)"                        = X""
-test X"$(howdoi -n 2>&1|head -1)"                     = X"Option '-n' requires a parameter"
-test X"$(printf "%s" '-n' | howdoi 2>&1|head -1)"     = X"Option '-n' requires a parameter"
-test X"$(howdoi -n cui | head -1)"                    = X""
-test X"$(howdoi -n cui 2>&1|head -1)"                 = X"Option '-n' requires a number: 'cui'"
-test X"$(printf "%s" '-n cui' | howdoi 2>&1|head -1)" = X"Option '-n' requires a number: 'cui'"
-test X"$(howdoi XaMTWGfu89iQpJk6 | head -1)"          = X"howdoi: No results"
-test X"$(howdoi -C)"                                  = X"Cache cleared successfully"
-test ! -d ~/.cache/howdoi
-test X"$(howdoi XaMTWGfu89iQpJk6 | head -1)"          = X"howdoi: No results"
-test -d ~/.cache/howdoi
-@end
+#howdoi moved to sh/archived, and this is the placeholder where its tests were.
+#It asked api.stackoverflow.com, the 1.1 API that Stack Exchange retired years
+#ago: that host answers 404 to everything now. The tests are not flaky, they
+#cannot pass. They are gone rather than skipped so nobody spends an afternoon
+#"fixing" them. Reviving the tool means pointing it at api.stackexchange.com
+#first; the tests come back with it, written against whatever it answers then
 
-@begin{im}
-im -h; test X"${?}"                             = X"0"
-printf "%s" '-h' | im; test X"${?}"             = X"0"
-im -u; test X"${?}"                             = X"0"
-printf "%s" '-u' | im; test X"${?}"             = X"0"
-im --help ; test X"${?}"                        = X"0"
-printf "%s" '--help' | im; test X"${?}"         = X"0"
-im --cui; test X"${?}"                          = X"1"
-printf "%s" '--cui' | im; test X"${?}"          = X"1"
-test X"$(im -h | head -1)"                      = X"Usage: im [options] string ..."
-test X"$(printf "%s" '-h' | im | head -1)"      = X"Usage: im [options] string ..."
-test X"$(im --help | head -1)"                  = X"Usage: im [options] string ..."
-test X"$(printf "%s" '--help' | im | head -1)"  = X"Usage: im [options] string ..."
-test X"$(im -cui | head -1)"                    = X""
-test X"$(im -cui 2>&1 | head -1)"               = X"im: unrecognized option '-cui'"
-test X"$(printf "%s" '-cui' | im 2>&1|head -1)" = X"im: unrecognized option '-cui'"
-@end
+#im moved to sh/archived. mononeurona.org is still up, so this one is archived
+#for lack of use rather than lack of a server: the tests come back with it
 
-@begin{lp-g9n-team}
-lp-g9n-team -h; test X"${?}"                             = X"0"
-printf "%s" '-h' | lp-g9n-team; test X"${?}"             = X"0"
-lp-g9n-team -u; test X"${?}"                             = X"1"
-printf "%s" '-u' | lp-g9n-team; test X"${?}"             = X"1"
-lp-g9n-team --help ; test X"${?}"                        = X"0"
-printf "%s" '--help' | lp-g9n-team; test X"${?}"         = X"0"
-test X"$(lp-g9n-team -h | head -1)"                      = X"Usage: lp-g9n-team [options] [lp-group]"
-test X"$(printf "%s" '-h' | lp-g9n-team | head -1)"      = X"Usage: lp-g9n-team [options] [lp-group]"
-test X"$(lp-g9n-team --help | head -1)"                  = X"Usage: lp-g9n-team [options] [lp-group]"
-test X"$(printf "%s" '--help' | lp-g9n-team | head -1)"  = X"Usage: lp-g9n-team [options] [lp-group]"
-test X"$(lp-g9n-team -cui | head -1)"                    = X""
-test X"$(lp-g9n-team -cui 2>&1 | head -1)"               = X"lp-g9n-team: unrecognized option '-cui'"
-test X"$(printf "%s" '-cui' | lp-g9n-team 2>&1|head -1)" = X"lp-g9n-team: unrecognized option '-cui'"
-@end
+#lp-g9n-team moved to sh/archived. It builds csv files out of the geolocation
+#of Launchpad groups, which was a job with an end date
 
 @begin{mailgun}
 mailgun;  test X"${?}"                                       = X"1"
