@@ -1,4 +1,5 @@
-#!/usr/bin/env python
+#!/bin/sh
+''''exec "$(command -v python3 || command -v python2 || command -v python)" "$0" "$@" # '''
 # coding: utf-8
 from SocketServer import BaseRequestHandler, ThreadingUDPServer
 from cStringIO import StringIO
