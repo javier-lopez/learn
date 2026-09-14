@@ -780,6 +780,35 @@ printf "%s\n" "gone ${HOME}/nothing-here" > "${WCDHOME}/.alias.wcd"
 wcd --prune-aliases >/dev/null 2>&1; test X"$(wc -l < "${WCDHOME}/.alias.wcd")" = X"0"
 printf "%s\n" "live ${HOME}/proyecto.com" > "${WCDHOME}/.alias.wcd"
 test X"$(wcd --prune-aliases)" = X"every alias still points at a directory, nothing to prune"
+#the crontab half, against a crontab that is a file in this sandbox: the code
+#under test rewrites a real user's crontab, and a test that needed the real one
+#to prove it would be the last test anyone ran here
+mkdir -p fakebin
+printf "%s\n" '#!/bin/sh' 'F="$(dirname "$0")/../fake.crontab"' 'case "$1" in -l) [ -f "$F" ] || exit 1; cat "$F" ;; -) cat > "$F" ;; *) exit 2 ;; esac' > fakebin/crontab
+chmod +x fakebin/crontab
+PATH="$(pwd)/fakebin:${PATH}"; export PATH
+printf "%s\n" "0 7 * * * /usr/bin/something-of-the-users" > fake.crontab
+wcd --cron >/dev/null; test X"$(grep -c 'wcd --update' fake.crontab)"    = X"1"
+wcd --cron >/dev/null; test X"$(grep -c 'wcd --update' fake.crontab)"    = X"1"
+test X"$(wcd --cron)" = X"wcd is already in your crontab, nothing to do"
+wcd --no-cron >/dev/null; test X"$(grep -c 'wcd --update' fake.crontab)" = X"0"
+test X"$(grep -c 'something-of-the-users' fake.crontab)"                 = X"1"
+test -f "${WCDHOME}/.nocron"
+#and the half that matters, the one that is sourced. It needs a shell whose "."
+#passes arguments through and this runner is /bin/sh, which is dash here, so it
+#is asked for by name and the rest is skipped where there is none
+command -v bash >/dev/null 2>&1 || exit 0
+test X"$(bash -c '. ../../tools/wcd otro >/dev/null 2>&1; pwd')"        = X"${HOME}/otro"
+test X"$(bash -c '. ../../tools/wcd proyecto >/dev/null 2>&1; pwd')"    = X"${HOME}/otro/deep/proyecto"
+test X"$(bash -c '. ../../tools/wcd proyecto.c >/dev/null 2>&1; pwd')"  = X"${HOME}/proyecto.com"
+test X"$(bash -c '. ../../tools/wcd nothing-like-this >/dev/null 2>&1; pwd')" = X"${HOME}"
+test X"$(bash -c '. ../../tools/wcd nothing-like-this >/dev/null 2>&1')" = X""
+bash -c '. ../../tools/wcd nothing-like-this >/dev/null 2>&1'; test X"${?}" = X"1"
+rm -f "${WCDHOME}/.alias.wcd"
+bash -c '. ../../tools/wcd proyecto "${HOME}/proyecto.com" >/dev/null 2>&1'
+test X"$(cat "${WCDHOME}/.alias.wcd")"                                 = X"proyecto ${HOME}/proyecto.com"
+test X"$(bash -c '. ../../tools/wcd proyecto >/dev/null 2>&1; pwd')"    = X"${HOME}/proyecto.com"
+test X"$(bash -c 'set -- a b c; . ../../tools/wcd otro >/dev/null 2>&1; echo "$*"')" = X"a b c"
 @end
 
 #weather moved to sh/archived. It scraped bing and ask for a forecast, which is
