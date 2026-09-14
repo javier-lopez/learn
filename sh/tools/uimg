@@ -23,7 +23,7 @@ _usage() {
     printf "%s\\n" "Upload images to internet"
     printf "\\n"
     printf "%s\\n" "  -s, --site         prefer a site"
-    printf "%s\\n" "  -l, --list-SITES   list supported SITES"
+    printf "%s\\n" "  -l, --list-sites   list supported sites"
     printf "%b\\n" "  -U, --update       update this program to latest version"
     printf "%s\\n" "  -v, --version      display version"
     printf "%b\\n" "  -h, --help         show this help message and exit"
@@ -90,7 +90,7 @@ _validate() {
     case "${1}" in
         site) if [ -z "${2}" ]; then
                   printf "%s\\n" "${PROGNAME}: supported SITES are"
-                  exec "${0}" --list-SITES
+                  exec "${0}" --list-sites
               elif [ -z "$(printf "%s\\n" "${SITES}" | tr ' ' '\n' | awk "/^$2\$/")" ]; then
                   printf "%s\\n" "${PROGNAME}: '${2}' is not a supported site" >&2
                   exit 1
@@ -295,7 +295,7 @@ for arg in "${@}"; do #parse options
                   _validate site "${site}" && SITES="${site}";;
         -s*) site="${1#-s}"; shift
             _validate site "${site}" && SITES="${site}" ;;
-        -l|--list-SITES) printf "%s\\n" "${SITES}" | tr ' ' '\n'; exit 0; ;;
+        -l|--list-sites) printf "%s\\n" "${SITES}" | tr ' ' '\n'; exit 0; ;;
         -*) _die "${PROGNAME}: unrecognized option '${arg}'" ;;
     esac
 done
