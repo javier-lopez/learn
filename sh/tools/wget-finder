@@ -9,11 +9,12 @@
 
 VERSION="2026.09.12-23:15"
 
-#Search engines come and go: google stopped serving results to anything that
-#does not run javascript, ftplike answers but indexes nothing any more. They
-#are kept because a dead engine costs one request and the loop moves on, and
-#because a network that reaches them differently is not this one.
+#Search engines come and go. google and ftplike were here until 2026: google
+#serves results to javascript now and answers a plain client with a page that
+#has no links in it, ftplike still responds and indexes nothing. Neither is
+#coming back, and an engine that cannot answer is not worth the request.
 #
+#What replaced them is not another name in this list - it is the line below.
 #WGET_FINDER_ENGINES adds your own without touching this file, as space
 #separated name=url pairs where %s is the file being looked for:
 #
@@ -21,7 +22,7 @@ VERSION="2026.09.12-23:15"
 #
 #That is the part meant to outlive the list above: when the last built-in
 #engine dies, a working one is a line in your rc file, not a new release
-SEARCH_ENGINES="brave mmnt google ftplike"
+SEARCH_ENGINES="brave mmnt"
 CHECKSUMS="md5 sha1 sha256 sha512"
 
 #a user agent from this decade. "Mozilla/5.0" alone is a bot signature now
@@ -205,37 +206,17 @@ _get_links() {
     _get_links_custom() {
         #a user defined engine: its url template with %s replaced by the file
         _get_links_custom__url="$(_engine_url "${1}")" || return 1
-        _get_links_custom__host="$(printf "%s" "${_get_links_custom__url}" |
-            awk -F/ '"'"'{print $3}'"'"')"
+        #the host without a fork: strip the scheme, then everything from the
+        #first slash on
+        _get_links_custom__host="${_get_links_custom__url#*://}"
+        _get_links_custom__host="${_get_links_custom__host%%/*}"
         _fetch "$(printf "%s" "${_get_links_custom__url}" |
-            awk -v f="${2}" '"'"'{gsub(/%s/, f); print}'"'"')" |
+            awk -v f="${2}" '{gsub(/%s/, f); print}')" |
             _links_filter "${_get_links_custom__host}"
     }
 
-    _get_links_google() {
-        _get_links_google__query="Index of \"${1}.\" -filewatcher"
-        _fetch "http://www.google.com/search?q=${_get_links_google__query}" | \
-            awk 'match($0,/(http|https|ftp):\/\/.*\/&/) {if(NR!=1){$0=substr($0,RSTART,RLENGTH); print substr($0,1,length($0)-1)}}' | \
-            awk 'NF' | _shuf | _uniq
-    }
 
-    #_get_links_filemare() {
-        ##//relevance/10/10 #more pages
-        ##//relevance/20/10
-        ##//relevance/30/10
-        #_get_links_filemare__query="${1}"
-        #wget -q -U "Mozilla/5.0" \
-            #"http://filemare.com/en/search/${_get_links_filemare__query}" -O- | \
-            #awk 'match($0,/>(http|https|ftp):\/\/.*</) {print substr($0,RSTART,RLENGTH)}' | \
-            #awk '{gsub(/>/,""); gsub(/</,"/"); print}' | _shuf | _uniq
-    #}
 
-    _get_links_ftplike() {
-        _get_links_ftplike__query="index.aspx?q=${1}&t=Files&s=all&e=&a=&f=0&m=SIMPLE&c=20"
-        _fetch "http://ftplike.com/${_get_links_ftplike__query}" | \
-            awk 'match($0,/open (http|https|ftp):\/\/.* /) {print substr($0,RSTART,RLENGTH)}' | \
-            awk "{gsub(/$_get_links_ftplike__query\"/,\"\"); print \$2}" | _shuf | _uniq
-    }
 
     _get_links_mmnt() {
         _get_links_mmnt__query="int/get?st=${1}&cn=&in=f"
@@ -246,7 +227,7 @@ _get_links() {
     }
 
     case "${1}" in
-        brave|google|ftplike|mmnt) _get_links_"${1}" "${2}"      ;;
+        brave|mmnt) _get_links_"${1}" "${2}"                     ;;
         *) _engine_url "${1}" >/dev/null || return 1
            _get_links_custom "${1}" "${2}" | _shuf | _uniq       ;;
     esac
