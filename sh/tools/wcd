@@ -32,6 +32,18 @@ _wcd_ls() {
 }
 
 if [ ! -f "${WICD_BIN}" ]; then
+    #without the binary this is a plain cd, and a plain cd is not broken - it
+    #just cannot jump by a piece of a name, which is the whole point of being
+    #here. So say so: once per shell, on stderr, and only when someone asked to
+    #go somewhere. Nobody runs "wcd" by hand to find out it is missing; they
+    #find out by typing cd and watching it behave like cd
+    if [ -n "${1}" ] && [ -z "${WCD_TOLD}" ] && [ -t 2 ]; then
+        WCD_TOLD="1"
+        printf "%s\n" \
+            "wcd: jumping by part of a directory name needs wcd.exec, which is not installed" \
+            "     sudo apt install wcd     then:  update-cd" \
+            "     (said once per shell; plain cd keeps working meanwhile)" >&2
+    fi
     if [ -z "${1}" ]; then
         \cd
     else

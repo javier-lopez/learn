@@ -1,6 +1,6 @@
 #!/bin/sh
 #description: update wcd db if available
-#usage: update-cd [--cron|--no-cron]
+#usage: update-cd [--cron|--no-cron|--prune-aliases]
 
 #the tree it builds is a snapshot, and a snapshot of a filesystem is wrong by
 #tomorrow. --cron puts this in your crontab at 23:00, idempotently: run it
@@ -85,7 +85,47 @@ _cron_suggest() { #at most once, and never from cron itself
         "this is said once and not again; --no-cron says so on purpose" >&2
 }
 
+_alias_prune() {
+    #an alias whose directory is gone is not inert: wcd answers "Unable to
+    #change to directory" and you are left wondering which of the two things is
+    #broken. This is deliberately a flag and never automatic - running it right
+    #after cloning a machine, before the repositories are back, would delete
+    #exactly the aliases you are about to need again
+    _ap__file="${WCDHOME:-${HOME}}/.alias.wcd"
+    [ -f "${_ap__file}" ] || { \
+        printf "%s\\n" "no alias file at ${_ap__file}, nothing to prune"; return 0; }
+
+    _ap__tmp="$(mktemp "${_ap__file}.XXXXXX")" || return 1
+    _ap__gone="0"
+    #the name is the first field and the path is all the rest: a directory may
+    #hold spaces and only the name is known not to
+    while IFS= read -r _ap__line; do
+        [ -n "${_ap__line}" ] || continue
+        _ap__name="${_ap__line%% *}"
+        _ap__path="${_ap__line#* }"
+        if [ -d "${_ap__path}" ]; then
+            printf "%s %s\\n" "${_ap__name}" "${_ap__path}"
+        else
+            printf "%s\\n" "[-] ${_ap__name} -> ${_ap__path}" >&2
+            _ap__gone=$(( _ap__gone + 1 ))
+        fi
+    done < "${_ap__file}" > "${_ap__tmp}"
+
+    if [ "${_ap__gone}" -eq 0 ]; then
+        rm -f "${_ap__tmp}"
+        printf "%s\\n" "every alias still points at a directory, nothing to prune"
+        return 0
+    fi
+    #the old file is kept beside the new one: this reads a list the user built
+    #by hand, one alias at a time, and a mistake here is not recoverable from
+    #anywhere else
+    cp -p "${_ap__file}" "${_ap__file}.bak" 2>/dev/null
+    mv -f "${_ap__tmp}" "${_ap__file}" || { rm -f "${_ap__tmp}"; return 1; }
+    printf "%s\\n" "pruned ${_ap__gone}, previous list kept at ${_ap__file}.bak"
+}
+
 case "${1}" in
+    --prune-aliases) _alias_prune; exit "${?}" ;;
     --cron)    _cron_install; exit "${?}" ;;
     --no-cron) mkdir -p "${HOME}"/.wcd 2>/dev/null
                printf "%s\\n" "declined on $(date +%Y-%m-%d)" > "${UPDATE_CD_QUIET}"
