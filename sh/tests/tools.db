@@ -531,7 +531,10 @@ pxe cui && test -d cui && test -f cui/menu.c32
 @begin{share-backup}
 #TODO 25-09-2014 23:09 >> because of being used over ssh, stdin gets blocked
 #so reading from pipes is disabled till I figure out a solution
-PATH=$PATH:/sbin/:../../../python
+#simple-httpd lives in python/tools, not python: with the directory above
+#it, command -v fell through to whatever copy was already on PATH - here
+#the one inside the shundle bundle, which is a different checkout
+PATH=$PATH:/sbin/:../../../python/tools
 share-backup -h; test X"${?}"              = X"0"
 share-backup --help ; test X"${?}"         = X"0"
 share-backup --cui; test X"${?}"           = X"1"
@@ -550,11 +553,18 @@ test X"$(share-backup stop 2>&1)"          = X"No instance found"
 mkdir foo && printf "%s" "o@o" > foo/cui
 share-backup -u cui -p 6230 -P cui foo; test X"${?}" = X"0"
 sleep 1
-test X"$(pgrep -f 'share-backup -u cui'|wc -l)"     = X"1"
+#the pid it will stop is recorded and alive. pgrep for 'share-backup' was
+#what used to be here, and it only ever matched because the & left a subshell
+#carrying this script's argv sitting above the real server
+test -s /tmp/share-backup.lock
+kill -0 "$(cat /tmp/share-backup.lock)"
 sleep 1
 test X"$(curl -s --digest -u cui:cui http://127.0.0.1:6230/cui)" = X"o@o"
 share-backup stop; test X"${?}"        = X"0"
-test X"$(pgrep -f 'share-backup -u cui' | wc -l)" = X"0"
+#stopped means it stopped answering, which is the only thing a caller cares
+#about. The pid is gone with it
+test ! -s /tmp/share-backup.lock
+test X"$(curl -s -m 3 --digest -u cui:cui http://127.0.0.1:6230/cui)" = X""
 share-backup stop; test X"${?}"        = X"1"
 share-backup foo > cui; test X"${?}"   = X"0"
 address="$(grep address cui | awk '{print $3; exit}')"
@@ -562,7 +572,7 @@ passwd="$(grep password cui | awk '{print $2; exit}')"
 sleep 1
 test X"$(curl -s --digest -u guest:$passwd $address/cui)" = X"o@o"
 share-backup stop; test X"${?}"             = X"0"
-test X"$(pgrep -f '/share-backup' | wc -l)" = X"0"
+test ! -s /tmp/share-backup.lock
 @end
 
 @begin{shellshock}
@@ -849,6 +859,15 @@ wget-finder --search-engine zz --list-links libssh2-1.3.0.tar.gz:6425331899ccf10
 wget-finder --list-search-engine | grep -qx "brave"
 wget-finder --list-search-engine | grep -qx "mmnt"
 
+#%s becomes the file being looked for. Asserted against a wget of our own that
+#records what it was asked for, so the claim is about the url that goes out
+#and not about whether some website answered it
+printf "#!/bin/sh\\nprintf \"%%s\\\\n\" \"\${*}\" >> asked.txt\\n" > wget && chmod +x wget
+PATH=".:${PATH}" WGET_FINDER_ENGINES='zz=http://engine.invalid/?q=%s' wget-finder --search-engine zz --list-links zlib-1.3.tar.gz:00000000000000000000000000000000 >/dev/null 2>&1; :
+grep -q "q=zlib-1.3.tar.gz" asked.txt
+grep -q "q=%s" asked.txt; test X"${?}" = X"1"
+rm -f wget asked.txt
+
 #and the live half, which depends on companies this repository does not own.
 #A search engine that stops answering is not a defect in wget-finder, so these
 #report rather than fail: the assertion is that SOME engine still finds links,
@@ -871,7 +890,7 @@ test X"$(openssl dgst -md5 libssh2-1.3.0.tar.gz | awk '{print $2}')" = X"6425331
 rm -rf libssh2-1.3.0.tar.gz
 wget-finder libssh2-1.3.0.tar.gz:e2f5f8175ff5b950766328d106c6c420e08ec04f325d862ddfb03fc4535e1ce16b8d76390aad322659d9abe60f054ca9bc12b52f96dbf10e4f992832ac8554a7 && test -f "libssh2-1.3.0.tar.gz" || :
 test X"$(openssl dgst -md5 libssh2-1.3.0.tar.gz | awk '{print $2}')" = X"6425331899ccf1015f1ed79448cb4709" || :
-wget-finder --search-engine google -O libssh.tar.gz libssh2-1.3.0.tar.gz:6425331899ccf1015f1ed79448cb4709; test -f libssh.tar.gz || :
+wget-finder --search-engine brave -O libssh.tar.gz libssh2-1.3.0.tar.gz:6425331899ccf1015f1ed79448cb4709; test -f libssh.tar.gz || :
 test X"$(openssl dgst -md5 libssh.tar.gz | awk '{print $2}')" = X"6425331899ccf1015f1ed79448cb4709" || :
 rm -rf *.tar.gz
 wget-finder libssh2-1.3.0.tar.gz:6425331899ccf1015f1ed79448cb4709 libssh2-1.4.0.tar.gz:ee670161d8c5dff93ae84a3f34f15669

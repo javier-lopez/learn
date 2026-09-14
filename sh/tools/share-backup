@@ -71,9 +71,41 @@ PROGNAME="$(_basename "${0}")"
 #fi
 
 if [ X"${1}" = X"stop" ]; then
-    ID="$(pgrep -f simple-httpd)"
-    [ -n "$ID" ] && { kill -9 "${ID}"; printf "%s\\n" "Stopped"; exit 0; } || \
-        { printf "%s\\n" "No instance found" >&2; exit 1; }
+    #the pid of the server THIS tool started, written into the lock file it
+    #already keeps open. What was here asked pgrep for every simple-httpd on
+    #the machine and killed all of them, which meant one you had started
+    #yourself, in another terminal, for something else. It also handed kill a
+    #quoted list of pids as a single argument, so with two servers running it
+    #killed neither and said "Illegal number" instead
+    #the running server inherited the lock and holds it for as long as it
+    #lives, so whether one is running is answered by trying to take the lock,
+    #not by trusting the number in the file. A pid outlives the process it
+    #names - after a reboot that number belongs to nobody, or worse, to
+    #somebody else - and this is what keeps 'stop' from killing a stranger
+    ID=""
+    if [ -r "/tmp/${PROGNAME}.lock" ]; then
+        exec 9< "/tmp/${PROGNAME}.lock"          #read only: does not truncate
+        if flock -n 9 2>/dev/null; then
+            flock -u 9                           #free, so nothing is serving
+        else
+            read -r ID < "/tmp/${PROGNAME}.lock"
+            case "${ID}" in ''|*[!0-9]*) ID="" ;; esac
+            [ -n "${ID}" ] && kill -0 "${ID}" 2>/dev/null || ID=""
+        fi
+        exec 9<&-
+    fi
+
+    if [ -n "${ID}" ]; then
+        kill "${ID}" 2>/dev/null                  #ask, before insisting
+        _sb__wait="0"
+        while [ "${_sb__wait}" -lt "10" ] && kill -0 "${ID}" 2>/dev/null; do
+            sleep 0.2; _sb__wait="$((_sb__wait + 1))"
+        done
+        kill -0 "${ID}" 2>/dev/null && kill -9 "${ID}" 2>/dev/null
+        : > "/tmp/${PROGNAME}.lock"
+        printf "%s\\n" "Stopped"; exit 0
+    fi
+    printf "%s\\n" "No instance found" >&2; exit 1
 fi
 
 _update() { #replace this file with the one in the repo, when that one is newer
@@ -244,9 +276,24 @@ else
     files="${*}"
 fi
 
-ips="$(ifconfig | grep "inet " | cut -d: -f2 | cut -d " " -f1)"
-ip="$(dig -4 +short myip.opendns.com @resolver1.opendns.com 2>/dev/null)"
-ips="${ips} ${ip} $(dig -4 -x "${ip}" | awk '/\.$/ {gsub(/\.$/,""); print $NF; exit;}')"
+#ifconfig comes from net-tools, which distributions stopped installing years
+#ago; 'ip' is what replaced it and is everywhere. Whichever exists answers,
+#and a machine with neither still serves - it just cannot say its own address
+if command -v "ifconfig" >/dev/null 2>&1; then
+    ips="$(ifconfig | grep "inet " | cut -d: -f2 | cut -d " " -f1)"
+elif command -v "ip" >/dev/null 2>&1; then
+    ips="$(ip -4 -o addr show 2>/dev/null | awk '{sub(/\/.*/, "", $4); print $4}')"
+else
+    ips="127.0.0.1"
+fi
+
+#the public address, and the name it answers to. Both are extras: dig is not
+#installed by default either, and asking the internet who you are needs the
+#internet to be there
+if command -v "dig" >/dev/null 2>&1; then
+    ip="$(dig -4 +short myip.opendns.com @resolver1.opendns.com 2>/dev/null)"
+    [ -n "${ip}" ] && ips="${ips} ${ip} $(dig -4 -x "${ip}" 2>/dev/null | awk '/\.$/ {gsub(/\.$/,""); print $NF; exit;}')"
+fi
 
 printf "%s\\n" "Starting server ..."
 for addr in ${ips}; do
@@ -263,10 +310,19 @@ printf "%s\\n" "  serving:  ${files}"
 printf "%s\\n"
 printf "%s\\n" "Run: ${PROGNAME} stop, to stop sharing"
 
+#'exec' so the subshell the & creates becomes the server instead of forking
+#one and sitting above it. Without it $! names a shell that exits on its own
+#and leaves the real server orphaned, which is a pid 'stop' can kill to no
+#effect. simple-httpd's own sh header execs python for the same reason, so
+#the chain collapses to a single process all the way down
 if [ -d "${files}" ]; then
-    eval "${httpd}" -p "${port}" --username="${user}" \
+    eval "exec ${httpd}" -p "${port}" --username="${user}" \
         --password="${passwd}" "${ssl_opts}" "${files}"/* >/dev/null 2>&1 &
 else
-    eval "${httpd}" -p "${port}" --username="${user}" \
+    eval "exec ${httpd}" -p "${port}" --username="${user}" \
         --password="${passwd}" "${ssl_opts}" "${files}" >/dev/null 2>&1 &
 fi
+
+#into the lock file, which the server inherited and holds open for as long as
+#it lives. 'stop' reads it from there, so it kills this server and no other
+printf "%s\\n" "${!}" >&9
