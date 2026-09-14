@@ -3,19 +3,20 @@
 #usage: uimg img.png
 
 #example: uimg img.png
-#http://i.imgur.com/image.png
+#https://litter.catbox.moe/image.png
 
-VERSION="2026.09.13-23:20"
+VERSION="2026.09.13-23:40"
 
-#tried in order, first one to answer wins - in ORDER, not shuffled, because
-#these two are not interchangeable. imgur keeps a picture; litterbox deletes it
-#after 72 hours. Shuffling equivalent mirrors is fair, shuffling a permanent
-#host with a temporary one hands you a link that quietly expires.
+#tried in order, first one to answer wins. Order, not a shuffle: two hosts that
+#keep a file for different lengths of time are not mirrors of each other, and
+#picking between them at random hands you a link that may or may not expire.
 #
-#litterbox is here because imgur is not reachable from every network: a DNS
-#that answers it with a sinkhole address is enough, and then the command fails
-#with nothing to fall back on. It asks for no account and no api key
-SITES="imgur litterbox"
+#One host, for now. imgur was dropped after it stopped being reachable, and
+#what is left of the free anonymous uploaders is thin: 0x0.st has disabled
+#uploads outright, catbox answers "Invalid uploader" to every user agent,
+#tmpfiles rejects the filename. So the picture now goes to litterbox and is
+#DELETED AFTER 72 HOURS - this command shares a link, it does not archive
+SITES="litterbox"
 
 _usage() {
     printf "%s\\n" "Usage: ${PROGNAME} image.[png|jpg] ..."
@@ -209,22 +210,6 @@ _show_version() {
 
 _uimg() {
     [ -z "${1}" ] && return 1
-
-    _uimg_imgur() {
-        _uimgur__response="$(curl --compressed  --retry "3" -fsSL \
-            -H "Authorization: Client-ID ea6c0ef2987808e"         \
-            -F "image=@${1}" https://api.imgur.com/3/image.xml)"
-        _uimgur__response="$(printf "%s" "${_uimgur__response}" | \
-            egrep -o "<link>(.)*</link>" 2>/dev/null |            \
-            egrep -o "http[s]://i.imgur.com/[^<]*" 2>/dev/null)"
-
-        if [ -z "${_uimgur__response}" ];then
-            printf "%s\\n" "https://api.imgur.com/3/image.xml api timeout" >&2
-            return 1
-        else
-            printf "%s" "${_uimgur__response}"
-        fi
-    }
 
     _uimg_litterbox() {
         #same operator as catbox, and the one of the two that still takes an

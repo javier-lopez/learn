@@ -166,12 +166,30 @@ if ! command -v "curl" >/dev/null 2>&1; then
     exit 1
 fi
 
+_urlencode() {
+    #a pattern goes into the path of a url, and a space there is not a
+    #character curl will send: it refuses the whole request with "Malformed
+    #input to a URL function" before any network happens. Same for a quote or
+    #an ampersand, which is most of what anyone searches this site for.
+    #Everything outside the unreserved set of RFC 3986 becomes %XX
+    printf "%s" "${1}" | awk '
+        BEGIN { for (i = 0; i < 256; i++) ord[sprintf("%c", i)] = i }
+        { for (i = 1; i <= length($0); i++) {
+              c = substr($0, i, 1)
+              if (c ~ /[A-Za-z0-9._~-]/) printf "%s", c
+              else printf "%%%02X", ord[c] } }'
+}
+
 #https and -L, and both matter. The site answers a 301 to https on every plain
 #http request, and curl without -L prints the redirect page: what came out of
 #this was the body of a "301 Moved Permanently" instead of commands, with no
 #error and exit status 0. -f turns a server error into a failure the caller can
 #see rather than an empty list that reads like "no results"
-URL="https://www.commandlinefu.com/commands/matching/${PATTERN}/$(printf "%s" "${PATTERN}" | base64)/plaintext/sort-by-votes"
+#the site keys the search off the base64 and treats the readable segment as a
+#slug, so both get encoded: the slug because it is the one carrying the user's
+#spaces, and the base64 because it can come out holding a / or a +, which in a
+#path mean something other than themselves
+URL="https://www.commandlinefu.com/commands/matching/$(_urlencode "${PATTERN}")/$(_urlencode "$(printf "%s" "${PATTERN}" | base64)")/plaintext/sort-by-votes"
 
 if [ -z "${CFLAG}" ]; then
     curl -fsSL "${URL}" |\
