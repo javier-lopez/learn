@@ -29,6 +29,55 @@ if [ -n "${TOOLS_WITHOUT_TEST}" ]; then
     printf "%s\\n\\n" "${TOOLS_WITHOUT_TEST}"
 fi
 
+#A python 2 script added tomorrow must not slip in unnoticed. The list of
+#files to check is the directory itself rather than a list kept by hand, so a
+#new tool is covered the moment it lands and nobody has to remember anything.
+#The interpreters are pinned by digest: "python:2.7-slim" is whatever was last
+#pushed under that name, and a check that changes underneath you checks nothing
+_PY2="python@sha256:6c1ffdff499e29ea663e6e67c9b6b9a3b401d554d2c9f061f9a45344e3992363"
+_PY3="python@sha256:ffb752e139c0a19692a43af8d8523b274222dd68eebad5d583b45c2201c6e30a"
+
+#skipped on a single tool run, and where there is no docker to run it in
+if [ -z "${1}" ] && command -v docker >/dev/null 2>&1; then
+    #a tool declares which pythons it is for in its own first line, and there
+    #is nowhere else to declare it. The sh header means both, and then both
+    #have to be able to read it; "#!/usr/bin/env python3" means what it says
+    #and is taken at its word. Anything else - python, python2, no shebang at
+    #all - is a script that will not start on some machine this repository is
+    #meant for, and says so by failing here
+    guard_both=""
+    guard_bad=""
+    for f in "${tools}"/*; do
+        [ -f "${f}" ] || continue
+        case "$(head -1 "${f}")" in
+            "#!/bin/sh")               guard_both="${guard_both} ${f##*/}" ;;
+            "#!/usr/bin/env python3")  ;;
+            *) guard_bad="${guard_bad} ${f##*/}" ;;
+        esac
+    done
+
+    if [ -n "${guard_bad}" ]; then
+        printf "%s\\n" "FAILED - shebang says nothing this repository can run:${guard_bad}" >&2
+        printf "%s\\n" "         use the two line sh header for a python 2 and 3 polyglot," >&2
+        printf "%s\\n" "         or '#!/usr/bin/env python3' for one that is python 3 only" >&2
+        exit 1
+    fi
+
+    #the polyglots parse under both, one container per interpreter. The list
+    #comes from the directory, so a tool added tomorrow is covered without
+    #anyone remembering to list it anywhere
+    printf "%s\\n" "import sys" "for f in sys.argv[1:]:" \
+        "    compile(open('/w/' + f).read(), f, 'exec')" > /tmp/compile_all.$$.py
+    for guard_img in "${_PY2}" "${_PY3}"; do
+        docker run --rm -v "$(cd "${tools}" && pwd)":/w:ro \
+            -v /tmp:/t:ro "${guard_img}" \
+            python /t/compile_all.$$.py ${guard_both} || {
+                printf "%s\\n" "FAILED - does not parse under ${guard_img}" >&2
+                rm -f /tmp/compile_all.$$.py; exit 1; }
+    done
+    rm -f /tmp/compile_all.$$.py
+fi
+
 #move to a tmp subdirectory
 
 rm -rf test.sd || (sleep 1; rm -rf test.sd)

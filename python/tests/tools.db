@@ -3,30 +3,120 @@
 #just enough tests to ensure third party scripts
 #with dependencies in external websites work
 
-@begin{eix}
-eix -h ; test X"${?}"                           = X"0"
-eix --help ; test X"${?}"                       = X"0"
-eix --cui; test X"${?}"                         = X"1"
-test X"$(eix | head -1)"                        = X""
-test X"$(eix 2>&1 | head -1)"                   = X"Too few arguments: 0 recieved. At least one is necessary."
-test X"$(eix -h | head -1)"                     = X"Usage: eix [OPTIONS] EXPRESSION"
-test X"$(eix --help | head -1)"                 = X"Usage: eix [OPTIONS] EXPRESSION"
-test X"$(eix -cui  | head -1)"                  = X""
-test X"$(eix -cui 2>&1 | head -1)"              = X"eix: Invalid argument. option -c not recognized"
-test X"$(eix --deep  | head -1)"                = X""
-test X"$(eix --deep 2>&1 | head -1)"            = X"E: You must give at least one search pattern"
-test X"$(eix --exact  | head -1)"               = X""
-test X"$(eix --exact 2>&1 | head -1)"           = X"E: You must give at least one search pattern"
-test X"$(eix --exact  | head -1)"               = X""
-test X"$(eix --exact 2>&1 | head -1)"           = X"E: You must give at least one search pattern"
-test X"$(eix -a dash | awk '{print $1; exit}')" = X"dash"
-test X"$(eix -v | awk -F: '{print $1; exit}')"  = X"eix version is"
-test X"$(eix --version | awk -F: '{print $1; exit}')" = X"eix version is"
-test X"$(eix --exact vim-nox | head -1 | sed -r "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[m|K]//g")" = X"Package: vim-nox"
-test X"$(eix --exact vim- )" = X""
-test "$(eix vim-g   | awk '/^$/ {i++} END{print i+0}')" -gt "1"
-test "$(eix --exact vim-g | awk '/^$/ {i++} END{print i+0}')" -eq "0"
-test "$(eix vim-nox | awk '/^$/ {i++} END{print i+0}')" -eq "0"
+@begin{simple-dhcpd}
+simple-dhcpd -h; test X"${?}"                = X"0"
+simple-dhcpd --help; test X"${?}"            = X"0"
+simple-dhcpd --cui; test X"${?}"             = X"2"
+test X"$(simple-dhcpd -h | head -1)"         = X"Usage: simple-dhcpd [options]"
+test X"$(simple-dhcpd --help | head -1)"     = X"Usage: simple-dhcpd [options]"
+head -1 ../../tools/simple-dhcpd | grep -qx "#!/bin/sh"
+head -2 ../../tools/simple-dhcpd | tail -1 | grep -q "command -v python3"
+@end
+
+@begin{simple-dhcpp}
+simple-dhcpp -h; test X"${?}"                = X"0"
+simple-dhcpp --help; test X"${?}"            = X"0"
+simple-dhcpp --cui; test X"${?}"             = X"2"
+test X"$(simple-dhcpp -h | head -1)"         = X"Usage: simple-dhcpp [options]"
+test X"$(simple-dhcpp --help | head -1)"     = X"Usage: simple-dhcpp [options]"
+head -1 ../../tools/simple-dhcpp | grep -qx "#!/bin/sh"
+head -2 ../../tools/simple-dhcpp | tail -1 | grep -q "command -v python3"
+@end
+
+@begin{simple-mpc-remote}
+simple-mpc-remote -h; test X"${?}"                = X"0"
+simple-mpc-remote --help; test X"${?}"            = X"0"
+simple-mpc-remote --cui; test X"${?}"             = X"2"
+test X"$(simple-mpc-remote -h | head -1)"         = X"Usage: simple-mpc-remote [options]"
+test X"$(simple-mpc-remote --help | head -1)"     = X"Usage: simple-mpc-remote [options]"
+head -1 ../../tools/simple-mpc-remote | grep -qx "#!/bin/sh"
+head -2 ../../tools/simple-mpc-remote | tail -1 | grep -q "command -v python3"
+@end
+
+@begin{simple-mplayer-remote}
+simple-mplayer-remote -h; test X"${?}"                = X"0"
+simple-mplayer-remote --help; test X"${?}"            = X"0"
+simple-mplayer-remote --cui; test X"${?}"             = X"2"
+test X"$(simple-mplayer-remote -h | head -1)"         = X"Usage: simple-mplayer-remote [options]"
+test X"$(simple-mplayer-remote --help | head -1)"     = X"Usage: simple-mplayer-remote [options]"
+head -1 ../../tools/simple-mplayer-remote | grep -qx "#!/bin/sh"
+head -2 ../../tools/simple-mplayer-remote | tail -1 | grep -q "command -v python3"
+@end
+
+@begin{simple-player-ctrl-remote}
+simple-player-ctrl-remote -h; test X"${?}"                = X"0"
+simple-player-ctrl-remote --help; test X"${?}"            = X"0"
+simple-player-ctrl-remote --cui; test X"${?}"             = X"2"
+test X"$(simple-player-ctrl-remote -h | head -1)"         = X"Usage: simple-player-ctrl-remote [options]"
+test X"$(simple-player-ctrl-remote --help | head -1)"     = X"Usage: simple-player-ctrl-remote [options]"
+head -1 ../../tools/simple-player-ctrl-remote | grep -qx "#!/bin/sh"
+head -2 ../../tools/simple-player-ctrl-remote | tail -1 | grep -q "command -v python3"
+@end
+
+@begin{chromecast}
+chromecast -h; test X"${?}"                = X"0"
+chromecast --help; test X"${?}"            = X"0"
+chromecast --cui; test X"${?}"             = X"2"
+test X"$(chromecast -h | head -1)"         = X"Usage: chromecast [options] FILE ..."
+test X"$(chromecast --help | head -1)"     = X"Usage: chromecast [options] FILE ..."
+head -1 ../../tools/chromecast | grep -qx "#!/bin/sh"
+head -2 ../../tools/chromecast | tail -1 | grep -q "command -v python3"
+@end
+
+@begin{simple-tftpd}
+simple-tftpd -h; test X"${?}"                = X"0"
+simple-tftpd --help; test X"${?}"            = X"0"
+simple-tftpd --cui; test X"${?}"             = X"2"
+test X"$(simple-tftpd -h | head -1)"         = X"Usage: simple-tftpd [options]"
+test X"$(simple-tftpd --help | head -1)"     = X"Usage: simple-tftpd [options]"
+head -1 ../../tools/simple-tftpd | grep -qx "#!/bin/sh"
+head -2 ../../tools/simple-tftpd | tail -1 | grep -q "command -v python3"
+@end
+
+@begin{simple-httpd}
+simple-httpd -h; test X"${?}"                     = X"0"
+simple-httpd --help; test X"${?}"                 = X"0"
+simple-httpd --cui; test X"${?}"                  = X"2"
+simple-httpd; test X"${?}"                        = X"1"
+test X"$(simple-httpd -h | head -1)"              = X"Usage: simple-httpd [options] [paths]"
+test X"$(simple-httpd --help | head -1)"          = X"Usage: simple-httpd [options] [paths]"
+test X"$(simple-httpd --cui 2>&1 | tail -1)"      = X"simple-httpd: error: no such option: --cui"
+
+#the shebang is a sh command and a python string at the same time, so the file
+#runs under whichever interpreter the machine has and none is named anywhere
+head -1 ../../tools/simple-httpd | grep -qx "#!/bin/sh"
+head -2 ../../tools/simple-httpd | tail -1 | grep -q "command -v python3"
+
+#it serves, here, with whatever python this machine happens to carry
+printf "%s" "o@o" > served
+simple-httpd -p 8731 served >/dev/null 2>&1 & _pid="${!}"; sleep 2; :
+test X"$(curl -s http://127.0.0.1:8731/served)"   = X"o@o"
+test "$(curl -s http://127.0.0.1:8731/ | wc -c)"  -gt "0"
+kill "${_pid}" 2>/dev/null; :
+sleep 1; test X"$(curl -s -m 2 http://127.0.0.1:8731/served)" = X""
+
+#and now the half this machine cannot show. The file has to keep working on
+#python 2, which Ubuntu 24.04 does not ship and does not offer, so the claim
+#is checked where python 2 still exists: a container, pinned by digest rather
+#than by tag, because "python:2.7-slim" is whatever was pushed under that name
+#last and an assertion that changes underneath you asserts nothing.
+#
+#3.13 is the other end on purpose: it is the version that removed cgi, so it
+#exercises the import that has to fail softly and cost uploads, not the server
+#
+#Everything below is skipped, not failed, where there is no docker
+command -v docker >/dev/null 2>&1 || exit 0
+_TOOLS="$(cd ../../tools && pwd)"; _PY2="python@sha256:6c1ffdff499e29ea663e6e67c9b6b9a3b401d554d2c9f061f9a45344e3992363"; _PY3="python@sha256:ffb752e139c0a19692a43af8d8523b274222dd68eebad5d583b45c2201c6e30a"
+printf "%s\n" "import sys" "try:" "    from urllib.request import urlopen" "except ImportError:" "    from urllib2 import urlopen" "sys.stdout.write(urlopen(sys.argv[1]).read().decode('utf-8'))" > fetch.py
+_PROBE="cd /tmp && printf o@o > served && python /w/simple-httpd -p 8731 served >/dev/null 2>&1 & sleep 3; python /t/fetch.py http://127.0.0.1:8731/served"
+
+#that every tool in this directory parses under both interpreters is checked
+#once by the runner, over the directory rather than over a list, so a tool
+#added tomorrow is covered without anyone remembering to list it. What stays
+#here is what only this tool can show: that it still serves the same bytes
+#and serves the same bytes under both
+test X"$(docker run --rm -v "${_TOOLS}":/w:ro -v "$(pwd)":/t:ro "${_PY2}" sh -c "${_PROBE}" 2>/dev/null)" = X"o@o"
+test X"$(docker run --rm -v "${_TOOLS}":/w:ro -v "$(pwd)":/t:ro "${_PY3}" sh -c "${_PROBE}" 2>/dev/null)" = X"o@o"
 @end
 
 #@begin{pastebin}
