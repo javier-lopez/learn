@@ -3,6 +3,9 @@
 
 #due to cd & subshells nature this script only works if it's sourced
 #alias cd=". this_script"
+#
+#usage: wcd NAME          go to the directory NAME matches
+#       wcd NAME PATH     teach the alias NAME -> PATH, go nowhere
 
 WICD_BIN="$(command -v "wcd.exec")"
 WICD_OPTIONS="-j -GN -c -i -f ${HOME}/.wcd/.treedata.wcd"
@@ -34,6 +37,17 @@ if [ ! -f "${WICD_BIN}" ]; then
     else
         \cd "${@}" && _wcd_ls
     fi
+elif [ -n "${2}" ] && [ -d "${2}" ]; then
+    #wcd NAME PATH teaches the alias instead of going anywhere. wcd.exec's -l
+    #only ever names the directory you are standing in, so the cd happens in a
+    #subshell: the caller does not move, and an alias can be taught for a path
+    #without leaving the one you are working in.
+    #
+    #This is the answer to a name that resolves to the wrong place. Beware that
+    #an alias does not outrank an exact directory-name match - if some other
+    #directory is literally called NAME, that one still wins, and the way out
+    #is a name nothing else already answers to
+    ( \cd "${2}" 2>/dev/null && "${WICD_BIN}" -GN "-l" "${1}" )
 else
     if [ -z "${1}" ]; then
         \cd "$("${WICD_BIN}" ${WICD_OPTIONS} "${HOME}")"

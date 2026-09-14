@@ -1,9 +1,12 @@
 #!/bin/sh
 #description: update wcd db if available
-#usage: update-cd
+#usage: update-cd [--cron|--no-cron]
 
-#add as a cronjob for your user or root
-#0 23 * * * /path/update-cd
+#the tree it builds is a snapshot, and a snapshot of a filesystem is wrong by
+#tomorrow. --cron puts this in your crontab at 23:00, idempotently: run it
+#twice and the second run says so instead of adding a second line. --no-cron
+#says you do not want it, and is the same thing the suggestion below writes
+#once it has been made, so it is made once and never again
 
 _basename() {
     [ -z "${1}" ] && return 1 || _basename__name="${1}"
@@ -28,9 +31,71 @@ _meta_update_cd() {
     exit "${?}"
 }
 
+#this file never had one and the cron code below needs to name itself, both to
+#find its own path and to print a usable hint. Same form the rest of sh/tools
+#uses, and _basename is already here for the sourced case
+PROGNAME="$(expr "${0}" : '.*/\([^/]*\)')"
+[ -n "${PROGNAME}" ] || PROGNAME="update-cd"
+
+UPDATE_CD_QUIET="${HOME}/.wcd/.nocron"
+
+_cron_has_us() { #does the crontab already call us
+    [ -n "${1}" ] || return 1
+    crontab -l 2>/dev/null | awk -v s="${1}" 'index($0, s) { f = 1 } END { exit !f }'
+}
+
+_cron_install() {
+    command -v crontab >/dev/null 2>&1 || { \
+        printf "%s\\n" "no crontab command on this system" >&2; return 1; }
+    _ci__self="$(command -v "${PROGNAME}" 2>/dev/null)"
+    [ -n "${_ci__self}" ] || { \
+        printf "%s\\n" "${PROGNAME} is not on the PATH, cron could not find it either" >&2
+        return 1; }
+
+    if _cron_has_us "${_ci__self}"; then
+        printf "%s\\n" "${PROGNAME} is already in your crontab, nothing to do"
+        return 0
+    fi
+
+    #read the crontab before writing it. An empty listing that FAILED is not
+    #the same as an empty crontab: the first can mean the daemon is unhappy or
+    #this user may not read it, and piping that into "crontab -" would replace
+    #whatever is really there with one line. Only the second is safe to extend
+    _ci__current="$(crontab -l 2>/dev/null)"; _ci__status="${?}"
+    if [ "${_ci__status}" -ne 0 ] && [ -n "${_ci__current}" ]; then
+        printf "%s\\n" "cannot read your crontab, refusing to rewrite it" >&2
+        return 1
+    fi
+
+    { [ -n "${_ci__current}" ] && printf "%s\\n" "${_ci__current}"
+      printf "%s\\n" "0 23 * * * ${_ci__self}"; } | crontab - || return 1
+    printf "%s\\n" "added to your crontab: 0 23 * * * ${_ci__self}"
+}
+
+_cron_suggest() { #at most once, and never from cron itself
+    [ -t 1 ] || return 0
+    [ -f "${UPDATE_CD_QUIET}" ] && return 0
+    _cs__self="$(command -v "${PROGNAME}" 2>/dev/null)"
+    _cron_has_us "${_cs__self}" && return 0
+    mkdir -p "${HOME}"/.wcd 2>/dev/null
+    printf "%s\\n" "suggested once on $(date +%Y-%m-%d)" > "${UPDATE_CD_QUIET}"
+    printf "%s\\n" "" \
+        "the tree just built goes stale as you make directories." \
+        "  ${PROGNAME} --cron     run it nightly at 23:00" \
+        "this is said once and not again; --no-cron says so on purpose" >&2
+}
+
+case "${1}" in
+    --cron)    _cron_install; exit "${?}" ;;
+    --no-cron) mkdir -p "${HOME}"/.wcd 2>/dev/null
+               printf "%s\\n" "declined on $(date +%Y-%m-%d)" > "${UPDATE_CD_QUIET}"
+               printf "%s\\n" "will not bring up cron again"; exit 0 ;;
+esac
+
 if [ -f "$(command -v "wcd")" ] && [ -f "$(command -v "wcd.exec")" ]; then
     [ X"${LOGNAME}" = X"root" ] && _meta_update_cd
     mkdir "${HOME}"/.wcd  2>/dev/null
     wcd.exec -GN -j -xf "${HOME}"/.ban.wcd -S "${HOME}"
     [ -f "${HOME}"/.treedata.wcd ] && mv "${HOME}"/.treedata.wcd "${HOME}"/.wcd/
+    _cron_suggest
 fi
