@@ -5,10 +5,17 @@
 #example: uimg img.png
 #http://i.imgur.com/image.png
 
-VERSION="2018.03.17-17:56"
+VERSION="2026.09.13-23:20"
 
-#TODO 04-11-2015 12:53 >> add more image sharing SITES
-SITES="imgur"
+#tried in order, first one to answer wins - in ORDER, not shuffled, because
+#these two are not interchangeable. imgur keeps a picture; litterbox deletes it
+#after 72 hours. Shuffling equivalent mirrors is fair, shuffling a permanent
+#host with a temporary one hands you a link that quietly expires.
+#
+#litterbox is here because imgur is not reachable from every network: a DNS
+#that answers it with a sinkhole address is enough, and then the command fails
+#with nothing to fall back on. It asks for no account and no api key
+SITES="imgur litterbox"
 
 _usage() {
     printf "%s\\n" "Usage: ${PROGNAME} image.[png|jpg] ..."
@@ -219,6 +226,25 @@ _uimg() {
         fi
     }
 
+    _uimg_litterbox() {
+        #same operator as catbox, and the one of the two that still takes an
+        #anonymous upload: catbox itself answers "Invalid uploader" to every
+        #user agent tried. 72h is its maximum, and the reason this host is
+        #second and not first
+        _ulbox__response="$(curl -fsSL --retry "2"                          \
+            -F "reqtype=fileupload" -F "time=72h" -F "fileToUpload=@${1}"   \
+            https://litterbox.catbox.moe/resources/internals/api.php 2>/dev/null)"
+        _ulbox__response="$(printf "%s" "${_ulbox__response}" | \
+            egrep -o "https?://[a-z.]*catbox\.moe/[^[:space:]]*" 2>/dev/null)"
+
+        if [ -z "${_ulbox__response}" ];then
+            printf "%s\\n" "https://litterbox.catbox.moe api timeout" >&2
+            return 1
+        else
+            printf "%s" "${_ulbox__response}"
+        fi
+    }
+
     _uimg_uploadpie() {
         #uploadpie now encodes the result in b64 and embebbed it in a html file
         #so it no longer can be download it easily, this module is now disabled
@@ -243,8 +269,7 @@ _uimg() {
     for _uimg__img; do
         if [ -f "${_uimg__img}" ] ; then
             if _validate img "${_uimg__img}"; then
-                for api in $(printf "%s" "${SITES}" | \
-                    tr ' ' '\n' | _shuf | tr '\n' ' '); do
+                for api in ${SITES}; do
                     if [ -z "${_uimg__response}" ]; then
                         _uimg__response="$(_uimg_"${api}" "${_uimg__img}")"
                     else

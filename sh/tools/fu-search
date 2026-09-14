@@ -7,7 +7,7 @@
 #another one liner
 #...
 
-VERSION="2026.09.12-23:15"
+VERSION="2026.09.13-23:10"
 
 PROGNAME="$(expr "${0}" : '.*/\([^/]*\)')"
 BLUE="$(printf "\\033[0;34m")"
@@ -166,11 +166,18 @@ if ! command -v "curl" >/dev/null 2>&1; then
     exit 1
 fi
 
+#https and -L, and both matter. The site answers a 301 to https on every plain
+#http request, and curl without -L prints the redirect page: what came out of
+#this was the body of a "301 Moved Permanently" instead of commands, with no
+#error and exit status 0. -f turns a server error into a failure the caller can
+#see rather than an empty list that reads like "no results"
+URL="https://www.commandlinefu.com/commands/matching/${PATTERN}/$(printf "%s" "${PATTERN}" | base64)/plaintext/sort-by-votes"
+
 if [ -z "${CFLAG}" ]; then
-    curl -s "http://www.commandlinefu.com/commands/matching/${PATTERN}/$(printf "%s" "${PATTERN}" | base64)/plaintext/sort-by-votes" |\
+    curl -fsSL "${URL}" |\
     grep --invert-match "commandlinefu.com by David Winterbottom"
 else
-    curl -s "http://www.commandlinefu.com/commands/matching/${PATTERN}/$(printf "%s" "${PATTERN}" | base64)/plaintext/sort-by-votes" |\
+    curl -fsSL "${URL}" |\
     grep --invert-match "commandlinefu.com by David Winterbottom" | sed -e " s:^#.*:${PURPLE}&${DEFAULT}:g" \
     -e " s:[^#].*:${LIGHT_GREEN}&${DEFAULT}:g" -e "/#/!s/\<${PATTERN}\>/${YELLOW}&${LIGHT_GREEN}/g"
 fi

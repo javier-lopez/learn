@@ -1,30 +1,7 @@
 #Based on the GNU shtool test suite
 
-@begin{backup-dbs}
-backup-dbs -h ; test X"${?}"                           = X"0"
-printf "%s" '-h' | backup-dbs; test X"${?}"            = X"0"
-backup-dbs --help ; test X"${?}"                       = X"0"
-printf "%s" '--help' | backup-dbs; test X"${?}"        = X"0"
-backup-dbs --cui; test X"${?}"                         = X"1"
-printf "%s" '--cui' | backup-dbs; test X"${?}"         = X"1"
-test X"$(backup-dbs | head -1)"                        = X""
-test X"$(backup-dbs 2>&1 | head -1)"                   = X"Usage: backup-dbs [options] -u USER -p PASSWD [database]..."
-test X"$(backup-dbs -h | head -1)"                     = X"Usage: backup-dbs [options] -u USER -p PASSWD [database]..."
-test X"$(printf "%s" '-h' | backup-dbs | head -1)"     = X"Usage: backup-dbs [options] -u USER -p PASSWD [database]..."
-test X"$(backup-dbs --help | head -1)"                 = X"Usage: backup-dbs [options] -u USER -p PASSWD [database]..."
-test X"$(printf "%s" '--help' | backup-dbs | head -1)" = X"Usage: backup-dbs [options] -u USER -p PASSWD [database]..."
-test X"$(backup-dbs -cui  | head -1)"                  = X""
-test X"$(backup-dbs -cui 2>&1 | head -1)"              = X"backup-dbs: unrecognized option '-cui'"
-test X"$(backup-dbs -u  | head -1)"                    = X""
-test X"$(backup-dbs -u 2>&1 | head -1)"                = X"Option '-u' requires a parameter"
-test X"$(backup-dbs -p 2>&1 | head -1)"                = X"Option '-p' requires a parameter"
-test X"$(backup-dbs -c 2>&1 | head -1)"                = X"Option '-c' requires a parameter"
-test X"$(backup-dbs -o 2>&1 | head -1)"                = X"Option '-o' requires a parameter"
-test X"$(backup-dbs -u cui  | head -1)"                = X""
-test X"$(backup-dbs -u cui 2>&1 | head -1)"            = X"Usage: backup-dbs [options] -u USER -p PASSWD [database]..."
-test X"$(backup-dbs -p cui 2>&1 | head -1)"            = X"Usage: backup-dbs [options] -u USER -p PASSWD [database]..."
-test X"$(backup-dbs -c cui 2>&1 | head -1)"            = X"Configuration file 'cui' doesn't exists"
-@end
+#backup-dbs moved to sh/archived. It needs mysql and mysqldump, and neither is
+#installed on the machine this ran on any more
 
 @begin{backup-remote-rsync}
 backup-remote-rsync; test X"${?}"                                = X"1"
@@ -310,24 +287,8 @@ rm waa && printf "%s" "c.tar.gz" | extract waa.tar && test -f cuicui && test -f 
 test X"$(cat cuicui)" = X"o@o/" && test X"$(cat cuakcuak)" = X"\oVo" && test X"$(cat waa)" = X"oOo"
 @end
 
-@begin{fix}
-fix; test X"${?}"                                 = X"1"
-fix -h; test X"${?}"                              = X"0"
-printf "%s" '-h' | fix; test X"${?}"              = X"0"
-fix -s; test X"${?}"                              = X"1"
-printf "%s" '-s' | fix; test X"${?}"              = X"1"
-fix --help; test X"${?}"                          = X"0"
-printf "%s" '--help' | fix; test X"${?}"          = X"0"
-test X"$(fix | head -1)"                          = X""
-test X"$(fix 2>&1 | head -1)"                     = X"Usage: fix [options] module"
-test X"$(fix -h | head -1)"                       = X"Usage: fix [options] module"
-test X"$(printf "%s" '-h' | fix | head -1)"       = X"Usage: fix [options] module"
-test X"$(fix -cui | head -1)"                     = X""
-test X"$(fix -cui 2>&1|head -1)"                  = X"fix: unrecognized option '-cui'"
-test X"$(printf "%s" '-cui' | fix  2>&1|head -1)" = X"fix: unrecognized option '-cui'"
-test X"$(fix --help | head -1)"                   = X"Usage: fix [options] module"
-test X"$(printf "%s" '--help' | fix | head -1)"   = X"Usage: fix [options] module"
-@end
+#fix moved to sh/archived. It repaired problems of a system that has since been
+#reinstalled more than once
 
 @begin{fu-search}
 fu-search; test X"${?}"                                 = X"1"
@@ -564,24 +525,8 @@ pxe && test -d pxe_setup && test -f pxe_setup/menu.c32
 pxe cui && test -d cui && test -f cui/menu.c32
 @end
 
-@begin{setup}
-setup; test X"${?}"                                   = X"1"
-setup -h; test X"${?}"                                = X"0"
-printf "%s" '-h' | setup; test X"${?}"                = X"0"
-setup --help ; test X"${?}"                           = X"0"
-printf "%s" '--help' | setup; test X"${?}"            = X"0"
-setup --cui; test X"${?}"                             = X"1"
-printf "%s" '--cui' | setup; test X"${?}"             = X"1"
-test X"$(setup  | head -1)"                           = X""
-test X"$(setup 2>&1 | head -1)"                       = X"Usage: setup module"
-test X"$(setup -h   | head -1)"                       = X"Usage: setup module"
-test X"$(printf "%s" '-h' | setup | head -1)"         = X"Usage: setup module"
-test X"$(setup --help | head -1)"                     = X"Usage: setup module"
-test X"$(printf "%s" '--help' | setup | head -1)"     = X"Usage: setup module"
-test X"$(setup --cui | head -1)"                      = X""
-test X"$(setup --cui 2>&1|head -1)"                   = X"setup: unrecognized option '--cui'"
-test X"$(printf "%s" '--cui' | setup 2>&1 | head -1)" = X"setup: unrecognized option '--cui'"
-@end
+#setup is GONE. It ran custom setup tasks for a machine that no longer exists;
+#what replaced it is each project's own scripts/run.sh
 
 @begin{share-backup}
 #TODO 25-09-2014 23:09 >> because of being used over ssh, stdin gets blocked
@@ -675,45 +620,11 @@ test X"$(grep "Info" ./staticus.html   | wc -l)"     = X"1"
 rm -rf staticus.*
 @end
 
-@begin{test-case-format}
-test-case-format;  test X"${?}"                       = X"1"
-test-case-format -h;  test X"${?}"                    = X"0"
-printf "%s" '-h' | test-case-format; test X"${?}"     = X"0"
-test-case-format --help;  test X"${?}"                = X"0"
-printf "%s" '--help' | test-case-format; test X"${?}" = X"0"
-test-case-format --cui;  test X"${?}"                 = X"1"
-printf "%s" '--cui' | test-case-format; test X"${?}"  = X"1"
-test X"$(test-case-format | head -1)"                 = X""
-test X"$(test-case-format 2>&1   | head -1)"          = X"Usage: test-case-format testcase ..."
-test X"$(test-case-format -h     | head -1)"          = X"Usage: test-case-format testcase ..."
-test X"$(test-case-format --help | head -1)"          = X"Usage: test-case-format testcase ..."
-test X"$(test-case-format --cui  | head -1)"          = X""
-test X"$(test-case-format --cui 2>&1|head -1)"        = X"test-case-format: unrecognized option '--cui'"
-@end
+#test-case-format is GONE. It formatted files through tidy, which is not
+#installed, and nothing in the repo called it
 
-@begin{translate}
-translate; test X"${?}"                                 = X"1"
-translate -h ; test X"${?}"                             = X"0"
-printf "%s" '-h' | translate; test X"${?}"              = X"0"
-translate --help ; test X"${?}"                         = X"0"
-printf "%s" '--help' | translate; test X"${?}"          = X"0"
-translate --translation-api cui;  test X"${?}"          = X"1"
-translate --cui; test X"${?}"                           = X"1"
-printf "%s" '--cui'   | translate; test X"${?}"         = X"1"
-test X"$(translate | head -1)"                          = X""
-test X"$(translate 2>&1 | head -1)"                     = X"Usage: translate [-sl-tl] [options] string ..."
-test X"$(translate -h | head -1)"                       = X"Usage: translate [-sl-tl] [options] string ..."
-test X"$(printf "%s" '-h' | translate | head -1)"       = X"Usage: translate [-sl-tl] [options] string ..."
-test X"$(translate --help | head -1)"                   = X"Usage: translate [-sl-tl] [options] string ..."
-test X"$(printf "%s" '--help' | translate | head -1)"   = X"Usage: translate [-sl-tl] [options] string ..."
-test X"$(translate --cui  | head -1)"                   = X""
-test X"$(printf "%s" '--cui' | translate 2>&1|head -1)" = X"translate: unrecognized option '--cui'"
-test X"$(translate --translation-api | head -1)"        = X"translate: available apis"
-test X"$(translate --translation-api cui | head -1)"    = X""
-test X"$(translate --translation-api cui 2>&1|head -1)" = X"translate: 'cui' is not a recognized translation api"
-test X"$(translate --translation-api google hola mundo)"         = X"Hello World"
-test X"$(translate --translation-api google -en-es hello world)" = X"Hola Mundo"
-@end
+#translate moved to sh/archived. It drew a window with gxmessage, which is
+#not installed here, and translate-shell does the same job as a maintained tool
 
 @begin{trash}
 trash;  test X"${?}"                                = X"1"
@@ -858,15 +769,8 @@ test X"$(printf "%s" 'cui' | vim-show 2>&1|head -1)"   = X"vim-show: 'cui' was n
 #TODO 28-09-2014 14:52 >> is there any way to test this?
 @end
 
-@begin{weather}
-weather  -h; test X"${?}"                 = X"0"
-printf "%s" '-h' | weather; test X"${?}"  = X"0"
-weather --help; test X"${?}"              = X"0"
-weather --cui; test X"${?}"               = X"1"
-test X"$(weather -h | head -1)"           = X"Usage: weather [options]"
-test X"$(printf "%s" '--help' | weather | head -1)" = X"Usage: weather [options]"
-test X"$(weather --cui 2>&1|head -1)"     = X"weather: unrecognized option '--cui'"
-@end
+#weather moved to sh/archived. It scraped bing and ask for a forecast, which is
+#a shape that breaks every time either of them redesigns a page
 
 @begin{wget-finder}
 wget-finder; test X"${?}"                     = X"1"
