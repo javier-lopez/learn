@@ -50,7 +50,11 @@ for tool in ${TOOLS_WITH_TEST}; do
     sed -e '/^@begin/d' -e '/^@end/d' \
         -e 's/\([^\\]\)[ 	]*$/\1 || exit 1/g' >> run.sh
     printf "exit 0\\n" >> run.sh
-    sh -x run.sh        > run.log 2>&1
+    #stdin is closed, not inherited: 32 of these tools read their arguments
+    #from stdin when it is not a terminal, so a runner started from cron, CI
+    #or a pipeline hands them an idle descriptor they wait on forever. A block
+    #that wants to pipe something in writes the pipe itself
+    sh -x run.sh        > run.log 2>&1 </dev/null
     if [ "${?}" -ne "0" ]; then
         #generate report
         printf "FAILED\\n"
