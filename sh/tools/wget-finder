@@ -9,8 +9,41 @@
 
 VERSION="2026.09.12-23:15"
 
-SEARCH_ENGINES="google ftplike mmnt"
+#Search engines come and go: google stopped serving results to anything that
+#does not run javascript, ftplike answers but indexes nothing any more. They
+#are kept because a dead engine costs one request and the loop moves on, and
+#because a network that reaches them differently is not this one.
+#
+#WGET_FINDER_ENGINES adds your own without touching this file, as space
+#separated name=url pairs where %s is the file being looked for:
+#
+#  WGET_FINDER_ENGINES='kagi=https://kagi.com/search?q=%s'
+#
+#That is the part meant to outlive the list above: when the last built-in
+#engine dies, a working one is a line in your rc file, not a new release
+SEARCH_ENGINES="brave mmnt google ftplike"
 CHECKSUMS="md5 sha1 sha256 sha512"
+
+#a user agent from this decade. "Mozilla/5.0" alone is a bot signature now
+WGET_FINDER_UA="${WGET_FINDER_UA:-Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0}"
+#an engine that has stopped answering should cost seconds, not minutes
+WGET_FINDER_TIMEOUT="${WGET_FINDER_TIMEOUT:-10}"
+
+_engine_names() { #built in, then whatever the environment added
+    printf "%s\\n" ${SEARCH_ENGINES}
+    for _engine_names__e in ${WGET_FINDER_ENGINES}; do
+        case "${_engine_names__e}" in *=*) printf "%s\\n" "${_engine_names__e%%=*}" ;; esac
+    done
+}
+
+_engine_url() { #the url template of a user defined engine, empty if not one
+    for _engine_url__e in ${WGET_FINDER_ENGINES}; do
+        case "${_engine_url__e}" in
+            "${1}"=*) printf "%s" "${_engine_url__e#*=}"; return 0 ;;
+        esac
+    done
+    return 1
+}
 
 _usage() {
     printf "%s\\n" "Usage: ${PROGNAME} [OPTION]... FILE:CHECKSUM..."
@@ -49,7 +82,12 @@ _shuf() {
 }
 
 _uniq() {
-    awk 'a !~ $0; {a=$0}'
+    #exact, and across the whole stream. What was here compared each line with
+    #the previous one as a REGULAR EXPRESSION - so a url containing \u made awk
+    #warn, one containing '.' matched things it should not have, and since it
+    #only ever looked one line back it removed almost nothing downstream of
+    #_shuf, which had just put every duplicate somewhere else
+    awk '!seen[$0]++'
 }
 
 _checksum_type() {
@@ -130,12 +168,53 @@ _cat() {
     fi
 }
 
+_fetch() { #one search request, with a deadline and a plausible agent
+    wget -q -U "${WGET_FINDER_UA}" -t 1 -T "${WGET_FINDER_TIMEOUT}" "${1}" -O- 2>/dev/null
+}
+
+_links_filter() {
+    #turn whatever a result page contains into directory urls, which is what
+    #the caller appends the file name to. $1 is the engine's own domain: every
+    #result page is mostly links back to itself, and those are not results
+    awk -v self="${1}" '
+    {
+        line = $0
+        while (match(line, /(https?|ftp):\/\/[^"'"'"'<>() ]+/)) {
+            u = substr(line, RSTART, RLENGTH)
+            line = substr(line, RSTART + RLENGTH)
+            if (self != "" && index(u, self) > 0) continue
+            #every html page cites these and none of them is a result
+            if (u ~ /:\/\/(www\.)?(w3\.org|schema\.org|gmpg\.org)\//) continue
+            sub(/[?#].*$/, "", u)            #a query string is not a directory
+            if (u !~ /^[a-z]+:\/\/[^\/]+\//) u = u "/"   #bare host: give it a root
+            sub(/\/[^\/]*$/, "/", u)          #drop the last segment, keep the dir
+            if (u ~ /^[a-z]+:\/\/[^\/]+\//) print u
+        }
+    }'
+}
+
 _get_links() {
     [ -z "${2}" ] && return 1
 
+    _get_links_brave() {
+        #brave runs its own index and still answers a plain http client
+        _fetch "https://search.brave.com/search?q=${1}" |
+            _links_filter "brave.com" | _shuf | _uniq
+    }
+
+    _get_links_custom() {
+        #a user defined engine: its url template with %s replaced by the file
+        _get_links_custom__url="$(_engine_url "${1}")" || return 1
+        _get_links_custom__host="$(printf "%s" "${_get_links_custom__url}" |
+            awk -F/ '"'"'{print $3}'"'"')"
+        _fetch "$(printf "%s" "${_get_links_custom__url}" |
+            awk -v f="${2}" '"'"'{gsub(/%s/, f); print}'"'"')" |
+            _links_filter "${_get_links_custom__host}"
+    }
+
     _get_links_google() {
         _get_links_google__query="Index of \"${1}.\" -filewatcher"
-        wget -q -U "Mozilla/5.0" "http://www.google.com/search?q=${_get_links_google__query}" -O- | \
+        _fetch "http://www.google.com/search?q=${_get_links_google__query}" | \
             awk 'match($0,/(http|https|ftp):\/\/.*\/&/) {if(NR!=1){$0=substr($0,RSTART,RLENGTH); print substr($0,1,length($0)-1)}}' | \
             awk 'NF' | _shuf | _uniq
     }
@@ -153,22 +232,23 @@ _get_links() {
 
     _get_links_ftplike() {
         _get_links_ftplike__query="index.aspx?q=${1}&t=Files&s=all&e=&a=&f=0&m=SIMPLE&c=20"
-        wget -q -U "Mozilla/5.0" "http://ftplike.com/${_get_links_ftplike__query}" -O- | \
+        _fetch "http://ftplike.com/${_get_links_ftplike__query}" | \
             awk 'match($0,/open (http|https|ftp):\/\/.* /) {print substr($0,RSTART,RLENGTH)}' | \
             awk "{gsub(/$_get_links_ftplike__query\"/,\"\"); print \$2}" | _shuf | _uniq
     }
 
     _get_links_mmnt() {
         _get_links_mmnt__query="int/get?st=${1}&cn=&in=f"
-         wget -q -U Mozilla/5.0 "http://www.mmnt.ru/${_get_links_mmnt__query}" -O- | \
+         _fetch "http://www.mmnt.ru/${_get_links_mmnt__query}" | \
              awk 'match($0,/(http|https|ftp):\/\/.* target/) {print substr($0,RSTART,RLENGTH)}' | \
              awk '{gsub(/" target/,""); print;}' | \
              awk -F'/[^/]*$' '{print $1"/"}' | _shuf | _uniq
     }
 
     case "${1}" in
-        google|ftplike|mmnt) _get_links_"${1}" "${2}" ;;
-        *) return 1 ;;
+        brave|google|ftplike|mmnt) _get_links_"${1}" "${2}"      ;;
+        *) _engine_url "${1}" >/dev/null || return 1
+           _get_links_custom "${1}" "${2}" | _shuf | _uniq       ;;
     esac
 }
 
@@ -214,7 +294,7 @@ _wget_finder() {
         fi
 
         #shuffle default search engines
-        _wget_finder__engines=$(printf "%s" "${SEARCH_ENGINES}" | tr ' ' '\n' | _shuf | tr '\n' '/')
+        _wget_finder__engines=$(_engine_names | _shuf | tr '\n' '/')
         if [ "${search_engine}" ]; then
             [ "${only_links}" ] && _wget_finder__engines="${search_engine}" || \
                 #promote user defined search engine to the first place, remove it from the default array
@@ -398,12 +478,12 @@ for arg in "${@}"; do #parse options
             if [ -z "${search_engine}" ]; then
                 printf "%s\\n" "${PROGNAME}: available search engines are"
                 exec "${0}" --list-search-engine
-            elif [ -z "$(printf "%s\\n" "${SEARCH_ENGINES}" | tr ' ' '\n' | awk "/^$search_engine\$/")" ]; then
+            elif [ -z "$(_engine_names | awk "/^$search_engine\$/")" ]; then
                 printf "%s\\n" "${PROGNAME}: '${search_engine}' is not a recognized search engine" >&2
                 exit 1
             fi
             ;;
-        --list-search-engine) printf "%s\\n" "${SEARCH_ENGINES}" | tr ' ' '\n'; exit 0; ;;
+        --list-search-engine) _engine_names; exit 0; ;;
         --list-checksum) printf "%s\\n" "${CHECKSUMS}" | tr ' ' '\n'; exit 0; ;;
         --list-links) only_links="1"; shift ;;
         -O)  shift; output="${1}"; shift; global_output="1" ;;

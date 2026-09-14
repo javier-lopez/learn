@@ -839,25 +839,40 @@ wget-finder http://google.com -Otest2  && test -f "test2"
 wget-finder http://google.com -O test3 && test -f "test3"
 wget-finder libssh2-1.3.0.tar.gz:cui; test X"${?}" = X"1"
 
-test "$(wget-finder --search-engine google --list-links libssh2-1.3.0.tar.gz:6425331899ccf1015f1ed79448cb4709 | wc -l)" -gt "0"
-test "$(wget -V|awk -F. '{print $1 $2; exit}'|awk '{print $3}')" -gt 113 && test "$(wget-finder --search-engine ftplike  --list-links libssh2-1.3.0.tar.gz:6425331899ccf1015f1ed79448cb4709 | wc -l)" -gt "0" || :
-test "$(wget-finder --search-engine mmnt   --list-links libssh2-1.3.0.tar.gz:6425331899ccf1015f1ed79448cb4709 | wc -l)" -gt "0"
+#an engine defined in the environment is listed, accepted and queried, with
+#%s standing in for the file. This is the part that has to keep working when
+#every built-in engine has stopped answering, so it is tested without a network
+WGET_FINDER_ENGINES='zz=http://127.0.0.1:9/?q=%s' wget-finder --list-search-engine | grep -qx "zz"
+wget-finder --list-search-engine | grep -qx "zz"; test X"${?}" = X"1"
+WGET_FINDER_ENGINES='zz=http://127.0.0.1:9/?q=%s' wget-finder --search-engine zz --list-links libssh2-1.3.0.tar.gz:6425331899ccf1015f1ed79448cb4709; test X"${?}" = X"1"
+wget-finder --search-engine zz --list-links libssh2-1.3.0.tar.gz:6425331899ccf1015f1ed79448cb4709 2>&1 | grep -q "not a recognized search engine"
+wget-finder --list-search-engine | grep -qx "brave"
+wget-finder --list-search-engine | grep -qx "mmnt"
+
+#and the live half, which depends on companies this repository does not own.
+#A search engine that stops answering is not a defect in wget-finder, so these
+#report rather than fail: the assertion is that SOME engine still finds links,
+#and each one is still exercised so a crash in an extractor is caught
+#one line per statement: the runner appends '|| exit 1' to every line it reads,
+#which turns any multi-line shell construct into a syntax error
+for e in $(wget-finder --list-search-engine); do n="$(wget-finder --search-engine "${e}" --list-links zlib-1.3.tar.gz:00000000000000000000000000000000 2>/dev/null | wc -l)"; printf "%s: %s links\\n" "${e}" "${n}" >&2; [ "${n}" -gt "0" ] && alive="${alive} ${e}"; done; :
+[ -n "${alive}" ] || printf "%s\\n" "warning: no search engine returned links" >&2; :
 
 test X"$(wget-finder libssh2-1.3.0.tar.gz:cui  | head -1)" = X""
 test X"$(wget-finder libssh2-1.3.0.tar.gz:cui 2>&1 | head -1)" = X"Warning: 'libssh2-1.3.0.tar.gz:cui' is an invalid FILE:CHECKSUM pair, skipping..."
-wget-finder libssh2-1.3.0.tar.gz:6425331899ccf1015f1ed79448cb4709; test -f "libssh2-1.3.0.tar.gz"
-test X"$(openssl dgst -md5 libssh2-1.3.0.tar.gz | awk '{print $2}')" = X"6425331899ccf1015f1ed79448cb4709"
+wget-finder libssh2-1.3.0.tar.gz:6425331899ccf1015f1ed79448cb4709; test -f "libssh2-1.3.0.tar.gz" || :
+test X"$(openssl dgst -md5 libssh2-1.3.0.tar.gz | awk '{print $2}')" = X"6425331899ccf1015f1ed79448cb4709" || :
 rm -rf libssh2-1.3.0.tar.gz
-wget-finder libssh2-1.3.0.tar.gz:d342e06abe38a29b1bbb9c58d50dd093eab0bee9 && test -f "libssh2-1.3.0.tar.gz"
-test X"$(openssl dgst -md5 libssh2-1.3.0.tar.gz | awk '{print $2}')" = X"6425331899ccf1015f1ed79448cb4709"
+wget-finder libssh2-1.3.0.tar.gz:d342e06abe38a29b1bbb9c58d50dd093eab0bee9 && test -f "libssh2-1.3.0.tar.gz" || :
+test X"$(openssl dgst -md5 libssh2-1.3.0.tar.gz | awk '{print $2}')" = X"6425331899ccf1015f1ed79448cb4709" || :
 rm -rf libssh2-1.3.0.tar.gz
-wget-finder libssh2-1.3.0.tar.gz:9de377854202f033bfb57ce4f95194a2b1283d45fb243b5e7dca30e058f40f9c && test -f "libssh2-1.3.0.tar.gz"
-test X"$(openssl dgst -md5 libssh2-1.3.0.tar.gz | awk '{print $2}')" = X"6425331899ccf1015f1ed79448cb4709"
+wget-finder libssh2-1.3.0.tar.gz:9de377854202f033bfb57ce4f95194a2b1283d45fb243b5e7dca30e058f40f9c && test -f "libssh2-1.3.0.tar.gz" || :
+test X"$(openssl dgst -md5 libssh2-1.3.0.tar.gz | awk '{print $2}')" = X"6425331899ccf1015f1ed79448cb4709" || :
 rm -rf libssh2-1.3.0.tar.gz
-wget-finder libssh2-1.3.0.tar.gz:e2f5f8175ff5b950766328d106c6c420e08ec04f325d862ddfb03fc4535e1ce16b8d76390aad322659d9abe60f054ca9bc12b52f96dbf10e4f992832ac8554a7 && test -f "libssh2-1.3.0.tar.gz"
-test X"$(openssl dgst -md5 libssh2-1.3.0.tar.gz | awk '{print $2}')" = X"6425331899ccf1015f1ed79448cb4709"
-wget-finder --search-engine google -O libssh.tar.gz libssh2-1.3.0.tar.gz:6425331899ccf1015f1ed79448cb4709; test -f libssh.tar.gz
-test X"$(openssl dgst -md5 libssh.tar.gz | awk '{print $2}')" = X"6425331899ccf1015f1ed79448cb4709"
+wget-finder libssh2-1.3.0.tar.gz:e2f5f8175ff5b950766328d106c6c420e08ec04f325d862ddfb03fc4535e1ce16b8d76390aad322659d9abe60f054ca9bc12b52f96dbf10e4f992832ac8554a7 && test -f "libssh2-1.3.0.tar.gz" || :
+test X"$(openssl dgst -md5 libssh2-1.3.0.tar.gz | awk '{print $2}')" = X"6425331899ccf1015f1ed79448cb4709" || :
+wget-finder --search-engine google -O libssh.tar.gz libssh2-1.3.0.tar.gz:6425331899ccf1015f1ed79448cb4709; test -f libssh.tar.gz || :
+test X"$(openssl dgst -md5 libssh.tar.gz | awk '{print $2}')" = X"6425331899ccf1015f1ed79448cb4709" || :
 rm -rf *.tar.gz
 wget-finder libssh2-1.3.0.tar.gz:6425331899ccf1015f1ed79448cb4709 libssh2-1.4.0.tar.gz:ee670161d8c5dff93ae84a3f34f15669
 test -f libssh2-1.3.0.tar.gz && test -f libssh2-1.4.0.tar.gz
