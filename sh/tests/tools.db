@@ -108,6 +108,55 @@ xclip -selection clipboard -i /dev/null
 #reaches for the same dead hosts - fixing that means finding one live API, and
 #the tests come back written against whatever it answers
 
+@begin{commacd}
+#commacd is sourced, never run: ',' is an alias over a function, and a command
+#that changes your directory cannot be a program. The runner is /bin/sh, whose
+#"." takes no arguments, so bash is asked for by name and the rest is skipped
+#where there is none - the same way the wcd block does it
+command -v bash >/dev/null 2>&1 || exit 0
+mkdir -p ALPHA/BETA otro/BETA repo/.git repo/sub
+#the regression this block exists for: commacd used to turn nocaseglob on in
+#whatever shell sourced it, and every glob typed afterwards silently changed
+#meaning. It belongs to the subshell its expansions already run in
+bash -c '. ../../tools/commacd; shopt -q nocaseglob'; test X"${?}" = X"1"
+#and the matching that option pays for still has to work, or the line above is
+#just a feature that was deleted. A lowercase word finding an uppercase
+#directory is the whole point of it
+test X"$(bash -c 'COMMACD_CD="builtin cd"; . ../../tools/commacd; _commacd_forward alpha; pwd')" = X"$(pwd)/ALPHA"
+test X"$(bash -c 'COMMACD_CD="builtin cd"; . ../../tools/commacd; _commacd_forward a/b; pwd')"   = X"$(pwd)/ALPHA/BETA"
+#no match by prefix falls back to fuzzy, and the fallback is what takes 'lph'
+#to ALPHA. COMMACD_NOFUZZYFALLBACK is the way out and has to still be one
+test X"$(bash -c 'COMMACD_CD="builtin cd"; . ../../tools/commacd; _commacd_forward lph; pwd')" = X"$(pwd)/ALPHA"
+test X"$(bash -c 'COMMACD_CD="builtin cd"; COMMACD_NOFUZZYFALLBACK=on; . ../../tools/commacd; _commacd_forward lph; pwd')" = X"$(pwd)"
+#backward, by prefix and by substitution
+test X"$(bash -c 'COMMACD_CD="builtin cd"; . ../../tools/commacd; cd ALPHA/BETA; _commacd_backward alpha; pwd')" = X"$(pwd)/ALPHA"
+test X"$(bash -c 'COMMACD_CD="builtin cd"; . ../../tools/commacd; cd ALPHA/BETA; _commacd_backward ALPHA otro; pwd')" = X"$(pwd)/otro/BETA"
+#and with no argument at all, which looks for the vcs root. repo/.git is here
+#so that the answer is this sandbox and not the checkout the suite runs inside,
+#which is a git repository too and is what an unqualified ,, would climb to
+test X"$(bash -c 'COMMACD_CD="builtin cd"; . ../../tools/commacd; cd repo/sub; _commacd_backward; pwd')" = X"$(pwd)/repo"
+#,,, backs out one level at a time and looks forward from each
+test X"$(bash -c 'COMMACD_CD="builtin cd"; . ../../tools/commacd; cd ALPHA/BETA; _commacd_backward_forward otro; pwd')" = X"$(pwd)/otro"
+#NOTTY prints the matches instead of asking, which is what the completions
+#run on: no terminal, no prompt, no cd
+test X"$(bash -c 'COMMACD_NOTTY=on; . ../../tools/commacd; _commacd_forward alpha')" = X"ALPHA/"
+#the three names and their completions are the public interface
+bash -c '. ../../tools/commacd; alias , ,, ,,, >/dev/null'; test X"${?}" = X"0"
+bash -c '. ../../tools/commacd; complete -p , ,, ,,, >/dev/null'; test X"${?}" = X"0"
+#wcd is on this PATH, so the integration engages by itself: every jump goes
+#through it and arrives the way a cd does. Naming COMMACD_CD is the way out,
+#and it is what every line above uses to test commacd and not wcd
+test X"$(bash -c '. ../../tools/commacd; printf "%s" "${COMMACD_CD}"')" = X". wcd"
+test X"$(bash -c 'PATH=/bin:/usr/bin; . ../../tools/commacd; printf "%s" "${COMMACD_CD}"')" = X""
+test X"$(bash -c 'COMMACD_CD="builtin cd"; . ../../tools/commacd; printf "%s" "${COMMACD_CD}"')" = X"builtin cd"
+#and the alias itself, which no "bash -c" can reach: bash expands aliases when
+#it parses, and a -c string is parsed whole before the source has run. A file
+#is read command by command, so this is the only place the ',' a user types is
+#the ',' under test
+printf "%s\n" 'shopt -s expand_aliases' 'COMMACD_CD="builtin cd"' '. ../../tools/commacd' ', alpha' ',,, otro' 'pwd' > jump.sh
+test X"$(bash jump.sh)" = X"$(pwd)/otro"
+@end
+
 @begin{compress}
 compress; test X"${?}"                                 = X"1"
 compress -h; test X"${?}"                              = X"0"

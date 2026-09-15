@@ -16,13 +16,15 @@ if [ -z "${COMMACD_CD}" ]; then
     [ -f "$(command -v "wcd")" ] && COMMACD_CD='. wcd'
 fi
 
-# turn on case-insensitive search by default
-shopt -s nocaseglob
-
 #shellcheck disable=SC2001
 _commacd_split()  { printf "%s\\n" "$1" | sed $'s|/|\\\n/|g';   }
 _commacd_join()   { local IFS="$1"; shift; printf "%s\\n" "$*"; }
-_commacd_expand() ( shopt -s extglob nullglob; local ex=($1); printf "%s\n" "${ex[@]}"; )
+#upstream 0.3.1 sets nocaseglob here in the file body, so it lands in the shell
+#that sources commacd and stays there: every glob typed afterwards quietly means
+#something else. It belongs to the expansions it was written for, and they
+#already run somewhere that can hold it - _commacd_expand is a subshell, which
+#is what keeps extglob and nullglob from leaking the same way
+_commacd_expand() ( shopt -s extglob nullglob nocaseglob; local ex=($1); printf "%s\n" "${ex[@]}"; )
 
 _command_cd() {
   local dir=$1
@@ -157,7 +159,9 @@ _commacd_backward_forward_by_prefix() {
   local dir="$PWD" path="${*%/}/" matches match IFS=$'\n'
   if [ "${path:0:1}" = "/" ]; then
     # assume that we've been brought here by the completion
-    dir=(${path%/}*)
+    #through the expander like every other glob in this file: it used to match
+    #case-insensitively off the global above, and nothing else here would
+    dir=($(_commacd_expand "${path%/}*"))
     printf "%s\n" "${dir[@]}"
     return
   fi
