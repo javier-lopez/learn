@@ -1,0 +1,26 @@
+#!/bin/sh
+#a catalog where one name belongs to two different programs. That is not
+#solved by picking one: which program was meant is the user's to say
+
+_program() {
+    mkdir -p "${STATIC_RUN_HOME}/tmp" 2>/dev/null
+    printf "%s\n" '#!/bin/sh' "printf \"%s\\n\" \"${1%%/*}\"" > "${STATIC_RUN_HOME}/tmp/twin-${1%%/*}"
+    printf "%s\n" "${STATIC_RUN_HOME}/tmp/twin-${1%%/*}"
+}
+
+case "${1}" in
+    meta) printf "%s\n" "kind=artifact" "confines=no" "describes=self" ;;
+    probe|locate)
+        case "${2}" in
+            twin) printf "%s\n" "candidate=left/twin" "candidate=right/twin"; exit 3 ;;
+            left/twin|right/twin)
+                if [ X"${1}" = X"probe" ]; then
+                    printf "%s\n" "version=1.0" "bytes=50" "badge=none" "package=${2}"
+                else
+                    printf "url=%s\n" "$(_program "${2}")"
+                    printf "%s\n" "format=raw" "bin=twin"
+                fi ;;
+            *) exit 1 ;;
+        esac ;;
+    *) exit 1 ;;
+esac

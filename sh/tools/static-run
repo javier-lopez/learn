@@ -15,6 +15,8 @@ _usage() {
     printf "%s\\n" "Run a command this machine does not have installed."
     printf "\\n"
     printf "%b\\n" "  -n, --dry-run        show the path that would be taken, take none"
+    printf "%b\\n" "  -a, --apropos words  search the local indexes by what a program does"
+    printf "%b\\n" "  -i, --index-update   download the catalogs a bare name is looked up in"
     printf "%b\\n" "  -l, --list           list what is already here"
     printf "%b\\n" "  -b, --bin [name]     the program inside the artifact, when it differs"
     printf "%b\\n" "  -p, --purge [spec]   remove one placement, or everything"
@@ -279,6 +281,12 @@ _probe_all() {
                 printf "~unreachable %s %s\\n" "${_probe_all__c}" \
                     "${_probe_all__why:-it gave no reason}"
                 continue ;;
+            3)  #a name that belongs to more than one package is not resolved
+                #by picking one. Which program was meant is the user's to say
+                printf "~ambiguous %s %s\\n" "${_probe_all__c}" \
+                    "$(printf "%s\\n" "${_probe_all__out}" | \
+                        awk '/^candidate=/ {sub(/^candidate=/, ""); printf("%s ", $0)}')"
+                continue ;;
             *) continue ;;
         esac
 
@@ -287,6 +295,10 @@ _probe_all() {
         _probe_all__g="$(printf "%s\\n" "${_probe_all__out}" | awk -F= '$1=="badge"{print $2; exit}')"
         [ -z "${_probe_all__v}" ] && continue
         [ -z "${_probe_all__g}" ] && _probe_all__g="none"
+        #a catalog that turns a name into a repository says which one, and
+        #that repository is what gets shown, placed and asked about from here
+        _probe_all__p="$(printf "%s\\n" "${_probe_all__out}" | awk -F= '$1=="package"{print $2; exit}')"
+        [ -z "${_probe_all__p}" ] && _probe_all__p="${_probe_all__pkg}"
 
         _probe_all__conf="$(_channel_meta "${_probe_all__c}" confines)"
         _probe_all__class="0"
@@ -294,7 +306,7 @@ _probe_all() {
 
         #marginal bytes: what is already placed costs nothing to place again
         _probe_all__marginal="${_probe_all__b}"
-        [ -e "${home}/by/${_probe_all__c}/${_probe_all__pkg}/${_probe_all__v}" ] && \
+        [ -e "${home}/by/${_probe_all__c}/${_probe_all__p}/${_probe_all__v}" ] && \
             _probe_all__marginal="0"
 
         #a size the catalog did not announce sorts last within its class
@@ -304,10 +316,11 @@ _probe_all() {
                              'BEGIN {printf("%014d", b)}')" ;;
         esac
 
-        printf "%s %s %s %s %s %s %s\\n" \
+        printf "%s %s %s %s %s %s %s %s\\n" \
             "${_probe_all__class}${_probe_all__key}0" "${_probe_all__c}" \
             "${_probe_all__v}" "${_probe_all__b}" "${_probe_all__g}" \
-            "${_probe_all__conf}" "$(_channel_meta "${_probe_all__c}" describes)"
+            "${_probe_all__conf}" "$(_channel_meta "${_probe_all__c}" describes)" \
+            "${_probe_all__p}"
     done | LC_ALL=C sort
 }
 
@@ -330,6 +343,25 @@ _confirm() {
     _say "${PROGNAME}: no terminal to ask on, and nothing was downloaded"
     _say "${PROGNAME}: pass --yes if this is meant to run unattended"
     return 1
+}
+
+_choose() {
+    #$1 => the name, $2 => one channel:package per line. Prints the choice.
+    #The terminal is asked and not stdin, for the same reason as _confirm, and
+    #with no terminal there is nobody to ask, so nothing is chosen
+    [ -r "/dev/tty" ] && [ -w "/dev/tty" ] || return 1
+    [ -n "${assume_yes}" ] && return 1
+
+    printf "%s\\n" "${PROGNAME}: '${1}' is the name of more than one program:" > /dev/tty
+    printf "%s\\n" "${2}" | awk 'NF {printf("  %d) %s\n", NR, $0)}' > /dev/tty
+    printf "%s" "which one? [number, anything else cancels] " > /dev/tty
+    read -r _choose__n < /dev/tty || return 1
+    case "${_choose__n}" in
+        ''|*[!0-9]*) return 1 ;;
+    esac
+    _choose__pick="$(printf "%s\\n" "${2}" | awk -v n="${_choose__n}" 'NF && NR == n {print; exit}')"
+    [ -z "${_choose__pick}" ] && return 1
+    printf "%s\\n" "${_choose__pick}"
 }
 
 _unpack() {
@@ -492,6 +524,12 @@ _purge() {
     _purge__pkg="$(_spec_package "${1}")"
     _purge__ver="$(_spec_version "${1}")"
     _purge__gone="0"
+    _purge__target="$(_cache_get "${1}" 2>/dev/null)" || _purge__target=""
+    case "${_purge__target}" in
+        "${home}/store/"*) _purge__target="${_purge__target#${home}/store/}"
+                           _purge__target="${home}/store/${_purge__target%%/*}" ;;
+        *) _purge__target="" ;;
+    esac
 
     for _purge__link in $(find "${home}/by" -type l 2>/dev/null | sort); do
         _purge__rest="${_purge__link#${home}/by/}"
@@ -502,7 +540,13 @@ _purge() {
 
         [ -n "${_purge__ch}"  ] && [ X"${_purge__ch}"  != X"${_purge__lch}"  ] && continue
         [ -n "${_purge__ver}" ] && [ X"${_purge__ver}" != X"${_purge__lver}" ] && continue
-        [ X"${_purge__pkg}" != X"${_purge__lpkg}" ] && continue
+        #a bare name matches the repository it resolved to: jq purges
+        #jqlang/jq, and rg purges whichever rg was chosen to mean
+        if [ X"${_purge__pkg}" != X"${_purge__lpkg}" ] && \
+           [ X"${_purge__pkg}" != X"${_purge__lpkg##*/}" ]; then
+            [ -n "${_purge__target}" ] || continue
+            [ X"$(readlink "${_purge__link}" 2>/dev/null)" = X"${_purge__target}" ] || continue
+        fi
 
         rm -f "${_purge__link}"
         _purge__gone="$((${_purge__gone} + 1))"
@@ -527,6 +571,53 @@ _purge() {
 
     rm -f "${home}/cache/$(_cache_key "${1}")"
     _say "${PROGNAME}: removed ${_purge__gone} placement(s), freed $(_human "${_purge__freed}"), ${_purge__kept} store entries still referenced"
+}
+
+###############################################################################
+############################## indexes and apropos ############################
+###############################################################################
+
+_index_update() {
+    #a channel that keeps no index has nothing to update and is passed over
+    #without a word; one that keeps an index and could not refresh it says why
+    _iu__any=""; _iu__failed=""
+    for _iu__c in $(_channels); do
+        _iu__out="$("$(_channels_dir)/${_iu__c}" index 2>/dev/null)"
+        case "${?}" in
+            0)  _iu__any="1"
+                _say "${PROGNAME}: ${_iu__c}: $(printf "%s\\n" "${_iu__out}" | \
+                    awk -F= 'NF == 2 {printf("%s%s %s", (n++ ? ", " : ""), $2, $1)}')" ;;
+            2)  _iu__any="1"; _iu__failed="1"
+                _say "${PROGNAME}: ${_iu__c}: not updated, $(printf "%s\\n" "${_iu__out}" | \
+                    awk '/^unreachable=/ {sub(/^unreachable=/, ""); print; exit}')" ;;
+        esac
+    done
+    [ -z "${_iu__any}" ] && _say "${PROGNAME}: no channel keeps an index"
+    [ -z "${_iu__failed}" ]
+}
+
+_apropos() {
+    #the answer comes from indexes on this machine, built from what catalogs
+    #publish about themselves, and never from a search engine: a tool in this
+    #repository once leaned on search engines, two went away, and so did it
+    [ -z "${1}" ] && _die "${PROGNAME}: --apropos needs something to look for"
+    _ap__found=""
+    for _ap__c in $(_channels); do
+        _ap__out="$("$(_channels_dir)/${_ap__c}" search "${@}" 2>/dev/null)"
+        case "${?}" in
+            0)  [ -z "${_ap__out}" ] && continue
+                _ap__found="1"
+                _ap__kind="$(_channel_meta "${_ap__c}" confines | awk '{print ($0=="yes") ? "confined" : "native"}')"
+                printf "%s\\n" "${_ap__out}" | awk -F'\t' -v k="${_ap__kind}" \
+                    'NF {printf("  %-36s %-8s %s\n", $1, k, $3)}' ;;
+            2)  _say "${PROGNAME}: ${_ap__c} could not be searched: $(printf "%s\\n" "${_ap__out}" | \
+                    awk '/^unreachable=/ {sub(/^unreachable=/, ""); print; exit}')" ;;
+        esac
+    done
+    if [ -d "${home}/index" ] && [ -n "$(find "${home}/index" -type f -mtime +7 2>/dev/null)" ]; then
+        _say "${PROGNAME}: an index is more than a week old, --index-update refreshes it"
+    fi
+    [ -n "${_ap__found}" ] || { _say "${PROGNAME}: nothing matched '${*}'"; return 1; }
 }
 
 ###############################################################################
@@ -577,6 +668,8 @@ while [ "${#}" -gt "0" ]; do
         -L|--latest)    latest="1"; STATIC_RUN_REFRESH="1"; export STATIC_RUN_REFRESH; shift ;;
         -e|--ephemeral) ephemeral="1"; shift ;;
         -l|--list)      list="1";      shift ;;
+        -i|--index-update) index_update="1"; shift ;;
+        -a|--apropos)   apropos="1";   shift ;;
         -b|--bin)       shift; bin_name="${1}"; [ -n "${1}" ] && shift ;;
         --bin=*)        bin_name="${1#--bin=}"; shift ;;
         -p|--purge)     purge="1";     shift ;;
@@ -598,12 +691,15 @@ home="$(_home)"
 export STATIC_RUN_HOME="${home}"
 
 [ -n "${do_update}" ] && { _update; exit "${?}"; }
+[ -n "${index_update}" ] && { _index_update; exit "${?}"; }
+[ -n "${apropos}" ]   && { _apropos "${@}"; exit "${?}"; }
 [ -n "${list}" ]      && { _list "${1}"; exit 0; }
 [ -n "${purge}" ]     && { _purge "${1}"; exit "${?}"; }
 
 [ -z "${1}" ] && _die "${PROGNAME}: nothing asked for"
 
 spec="${1}"; shift
+asked="${spec}"
 channel="$(_spec_channel "${spec}")"
 package="$(_spec_package "${spec}")"
 version="$(_spec_version "${spec}")"
@@ -627,16 +723,43 @@ fi
 #it installed
 if [ -z "${latest}" ] && [ -z "${dry_run}" ]; then
     cached="$(_cache_get "${spec}")" || cached=""
-    if [ -n "${cached}" ] && [ -d "${cached}" ]; then
+    #the decision remembers the program itself, so a hit is an exec with no
+    #search. A directory is what an older decision remembered, and still works
+    if [ -n "${cached}" ] && [ -f "${cached}" ] && [ -x "${cached}" ]; then
+        exec "${cached}" "${@}"
+    elif [ -n "${cached}" ] && [ -d "${cached}" ]; then
         program="$(_find_program "${cached}" "${bin_name:-${package##*/}}")" && \
             exec "${program}" "${@}"
     fi
 fi
 
 probed="$(_probe_all "${package}" "${version}" "${channel}")"
-candidates="$(printf "%s\\n" "${probed}" | awk 'NF && $1 != "~unreachable"')"
+candidates="$(printf "%s\\n" "${probed}" | awk 'NF && $1 !~ /^~/')"
 unreachable="$(printf "%s\\n" "${probed}" | \
     awk '$1 == "~unreachable" {$1 = ""; sub(/^ /, ""); print}')"
+ambiguous="$(printf "%s\\n" "${probed}" | \
+    awk '$1 == "~ambiguous" {for (i = 3; i <= NF; i++) print $2 ":" $i}')"
+
+if [ -n "${ambiguous}" ]; then
+    #every program that answers to the name is offered, including one another
+    #channel served outright, because the question is which program and not
+    #which channel. The answer is remembered under the name that was typed
+    choices="$( { printf "%s\\n" "${ambiguous}"
+                  printf "%s\\n" "${candidates}" | awk 'NF {print $2 ":" $8}'; } | \
+                awk 'NF && !seen[$0]++')"
+    picked="$(_choose "${package}" "${choices}")" || {
+        _say "${PROGNAME}: '${package}' is the name of more than one program, and none was guessed:"
+        printf "%s\\n" "${choices}" | while read -r c_spec; do _say "    ${c_spec}"; done
+        _say "${PROGNAME}: run one of them by its full name"
+        exit 127
+    }
+    channel="${picked%%:*}"
+    package="${picked#*:}"
+    probed="$(_probe_all "${package}" "${version}" "${channel}")"
+    candidates="$(printf "%s\\n" "${probed}" | awk 'NF && $1 !~ /^~/')"
+    unreachable="$(printf "%s\\n" "${probed}" | \
+        awk '$1 == "~unreachable" {$1 = ""; sub(/^ /, ""); print}')"
+fi
 
 if [ -z "${candidates}" ]; then
     #127 is the shell's word for "nothing ran", and the only status a caller
@@ -660,6 +783,8 @@ w_version="$(printf  "%s\\n" "${winner}" | awk '{print $3}')"
 w_bytes="$(printf    "%s\\n" "${winner}" | awk '{print $4}')"
 w_badge="$(printf    "%s\\n" "${winner}" | awk '{print $5}')"
 w_confines="$(printf "%s\\n" "${winner}" | awk '{print $6}')"
+w_package="$(printf  "%s\\n" "${winner}" | awk '{print $8}')"
+[ -z "${w_package}" ] && w_package="${package}"
 
 w_kind="native"
 [ X"${w_confines}" = X"yes" ] && w_kind="confined"
@@ -672,14 +797,14 @@ if [ -n "${dry_run}" ]; then
     cheapest="$(printf "%s\\n" "${candidates}" | awk '{print $4}' | \
         awk 'BEGIN{m=""} /^[0-9]+$/ {if (m=="" || $1<m) m=$1} END{print m}')"
 
-    printf "%s\\n" "${candidates}" | while read -r d_key d_ch d_ver d_by d_bg d_cf d_de; do
+    printf "%s\\n" "${candidates}" | while read -r d_key d_ch d_ver d_by d_bg d_cf d_de d_pkg; do
         d_kind="native"; [ X"${d_cf}" = X"yes" ] && d_kind="confined"
-        d_info="$("$(_channels_dir)/${d_ch}" locate "${package}" "${d_ver}" 2>/dev/null)"
+        d_info="$("$(_channels_dir)/${d_ch}" locate "${d_pkg}" "${d_ver}" 2>/dev/null)"
         case "${d_info}" in *'sha256='?*) d_bg="verified" ;; esac
         d_mark=""
         [ X"${d_ch}" = X"${w_channel}" ] && [ X"${d_ver}" = X"${w_version}" ] && d_mark="  <- elegido"
         printf "  %-32s %10s  %-8s  [%s]%s\\n" \
-            "${d_ch}:${package}@${d_ver}" "$(_human "${d_by}")" "${d_kind}" "${d_bg}" "${d_mark}"
+            "${d_ch}:${d_pkg}@${d_ver}" "$(_human "${d_by}")" "${d_kind}" "${d_bg}" "${d_mark}"
     done
 
     [ -n "${unreachable}" ] && printf "%s\\n" "${unreachable}" | while read -r u_ch u_why; do
@@ -694,14 +819,14 @@ if [ -n "${dry_run}" ]; then
     else
         reason="${reason}, aunque no el más barato"
     fi
-    printf "elegido: %s:%s@%s   motivo: %s\\n" "${w_channel}" "${package}" "${w_version}" "${reason}"
+    printf "elegido: %s:%s@%s   motivo: %s\\n" "${w_channel}" "${w_package}" "${w_version}" "${reason}"
     exit 0
 fi
 
 #asking where the artifact lives is also how its badge becomes known, and the
 #badge is part of what the user is being asked to agree to, so it happens
 #before the question and not after it
-info="$("$(_channels_dir)/${w_channel}" locate "${package}" "${w_version}" 2>/dev/null)"
+info="$("$(_channels_dir)/${w_channel}" locate "${w_package}" "${w_version}" 2>/dev/null)"
 if [ "${?}" -eq "2" ]; then
     _say "${PROGNAME}: ${w_channel} could not be asked where '${package}' lives: $(printf "%s\\n" "${info}" | \
         awk '/^unreachable=/ {sub(/^unreachable=/, ""); print; exit}')"
@@ -716,7 +841,12 @@ case "${info}" in
     *) w_badge="none" ;;
 esac
 
-_say "${PROGNAME}: ${package##*/} ${w_version} -> ${w_channel}:${package}  $(_human "${w_bytes}")  [${w_badge}]  ${w_kind}"
+w_bin="$(printf "%s\\n" "${info}" | awk -F= '$1=="bin"{print $2; exit}')"
+[ -z "${w_bin}" ] && w_bin="${w_package##*/}"
+
+#the line names the repository and not only the word typed: a catalog that
+#maps a name somewhere unexpected is caught here, by a person, or not at all
+_say "${PROGNAME}: ${w_bin} ${w_version} -> ${w_channel}:${w_package}  $(_human "${w_bytes}")  [${w_badge}]  ${w_kind}"
 [ -n "${unreachable}" ] && printf "%s\\n" "${unreachable}" | while read -r u_ch u_why; do
     _say "            (${u_ch} could not be asked, a cheaper path may exist: ${u_why})"
 done
@@ -725,11 +855,14 @@ if [ -z "$(_cache_get "${spec}")" ]; then
     _confirm "${PROGNAME}: proceed?" || exit 127
 fi
 
-store="$(_place "${w_channel}" "${package}" "${w_version}" "${info}")" || exit 127
-program="$(_find_program "${store}" "${bin_name:-${package##*/}}")" || {
-    _say "${PROGNAME}: nothing executable called '${package##*/}' inside the artifact"
+store="$(_place "${w_channel}" "${w_package}" "${w_version}" "${info}")" || exit 127
+program="$(_find_program "${store}" "${bin_name:-${w_bin}}")" || {
+    _say "${PROGNAME}: nothing executable called '${bin_name:-${w_bin}}' inside the artifact"
     exit 127
 }
 
-_cache_put "${spec}" "${store}"
+#remembered under what was asked for, which for a bare name is the name: a
+#choice between programs that share one is made once and not every time
+_cache_put "${asked}" "${program}"
+[ X"${asked}" != X"${spec}" ] && _cache_put "${spec}" "${program}"
 exec "${program}" "${@}"

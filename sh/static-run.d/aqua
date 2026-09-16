@@ -1,0 +1,230 @@
+#!/bin/sh
+#description: static-run channel - the aqua registry, read as a catalog of names
+#usage: aqua meta | aqua index | aqua search WORDS...
+#       aqua probe NAME|OWNER/REPO [VER] | aqua locate NAME|OWNER/REPO VER
+#probe and locate exit 0 with an answer, 1 when there is none, 2 when there is
+#no local index to ask, and 3 when a name belongs to more than one package,
+#with each of them on a candidate= line
+
+#this channel answers one question the github channel refuses to: who is jq.
+#The registry maps a command name to the repository that publishes it, and
+#everything after that - which asset, what it weighs, where it lives, whether
+#it is verified - is the github channel's answer, asked of it directly. Nine
+#in ten packages in the registry are github releases, so this is an edge onto
+#that channel and not a second copy of it
+
+REGISTRY="${STATIC_RUN_AQUA_REGISTRY:-https://raw.githubusercontent.com/aquaproj/aqua-registry/main/registry.yaml}"
+
+_index_file() {
+    printf "%s\\n" "${STATIC_RUN_HOME:-/tmp}/index/aqua.tsv"
+}
+
+_retrieve() {
+    #$1 => url or path, $2 => destination
+    case "${1}" in
+        file://*|/*|./*) cp "${1#file://}" "${2}" 2>/dev/null; return "${?}" ;;
+    esac
+    if command -v "curl" >/dev/null 2>&1; then
+        curl -fsSL -o "${2}" "${1}"
+    elif command -v "wget" >/dev/null 2>&1; then
+        wget -q -O "${2}" "${1}"
+    else
+        return 1
+    fi
+}
+
+_indexer() {
+    #the registry is yaml, and this reads the part of it a name needs: which
+    #repository, which commands, what it says it is. It is checked against a
+    #real yaml parser over all 2303 packages and is byte for byte the same
+    #under gawk, mawk, nawk and busybox, which is what makes it acceptable to
+    #read yaml with awk at all. A command is what the current version of the
+    #package calls it - the override whose constraint is "true" - then what
+    #the package calls it, then the repository's own name
+    awk '
+    function emit(name) { printf("%s\t%s/%s\t%s\n", name, owner, repo, desc) }
+    function unquote(v) {
+        if (v ~ /^".*"$/)      { v = substr(v, 2, length(v) - 2); gsub(/\\\\/, "\\", v) }
+        else if (v ~ /^'\''.*'\''$/) { v = substr(v, 2, length(v) - 2); gsub(/'\'''\''/, "'\''", v) }
+        #outside quotes, whitespace then # starts a comment, and yaml drops it
+        else                   { sub(/[ \t]+#.*$/, "", v) }
+        return v
+    }
+    function squeeze(v) { gsub(/[ \t]+/, " ", v); sub(/^ /, "", v); sub(/ $/, "", v); return v }
+    function flush(   list, n, i, parts) {
+        if (in_block) { desc = squeeze(desc); in_block = 0 }
+        if (type != "github_release" || owner == "" || repo == "") return
+        if (ov_true_has_files)  list = ov_true_files
+        else if (pkg_has_files) list = pkg_files
+        else                    list = ""
+        if (list == "") { emit(repo); return }
+        n = split(list, parts, SUBSEP)
+        for (i = 1; i <= n; i++) if (parts[i] != "") emit(parts[i])
+    }
+    #a package is a list item, and a list item may open with any of its keys:
+    #type, name or repo_owner are all seen. Recognising only "- type:" merged every
+    #package that opened otherwise into the one before it, which gave that one'\''s
+    #repository the other one'\''s commands - "nsc" came out as nakabonne/ali
+    /^  - [a-z_]+:/ {
+        flush()
+        type = ""; owner = ""; repo = ""; desc = ""; top = ""
+        in_ov = 0; ov_true = 0; sub8 = ""; in_block = 0
+        pkg_has_files = 0; pkg_files = ""; ov_true_has_files = 0; ov_true_files = ""
+        sub(/^  - /, "    ")
+    }
+    in_block {
+        if ($0 ~ /^     / || $0 ~ /^[ \t]*$/) { l = $0; sub(/^ +/, "", l); desc = desc " " l; next }
+        desc = squeeze(desc); in_block = 0
+    }
+    /^    [a-z_]+:/ {
+        key = $1; sub(/:$/, "", key)
+        val = $0; sub(/^    [a-z_]+:[ ]*/, "", val)
+        top = key; in_ov = 0; sub8 = ""
+        if (key == "type")             type = unquote(val)
+        else if (key == "repo_owner")  owner = unquote(val)
+        else if (key == "repo_name")   repo = unquote(val)
+        else if (key == "description") { if (val ~ /^[>|]/) { in_block = 1; desc = "" } else desc = squeeze(unquote(val)) }
+        else if (key == "files")       pkg_has_files = 1
+        next
+    }
+    top == "files" && /^      - name:/ {
+        v = $0; sub(/^      - name:[ ]*/, "", v); pkg_files = pkg_files unquote(v) SUBSEP; next
+    }
+    top == "version_overrides" && /^      - version_constraint:/ {
+        v = $0; sub(/^      - version_constraint:[ ]*/, "", v)
+        in_ov = 1; ov_true = (v == "\"true\""); sub8 = ""; next
+    }
+    top == "version_overrides" && in_ov && /^        [a-z_]+:/ {
+        k = $1; sub(/:$/, "", k); sub8 = k
+        if (k == "files" && ov_true) ov_true_has_files = 1
+        next
+    }
+    top == "version_overrides" && in_ov && ov_true && sub8 == "files" && /^          - name:/ {
+        v = $0; sub(/^          - name:[ ]*/, "", v); ov_true_files = ov_true_files unquote(v) SUBSEP; next
+    }
+    END { flush() }
+    '
+}
+
+_resolve() {
+    #$1 => a name or owner/repo. Leaves the repository in repo and the command
+    #in cmd, and answers 0 for one package, 1 for none, 2 for no index, and 3
+    #when the name belongs to several, which are left in cands
+    why=""; repo=""; cmd=""; cands=""
+    _resolve__idx="$(_index_file)"
+    if [ ! -s "${_resolve__idx}" ]; then
+        why="there is no local index yet, run: static-run --index-update"
+        return 2
+    fi
+
+    case "${1}" in
+        */*)
+            #a command named after the repository is the one meant when the
+            #repository is what was asked for; otherwise its first command
+            cmd="$(awk -F'\t' -v r="${1}" '
+                $2 == r { if (first == "") first = $1
+                          n = split(r, p, "/"); if ($1 == p[n]) { print $1; found = 1; exit } }
+                END { if (!found && first != "") print first }' "${_resolve__idx}")"
+            [ -z "${cmd}" ] && return 1
+            repo="${1}"
+            return 0 ;;
+        *)
+            cands="$(awk -F'\t' -v n="${1}" '$1 == n {print $2}' "${_resolve__idx}" | LC_ALL=C sort -u)"
+            case "$(printf "%s\\n" "${cands}" | awk 'NF {n++} END {print n+0}')" in
+                0) return 1 ;;
+                1) repo="${cands}"; cmd="${1}"; return 0 ;;
+                *) return 3 ;;
+            esac ;;
+    esac
+}
+
+_answer_unresolved() {
+    #$1 => what _resolve answered. Exits for everything but a single package
+    case "${1}" in
+        0) return 0 ;;
+        1) exit 1 ;;
+        2) printf "unreachable=%s\\n" "${why}"; exit 2 ;;
+        3) printf "%s\\n" "${cands}" | awk 'NF {print "candidate=" $0}'; exit 3 ;;
+    esac
+}
+
+case "${1}" in
+    meta)
+        printf "%s\\n" "kind=artifact" "confines=no" "describes=self"
+        exit 0
+        ;;
+
+    index)
+        idx="$(_index_file)"
+        mkdir -p "${idx%/*}" 2>/dev/null || exit 1
+        raw="${idx}.$$.yaml"; new="${idx}.$$"
+        if ! _retrieve "${REGISTRY}" "${raw}"; then
+            rm -f "${raw}"
+            printf "unreachable=%s\\n" "the aqua registry could not be downloaded"
+            exit 2
+        fi
+        _indexer < "${raw}" | LC_ALL=C sort -u > "${new}"
+        rm -f "${raw}"
+
+        #an index that comes out nearly empty is not a small registry, it is a
+        #registry in a shape this reader no longer understands, and swapping
+        #it in would turn every name into "not there" without a word
+        if [ "$(awk 'END {print NR}' "${new}")" -lt "100" ]; then
+            rm -f "${new}"
+            printf "unreachable=%s\\n" "the aqua registry came back in a shape this index cannot read, the old index is kept"
+            exit 2
+        fi
+        mv "${new}" "${idx}"
+        printf "packages=%s\\n" "$(awk -F'\t' '!seen[$2]++' "${idx}" | awk 'END {print NR}')"
+        printf "names=%s\\n" "$(awk 'END {print NR}' "${idx}")"
+        exit 0
+        ;;
+
+    search)
+        shift
+        idx="$(_index_file)"
+        if [ ! -s "${idx}" ]; then
+            printf "unreachable=%s\\n" "there is no local index yet, run: static-run --index-update"
+            exit 2
+        fi
+        #every word has to appear, in any order and any case, among the name,
+        #the repository and the description. One line per package
+        awk -F'\t' -v q="${*}" '
+            BEGIN { n = split(tolower(q), w, " ") }
+            {
+                hay = tolower($1 " " $2 " " $3)
+                for (i = 1; i <= n; i++) if (index(hay, w[i]) == 0) next
+                if (!seen[$2]++) printf("aqua:%s\t%s\t%s\n", $2, $1, $3)
+            }' "${idx}" | LC_ALL=C sort
+        exit 0
+        ;;
+
+    probe)
+        [ -z "${2}" ] && exit 1
+        _resolve "${2}"; _answer_unresolved "${?}"
+        out="$("${0%/*}/github" probe "${repo}" "${3}")"; rc="${?}"
+        [ -n "${out}" ] && printf "%s\\n" "${out}"
+        #the repository goes back with the answer, so that what the user is
+        #asked to agree to names the owner and not only the word they typed.
+        #That is the defence against a registry that maps jq somewhere else
+        [ "${rc}" -eq "0" ] && printf "package=%s\\n" "${repo}"
+        exit "${rc}"
+        ;;
+
+    locate)
+        [ -z "${2}" ] && exit 1
+        _resolve "${2}"; _answer_unresolved "${?}"
+        out="$("${0%/*}/github" locate "${repo}" "${3}")"; rc="${?}"
+        if [ "${rc}" -ne "0" ]; then
+            [ -n "${out}" ] && printf "%s\\n" "${out}"
+            exit "${rc}"
+        fi
+        #the registry knows what the program is called, which the release
+        #does not: ripgrep ships a binary called rg
+        printf "%s\\n" "${out}" | awk -F= '$1 != "bin"'
+        printf "bin=%s\\n" "${cmd}"
+        exit 0
+        ;;
+
+    *) printf "%s\\n" "usage: ${0##*/} meta|index|search|probe|locate" >&2; exit 1 ;;
+esac

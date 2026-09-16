@@ -749,6 +749,78 @@ chmod 755 cspy/curl
 PATH="$(pwd)/cspy:${PATH}" STATIC_RUN_HOME="$(pwd)/g6" GITHUB_TOKEN=not-a-real-token ../../static-run.d/github probe acme/thing >/dev/null 2>&1; test X"${?}" = X"1"
 test X"$(grep -c not-a-real-token argv.txt)"  = X"0"
 test X"$(grep -c not-a-real-token stdin.txt)" = X"1"
+#the release reader counts depth and closes an asset with its own object, so
+#an object nested inside one cannot lend it a name, and the order its fields
+#arrive in does not matter. Both used to go wrong without an error
+mkdir -p gj/tmp
+printf '%s' '{"tag_name":"v3","assets":[{"name":"real-linux-x86_64.tar.gz","uploader":{"name":"impostor","size":999},"size":444,"browser_download_url":"http://example.invalid/4"}]}' > gj/tmp/github.acme_nested_.json
+printf '%s' '{"tag_name":"v4","assets":[{"browser_download_url":"http://example.invalid/5","size":555,"name":"order-linux-x86_64.tar.gz"}]}' > gj/tmp/github.acme_order_.json
+test X"$(STATIC_RUN_HOME="$(pwd)/gj" ../../static-run.d/github probe acme/nested | awk -F= '$1=="bytes"{print $2}')" = X"444"
+test X"$(STATIC_RUN_HOME="$(pwd)/gj" ../../static-run.d/github probe acme/order  | awk -F= '$1=="bytes"{print $2}')" = X"555"
+#"latest" is kept under its own tag as well, so asking for the release by the
+#tag that probe reported costs no second request
+test -s gj/tmp/github.acme_nested_.json
+test X"$(PATH="$(pwd)/c404:${PATH}" STATIC_RUN_HOME="$(pwd)/gj" ../../static-run.d/github locate acme/nested v3 | awk -F= '$1=="format"{print $2}')" = X"tar.gz"
+#a name two programs answer to is not resolved by picking one. With nobody to
+#ask it is refused and both are named, so the full name is one copy away
+static-run --yes twin >/dev/null 2>&1; test X"${?}" = X"127"
+test X"$(static-run --yes twin 2>&1 | grep -cE 'twins:(left|right)/twin')" = X"2"
+test X"$(static-run --yes right/twin 2>/dev/null)" = X"right"
+#with a terminal it asks, and the answer is remembered under the name typed,
+#so the second time there is nothing to ask and nobody needs to be there
+{ ! script --version 2>/dev/null | grep util-linux >/dev/null; } || test X"$(printf '2\ny\n' | STATIC_RUN_HOME="$(pwd)/tw" script -qec 'static-run twin' /dev/null 2>/dev/null | tr -d '\r' | awk 'NF {l = $NF} END {print l}')" = X"right"
+{ ! script --version 2>/dev/null | grep util-linux >/dev/null; } || test X"$(STATIC_RUN_HOME="$(pwd)/tw" static-run twin </dev/null 2>/dev/null)" = X"right"
+#--yes means do not ask before spending bytes, and never choose a program for
+#the user: even with a terminal there to ask on, the menu is not shown at all.
+#No answer is fed in: util-linux script waits two seconds on input the child
+#never reads, and a menu never shown is the whole claim. The refusal is checked
+#as well, so a script that failed outright cannot pass for a menu not shown
+tw2h="$(pwd)/tw2"; tw2out="none was guessed"
+{ ! script --version 2>/dev/null | grep util-linux >/dev/null; } || tw2out="$(STATIC_RUN_HOME="${tw2h}" script -qec 'static-run --yes twin' /dev/null </dev/null 2>/dev/null | tr -d '\r')"
+test X"$(printf "%s\n" "${tw2out}" | grep -c 'none was guessed')" = X"1"
+test X"$(printf "%s\n" "${tw2out}" | grep -c 'which one')" = X"0"
+#the aqua channel turns a name into a repository by reading a registry that
+#is yaml. A package may open with any of its keys; one that opened with name
+#was once merged into its neighbour, which is how nsc came out as someone
+#else's program. The index is also refused below a hundred names, so the
+#registry is padded to a believable size
+i=0; while [ ${i} -lt 120 ]; do printf '  - type: github_release\n    repo_owner: filler\n    repo_name: pkg%s\n' "${i}"; i=$((i+1)); done > filler.yaml
+printf '%s\n' 'packages:' '  - type: github_release' '    repo_owner: acme' '    repo_name: jqx' '    description: A JSON thing for tests' '  - name: other/nsc' '    type: github_release' '    repo_owner: other' '    repo_name: nsc-src' '    files:' '      - name: nsc' '  - type: github_release' '    repo_owner: acme' '    repo_name: ripgrepx' '    description: >-' '      searches' '      for text' '    version_constraint: "false"' '    version_overrides:' '      - version_constraint: semver("<= 0.1")' '        files:' '          - name: oldname' '      - version_constraint: "true"' '        files:' '          - name: rgx' '  - type: github_release' '    repo_owner: left' '    repo_name: dup' '    files:' '      - name: dupcmd # a comment yaml drops' '  - type: github_release' '    repo_owner: right' '    repo_name: dup' '    files:' '      - name: dupcmd' > reg.yaml
+cat filler.yaml >> reg.yaml
+STATIC_RUN_HOME="$(pwd)/aq" STATIC_RUN_AQUA_REGISTRY="$(pwd)/reg.yaml" ../../static-run.d/aqua index >/dev/null
+test X"$(awk -F'\t' '$1=="nsc" {print $2}' aq/index/aqua.tsv)" = X"other/nsc-src"
+test X"$(awk -F'\t' '$2=="acme/jqx" {n++} END {print n+0}' aq/index/aqua.tsv)" = X"1"
+#a command is what the current version calls it, not what an old one did
+test X"$(awk -F'\t' '$1=="rgx" {print $2}' aq/index/aqua.tsv)" = X"acme/ripgrepx"
+test X"$(awk -F'\t' '$1=="oldname" {n++} END {print n+0}' aq/index/aqua.tsv)" = X"0"
+#a comment after a value is not part of it
+test X"$(awk -F'\t' '$1=="dupcmd" {n++} END {print n+0}' aq/index/aqua.tsv)" = X"2"
+#what the channel answers about a name
+STATIC_RUN_HOME="$(pwd)/aq" ../../static-run.d/aqua probe nosuchname >/dev/null 2>&1; test X"${?}" = X"1"
+STATIC_RUN_HOME="$(pwd)/aq" ../../static-run.d/aqua probe dupcmd >/dev/null 2>&1; test X"${?}" = X"3"
+test X"$(STATIC_RUN_HOME="$(pwd)/aq" ../../static-run.d/aqua probe dupcmd | awk -F= '$1=="candidate"' | awk 'END {print NR}')" = X"2"
+STATIC_RUN_HOME="$(pwd)/noindex" ../../static-run.d/aqua probe jqx >/dev/null 2>&1; test X"${?}" = X"2"
+STATIC_RUN_HOME="$(pwd)/noindex" ../../static-run.d/aqua probe jqx | grep -- '--index-update' >/dev/null
+#searching reads names, repositories and descriptions, folded ones included
+test X"$(STATIC_RUN_HOME="$(pwd)/aq" ../../static-run.d/aqua search searches text | awk -F'\t' '{print $1}')" = X"aqua:acme/ripgrepx"
+#a registry this reader no longer understands does not replace an index that
+#works: every name would silently become "not there"
+printf '%s\n' 'packages: []' > broken.yaml
+STATIC_RUN_HOME="$(pwd)/aq" STATIC_RUN_AQUA_REGISTRY="$(pwd)/broken.yaml" ../../static-run.d/aqua index >/dev/null 2>&1; test X"${?}" = X"2"
+test X"$(awk -F'\t' '$1=="jqx" {print $2}' aq/index/aqua.tsv)" = X"acme/jqx"
+#and the whole chain with no network at all: the index names the repository,
+#the release is on disk, the artifact is a file here, and the line the user is
+#asked about names the owner and not only the word they typed
+mkdir -p aq/tmp
+printf '%s\n' '#!/bin/sh' 'printf "%s\n" "jqx ran"' > jqx-bin
+chmod 755 jqx-bin
+printf '{"tag_name":"1.0","assets":[{"name":"jqx-linux-x86_64","size":40,"browser_download_url":"%s"}]}' "$(pwd)/jqx-bin" > aq/tmp/github.acme_jqx_.json
+#paths are worked out first: under the runner's sh -x, a command
+#substitution nested in an assignment traces into whatever 2>&1 captures
+realch="$(cd ../.. && pwd)/static-run.d"; aqh="$(pwd)/aq"; c404="$(pwd)/c404"
+test X"$(PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${aqh}" static-run --yes jqx 2>/dev/null)" = X"jqx ran"
+PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${aqh}" static-run -n jqx | grep 'aqua:acme/jqx@1.0' >/dev/null
+test X"$(STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${aqh}" static-run jqx 2>&1)" = X"jqx ran"
 @end
 
 @begin{staticus}
