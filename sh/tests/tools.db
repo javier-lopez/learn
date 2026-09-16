@@ -657,6 +657,15 @@ static-run --yes nosuchchannel:x >/dev/null 2>&1; test X"${?}" = X"127"
 test X"$(static-run -n tiny | tail -1 | awk '{print $2}')" = X"alpha:tiny@1.0"
 test X"$(static-run -n tiny | tail -1 | awk '{print $4, $5, $6, $7}')" = X"nativo, aunque no el"
 test X"$(static-run --yes tiny 2>/dev/null | head -1)" = X"alpha"
+#channels.conf names the channels to ask, one a line, and one left out or
+#marked with ! is not asked. It sits beside channels/ and not in its place, so
+#placing something - which makes channels/boxed - still works with it there,
+#and it is still read once that directory exists
+mkdir -p confhome && printf '%s\n' '# the box only' '!alpha' 'boxed' > confhome/channels.conf
+test X"$(STATIC_RUN_HOME="$(pwd)/confhome" static-run -n tiny | tail -1 | awk '{print $2}')" = X"boxed:tiny@1.0"
+test X"$(STATIC_RUN_HOME="$(pwd)/confhome" static-run --yes tiny 2>/dev/null)" = X"boxed"
+test -d confhome/channels/boxed
+test X"$(STATIC_RUN_HOME="$(pwd)/confhome" static-run -n tiny | tail -1 | awk '{print $2}')" = X"boxed:tiny@1.0"
 #the arguments arrive whole, spaces and quotes included
 test X"$(static-run tiny 'dos palabras' 2>/dev/null | tail -1)" = X"dos palabras"
 test X"$(static-run tiny "con'comilla" 2>/dev/null | tail -1)"  = X"con'comilla"

@@ -182,7 +182,9 @@ _channels() {
     _channels__dir="$(_channels_dir)"
     [ -d "${_channels__dir}" ] || return 1
 
-    _channels__conf="${home}/channels"
+    #channels.conf and not channels: that name is the directory every channel
+    #keeps its things in, and a file there left nothing placeable
+    _channels__conf="${home}/channels.conf"
     [ -f "${_channels__conf}" ] || _channels__conf=""
 
     if [ -n "${_channels__conf}" ]; then
