@@ -26,8 +26,6 @@ _usage() {
     printf "%s\\n" "    http://wikipedia.org => open url in the default browser"
     printf "%s\\n" "    /path/image.png      => open image in the default image viewer"
     printf "%s\\n" "    3*5                  => execute and display arithmetic operation"
-    printf "%s\\n" "    15 usd to mxn        => execute and display money currency"
-    printf "%s\\n" "    :weather             => show current weather"
     printf "\\n"
     printf "%s\\n" "  -h, --help                show this help message and exit"
 }
@@ -39,92 +37,6 @@ _die() {
 
 _false() {
     return 1
-}
-
-_weather() {
-    command -v "wget" >/dev/null 2>&1 || return 1
-
-    #TODO 04-11-2015 12:53 >> add more weather apis
-    _weather_bing() {
-        _weather__bing_awk_prog='/<div class="b_focusTextLarge">/ {
-            gsub(/<[^>]*>/, " "); gsub(/&#176;/, "°");
-            gsub(/&#183;|<.*$|^[ \t]+|[ \t]+$/, ""); gsub(/ F /, "°F");
-            gsub(/ C /, "°C"); gsub(/[ \t]+/, " "); print $0}'
-        if command -v "perl" >/dev/null 2>&1; then
-            wget --tries=1 --timeout=3 -q -O- -U ''  \
-                'http://bing.com/search?q=weather' | \
-                awk "${_weather__bing_awk_prog}"   | \
-                perl -MHTML::Entities -pe 'decode_entities($_);'
-        else
-            wget --tries=1 --timeout=3 -q -O- -U ''  \
-                'http://bing.com/search?q=weather' | \
-                awk "${_weather__bing_awk_prog}"
-        fi
-    }
-
-    _weather_ask() {
-        _weather__ask_awk_prog='/<span class="sa_current_reading">/ || /, DIF / {
-            gsub(/<[^>]*>|^[ \t]+|[ \t]+$/, ""); gsub(/&#186;/, "°");
-            printf("%s / ", $0) }'
-        _weather__ask_result="$(wget --tries=1 --timeout=3 -q -O- -U '' \
-            'http://www.ask.com/web?q=weather' | awk "${_weather__ask_awk_prog}")"
-        printf "%s" "${_weather__ask_result% / }"
-    }
-
-    for api in bing ask; do
-        [ -z "${_weather__result}" ] && _weather__result="$(_weather_"${api}")" || break
-    done
-
-    printf "%s" "${_weather__result}"
-}
-
-_cconverter() {
-    [ -z "${1}" ] && return 1
-
-    #TODO 04-11-2015 12:53 >> add more currency apis
-    _cconverter_google() {
-        wget --tries=1 --timeout=2 -q -O- \
-            "http://www.google.com/finance/converter?a=${1}&from=${2}&to=${3}" \
-            2>/dev/null | sed '/res/!d;s/<[^>]*>//g'
-    }
-
-    _cconverter_yahoo() {
-        _cconverter__yahoo_rate="$(wget --tries=1 --timeout=2 -q -O- \
-            "http://download.finance.yahoo.com/d/quotes.csv?s=${2}${3}=X&f=b&e=.csv" 2>/dev/null)"
-        if [ -z "${_cconverter__yahoo_rate}" ] || [ "${_cconverter__yahoo_rate}" = "N/A"  ]; then
-            return 1
-        fi
-        _cconverter__yahoo_result="$(awk "BEGIN {printf(\"%.4f\", ${1}*${_cconverter__yahoo_rate}); exit}")"
-        printf "%s\\n" "${1} ${2} = ${_cconverter__yahoo_result%.0000} ${3}"
-    }
-
-    _cconverter_webservicex() {
-        _cconverter__webservicex_rate="$(wget --tries=1 --timeout=2 -q -O- \
-            "http://www.webservicex.net/CurrencyConvertor.asmx/ConversionRate?FromCurrency=${2}&ToCurrency=${3}" | \
-            awk 'END {gsub(/<[^>]*>/, "");print $0}')"
-        [ -z "${_cconverter__webservicex_rate}" ] && return 1
-        _cconverter__webservicex_result="$(awk "BEGIN {printf(\"%.4f\", ${1}*${_cconverter__webservicex_rate}); exit}")"
-        printf "%s\\n" "${1} ${2} = ${_cconverter__webservicex_result%.0000} ${3}"
-    }
-
-    for _cconverter__1st_word; do break; done
-    case "${_cconverter__1st_word}" in #if invalid input use 1 as base
-        *[!0-9.,]*) _cconverter__input="$(printf "%s\\n" "${@}" | sed "s:${_cconverter__1st_word}:1:")" ;;
-        *) _cconverter__input="${@}" ;;
-    esac
-
-    _cconverter__input="$(printf "%s\\n" "${_cconverter__input}" | \
-        tr 'abcdefghijklmnopqrstuvwxyz' 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' | sed 's:TO::')"
-
-    for api in google yahoo webservicex; do
-        if [ -z "${_cconverter__result}" ]; then
-           _cconverter__result="$(_cconverter_"${api}" ${_cconverter__input})"
-       else
-           break
-       fi
-    done
-
-    printf "%s\\n" "${_cconverter__result}"
 }
 
 _flip() {
@@ -251,10 +163,6 @@ _fuck_command_not_found() {
     _fucking__1st_word="${_fucking__cmd%% *}"
     _fucking__1st_word="${_fucking__1st_word%:*}"
 
-    _fucking__cmd_len="0"; for _fucking__word in ${_fucking__cmd}; do
-        _fucking__cmd_len="$((_fucking__cmd_len+1))"
-    done
-
     case "${_fucking__cmd}" in
         *:g|*:go|*:goo|*:goog|*:googl|*:google)
             _fucking__query="$(_encode_search "${_fucking__cmd%:*}")"
@@ -273,43 +181,6 @@ _fuck_command_not_found() {
         #execute isn't suppose to be used by users
         #it's declared for internal redirection
         *:execute) _exec "${_fucking__cmd%:*}" ;;
-
-        :w|:we|:wea|:weat|:weath|:weathe|:weather|weather)
-            if [ -x "$(command -v "weather" 2>/dev/null)" ]; then
-                exec weather
-            else
-                _fucking__weather="$(_weather)"
-                _fucking__status="${?}"
-
-                if [ -z "${_fucking__weather}" ]; then
-                    _fucking__weather="Weather api timeout"
-                fi
-
-                printf "%s\\n" "${_fucking__weather}"
-                return "${_fucking__status}"
-            fi
-            ;;
-
-        #money currency converter
-        *" "[tT][oO]" "*)
-           if [ X"${_fucking__cmd_len}" != X"4" ]; then
-               _fuck_command_not_found "${_fucking__cmd}:execute"
-           fi
-
-           if [ -x "$(command -v "cconverter" 2>/dev/null)" ]; then
-               exec cconverter "${_fucking__cmd}"
-           else
-               _fucking__currency="$(_cconverter ${_fucking__cmd})"
-               _fucking__status="${?}"
-
-               if [ -z "${_fucking__currency}" ]; then
-                   _fucking__currency="Money currency api timeout"
-               fi
-
-               printf "%s\\n" "${_fucking__currency}"
-               return  "${_fucking__status:-1}"
-           fi
-           ;;
 
         #arithmetic operations, first character is a number or -,+,(
         #or a math function()

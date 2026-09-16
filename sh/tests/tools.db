@@ -99,12 +99,6 @@ rm -rf outputfile
 xclip -selection clipboard -i /dev/null
 @end
 
-#cconverter is GONE. It asked three currency APIs and all three are dead:
-#Google's finance converter, Yahoo's quotes.csv and webservicex answer nothing,
-#nothing and 403. Its job lives on inside fuck, which carries its own copy and
-#reaches for the same dead hosts - fixing that means finding one live API, and
-#the tests come back written against whatever it answers
-
 @begin{commacd}
 #commacd is sourced, never run: ',' is an alias over a function, and a command
 #that changes your directory cannot be a program. The runner is /bin/sh, whose
