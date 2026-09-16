@@ -1,0 +1,7 @@
+#!/bin/sh
+#a channel that has nothing to offer, which is the common case and must cost
+#the resolution nothing but a question
+case "${1}" in
+    meta) printf "%s\n" "kind=artifact" "confines=no" "describes=self" ;;
+    *)    exit 1 ;;
+esac

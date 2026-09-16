@@ -1,0 +1,214 @@
+#!/bin/sh
+#description: static-run channel - a program published as a release asset on github
+#usage: github meta | github probe OWNER/REPO [VER] | github locate OWNER/REPO VER
+
+#this is a channel, not a command. It never downloads and never installs: it
+#answers what a package is called, what it weighs and where it lives, and the
+#resolver does the fetching, the digest and the verification once, for all
+#channels, which is the only way the badge can mean the same thing everywhere
+
+API="https://api.github.com/repos"
+
+_retrieve() {
+    if command -v "curl" >/dev/null 2>&1; then
+        curl -fsSL -H "Accept: application/vnd.github+json" "${1}"
+    elif command -v "wget" >/dev/null 2>&1; then
+        wget -q -O- --header="Accept: application/vnd.github+json" "${1}"
+    else
+        return 1
+    fi
+}
+
+_cache_file() {
+    #probe and locate ask the same question a second apart, and the rate limit
+    #for an unauthenticated caller is sixty questions an hour
+    printf "%s\\n" "${STATIC_RUN_HOME:-/tmp}/tmp/github.$(printf "%s\\n" "${1}@${2}" | tr '/@' '__').json"
+}
+
+_release() {
+    #$1 => owner/repo, $2 => version or empty for the latest one
+    _release__f="$(_cache_file "${1}" "${2}")"
+    [ -s "${_release__f}" ] && { cat "${_release__f}"; return 0; }
+
+    if [ -z "${2}" ]; then
+        _release__url="${API}/${1}/releases/latest"
+    else
+        _release__url="${API}/${1}/releases/tags/${2}"
+    fi
+
+    _release__body="$(_retrieve "${_release__url}")" || return 1
+    case "${_release__body}" in
+        *'"assets"'*) ;;
+        *) return 1 ;;
+    esac
+
+    mkdir -p "${_release__f%/*}" 2>/dev/null
+    printf "%s\\n" "${_release__body}" > "${_release__f}" 2>/dev/null
+    printf "%s\\n" "${_release__body}"
+}
+
+_platform() {
+    case "$(uname -m 2>/dev/null)" in
+        x86_64|amd64) printf "%s\\n" "x86_64|amd64|x64" ;;
+        aarch64|arm64) printf "%s\\n" "aarch64|arm64" ;;
+        *) printf "%s\\n" "$(uname -m 2>/dev/null)" ;;
+    esac
+}
+
+_flatten() {
+    #one json field per line, whatever the sender chose to do with whitespace.
+    #The rules below used to read the api's own formatting, which is a promise
+    #nobody made: the same answer compacted returned nothing at all, and said
+    #it had succeeded. Structure is decided by the punctuation that is outside
+    #a string, so that is what is looked at
+    awk '
+        {
+            line = $0; n = length(line); out = ""
+            for (i = 1; i <= n; i++) {
+                c = substr(line, i, 1)
+                if (instr) {
+                    out = out c
+                    if (esc) esc = 0
+                    else if (c == "\\") esc = 1
+                    else if (c == "\"") instr = 0
+                } else if (c == "\"") {
+                    instr = 1; out = out c
+                } else if (c == "," || c == "{" || c == "}" || c == "[" || c == "]") {
+                    if (out ~ /[^ \t]/) print out
+                    out = ""
+                } else {
+                    out = out c
+                }
+            }
+            if (out ~ /[^ \t]/) print out
+        }'
+}
+
+_assets() {
+    #one line per usable asset: name, size, url. A field is read as it goes
+    #and the three are emitted when the last of them arrives
+    _flatten | awk -v arches="$(_platform)" '
+        /"name":/ {
+            line = $0; sub(/^[^:]*:[[:space:]]*"/, "", line); sub(/",?$/, "", line)
+            name = line; size = ""; url = ""
+        }
+        /"size":/ {
+            line = $0; sub(/^[^:]*:[[:space:]]*/, "", line); sub(/,$/, "", line)
+            size = line
+        }
+        /"browser_download_url":/ {
+            line = $0; sub(/^[^:]*:[[:space:]]*"/, "", line); sub(/",?$/, "", line)
+            url = line
+            if (name != "" && size != "" && usable(name)) printf("%s\t%s\t%s\n", name, size, url)
+            name = ""; size = ""; url = ""
+        }
+        function usable(n,   lower, n_arches, a, i) {
+            lower = tolower(n)
+            #signatures, checksums and distribution packages are not programs
+            if (lower ~ /\.(sha[0-9]*|sha[0-9]*sum|md5|asc|sig|pem|sbom|json|txt|deb|rpm|apk|pkg|msi|dmg|exe)$/) return 0
+            if (lower ~ /(darwin|apple|macos|windows|freebsd|netbsd|openbsd|android)/) return 0
+            #the parentheses are load bearing: awk binds ~ tighter than ==,
+            #so "lower ~ /re/ == 0" matches lower against the 0 or 1 that
+            #($0 ~ /re/) produced, and a file with a 1 in its name passes a
+            #test it was meant to fail
+            if (!(lower ~ /(linux|musl|gnu)/)) return 0
+            n_arches = split(arches, a, "|")
+            for (i = 1; i <= n_arches; i++) if (index(lower, tolower(a[i]))) return 1
+            return 0
+        }'
+}
+
+_best() {
+    #musl before glibc, because a program that carries its own libc is the
+    #one that will still start on a machine this resolver knows nothing about
+    awk -F'\t' '
+        { score = ($1 ~ /musl/) ? 0 : 1
+          if (best == "" || score < best_score) { best = $0; best_score = score } }
+        END { if (best != "") print best }'
+}
+
+_version_of() {
+    awk -F'"' '/"tag_name"/ {print $4; exit}'
+}
+
+_format_of() {
+    case "$(printf "%s\\n" "${1}" | tr 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 'abcdefghijklmnopqrstuvwxyz')" in
+        *.tar.gz|*.tgz)   printf "%s\\n" "tar.gz"  ;;
+        *.tar.xz|*.txz)   printf "%s\\n" "tar.xz"  ;;
+        *.tar.bz2|*.tbz2) printf "%s\\n" "tar.bz2" ;;
+        *.tar)            printf "%s\\n" "tar"     ;;
+        *.zip)            printf "%s\\n" "zip"     ;;
+        *)                printf "%s\\n" "raw"     ;;
+    esac
+}
+
+case "${1}" in
+    meta)
+        #both spellings are fine and the channel says so itself, rather than
+        #the resolver keeping a table of other people's nicknames
+        printf "%s\\n" "aliases=gh"
+        printf "%s\\n" "kind=artifact"
+        printf "%s\\n" "confines=no"
+        printf "%s\\n" "describes=self"
+        exit 0
+        ;;
+
+    probe)
+        [ -z "${2}" ] && exit 1
+        #this channel identifies a package as owner/repo and nothing else. A
+        #bare name is a question for a catalog, and inventing an owner for it
+        #would be writing the package recipe this design exists to avoid
+        case "${2}" in
+            */*) ;;
+              *) exit 1 ;;
+        esac
+
+        body="$(_release "${2}" "${3}")" || exit 1
+        asset="$(printf "%s\\n" "${body}" | _assets | _best)"
+        #nothing to serve is an answer of 1. Saying 0 with nothing to show for
+        #it is how a channel that has quietly broken passes for one that works
+        [ -z "${asset}" ] && exit 1
+
+        version="$(printf "%s\\n" "${body}" | _flatten | _version_of)"
+        [ -z "${version}" ] && exit 1
+        printf "version=%s\\n" "${version}"
+        printf "bytes=%s\\n"   "$(printf "%s\\n" "${asset}" | awk -F'\t' '{print $2}')"
+        #github publishes no checksum of its own; whether one exists is a
+        #question about this project, and locate is where it gets asked
+        printf "badge=%s\\n"   "none"
+        exit 0
+        ;;
+
+    locate)
+        [ -z "${2}" ] && exit 1
+        body="$(_release "${2}" "${3}")" || exit 1
+        asset="$(printf "%s\\n" "${body}" | _assets | _best)"
+        [ -z "${asset}" ] && exit 1
+
+        name="$(printf "%s\\n" "${asset}" | awk -F'\t' '{print $1}')"
+        url="$(printf  "%s\\n" "${asset}" | awk -F'\t' '{print $3}')"
+
+        printf "url=%s\\n"    "${url}"
+        printf "format=%s\\n" "$(_format_of "${name}")"
+        printf "bin=%s\\n"    "${2##*/}"
+
+        #a checksum published next to the artifact is the only thing that can
+        #turn the badge from none into verified, so it is looked for by the
+        #two names projects actually use
+        sums="$(printf "%s\\n" "${body}" | _flatten | awk -F'"' '
+            /"browser_download_url"/ {
+                u = $4; l = tolower(u)
+                if (l ~ /(checksums?\.txt|sha256sums?(\.txt)?|\.sha256)$/) print u
+            }' | awk -v n="${name}" '$0 ~ n".sha256$" {print; found=1; exit} {last=$0} END {if (!found && last != "") print last}')"
+
+        if [ -n "${sums}" ]; then
+            sha="$(_retrieve "${sums}" 2>/dev/null | awk -v n="${name}" '
+                NF == 1 && length($1) == 64 {print $1; exit}
+                $2 ~ ("(^|/|\\*)" n "$") {print $1; exit}')"
+            [ -n "${sha}" ] && printf "sha256=%s\\n" "${sha}"
+        fi
+        exit 0
+        ;;
+
+    *) printf "%s\\n" "usage: ${0##*/} meta|probe|locate" >&2; exit 1 ;;
+esac

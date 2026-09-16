@@ -1,0 +1,20 @@
+#!/bin/sh
+#a channel that confines, and that is deliberately far cheaper than the one
+#that does not: two hundred times fewer bytes, and it still has to lose
+
+_program() {
+    mkdir -p "${STATIC_RUN_HOME}/tmp" 2>/dev/null
+    printf "%s\n" '#!/bin/sh' 'printf "%s\n" "boxed"' \
+        > "${STATIC_RUN_HOME}/tmp/boxed-tiny"
+    printf "%s\n" "${STATIC_RUN_HOME}/tmp/boxed-tiny"
+}
+
+case "${1}" in
+    meta)   printf "%s\n" "kind=confinement" "confines=yes" "describes=self" ;;
+    probe)  [ X"${2}" = X"tiny" ] || exit 1
+            printf "%s\n" "version=1.0" "bytes=10" "badge=verified" ;;
+    locate) [ X"${2}" = X"tiny" ] || exit 1
+            printf "url=%s\n" "$(_program)"
+            printf "%s\n" "format=raw" "bin=tiny" ;;
+    *) exit 1 ;;
+esac

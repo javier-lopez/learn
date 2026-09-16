@@ -1,0 +1,699 @@
+#!/bin/sh
+#description: run a command that is not installed, through whatever channel can reach it
+#usage: static-run [option]... [channel:]package[@version] [argument]...
+
+#example:
+#$ static-run github:jqlang/jq --version
+#static-run: jq 1.8.2 -> github:jqlang/jq  2.2 MB  [verified]  native
+#jq-1.8.2
+
+VERSION="2026.09.16-03:40"
+SRC_URL="https://raw.githubusercontent.com/javier-lopez/learn/master/sh/tools/"
+
+_usage() {
+    printf "%s\\n" "Usage: ${PROGNAME} [OPTION]... [CHANNEL:]PACKAGE[@VERSION] [ARGUMENT]..."
+    printf "%s\\n" "Run a command this machine does not have installed."
+    printf "\\n"
+    printf "%b\\n" "  -n, --dry-run        show the path that would be taken, take none"
+    printf "%b\\n" "  -l, --list           list what is already here"
+    printf "%b\\n" "  -b, --bin [name]     the program inside the artifact, when it differs"
+    printf "%b\\n" "  -p, --purge [spec]   remove one placement, or everything"
+    printf "%b\\n" "  -y, --yes            do not ask before spending bytes"
+    printf "%b\\n" "  -L, --latest         resolve again instead of reusing the cached answer"
+    printf "%b\\n" "  -e, --ephemeral      use a throwaway root and remove it on exit"
+    printf "%b\\n" "  -U, --update         update this program to latest version"
+    printf "%s\\n" "  -V, --version        display version"
+    printf "%b\\n" "  -v, --verbose        turn on verbose mode"
+    printf "%b\\n" "  -q, --quiet          suppress non-error messages"
+    printf "%b\\n" "  -h, --help           show this message and exit"
+}
+
+_die() {
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
+}
+
+#every message this tool makes about itself goes to stderr, so that a program
+#it runs owns stdout completely and a pipeline reading from it sees only data
+_say() {
+    [ -n "${quiet}" ] && return 0
+    printf "%s\\n" "${*}" >&2
+}
+
+_verbose() {
+    [ -z "${verbose}" ] && return 0
+    printf "%s\\n" "${*}" >&2
+}
+
+_retriever() {
+    #$1 => url, $2 => destination file, absent means stdout
+    if [ -z "${retriever_bin}" ]; then
+        if command -v "curl" >/dev/null 2>&1; then
+            retriever_bin="curl"
+        elif command -v "wget" >/dev/null 2>&1; then
+            retriever_bin="wget"
+        else
+            printf "%s\\n" "${PROGNAME}: install either 'curl' or 'wget'" >&2
+            return 1
+        fi
+    fi
+
+    #no -k and no --no-check-certificate here, on purpose: this fetches
+    #something that is about to be executed, so a certificate that does not
+    #check out is the one moment to stop rather than to carry on
+    #a location on this machine is copied rather than requested. It is what
+    #lets a channel serve from a mirror that is already mounted, and what lets
+    #the tests exercise everything below without a network
+    case "${1}" in
+        file://*|/*|./*)
+            _retriever__src="${1#file://}"
+            [ -z "${2}" ] && { cat "${_retriever__src}"; return "${?}"; }
+            cp "${_retriever__src}" "${2}" 2>/dev/null
+            return "${?}" ;;
+    esac
+
+    case "${retriever_bin}" in
+        curl) [ -z "${2}" ] && { curl -fsSL "${1}"; return "${?}"; }
+              curl -fsSL -o "${2}" "${1}" ;;
+        wget) [ -z "${2}" ] && { wget -q -O- "${1}"; return "${?}"; }
+              wget -q -O "${2}" "${1}" ;;
+    esac
+}
+
+_digest() {
+    #the name of a thing is what is inside it, so that two channels serving
+    #the same bytes land in the same place and an interrupted download cannot
+    #be mistaken for a finished one
+    [ -f "${1}" ] || return 1
+
+    if command -v "sha256sum" >/dev/null 2>&1; then
+        sha256sum "${1}" | awk '{print $1; exit}'
+    elif command -v "shasum" >/dev/null 2>&1; then
+        shasum -a 256 "${1}" | awk '{print $1; exit}'
+    elif command -v "openssl" >/dev/null 2>&1; then
+        openssl dgst -sha256 "${1}" | awk '{print $NF; exit}'
+    else
+        return 1
+    fi
+}
+
+_human() {
+    #bytes as the user reads them, and a dash when the catalog did not say
+    case "${1}" in
+        ''|-|*[!0-9]*) printf "%s" "-"; return 0 ;;
+    esac
+    awk -v b="${1}" 'BEGIN {
+        if (b < 1024)        { printf("%d B", b) }
+        else if (b < 1048576){ printf("%.1f KB", b/1024) }
+        else                 { printf("%.1f MB", b/1048576) }
+    }'
+}
+
+_mkdir_p() {
+    [ -z "${1}" ] && return 1
+    [ -d "${1}" ] && return 0
+    mkdir -p "${1}" 2>/dev/null
+}
+
+_realdir() {
+    #where this file really lives, which is not where it was called from: the
+    #plugin manager exposes every tool as a link in a directory on the PATH,
+    #so ${0%/*} is that directory and the channels are not next to it
+    _realdir__path="${1}"
+    _realdir__hops="0"
+    while [ -L "${_realdir__path}" ] && [ "${_realdir__hops}" -lt "16" ]; do
+        _realdir__link="$(readlink "${_realdir__path}" 2>/dev/null)" || break
+        case "${_realdir__link}" in
+            /*) _realdir__path="${_realdir__link}" ;;
+             *) _realdir__path="${_realdir__path%/*}/${_realdir__link}" ;;
+        esac
+        _realdir__hops="$((${_realdir__hops} + 1))"
+    done
+    case "${_realdir__path}" in
+        */*) printf "%s\\n" "${_realdir__path%/*}" ;;
+          *) printf "%s\\n" "." ;;
+    esac
+}
+
+###############################################################################
+################################### layout ####################################
+###############################################################################
+
+_home() {
+    if [ -n "${STATIC_RUN_HOME}" ]; then
+        printf "%s\\n" "${STATIC_RUN_HOME}"
+    elif [ -n "${XDG_CACHE_HOME}" ]; then
+        printf "%s\\n" "${XDG_CACHE_HOME}/static-run"
+    else
+        printf "%s\\n" "${HOME}/.cache/static-run"
+    fi
+}
+
+_channels_dir() {
+    #an environment variable replaces the directory outright, which is how the
+    #tests hand this program channels that answer without a network
+    [ -n "${STATIC_RUN_CHANNELS}" ] && { printf "%s\\n" "${STATIC_RUN_CHANNELS}"; return 0; }
+    #beside the tools directory and not inside it: the test runner lists every
+    #file under tools as a command, and a channel is not one
+    printf "%s\\n" "$(_realdir "${0}")/../${PROGNAME}.d"
+}
+
+_channels() {
+    #order comes from the configuration file when there is one, and from the
+    #directory otherwise. '#' comments a line and '!' turns a channel off,
+    #which is the exclusion convention the rest of this setup already uses
+    _channels__dir="$(_channels_dir)"
+    [ -d "${_channels__dir}" ] || return 1
+
+    _channels__conf="${home}/channels"
+    [ -f "${_channels__conf}" ] || _channels__conf=""
+
+    if [ -n "${_channels__conf}" ]; then
+        while read -r _channels__line; do
+            case "${_channels__line}" in
+                ''|'#'*|'!'*) continue ;;
+            esac
+            [ -x "${_channels__dir}/${_channels__line}" ] && \
+                printf "%s\\n" "${_channels__line}"
+        done < "${_channels__conf}"
+    else
+        for _channels__f in "${_channels__dir}"/*; do
+            [ -f "${_channels__f}" ] || continue
+            [ -x "${_channels__f}" ] || continue
+            printf "%s\\n" "${_channels__f##*/}"
+        done
+    fi
+}
+
+_channel_by_alias() {
+    #a name that is not a file may still be a name some channel answers to.
+    #The channel declares its own aliases, so the resolver keeps no table of
+    #other people's nicknames, and this is only asked when the plain name
+    #missed, so the ordinary path pays nothing for it
+    for _cba__c in $(_channels); do
+        _cba__hit="$("$(_channels_dir)/${_cba__c}" meta 2>/dev/null | \
+            awk -F= -v want="${1}" '$1 == "aliases" {
+                n = split($2, a, ",")
+                for (i = 1; i <= n; i++) if (a[i] == want) { print "1"; exit }
+            }')"
+        [ -n "${_cba__hit}" ] && { printf "%s\\n" "${_cba__c}"; return 0; }
+    done
+    return 1
+}
+
+_channel_meta() {
+    #$1 => channel, $2 => key. A channel that says nothing is an artifact
+    #channel that confines nothing and describes itself, which is the common
+    #case and the one worth not having to write down
+    _channel_meta__value="$("$(_channels_dir)/${1}" meta 2>/dev/null | \
+        awk -F= -v k="${2}" '$1 == k {print $2; exit}')"
+
+    if [ -z "${_channel_meta__value}" ]; then
+        case "${2}" in
+            kind)      _channel_meta__value="artifact" ;;
+            confines)  _channel_meta__value="no"       ;;
+            describes) _channel_meta__value="self"     ;;
+        esac
+    fi
+    printf "%s\\n" "${_channel_meta__value}"
+}
+
+###############################################################################
+#################################### spec #####################################
+###############################################################################
+
+#a spec is (catalog, identifier, version constraint). A bare name is a spec
+#with the first two thirds missing, and this program does not invent them
+_spec_channel() {
+    case "${1}" in
+        [a-z0-9]*:*)
+            _spec_channel__c="${1%%:*}"
+            case "${_spec_channel__c}" in
+                *[!a-z0-9-]*) printf "%s\\n" "" ;;
+                           *) printf "%s\\n" "${_spec_channel__c}" ;;
+            esac ;;
+        *) printf "%s\\n" "" ;;
+    esac
+}
+
+_spec_package() {
+    _spec_package__p="${1}"
+    case "$(_spec_channel "${1}")" in
+        ?*) _spec_package__p="${_spec_package__p#*:}" ;;
+    esac
+    printf "%s\\n" "${_spec_package__p%%@*}"
+}
+
+_spec_version() {
+    case "${1}" in
+        *@*) printf "%s\\n" "${1##*@}" ;;
+          *) printf "%s\\n" "" ;;
+    esac
+}
+
+###############################################################################
+################################## resolution #################################
+###############################################################################
+
+_probe_all() {
+    #$1 => package, $2 => version, $3 => channel or empty for all of them.
+    #One line per candidate, already carrying the sort key: a path is cheaper
+    #than another by class first, then by the bytes still missing, then by
+    #hops. Class before bytes is the whole point - no download saving buys
+    #being put inside a container
+    _probe_all__pkg="${1}"; _probe_all__ver="${2}"; _probe_all__only="${3}"
+
+    for _probe_all__c in $(_channels); do
+        [ -n "${_probe_all__only}" ] && \
+            [ X"${_probe_all__only}" != X"${_probe_all__c}" ] && continue
+
+        _probe_all__out="$("$(_channels_dir)/${_probe_all__c}" probe \
+            "${_probe_all__pkg}" "${_probe_all__ver}" 2>/dev/null)" || continue
+
+        _probe_all__v="$(printf "%s\\n" "${_probe_all__out}" | awk -F= '$1=="version"{print $2; exit}')"
+        _probe_all__b="$(printf "%s\\n" "${_probe_all__out}" | awk -F= '$1=="bytes"{print $2; exit}')"
+        _probe_all__g="$(printf "%s\\n" "${_probe_all__out}" | awk -F= '$1=="badge"{print $2; exit}')"
+        [ -z "${_probe_all__v}" ] && continue
+        [ -z "${_probe_all__g}" ] && _probe_all__g="none"
+
+        _probe_all__conf="$(_channel_meta "${_probe_all__c}" confines)"
+        _probe_all__class="0"
+        [ X"${_probe_all__conf}" = X"yes" ] && _probe_all__class="1"
+
+        #marginal bytes: what is already placed costs nothing to place again
+        _probe_all__marginal="${_probe_all__b}"
+        [ -e "${home}/by/${_probe_all__c}/${_probe_all__pkg}/${_probe_all__v}" ] && \
+            _probe_all__marginal="0"
+
+        #a size the catalog did not announce sorts last within its class
+        case "${_probe_all__marginal}" in
+            ''|*[!0-9]*) _probe_all__key="99999999999999" ;;
+                      *) _probe_all__key="$(awk -v b="${_probe_all__marginal}" \
+                             'BEGIN {printf("%014d", b)}')" ;;
+        esac
+
+        printf "%s %s %s %s %s %s %s\\n" \
+            "${_probe_all__class}${_probe_all__key}0" "${_probe_all__c}" \
+            "${_probe_all__v}" "${_probe_all__b}" "${_probe_all__g}" \
+            "${_probe_all__conf}" "$(_channel_meta "${_probe_all__c}" describes)"
+    done | sort
+}
+
+_confirm() {
+    #the question goes to the terminal and not to stdin, because stdin belongs
+    #to the program being resolved: 'printf data | jq .' has to keep its data
+    [ -n "${assume_yes}" ] && return 0
+
+    if [ -r "/dev/tty" ] && [ -w "/dev/tty" ]; then
+        printf "%s" "${1} [y/N] " > /dev/tty
+        read -r _confirm__answer < /dev/tty || return 1
+        case "${_confirm__answer}" in
+            y|Y|s|S|yes|YES|si|SI) return 0 ;;
+            *) return 1 ;;
+        esac
+    fi
+
+    #no terminal to ask with. Spending bytes without being able to say so is
+    #the one thing this must not do, so it declines and says why
+    _say "${PROGNAME}: no terminal to ask on, and nothing was downloaded"
+    _say "${PROGNAME}: pass --yes if this is meant to run unattended"
+    return 1
+}
+
+_unpack() {
+    #$1 => artifact, $2 => format, $3 => destination directory
+    _mkdir_p "${3}" || return 1
+    case "${2}" in
+        tar.gz|tgz)  tar -xzf "${1}" -C "${3}" 2>/dev/null ;;
+        tar.xz|txz)  tar -xJf "${1}" -C "${3}" 2>/dev/null ;;
+        tar.bz2|tbz) tar -xjf "${1}" -C "${3}" 2>/dev/null ;;
+        tar)         tar -xf  "${1}" -C "${3}" 2>/dev/null ;;
+        zip)         command -v unzip >/dev/null 2>&1 || return 1
+                     unzip -qq -o "${1}" -d "${3}" 2>/dev/null ;;
+        raw|*)       cp "${1}" "${3}/${4:-program}" && chmod 755 "${3}/${4:-program}" ;;
+    esac
+}
+
+_find_program() {
+    #$1 => store directory, $2 => name asked for. A tarball puts its program
+    #somewhere of its choosing, so it is looked for rather than assumed
+    [ -x "${1}/${2}" ] && { printf "%s\\n" "${1}/${2}"; return 0; }
+
+    _find_program__hit="$(find "${1}" -type f -name "${2}" -perm -u+x 2>/dev/null | head -1)"
+    [ -n "${_find_program__hit}" ] && { printf "%s\\n" "${_find_program__hit}"; return 0; }
+
+    #exactly one executable and no ambiguity about which one it is
+    _find_program__all="$(find "${1}" -type f -perm -u+x 2>/dev/null)"
+    if [ X"$(printf "%s\\n" "${_find_program__all}" | awk 'NF{n++} END{print n+0}')" = X"1" ]; then
+        printf "%s\\n" "${_find_program__all}"
+        return 0
+    fi
+    return 1
+}
+
+_place() {
+    #$1 => channel, $2 => package, $3 => version, $4 => what locate answered.
+    #Nothing is placed under its final name until its digest is known, so an
+    #interrupted download leaves rubbish in one sweepable place and never
+    #something that looks installed
+    _place__ch="${1}"; _place__pkg="${2}"; _place__ver="${3}"; _place__info="${4}"
+
+    _place__url="$(printf "%s\\n"    "${_place__info}" | awk -F= '$1=="url"{sub(/^url=/,""); print; exit}')"
+    _place__format="$(printf "%s\\n" "${_place__info}" | awk -F= '$1=="format"{print $2; exit}')"
+    _place__bin="$(printf "%s\\n"    "${_place__info}" | awk -F= '$1=="bin"{print $2; exit}')"
+    _place__sha="$(printf "%s\\n"    "${_place__info}" | awk -F= '$1=="sha256"{print $2; exit}')"
+    [ -z "${_place__url}" ] && return 1
+    [ -z "${_place__bin}" ] && _place__bin="${_place__pkg##*/}"
+
+    _mkdir_p "${home}/tmp" || return 1
+    _place__art="${home}/tmp/artifact.$$"
+    rm -rf "${_place__art}" "${_place__art}.d"
+
+    _verbose "${PROGNAME}: fetching ${_place__url}"
+    _retriever "${_place__url}" "${_place__art}" || {
+        rm -f "${_place__art}"
+        _say "${PROGNAME}: could not fetch ${_place__url}"
+        return 1
+    }
+
+    _place__digest="$(_digest "${_place__art}")" || {
+        rm -f "${_place__art}"
+        _say "${PROGNAME}: no sha256 program here, cannot name what was downloaded"
+        return 1
+    }
+
+    #verification is a badge and not a gate, with one exception: a checksum
+    #that was published and does not match is not a missing badge, it is a
+    #different file from the one the project meant to serve
+    if [ -n "${_place__sha}" ]; then
+        if [ X"${_place__sha}" != X"${_place__digest}" ]; then
+            rm -f "${_place__art}"
+            _say "${PROGNAME}: published checksum does not match what arrived"
+            _say "${PROGNAME}: wanted ${_place__sha}"
+            _say "${PROGNAME}: got    ${_place__digest}"
+            return 1
+        fi
+    fi
+
+    _place__store="${home}/store/${_place__digest}"
+    if [ ! -d "${_place__store}" ]; then
+        _unpack "${_place__art}" "${_place__format}" "${_place__art}.d" "${_place__bin}" || {
+            rm -rf "${_place__art}" "${_place__art}.d"
+            _say "${PROGNAME}: could not unpack the ${_place__format:-raw} artifact"
+            return 1
+        }
+        _mkdir_p "${home}/store" || return 1
+        mv "${_place__art}.d" "${_place__store}" 2>/dev/null || {
+            rm -rf "${_place__art}" "${_place__art}.d"
+            return 1
+        }
+    fi
+    rm -f "${_place__art}"
+
+    #the link tree keeps the model the proposal got right: removing a
+    #placement is removing a link, and the store is collected afterwards
+    _place__link="${home}/by/${_place__ch}/${_place__pkg}/${_place__ver}"
+    _mkdir_p "${_place__link%/*}" || return 1
+    rm -f "${_place__link}"
+    ln -s "${_place__store}" "${_place__link}" 2>/dev/null
+
+    _place__badge="none"
+    [ -n "${_place__sha}" ] && _place__badge="verified"
+    printf "%s\\t%s\\t%s\\t%s\\t%s\\n" "$(date +%Y-%m-%dT%H:%M:%S)" \
+        "${_place__ch}:${_place__pkg}@${_place__ver}" "${_place__digest}" \
+        "${_place__badge}" "${_place__url}" >> "${home}/inventory"
+
+    printf "%s\\n" "${_place__store}"
+}
+
+###############################################################################
+################################ cache ########################################
+###############################################################################
+
+_cache_key() {
+    printf "%s\\n" "${1}" | tr '/:@' '___'
+}
+
+_cache_get() {
+    _cache_get__f="${home}/cache/$(_cache_key "${1}")"
+    [ -f "${_cache_get__f}" ] || return 1
+    cat "${_cache_get__f}"
+}
+
+_cache_put() {
+    _mkdir_p "${home}/cache" || return 0
+    printf "%s\\n" "${2}" > "${home}/cache/$(_cache_key "${1}")"
+}
+
+###############################################################################
+############################## list and purge #################################
+###############################################################################
+
+_list() {
+    [ -d "${home}/by" ] || { _say "${PROGNAME}: nothing placed yet"; return 0; }
+
+    find "${home}/by" -type l 2>/dev/null | sort | while read -r _list__link; do
+        _list__rest="${_list__link#${home}/by/}"
+        _list__ch="${_list__rest%%/*}"
+        _list__rest="${_list__rest#*/}"
+        _list__ver="${_list__rest##*/}"
+        _list__pkg="${_list__rest%/*}"
+        [ -n "${1}" ] && case "${_list__pkg}" in *"${1}"*) ;; *) continue ;; esac
+
+        _list__store="$(readlink "${_list__link}" 2>/dev/null)"
+        _list__size="$(du -sk "${_list__store}" 2>/dev/null | awk '{print $1*1024; exit}')"
+        printf "  %-34s %10s  %s\\n" "${_list__ch}:${_list__pkg}@${_list__ver}" \
+            "$(_human "${_list__size}")" "$(_channel_meta "${_list__ch}" confines \
+                | awk '{print ($0=="yes") ? "confined" : "native"}')"
+    done
+}
+
+_purge() {
+    if [ -z "${1}" ]; then
+        _confirm "${PROGNAME}: remove ${home} entirely?" || return 1
+        rm -rf "${home}"
+        _say "${PROGNAME}: removed ${home}"
+        return 0
+    fi
+
+    _purge__ch="$(_spec_channel "${1}")"
+    _purge__pkg="$(_spec_package "${1}")"
+    _purge__ver="$(_spec_version "${1}")"
+    _purge__gone="0"
+
+    for _purge__link in $(find "${home}/by" -type l 2>/dev/null | sort); do
+        _purge__rest="${_purge__link#${home}/by/}"
+        _purge__lch="${_purge__rest%%/*}"
+        _purge__rest="${_purge__rest#*/}"
+        _purge__lver="${_purge__rest##*/}"
+        _purge__lpkg="${_purge__rest%/*}"
+
+        [ -n "${_purge__ch}"  ] && [ X"${_purge__ch}"  != X"${_purge__lch}"  ] && continue
+        [ -n "${_purge__ver}" ] && [ X"${_purge__ver}" != X"${_purge__lver}" ] && continue
+        [ X"${_purge__pkg}" != X"${_purge__lpkg}" ] && continue
+
+        rm -f "${_purge__link}"
+        _purge__gone="$((${_purge__gone} + 1))"
+    done
+
+    [ X"${_purge__gone}" = X"0" ] && { _say "${PROGNAME}: nothing matched '${1}'"; return 1; }
+
+    #a store entry outlives the link that named it only until nobody else
+    #points at it, which is what content addressing buys
+    _purge__kept="0"; _purge__freed="0"
+    for _purge__dir in "${home}"/store/*; do
+        [ -d "${_purge__dir}" ] || continue
+        if find "${home}/by" -type l -lname "${_purge__dir}" 2>/dev/null | \
+           awk 'NF{n++} END{exit !(n+0)}'; then
+            _purge__kept="$((${_purge__kept} + 1))"
+        else
+            _purge__size="$(du -sk "${_purge__dir}" 2>/dev/null | awk '{print $1*1024; exit}')"
+            _purge__freed="$((${_purge__freed} + ${_purge__size:-0}))"
+            rm -rf "${_purge__dir}"
+        fi
+    done
+
+    rm -f "${home}/cache/$(_cache_key "${1}")"
+    _say "${PROGNAME}: removed ${_purge__gone} placement(s), freed $(_human "${_purge__freed}"), ${_purge__kept} store entries still referenced"
+}
+
+###############################################################################
+################################### update ####################################
+###############################################################################
+
+_update() {
+    _u__current_file="$(cd "$(_realdir "${0}")" && pwd)/${PROGNAME}"
+
+    if [ -L "${_u__current_file}" ]; then
+        printf "%s\\n" "${PROGNAME}: ${_u__current_file} is a link, update its repository instead" >&2
+        return 1
+    fi
+
+    _u__remote="$(_retriever "${SRC_URL}${PROGNAME}")" || return 1
+    _u__remote_version="$(printf "%s\\n" "${_u__remote}" | \
+        awk -F'"' '/^VERSION=/ {print $2; exit}')"
+    [ -z "${_u__remote_version}" ] && return 1
+
+    if [ X"${_u__remote_version}" = X"${VERSION}" ]; then
+        _say "${PROGNAME} is already up to date"
+        return 0
+    fi
+
+    printf "%s\\n" "${_u__remote}" > "${_u__current_file}" || return 1
+    chmod 755 "${_u__current_file}"
+    _say "${PROGNAME}: updated to ${_u__remote_version}"
+}
+
+###############################################################################
+#################################### main #####################################
+###############################################################################
+
+PROGNAME="$(expr "${0}" : '.*/\([^/]*\)')"
+[ -z "${PROGNAME}" ] && PROGNAME="static-run"
+
+#options are read only until the spec appears. Everything after it belongs to
+#the program being run: 'static-run github:jqlang/jq --version' asks jq for
+#version, not this program for its own
+while [ "${#}" -gt "0" ]; do
+    case "${1}" in
+        -h|--help)      _usage; exit 0 ;;
+        -V|--version)   printf "%s\\n" "${PROGNAME} ${VERSION}"; exit 0 ;;
+        -v|--verbose)   verbose="1";   shift ;;
+        -q|--quiet)     quiet="1";     shift ;;
+        -n|--dry-run)   dry_run="1";   shift ;;
+        -y|--yes)       assume_yes="1"; shift ;;
+        -L|--latest)    latest="1";    shift ;;
+        -e|--ephemeral) ephemeral="1"; shift ;;
+        -l|--list)      list="1";      shift ;;
+        -b|--bin)       shift; bin_name="${1}"; [ -n "${1}" ] && shift ;;
+        --bin=*)        bin_name="${1#--bin=}"; shift ;;
+        -p|--purge)     purge="1";     shift ;;
+        -U|--update)    do_update="1"; shift ;;
+        --)             shift; break ;;
+        -*)             _die "${PROGNAME}: unrecognized option '${1}'" ;;
+        *)              break ;;
+    esac
+done
+
+if [ -n "${ephemeral}" ]; then
+    STATIC_RUN_HOME="$(mktemp -d 2>/dev/null)" || \
+        _die "${PROGNAME}: could not make a throwaway root"
+    export STATIC_RUN_HOME
+    trap 'rm -rf "${STATIC_RUN_HOME}"' EXIT HUP INT TERM
+fi
+
+home="$(_home)"
+export STATIC_RUN_HOME="${home}"
+
+[ -n "${do_update}" ] && { _update; exit "${?}"; }
+[ -n "${list}" ]      && { _list "${1}"; exit 0; }
+[ -n "${purge}" ]     && { _purge "${1}"; exit "${?}"; }
+
+[ -z "${1}" ] && _die "${PROGNAME}: nothing asked for"
+
+spec="${1}"; shift
+channel="$(_spec_channel "${spec}")"
+package="$(_spec_package "${spec}")"
+version="$(_spec_version "${spec}")"
+
+[ -z "${package}" ] && _die "${PROGNAME}: '${spec}' names no package"
+
+if [ -n "${channel}" ] && [ ! -x "$(_channels_dir)/${channel}" ]; then
+    channel="$(_channel_by_alias "${channel}")" || {
+        _say "${PROGNAME}: no channel called '$(_spec_channel "${spec}")'"
+        exit 127
+    }
+    #the spec is rewritten to the channel's real name, so that two spellings
+    #of the same request share one cached decision instead of racing to make
+    #two of them
+    spec="${channel}:${package}"
+    [ -n "${version}" ] && spec="${spec}@${version}"
+fi
+
+#the cheapest answer first: one that was already decided costs no network at
+#all, and the second run of a command has to be indistinguishable from having
+#it installed
+if [ -z "${latest}" ] && [ -z "${dry_run}" ]; then
+    cached="$(_cache_get "${spec}")" || cached=""
+    if [ -n "${cached}" ] && [ -d "${cached}" ]; then
+        program="$(_find_program "${cached}" "${bin_name:-${package##*/}}")" && \
+            exec "${program}" "${@}"
+    fi
+fi
+
+candidates="$(_probe_all "${package}" "${version}" "${channel}")"
+
+if [ -z "${candidates}" ]; then
+    #127 is the shell's word for "nothing ran", and the only status a caller
+    #can tell apart from a program that ran and failed
+    _say "${PROGNAME}: no channel provides '${package}'"
+    exit 127
+fi
+
+winner="$(printf "%s\\n" "${candidates}" | head -1)"
+w_channel="$(printf  "%s\\n" "${winner}" | awk '{print $2}')"
+w_version="$(printf  "%s\\n" "${winner}" | awk '{print $3}')"
+w_bytes="$(printf    "%s\\n" "${winner}" | awk '{print $4}')"
+w_badge="$(printf    "%s\\n" "${winner}" | awk '{print $5}')"
+w_confines="$(printf "%s\\n" "${winner}" | awk '{print $6}')"
+
+w_kind="native"
+[ X"${w_confines}" = X"yes" ] && w_kind="confined"
+
+if [ -n "${dry_run}" ]; then
+    #inspecting is the one time it is worth asking every candidate where its
+    #artifact lives, because that answer is also its badge, and a badge is
+    #most of what someone inspecting came to find out
+    printf "%s\\n" "${package##*/}"
+    cheapest="$(printf "%s\\n" "${candidates}" | awk '{print $4}' | \
+        awk 'BEGIN{m=""} /^[0-9]+$/ {if (m=="" || $1<m) m=$1} END{print m}')"
+
+    printf "%s\\n" "${candidates}" | while read -r d_key d_ch d_ver d_by d_bg d_cf d_de; do
+        d_kind="native"; [ X"${d_cf}" = X"yes" ] && d_kind="confined"
+        d_info="$("$(_channels_dir)/${d_ch}" locate "${package}" "${d_ver}" 2>/dev/null)"
+        case "${d_info}" in *'sha256='?*) d_bg="verified" ;; esac
+        d_mark=""
+        [ X"${d_ch}" = X"${w_channel}" ] && [ X"${d_ver}" = X"${w_version}" ] && d_mark="  <- elegido"
+        printf "  %-32s %10s  %-8s  [%s]%s\\n" \
+            "${d_ch}:${package}@${d_ver}" "$(_human "${d_by}")" "${d_kind}" "${d_bg}" "${d_mark}"
+    done
+
+    reason="${w_kind}"
+    [ X"${w_kind}" = X"native" ] && reason="nativo"
+    [ X"${w_kind}" = X"confined" ] && reason="confinado"
+    if [ X"${w_bytes}" = X"${cheapest}" ]; then
+        reason="${reason}, el más barato"
+    else
+        reason="${reason}, aunque no el más barato"
+    fi
+    printf "elegido: %s:%s@%s   motivo: %s\\n" "${w_channel}" "${package}" "${w_version}" "${reason}"
+    exit 0
+fi
+
+#asking where the artifact lives is also how its badge becomes known, and the
+#badge is part of what the user is being asked to agree to, so it happens
+#before the question and not after it
+info="$("$(_channels_dir)/${w_channel}" locate "${package}" "${w_version}" 2>/dev/null)"
+if [ -z "${info}" ]; then
+    _say "${PROGNAME}: ${w_channel} knows '${package}' but cannot say where it lives"
+    exit 127
+fi
+case "${info}" in
+    *'sha256='?*) w_badge="verified" ;;
+    *) w_badge="none" ;;
+esac
+
+_say "${PROGNAME}: ${package##*/} ${w_version} -> ${w_channel}:${package}  $(_human "${w_bytes}")  [${w_badge}]  ${w_kind}"
+
+if [ -z "$(_cache_get "${spec}")" ]; then
+    _confirm "${PROGNAME}: proceed?" || exit 127
+fi
+
+store="$(_place "${w_channel}" "${package}" "${w_version}" "${info}")" || exit 127
+program="$(_find_program "${store}" "${bin_name:-${package##*/}}")" || {
+    _say "${PROGNAME}: nothing executable called '${package##*/}' inside the artifact"
+    exit 127
+}
+
+_cache_put "${spec}" "${store}"
+exec "${program}" "${@}"

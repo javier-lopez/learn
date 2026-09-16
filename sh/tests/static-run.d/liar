@@ -1,0 +1,21 @@
+#!/bin/sh
+#a channel that publishes a checksum which does not match what it serves. The
+#badge never blocks, but a checksum that was published and does not match is
+#not a missing badge: it is a different file from the one meant to be served
+
+_program() {
+    mkdir -p "${STATIC_RUN_HOME}/tmp" 2>/dev/null
+    printf "%s\n" '#!/bin/sh' 'printf "%s\n" "liar"' > "${STATIC_RUN_HOME}/tmp/liar-x"
+    printf "%s\n" "${STATIC_RUN_HOME}/tmp/liar-x"
+}
+
+case "${1}" in
+    meta)   printf "%s\n" "kind=artifact" "confines=no" "describes=self" ;;
+    probe)  [ X"${2}" = X"x" ] || exit 1
+            printf "%s\n" "version=1.0" "bytes=10" "badge=verified" ;;
+    locate) [ X"${2}" = X"x" ] || exit 1
+            printf "url=%s\n" "$(_program)"
+            printf "%s\n" "format=raw" "bin=x" \
+                   "sha256=0000000000000000000000000000000000000000000000000000000000000000" ;;
+    *) exit 1 ;;
+esac

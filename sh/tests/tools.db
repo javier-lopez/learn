@@ -633,6 +633,80 @@ share-backup stop; test X"${?}"             = X"0"
 test ! -s /tmp/share-backup.lock
 @end
 
+@begin{static-run}
+static-run -h; test X"${?}"                        = X"0"
+static-run --help; test X"${?}"                    = X"0"
+static-run -V | grep "static-run" >/dev/null
+static-run >/dev/null 2>&1; test X"${?}"           = X"1"
+static-run --nonsense x >/dev/null 2>&1; test X"${?}" = X"1"
+#everything below answers without a network. That the channel directory is a
+#variable is the whole reason this block does not depend on anybody's uptime
+STATIC_RUN_CHANNELS="$(cd .. && pwd)/static-run.d"; export STATIC_RUN_CHANNELS
+STATIC_RUN_HOME="$(pwd)/home"; export STATIC_RUN_HOME
+#nothing to serve is 127 and nothing on stdout, so that a caller can tell
+#"nothing ran" from a program that ran and failed
+static-run --yes nobody-serves-this >/dev/null 2>&1; test X"${?}" = X"127"
+test X"$(static-run --yes nobody-serves-this 2>/dev/null)" = X""
+static-run --yes nosuchchannel:x >/dev/null 2>&1; test X"${?}" = X"127"
+#a native channel beats a confining one that is two hundred times cheaper and
+#carries a better badge: class comes before bytes, and no saving on the
+#download buys being put inside a box
+test X"$(static-run -n tiny | tail -1 | awk '{print $2}')" = X"alpha:tiny@1.0"
+test X"$(static-run -n tiny | tail -1 | awk '{print $4, $5, $6, $7}')" = X"nativo, aunque no el"
+test X"$(static-run --yes tiny 2>/dev/null | head -1)" = X"alpha"
+#the arguments arrive whole, spaces and quotes included
+test X"$(static-run tiny 'dos palabras' 2>/dev/null | tail -1)" = X"dos palabras"
+test X"$(static-run tiny "con'comilla" 2>/dev/null | tail -1)"  = X"con'comilla"
+#stdin belongs to the program being run and not to the resolver
+test X"$(printf "%s\n" 'POR EL PIPE' | static-run tiny --cat 2>/dev/null)" = X"POR EL PIPE"
+#and on the first resolution as well, which is the run that does the work and
+#the one a cached answer never reaches
+test X"$(printf "%s\n" 'SIN CACHE' | STATIC_RUN_HOME="$(pwd)/home2" static-run --yes tiny --cat 2>/dev/null)" = X"SIN CACHE"
+#and the status the program exits with is its own
+static-run tiny --code 3 >/dev/null 2>&1; test X"${?}" = X"3"
+#what was placed is named after what is inside it, and the link tree is what
+#a placement is: removing one is removing a link
+test -d home/store
+test -L home/by/alpha/tiny/1.0
+test -f home/inventory
+test X"$(awk '{print $2}' home/inventory)" = X"alpha:tiny@1.0"
+#the second run says nothing at all, which is the whole point of the cache
+test X"$(static-run tiny 2>&1 | head -1)" = X"alpha"
+#the badge is known before the question, because it is part of what is being
+#agreed to and not a detail discovered afterwards
+static-run --yes liar:x 2>&1 | grep "\[verified\]" >/dev/null
+#a checksum that was published and does not match is not a missing badge, it
+#is a different file from the one the project meant to serve
+static-run --yes liar:x >/dev/null 2>&1; test X"${?}" = X"127"
+test X"$(static-run --yes liar:x 2>&1 | awk '/checksum/ {print $2, $3; exit}')" = X"published checksum"
+test ! -L home/by/liar/x/1.0
+#purging takes the placement away and collects what nothing points at
+static-run --purge alpha:tiny >/dev/null 2>&1
+test ! -L home/by/alpha/tiny/1.0
+static-run --purge nothing-matches-this >/dev/null 2>&1; test X"${?}" = X"1"
+#a channel answers to the names it says it answers to, and the resolver keeps
+#no table of them. Both spellings reach the same channel and the answer names
+#the real one, so two spellings cannot become two cached decisions
+test X"$(static-run -n a:tiny | tail -1 | awk '{print $2}')"    = X"alpha:tiny@1.0"
+test X"$(static-run -n alfa:tiny | tail -1 | awk '{print $2}')" = X"alpha:tiny@1.0"
+static-run --yes nobodys-nickname:tiny >/dev/null 2>&1; test X"${?}" = X"127"
+test X"$(static-run --yes nobodys-nickname:tiny 2>&1)" = X"static-run: no channel called 'nobodys-nickname'"
+#the github channel reads a release the same way whatever the sender did with
+#whitespace. Its own cache is on disk, so this asks nothing of the network
+mkdir -p home/tmp
+printf '%s' '{"tag_name":"1.0","assets":[{"name":"thing-x86_64-linux.tar.gz","size":123,"browser_download_url":"http://example.invalid/t"}]}' > home/tmp/github.acme_thing_.json
+printf '%s\n' '{' '  "tag_name": "1.0",' '  "assets": [' '    {' '      "name": "thing-x86_64-linux.tar.gz",' '      "size": 123,' '      "browser_download_url": "http://example.invalid/t"' '    }' '  ]' '}' > home/tmp/github.acme_pretty_.json
+test X"$(STATIC_RUN_HOME="$(pwd)/home" ../../static-run.d/github probe acme/thing  | awk -F= '$1=="bytes"{print $2}')" = X"123"
+test X"$(STATIC_RUN_HOME="$(pwd)/home" ../../static-run.d/github probe acme/pretty | awk -F= '$1=="bytes"{print $2}')" = X"123"
+#and a release with nothing this machine can run answers 1, because saying 0
+#with nothing to show for it is how a channel that broke passes for one that works
+printf '%s' '{"tag_name":"1.0","assets":[{"name":"thing-windows.zip","size":9,"browser_download_url":"http://example.invalid/w"}]}' > home/tmp/github.acme_nix_.json
+STATIC_RUN_HOME="$(pwd)/home" ../../static-run.d/github probe acme/nix >/dev/null 2>&1; test X"${?}" = X"1"
+#a bare name is a question for a catalog, and this channel refuses to invent
+#an owner for one rather than write the package recipe this design avoids
+STATIC_RUN_HOME="$(pwd)/home" ../../static-run.d/github probe jq >/dev/null 2>&1; test X"${?}" = X"1"
+@end
+
 @begin{staticus}
 staticus -h; test X"${?}"                = X"0"
 staticus --help; test X"${?}"            = X"0"
