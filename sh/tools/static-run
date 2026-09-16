@@ -10,6 +10,10 @@
 VERSION="2026.09.16-03:40"
 SRC_URL="https://raw.githubusercontent.com/javier-lopez/learn/master/sh/tools/"
 
+#the status for "nothing ran": the shell's own word for it, and the only status
+#a caller can tell apart from a program that ran and failed
+NOTHING_RAN="127"
+
 _usage() {
     printf "%s\\n" "Usage: ${PROGNAME} [OPTION]... [CHANNEL:]PACKAGE[@VERSION] [ARGUMENT]..."
     printf "%s\\n" "Run a command this machine does not have installed."
@@ -1130,293 +1134,383 @@ _update() {
 ###############################################################################
 
 #running what was asked for is a sequence of steps, and main reads as that
-#sequence. Each step leaves what it found for the next ones, in variables named
-#after it: the request (asked, spec, channel, package, version, want_bin), the
-#paths to it (candidates, unreachable, ambiguous), the path taken (w_*), the
-#tool that path installs through (req_*), where its artifact lives (info), and
-#last of all the program to run
+#sequence. A step is given what it needs as arguments and hands back what it
+#found by printing it. What it prints is key=value lines, the way a channel
+#answers, read with _value and _values, except a path, which is one line with
+#its fields where _probe_emit writes them, read with _path_field
 
-_request() {
-    #$1 => the spec as typed. A channel called by an alias is written down by
-    #its real name, so that two spellings of the same request share one cached
-    #decision instead of racing to make two of them
-    asked="${1}"; spec="${1}"
-    channel="$(_spec_channel "${spec}")"
-    package="$(_spec_package "${spec}")"
-    version="$(_spec_version "${spec}")"
-    [ -z "${package}" ] && _die "${PROGNAME}: '${spec}' names no package"
+#the three are read in the shell alone. A step reads dozens of fields, and a
+#pipe into awk for each one doubled what resolving takes
 
-    #the program that was asked for, which a channel is told whenever it is
-    #asked where something lives or to install it: a package with several
-    #programs is otherwise run by some other name, and typing wat2wasm ran
-    #spectest-interp, another program of the same package, with the user's
-    #arguments
-    want_bin="${bin_name:-${package##*/}}"
+_value() {
+    #$1 => a key, $2 => key=value lines. Prints the value of the first line
+    #with that key, whole: a url keeps the = signs it carries
+    _value__rest="${2}"
+    while [ -n "${_value__rest}" ]; do
+        _value__line="${_value__rest%%
+*}"
+        case "${_value__line}" in
+            "${1}="*) printf "%s\\n" "${_value__line#*=}"; return 0 ;;
+        esac
+        [ X"${_value__line}" = X"${_value__rest}" ] && break
+        _value__rest="${_value__rest#*
+}"
+    done
+    return 1
+}
 
-    if [ -n "${channel}" ] && [ ! -x "$(_channels_dir)/${channel}" ]; then
-        channel="$(_channel_by_alias "${channel}")" || {
-            _say "${PROGNAME}: no channel called '$(_spec_channel "${spec}")'"
-            return 1
-        }
-        spec="${channel}:${package}"
-        [ -n "${version}" ] && spec="${spec}@${version}"
-    fi
+_values() {
+    #$1 => a key, $2 => key=value lines. Prints the value of every line with
+    #that key, one a line
+    _values__rest="${2}"
+    while [ -n "${_values__rest}" ]; do
+        _values__line="${_values__rest%%
+*}"
+        case "${_values__line}" in
+            "${1}="*) printf "%s\\n" "${_values__line#*=}" ;;
+        esac
+        [ X"${_values__line}" = X"${_values__rest}" ] && break
+        _values__rest="${_values__rest#*
+}"
+    done
     return 0
+}
+
+_path_field() {
+    #$1 => a path, $2 => the name of one of its fields. Prints that field, and
+    #nothing for the dash that stands for nothing. The fields are separated by
+    #one space and none is empty, because _probe_emit writes them that way
+    case "${2}" in
+        key)       _path_field__n="1"  ;;
+        channel)   _path_field__n="2"  ;;
+        version)   _path_field__n="3"  ;;
+        bytes)     _path_field__n="4"  ;;
+        badge)     _path_field__n="5"  ;;
+        confines)  _path_field__n="6"  ;;
+        describes) _path_field__n="7"  ;;
+        package)   _path_field__n="8"  ;;
+        requires)  _path_field__n="9"  ;;
+        estimate)  _path_field__n="10" ;;
+        marginal)  _path_field__n="11" ;;
+        ms)        _path_field__n="12" ;;
+        *) return 1 ;;
+    esac
+    _path_field__rest="${1} "
+    while [ "${_path_field__n}" -gt "1" ]; do
+        _path_field__rest="${_path_field__rest#* }"
+        _path_field__n="$((${_path_field__n} - 1))"
+    done
+    _path_field__v="${_path_field__rest%% *}"
+    [ X"${_path_field__v}" = X"-" ] || printf "%s\\n" "${_path_field__v}"
+}
+
+_canonical() {
+    #$1 => a spec as typed. Prints it with its channel under the channel's real
+    #name, so that two spellings of the same request share one cached decision
+    #instead of racing to make two of them. Answers 1, having said so, when no
+    #channel goes by that name
+    _ca__channel="$(_spec_channel "${1}")"
+    if [ -z "${_ca__channel}" ] || [ -x "$(_channels_dir)/${_ca__channel}" ]; then
+        printf "%s\\n" "${1}"
+        return 0
+    fi
+    _ca__real="$(_channel_by_alias "${_ca__channel}")" || {
+        _say "${PROGNAME}: no channel called '${_ca__channel}'"
+        return 1
+    }
+    _ca__version="$(_spec_version "${1}")"
+    printf "%s\\n" "${_ca__real}:$(_spec_package "${1}")${_ca__version:+@${_ca__version}}"
 }
 
 _remembered() {
-    #prints the program a decision already made for the request runs. The
-    #cheapest answer first: one that was already decided costs no network at
-    #all, and the second run of a command has to be indistinguishable from
-    #having it installed
-    [ -z "${latest}" ] && [ -z "${dry_run}" ] || return 1
-    _re__cached="$(_cache_get "${spec}")" || return 1
-    #the decision remembers the program itself, so a hit is an exec with no
-    #search. A directory is what an older decision remembered, and still works
+    #$1 => spec, $2 => the program asked for. Prints the program a decision
+    #already made for the spec runs. The decision remembers the program itself,
+    #so a hit is an exec with no search. A directory is what an older decision
+    #remembered, and still works
+    _re__cached="$(_cache_get "${1}")" || return 1
     if [ -f "${_re__cached}" ] && [ -x "${_re__cached}" ]; then
         printf "%s\\n" "${_re__cached}"
     elif [ -d "${_re__cached}" ]; then
-        _find_program "${_re__cached}" "${want_bin}"
+        _find_program "${_re__cached}" "${2}"
     else
         return 1
     fi
-}
-
-_paths() {
-    #every path to the package: candidates, one a line carrying its sort key,
-    #quickest first; unreachable, a channel that could not be asked and why;
-    #ambiguous, a channel:package for each program that shares the name
-    _pa__probed="$(_probe_all "${package}" "${version}" "${channel}")"
-    candidates="$(printf "%s\\n" "${_pa__probed}" | awk 'NF && $1 !~ /^~/')"
-    unreachable="$(printf "%s\\n" "${_pa__probed}" | \
-        awk '$1 == "~unreachable" {$1 = ""; sub(/^ /, ""); print}')"
-    ambiguous="$(printf "%s\\n" "${_pa__probed}" | \
-        awk '$1 == "~ambiguous" {for (i = 3; i <= NF; i++) print $2 ":" $i}')"
 }
 
 _pick() {
-    #every program that answers to an ambiguous name is offered, including one
-    #another channel served outright, because the question is which program
-    #and not which channel. The answer is remembered under the name that was
-    #typed
-    [ -z "${ambiguous}" ] && return 0
-    _pk__choices="$( { printf "%s\\n" "${ambiguous}"
-                       printf "%s\\n" "${candidates}" | awk 'NF {print $2 ":" $8}'; } | \
-                     awk 'NF && !seen[$0]++')"
-    _pk__picked="$(_choose "${package}" "${_pk__choices}")" || {
-        _say "${PROGNAME}: '${package}' is the name of more than one program, and none was guessed:"
-        printf "%s\\n" "${_pk__choices}" | while read -r _pk__c; do _say "    ${_pk__c}"; done
-        _say "${PROGNAME}: run one of them by its full name"
-        return 1
-    }
-    channel="${_pk__picked%%:*}"
-    package="${_pk__picked#*:}"
-    _paths
+    #$1 => the package, $2 => what the channels answered about it. Prints the
+    #channel:package that was meant when the name belongs to more than one
+    #program, and nothing when it does not. Answers 1, having said so, when
+    #nobody said which. Every program that answers to the name is offered,
+    #including one another channel served outright, because the question is
+    #which program and not which channel
+    _pk__ambiguous="$(printf "%s\\n" "${2}" | \
+        awk '$1 == "~ambiguous" {for (i = 3; i <= NF; i++) print $2 ":" $i}')"
+    [ -z "${_pk__ambiguous}" ] && return 0
+    _pk__choices="$( { printf "%s\\n" "${_pk__ambiguous}"
+                       printf "%s\\n" "${2}" | awk 'NF && $1 !~ /^~/' | while read -r _pk__path; do
+                           printf "%s:%s\\n" "$(_path_field "${_pk__path}" channel)" \
+                               "$(_path_field "${_pk__path}" package)"
+                       done; } | awk 'NF && !seen[$0]++')"
+    _choose "${1}" "${_pk__choices}" && return 0
+    _say "${PROGNAME}: '${1}' is the name of more than one program, and none was guessed:"
+    printf "%s\\n" "${_pk__choices}" | while read -r _pk__choice; do _say "    ${_pk__choice}"; done
+    _say "${PROGNAME}: run one of them by its full name"
+    return 1
 }
 
-_winner() {
-    #the path taken is the first candidate, the quickest, read into w_*
-    winner="$(printf "%s\\n" "${candidates}" | head -1)"
-    w_channel="$(printf  "%s\\n" "${winner}" | awk '{print $2}')"
-    w_version="$(printf  "%s\\n" "${winner}" | awk '{print $3}')"
-    w_bytes="$(printf    "%s\\n" "${winner}" | awk '{print $4}')"
-    w_badge="$(printf    "%s\\n" "${winner}" | awk '{print $5}')"
-    w_confines="$(printf "%s\\n" "${winner}" | awk '{print $6}')"
-    w_package="$(printf  "%s\\n" "${winner}" | awk '{print $8}')"
-    w_requires="$(printf "%s\\n" "${winner}" | awk '{print $9}')"
-    w_estimate="$(printf "%s\\n" "${winner}" | awk '{print $10}')"
-    w_marginal="$(printf "%s\\n" "${winner}" | awk '{print $11}')"
-    w_ms="$(printf "%s\\n" "${winner}" | awk '{print $12}')"
-    [ -z "${w_package}" ] && w_package="${package}"
-    [ X"${w_requires}" = X"-" ] && w_requires=""
-    [ X"${w_estimate}" = X"-" ] && w_estimate=""
-    w_kind="native"
-    [ X"${w_confines}" = X"yes" ] && w_kind="confined"
-    return 0
-}
-
-_tool_for_winner() {
-    #a winner that installs through a tool of its own needs that tool, and
-    #keeping those tools present and up to date is this program's job. A tool
-    #already here is reused; otherwise it is looked up now, so its cost is part
-    #of the question and not a surprise after it
-    req_program=""; req_channel=""; req_package=""; req_version=""; req_bytes=""; req_info=""; req_why=""
-    [ -z "${w_requires}" ] && return 0
-    req_program="$(_tool_here "${w_channel}")" && return 0
-    req_channel="$(_spec_channel "${w_requires}")"
-    req_package="$(_spec_package "${w_requires}")"
-    _tw__probed="$(_probe_all "${req_package}" "" "${req_channel}")"
-    req_why="$(printf "%s\\n" "${_tw__probed}" | awk '$1 == "~unreachable" {$1 = ""; $2 = ""; sub(/^ +/, ""); print; exit}')"
-    _tw__line="$(printf "%s\\n" "${_tw__probed}" | awk 'NF && $1 !~ /^~/' | head -1)"
-    [ -z "${_tw__line}" ] && return 1
-    req_version="$(printf "%s\\n" "${_tw__line}" | awk '{print $3}')"
-    req_bytes="$(printf   "%s\\n" "${_tw__line}" | awk '{print $4}')"
-    req_info="$("$(_channels_dir)/${req_channel}" locate "${req_package}" "${req_version}" 2>/dev/null)" || req_info=""
-    [ -n "${req_info}" ]
-}
-
-_without_tool() {
-    #when the tool cannot be had, the reason is said - a rate limit is not a
-    #missing package, and saying "nothing provides" there was a lie this
-    #program told once already - and the channels are asked again with that
-    #tool left out: the same channel may still manage the old way, and another
-    #may answer
-    if [ -n "${req_why}" ]; then
-        _say "${PROGNAME}: ${w_requires} could not be fetched: ${req_why}"
-    else
-        _say "${PROGNAME}: ${w_requires} could not be had"
+_tool_for() {
+    #$1 => a path. When it installs through a tool of its channel, prints what
+    #installing needs about that tool: tool=, the link it is reached by, when
+    #it is here, and otherwise tool_version=, tool_bytes= and tool_where=, one
+    #line for each line of where it lives. Answers 1 when the tool cannot be
+    #had, with the reason on an unreachable= line when there is one. A tool not
+    #here is looked up now, so its cost is part of the question and not a
+    #surprise after it
+    _tf__requires="$(_path_field "${1}" requires)"
+    [ -z "${_tf__requires}" ] && return 0
+    if _tf__here="$(_tool_here "$(_path_field "${1}" channel)")"; then
+        printf "tool=%s\\n" "${_tf__here}"
+        return 0
     fi
-    STATIC_RUN_NO_MANAGER="${STATIC_RUN_NO_MANAGER:+${STATIC_RUN_NO_MANAGER} }${w_channel}"
-    export STATIC_RUN_NO_MANAGER
-    _wt__lost="${w_channel}"
-    candidates="$(_probe_all "${package}" "${version}" "${channel}" | awk 'NF && $1 !~ /^~/')"
-    if [ -z "${candidates}" ]; then
-        if [ -n "${req_why}" ]; then
-            _say "${PROGNAME}: so whether anything provides '${package}' is not known"
-        else
-            _say "${PROGNAME}: and without it, nothing provides '${package}'"
-        fi
+    _tf__channel="$(_spec_channel "${_tf__requires}")"
+    _tf__package="$(_spec_package "${_tf__requires}")"
+    _tf__probed="$(_probe_all "${_tf__package}" "" "${_tf__channel}")"
+    _tf__path="$(printf "%s\\n" "${_tf__probed}" | awk 'NF && $1 !~ /^~/' | head -1)"
+    if [ -z "${_tf__path}" ]; then
+        printf "%s\\n" "${_tf__probed}" | \
+            awk '$1 == "~unreachable" {$1 = ""; $2 = ""; sub(/^ +/, ""); print "unreachable=" $0; exit}'
         return 1
     fi
-    _winner
-    _say "${PROGNAME}: ${_wt__lost} goes without it; ${w_channel}:${w_package} instead"
+    _tf__version="$(_path_field "${_tf__path}" version)"
+    _tf__where="$("$(_channels_dir)/${_tf__channel}" locate "${_tf__package}" "${_tf__version}" 2>/dev/null)"
+    [ -n "${_tf__where}" ] || return 1
+    printf "tool_version=%s\\n" "${_tf__version}"
+    printf "tool_bytes=%s\\n" "$(_path_field "${_tf__path}" bytes)"
+    printf "%s\\n" "${_tf__where}" | awk 'NF {print "tool_where=" $0}'
 }
 
 _resolve() {
-    #the path to take, and the tool it installs through when it needs one.
-    #Answers 1 when there is none, having said why
-    _paths
-    _pick || return 1
+    #$1 => spec. Prints the resolution:
+    #
+    #  package=      what was asked for, which choosing a program may change
+    #  path=         a path to it, one a line, quickest first; the first is taken
+    #  unreachable=  a channel that could not be asked, and why
+    #
+    #and, for a path that installs through a tool, what _tool_for says of it.
+    #Answers 1, having said why, when there is no path to take
+    _rs__channel="$(_spec_channel "${1}")"
+    _rs__package="$(_spec_package "${1}")"
+    _rs__version="$(_spec_version "${1}")"
+    _rs__probed="$(_probe_all "${_rs__package}" "${_rs__version}" "${_rs__channel}")"
+    _rs__picked="$(_pick "${_rs__package}" "${_rs__probed}")" || return 1
+    if [ -n "${_rs__picked}" ]; then
+        _rs__channel="${_rs__picked%%:*}"
+        _rs__package="${_rs__picked#*:}"
+        _rs__probed="$(_probe_all "${_rs__package}" "${_rs__version}" "${_rs__channel}")"
+    fi
+    _rs__paths="$(printf "%s\\n" "${_rs__probed}" | awk 'NF && $1 !~ /^~/')"
+    _rs__unreachable="$(printf "%s\\n" "${_rs__probed}" | \
+        awk '$1 == "~unreachable" {$1 = ""; sub(/^ /, ""); print}')"
 
-    if [ -z "${candidates}" ]; then
+    if [ -z "${_rs__paths}" ]; then
         #what is said about a package no channel gave has to be true: with a
         #channel that could not be asked, nobody knows whether the package
         #exists, and saying it does not is a lie
-        if [ -n "${unreachable}" ]; then
-            printf "%s\\n" "${unreachable}" | while read -r _rs__ch _rs__why; do
-                _say "${PROGNAME}: ${_rs__ch} could not be asked: ${_rs__why}"
-            done
-            _say "${PROGNAME}: so whether anything provides '${package}' is not known"
-        else
-            _say "${PROGNAME}: no channel provides '${package}'"
+        if [ -z "${_rs__unreachable}" ]; then
+            _say "${PROGNAME}: no channel provides '${_rs__package}'"
+            return 1
         fi
+        printf "%s\\n" "${_rs__unreachable}" | while read -r _rs__lost _rs__why; do
+            _say "${PROGNAME}: ${_rs__lost} could not be asked: ${_rs__why}"
+        done
+        _say "${PROGNAME}: so whether anything provides '${_rs__package}' is not known"
         return 1
     fi
 
-    _winner
-    while ! _tool_for_winner; do
-        _without_tool || return 1
+    #when the tool the quickest path installs through cannot be had, the reason
+    #is said - a rate limit is not a missing package, and saying "nothing
+    #provides" there was a lie this program told once already - and the
+    #channels are asked again with that tool left out: the same channel may
+    #still manage the old way, and another may answer
+    _rs__taken="$(printf "%s\\n" "${_rs__paths}" | head -1)"
+    while ! _rs__tool="$(_tool_for "${_rs__taken}")"; do
+        _rs__lost="$(_path_field "${_rs__taken}" channel)"
+        _rs__requires="$(_path_field "${_rs__taken}" requires)"
+        _rs__why="$(_value unreachable "${_rs__tool}")"
+        if [ -n "${_rs__why}" ]; then
+            _say "${PROGNAME}: ${_rs__requires} could not be fetched: ${_rs__why}"
+        else
+            _say "${PROGNAME}: ${_rs__requires} could not be had"
+        fi
+        STATIC_RUN_NO_MANAGER="${STATIC_RUN_NO_MANAGER:+${STATIC_RUN_NO_MANAGER} }${_rs__lost}"
+        export STATIC_RUN_NO_MANAGER
+        _rs__paths="$(_probe_all "${_rs__package}" "${_rs__version}" "${_rs__channel}" | awk 'NF && $1 !~ /^~/')"
+        if [ -z "${_rs__paths}" ]; then
+            if [ -n "${_rs__why}" ]; then
+                _say "${PROGNAME}: so whether anything provides '${_rs__package}' is not known"
+            else
+                _say "${PROGNAME}: and without it, nothing provides '${_rs__package}'"
+            fi
+            return 1
+        fi
+        _rs__taken="$(printf "%s\\n" "${_rs__paths}" | head -1)"
+        _say "${PROGNAME}: ${_rs__lost} goes without it; $(_path_field "${_rs__taken}" channel):$(_path_field "${_rs__taken}" package) instead"
     done
+
+    printf "package=%s\\n" "${_rs__package}"
+    printf "%s\\n" "${_rs__paths}" | awk 'NF {print "path=" $0}'
+    printf "%s\\n" "${_rs__unreachable}" | awk 'NF {print "unreachable=" $0}'
+    printf "%s\\n" "${_rs__tool}" | awk 'NF'
 }
 
 _show_paths() {
-    #inspecting is the one time it is worth asking every candidate where its
-    #artifact lives, because that answer is also its badge, and a badge is
-    #most of what someone inspecting came to find out
-    printf "%s\\n" "${package##*/}"
-    #quickest by the time it should take here, the tool to install through
-    #included
-    _sp__quickest="$(printf "%s\\n" "${candidates}" | awk '{print $12}' | \
-        awk 'BEGIN{m=""} /^[0-9]+$/ {if (m=="" || $1<m) m=$1} END{print m}')"
+    #$1 => the resolution, $2 => the program asked for. Prints every path, the
+    #one that would be taken, and why. Inspecting is the one time it is worth
+    #asking every candidate where its artifact lives, because that answer is
+    #also its badge, and a badge is most of what someone inspecting came to
+    #find out
+    _sp__paths="$(_values path "${1}")"
+    _sp__taken="$(_value path "${1}")"
+    _sp__taken_channel="$(_path_field "${_sp__taken}" channel)"
+    _sp__taken_package="$(_path_field "${_sp__taken}" package)"
+    _sp__taken_version="$(_path_field "${_sp__taken}" version)"
+    _sp__package="$(_value package "${1}")"
+    printf "%s\\n" "${_sp__package##*/}"
 
-    printf "%s\\n" "${candidates}" | while read -r _sp__key _sp__ch _sp__ver _sp__by \
-            _sp__bg _sp__cf _sp__de _sp__pkg _sp__req _sp__est _sp__total _sp__ms; do
-        _sp__kind="native"; [ X"${_sp__cf}" = X"yes" ] && _sp__kind="confined"
-        if [ X"${_sp__req}" != X"-" ]; then
+    printf "%s\\n" "${_sp__paths}" | while read -r _sp__path; do
+        _sp__channel="$(_path_field "${_sp__path}" channel)"
+        _sp__version="$(_path_field "${_sp__path}" version)"
+        _sp__package="$(_path_field "${_sp__path}" package)"
+        _sp__kind="native"
+        [ X"$(_path_field "${_sp__path}" confines)" = X"yes" ] && _sp__kind="confined"
+        if [ -n "$(_path_field "${_sp__path}" requires)" ]; then
             #what a tool installs, the tool answers for
-            _sp__bg="via ${_sp__ch}"
+            _sp__badge="via ${_sp__channel}"
         else
-            _sp__info="$("$(_channels_dir)/${_sp__ch}" locate "${_sp__pkg}" "${_sp__ver}" "${want_bin}" 2>/dev/null)"
-            case "${_sp__info}" in *'sha256='?*) _sp__bg="verified" ;; esac
+            _sp__badge="$(_path_field "${_sp__path}" badge)"
+            case "$("$(_channels_dir)/${_sp__channel}" locate "${_sp__package}" "${_sp__version}" "${2}" 2>/dev/null)" in
+                *'sha256='?*) _sp__badge="verified" ;;
+            esac
         fi
         _sp__mark=""
-        [ X"${_sp__ch}" = X"${w_channel}" ] && [ X"${_sp__ver}" = X"${w_version}" ] && _sp__mark="  <- elegido"
-        _sp__size="$(_human "${_sp__by}")"; [ X"${_sp__est}" = X"yes" ] && _sp__size="~${_sp__size}"
-        printf "  %-32s %10s %8s  %-8s  [%s]%s\\n" "${_sp__ch}:${_sp__pkg}@${_sp__ver}" \
-            "${_sp__size}" "$(_human_us "${_sp__ms}")" "${_sp__kind}" "${_sp__bg}" "${_sp__mark}"
+        [ X"${_sp__channel}" = X"${_sp__taken_channel}" ] && \
+            [ X"${_sp__version}" = X"${_sp__taken_version}" ] && _sp__mark="  <- elegido"
+        _sp__size="$(_human "$(_path_field "${_sp__path}" bytes)")"
+        [ -n "$(_path_field "${_sp__path}" estimate)" ] && _sp__size="~${_sp__size}"
+        printf "  %-32s %10s %8s  %-8s  [%s]%s\\n" "${_sp__channel}:${_sp__package}@${_sp__version}" \
+            "${_sp__size}" "$(_human_us "$(_path_field "${_sp__path}" ms)")" "${_sp__kind}" "${_sp__badge}" "${_sp__mark}"
     done
 
-    [ -n "${unreachable}" ] && printf "%s\\n" "${unreachable}" | while read -r _sp__uch _sp__why; do
-        _say "  ${_sp__uch}: could not be asked, ${_sp__why}"
+    _values unreachable "${1}" | while read -r _sp__lost _sp__why; do
+        _say "  ${_sp__lost}: could not be asked, ${_sp__why}"
     done
 
-    if [ -n "${w_requires}" ] && [ -z "${req_program}" ]; then
-        printf "  %-32s %10s  %s\\n" "+ ${w_requires}@${req_version}" "$(_human "${req_bytes}")" "needed once, to install through"
+    _sp__requires="$(_path_field "${_sp__taken}" requires)"
+    if [ -n "${_sp__requires}" ] && [ -z "$(_value tool "${1}")" ]; then
+        printf "  %-32s %10s  %s\\n" "+ ${_sp__requires}@$(_value tool_version "${1}")" \
+            "$(_human "$(_value tool_bytes "${1}")")" "needed once, to install through"
     fi
 
-    _sp__reason="${w_kind}"
-    [ X"${w_kind}" = X"native" ] && _sp__reason="nativo"
-    [ X"${w_kind}" = X"confined" ] && _sp__reason="confinado"
-    if [ X"${w_ms}" = X"${_sp__quickest}" ]; then
+    #quickest by the time it should take here, the tool to install through
+    #included
+    _sp__quickest="$(printf "%s\\n" "${_sp__paths}" | while read -r _sp__path; do
+            _path_field "${_sp__path}" ms
+        done | awk 'BEGIN {m = ""} /^[0-9]+$/ {if (m == "" || $1 < m) m = $1} END {print m}')"
+    _sp__ms="$(_path_field "${_sp__taken}" ms)"
+    _sp__reason="nativo"
+    [ X"$(_path_field "${_sp__taken}" confines)" = X"yes" ] && _sp__reason="confinado"
+    if _is_number "${_sp__ms}" && [ X"${_sp__ms}" = X"${_sp__quickest}" ]; then
         _sp__reason="${_sp__reason}, el más rápido"
     else
         _sp__reason="${_sp__reason}, aunque no el más rápido"
     fi
-    printf "elegido: %s:%s@%s   motivo: %s\\n" "${w_channel}" "${w_package}" "${w_version}" "${_sp__reason}"
+    printf "elegido: %s:%s@%s   motivo: %s\\n" "${_sp__taken_channel}" \
+        "${_sp__taken_package}" "${_sp__taken_version}" "${_sp__reason}"
 }
 
 _locate() {
-    #asking where the artifact lives is how the program's name becomes known,
-    #and for what static-run fetches itself, its badge as well; both are part
-    #of what the user is being asked to agree to, so it happens before the
-    #question. Sets info, w_bin and w_badge
-    info="$("$(_channels_dir)/${w_channel}" locate "${w_package}" "${w_version}" "${want_bin}" 2>/dev/null)"
+    #$1 => the resolution, $2 => the program asked for. Prints where the
+    #artifact of the path taken lives, as its channel answers it. Asking is how
+    #the program's name becomes known, and for what static-run fetches itself,
+    #its badge as well; both are part of what the user is asked to agree to, so
+    #it happens before the question. Answers 1, having said why, when the
+    #channel cannot say
+    _lc__path="$(_value path "${1}")"
+    _lc__channel="$(_path_field "${_lc__path}" channel)"
+    _lc__where="$("$(_channels_dir)/${_lc__channel}" locate "$(_path_field "${_lc__path}" package)" \
+        "$(_path_field "${_lc__path}" version)" "${2}" 2>/dev/null)"
     if [ "${?}" -eq "2" ]; then
-        _say "${PROGNAME}: ${w_channel} could not be asked where '${package}' lives: $(printf "%s\\n" "${info}" | \
-            awk '/^unreachable=/ {sub(/^unreachable=/, ""); print; exit}')"
+        _say "${PROGNAME}: ${_lc__channel} could not be asked where '$(_value package "${1}")' lives: $(_value unreachable "${_lc__where}")"
         return 1
     fi
-    if [ -z "${info}" ]; then
-        _say "${PROGNAME}: ${w_channel} knows '${package}' but cannot say where it lives"
+    if [ -z "${_lc__where}" ]; then
+        _say "${PROGNAME}: ${_lc__channel} knows '$(_value package "${1}")' but cannot say where it lives"
         return 1
     fi
-    #what a tool installs, the tool downloads and the tool checks, or does not.
-    #This program cannot tell which, so it says who answers for it and claims
-    #nothing: verified is only ever said of what static-run fetched itself
-    if [ -n "${w_requires}" ]; then
-        w_badge="via ${w_channel}"
-    else
-        case "${info}" in
-            *'sha256='?*) w_badge="verified" ;;
-                       *) w_badge="none" ;;
-        esac
-    fi
-    w_bin="$(printf "%s\\n" "${info}" | awk -F= '$1=="bin"{print $2; exit}')"
-    [ -z "${w_bin}" ] && w_bin="${w_package##*/}"
-    return 0
+    printf "%s\\n" "${_lc__where}"
 }
 
 _ask() {
-    #the line names the repository and not only the word typed: a catalog that
-    #maps a name somewhere unexpected is caught here, by a person, or not at all
-    if _is_number "${w_bytes}"; then
-        _ak__size="$(_human "${w_bytes}")"; [ -n "${w_estimate}" ] && _ak__size="about ${_ak__size}"
+    #$1 => the resolution, $2 => where the artifact lives, $3 => spec. Says
+    #which path would be taken and what it costs, and answers 0 when the user
+    #agrees to it. The line names the repository and not only the word typed:
+    #a catalog that maps a name somewhere unexpected is caught here, by a
+    #person, or not at all
+    _ak__path="$(_value path "${1}")"
+    _ak__channel="$(_path_field "${_ak__path}" channel)"
+    _ak__package="$(_path_field "${_ak__path}" package)"
+    _ak__bytes="$(_path_field "${_ak__path}" bytes)"
+    _ak__estimate="$(_path_field "${_ak__path}" estimate)"
+    _ak__requires="$(_path_field "${_ak__path}" requires)"
+    _ak__bin="$(_value bin "${2}")"
+    [ -z "${_ak__bin}" ] && _ak__bin="${_ak__package##*/}"
+    _ak__kind="native"
+    [ X"$(_path_field "${_ak__path}" confines)" = X"yes" ] && _ak__kind="confined"
+
+    #what a tool installs, the tool downloads and the tool checks, or does not.
+    #This program cannot tell which, so it says who answers for it and claims
+    #nothing: verified is only ever said of what static-run fetched itself
+    if [ -n "${_ak__requires}" ]; then
+        _ak__badge="via ${_ak__channel}"
+    else
+        case "${2}" in
+            *'sha256='?*) _ak__badge="verified" ;;
+                       *) _ak__badge="none" ;;
+        esac
+    fi
+
+    if _is_number "${_ak__bytes}"; then
+        _ak__size="$(_human "${_ak__bytes}")"
+        [ -n "${_ak__estimate}" ] && _ak__size="about ${_ak__size}"
     else
         _ak__size="size unknown"
     fi
-    _ak__step="fetch"; [ -n "${w_requires}" ] && _ak__step="install"
-    _ak__ms="$(_est_us "${w_bytes}" "${w_channel}" "${_ak__step}")"
-    _say "${PROGNAME}: ${w_bin} ${w_version} -> ${w_channel}:${w_package}  ${_ak__size}, $(_human_us "${_ak__ms}")  [${w_badge}]  ${w_kind}"
-    [ -n "${unreachable}" ] && printf "%s\\n" "${unreachable}" | while read -r _ak__uch _ak__why; do
-        _say "            (${_ak__uch} could not be asked, a quicker path may exist: ${_ak__why})"
+    _ak__step="fetch"
+    [ -n "${_ak__requires}" ] && _ak__step="install"
+    _ak__ms="$(_est_us "${_ak__bytes}" "${_ak__channel}" "${_ak__step}")"
+    _say "${PROGNAME}: ${_ak__bin} $(_path_field "${_ak__path}" version) -> ${_ak__channel}:${_ak__package}  ${_ak__size}, $(_human_us "${_ak__ms}")  [${_ak__badge}]  ${_ak__kind}"
+    _values unreachable "${1}" | while read -r _ak__lost _ak__why; do
+        _say "            (${_ak__lost} could not be asked, a quicker path may exist: ${_ak__why})"
     done
 
-    if [ -n "${w_requires}" ] && [ -z "${req_program}" ]; then
-        _ak__req_ms="$(_est_us "${req_bytes}" "${w_channel}" "tool")"
-        _say "            first ${w_requires} ${req_version}, $(_human "${req_bytes}"), $(_human_us "${_ak__req_ms}"), fetched once and kept up to date"
+    if [ -n "${_ak__requires}" ] && [ -z "$(_value tool "${1}")" ]; then
+        _ak__tool_bytes="$(_value tool_bytes "${1}")"
+        _ak__tool_ms="$(_est_us "${_ak__tool_bytes}" "${_ak__channel}" "tool")"
+        _say "            first ${_ak__requires} $(_value tool_version "${1}"), $(_human "${_ak__tool_bytes}"), $(_human_us "${_ak__tool_ms}"), fetched once and kept up to date"
         #what is being agreed to is the sum of the two, so the sum is written
         #out rather than left for the reader to add up. Unknown plus anything
         #is unknown, and an estimate plus anything is still an estimate. The
         #size and the time are each summed on their own: AM can say how long
         #it usually takes and never what it will download
-        if _is_number "${w_bytes}" && _is_number "${req_bytes}"; then
-            _ak__total="$(_human "$((${w_bytes} + ${req_bytes}))")"
-            [ -n "${w_estimate}" ] && _ak__total="about ${_ak__total}"
+        if _is_number "${_ak__bytes}" && _is_number "${_ak__tool_bytes}"; then
+            _ak__total="$(_human "$((${_ak__bytes} + ${_ak__tool_bytes}))")"
+            [ -n "${_ak__estimate}" ] && _ak__total="about ${_ak__total}"
         else
             _ak__total="size unknown"
         fi
-        if _is_number "${_ak__ms}" && _is_number "${_ak__req_ms}"; then
-            _ak__total="${_ak__total}, $(_human_us "$((${_ak__ms} + ${_ak__req_ms}))")"
+        if _is_number "${_ak__ms}" && _is_number "${_ak__tool_ms}"; then
+            _ak__total="${_ak__total}, $(_human_us "$((${_ak__ms} + ${_ak__tool_ms}))")"
         else
             _ak__total="${_ak__total}, time unknown"
         fi
@@ -1425,79 +1519,101 @@ _ask() {
 
     #a decision already remembered was agreed to when it was made, and making
     #it again - --latest, or a channel removed by hand - is not asked twice
-    [ -n "$(_cache_get "${spec}")" ] && return 0
+    [ -n "$(_cache_get "${3}")" ] && return 0
     _confirm "${PROGNAME}: proceed?"
 }
 
 _obtain() {
-    #what installs through a tool, the tool installs; anything else static-run
-    #fetches and places itself. Sets program
-    if [ -n "${w_requires}" ]; then
-        _obtain_through_tool
+    #$1 => the resolution, $2 => where the artifact lives, $3 => the program
+    #asked for, $4 => the name given with --bin, or nothing. Prints the program
+    #to run. What installs through a tool, the tool installs; anything else
+    #static-run fetches and places itself
+    _ob__path="$(_value path "${1}")"
+    if [ -n "$(_path_field "${_ob__path}" requires)" ]; then
+        _obtain_through_tool "${1}" "${3}"
     else
-        _obtain_itself
+        _obtain_itself "${_ob__path}" "${2}" "${4}"
     fi
 }
 
 _obtain_through_tool() {
-    #the path that was agreed to goes through this tool. If it cannot be
-    #placed now, nothing else is fetched instead of it
-    if [ -z "${req_program}" ]; then
-        _say "${PROGNAME}: fetching ${req_package##*/} ${req_version}, to install ${w_package} with"
-        req_program="$(_place_tool "${w_channel}" "${w_requires}" "${req_version}" "${req_info}")" && \
-            [ -n "${req_program}" ] || {
-            _say "${PROGNAME}: ${w_requires} could not be placed, and nothing was installed"
+    #$1 => the resolution, $2 => the program asked for. Prints the program the
+    #tool installed, once what the tool holds for it is written down
+    _ot__path="$(_value path "${1}")"
+    _ot__channel="$(_path_field "${_ot__path}" channel)"
+    _ot__package="$(_path_field "${_ot__path}" package)"
+    _ot__version="$(_path_field "${_ot__path}" version)"
+    _ot__requires="$(_path_field "${_ot__path}" requires)"
+
+    _ot__tool="$(_value tool "${1}")"
+    if [ -z "${_ot__tool}" ]; then
+        #the path that was agreed to goes through this tool. If it cannot be
+        #placed now, nothing else is fetched instead of it
+        _ot__tool_version="$(_value tool_version "${1}")"
+        _ot__tool_name="$(_spec_package "${_ot__requires}")"
+        _say "${PROGNAME}: fetching ${_ot__tool_name##*/} ${_ot__tool_version}, to install ${_ot__package} with"
+        _ot__tool="$(_place_tool "${_ot__channel}" "${_ot__requires}" "${_ot__tool_version}" \
+            "$(_values tool_where "${1}")")" && [ -n "${_ot__tool}" ] || {
+            _say "${PROGNAME}: ${_ot__requires} could not be placed, and nothing was installed"
             return 1
         }
     fi
 
     #the tool installs, and checks whatever it checks: that is its job. What
     #comes back is where the program is and what the tool holds for it
-    _say "${PROGNAME}: ${w_channel} is installing ${w_package} ${w_version}"
+    _say "${PROGNAME}: ${_ot__channel} is installing ${_ot__package} ${_ot__version}"
     _ot__t0="$(_now_ms)"
-    _ot__out="$(STATIC_RUN_REQUIRED="${req_program}" "$(_channels_dir)/${w_channel}" obtain \
-        "${w_package}" "${w_version}" "${want_bin}")" || {
-        _say "${PROGNAME}: ${w_channel} could not install '${w_package}': $(printf "%s\\n" "${_ot__out}" | \
+    _ot__out="$(STATIC_RUN_REQUIRED="${_ot__tool}" "$(_channels_dir)/${_ot__channel}" obtain \
+        "${_ot__package}" "${_ot__version}" "${2}")" || {
+        _say "${PROGNAME}: ${_ot__channel} could not install '${_ot__package}': $(printf "%s\\n" "${_ot__out}" | \
             awk -F= '$1=="failed" || $1=="unreachable" {sub(/^[a-z]+=/, ""); print; exit}')"
         return 1
     }
-    _timing_add "${w_channel}" "install" "${w_bytes}" "$(( $(_now_ms) - _ot__t0 ))"
-    program="$(printf "%s\\n" "${_ot__out}" | awk '/^program=/ {sub(/^program=/, ""); print; exit}')"
-    [ -x "${program}" ] || { _say "${PROGNAME}: ${w_channel} reported no program for '${w_package}'"; return 1; }
+    _timing_add "${_ot__channel}" "install" "$(_path_field "${_ot__path}" bytes)" "$(( $(_now_ms) - _ot__t0 ))"
+    _ot__program="$(_value program "${_ot__out}")"
+    [ -x "${_ot__program}" ] || {
+        _say "${PROGNAME}: ${_ot__channel} reported no program for '${_ot__package}'"
+        return 1
+    }
 
-    _ot__home="$(_channel_home "${w_channel}")"
-    _ot__link="${_ot__home}/by/${w_package}/${w_version}"
-    _mkdir_p "${_ot__link%/*}" && rm -f "${_ot__link}" && ln -s "${program%/*}" "${_ot__link}" 2>/dev/null
+    _ot__home="$(_channel_home "${_ot__channel}")"
+    _ot__link="${_ot__home}/by/${_ot__package}/${_ot__version}"
+    _mkdir_p "${_ot__link%/*}" && rm -f "${_ot__link}" && ln -s "${_ot__program%/*}" "${_ot__link}" 2>/dev/null
     #what the tool holds for this package, under the channel's directory and
     #nowhere else, so that purging it can take what no other placement uses
-    _ot__members="$(printf "%s\\n" "${_ot__out}" | awk '/^member=/ {
-        sub(/^member=/, "")
-        if ($0 != "" && index($0, "..") == 0 && $0 !~ /^\// && $0 !~ /[^A-Za-z0-9._+\/-]/) print
-    }')"
+    _ot__members="$(_values member "${_ot__out}" | awk '
+        $0 != "" && index($0, "..") == 0 && $0 !~ /^\// && $0 !~ /[^A-Za-z0-9._+\/-]/')"
     if [ -n "${_ot__members}" ]; then
-        _ot__record="${_ot__home}/members/${w_package}/${w_version}"
+        _ot__record="${_ot__home}/members/${_ot__package}/${_ot__version}"
         _mkdir_p "${_ot__record%/*}" && printf "%s\\n" "${_ot__members}" > "${_ot__record}"
     fi
-    _ot__asset="$(printf "%s\\n" "${_ot__out}" | awk '/^asset=/ {sub(/^asset=/, ""); print; exit}')"
     printf "%s\\t%s\\t%s\\t%s\\t%s\\n" "$(date +%Y-%m-%dT%H:%M:%S)" \
-        "${w_channel}:${w_package}@${w_version}" "-" "via ${w_channel}" \
-        "${w_channel}:${_ot__asset}" >> "${_ot__home}/inventory"
-    return 0
+        "${_ot__channel}:${_ot__package}@${_ot__version}" "-" "via ${_ot__channel}" \
+        "${_ot__channel}:$(_value asset "${_ot__out}")" >> "${_ot__home}/inventory"
+
+    printf "%s\\n" "${_ot__program}"
 }
 
 _obtain_itself() {
-    _oi__store="$(_place "${w_channel}" "${w_package}" "${w_version}" "${info}")" || return 1
-    program="$(_find_program "${_oi__store}" "${bin_name:-${w_bin}}")" || {
-        _say "${PROGNAME}: nothing executable called '${bin_name:-${w_bin}}' inside the artifact"
-        return 1
-    }
+    #$1 => the path taken, $2 => where its artifact lives, $3 => the name given
+    #with --bin, or nothing. Prints the program inside the artifact, once the
+    #artifact is fetched, checked and placed
+    _oi__package="$(_path_field "${1}" package)"
+    _oi__store="$(_place "$(_path_field "${1}" channel)" "${_oi__package}" \
+        "$(_path_field "${1}" version)" "${2}")" || return 1
+    _oi__bin="${3:-$(_value bin "${2}")}"
+    [ -z "${_oi__bin}" ] && _oi__bin="${_oi__package##*/}"
+    _find_program "${_oi__store}" "${_oi__bin}" && return 0
+    _say "${PROGNAME}: nothing executable called '${_oi__bin}' inside the artifact"
+    return 1
 }
 
 _remember() {
-    #remembered under what was asked for, which for a bare name is the name: a
-    #choice between programs that share one is made once and not every time
-    _cache_put "${asked}" "${program}"
-    [ X"${asked}" != X"${spec}" ] && _cache_put "${spec}" "${program}"
+    #$1 => the program, $2 => the spec as typed, $3 => spec. Remembered under
+    #what was asked for, which for a bare name is the name: a choice between
+    #programs that share one is made once and not every time
+    _cache_put "${2}" "${1}"
+    [ X"${2}" != X"${3}" ] && _cache_put "${3}" "${1}"
     return 0
 }
 
@@ -1551,17 +1667,27 @@ export STATIC_RUN_HOME="${home}"
 [ -n "${purge}" ]        && { _purge "${1}"; exit "${?}"; }
 
 [ -z "${1}" ] && _die "${PROGNAME}: nothing asked for"
+asked="${1}"; shift
+package="$(_spec_package "${asked}")"
+[ -z "${package}" ] && _die "${PROGNAME}: '${asked}' names no package"
+spec="$(_canonical "${asked}")" || exit "${NOTHING_RAN}"
+#the program that was asked for, which a channel is told whenever it is asked
+#where something lives or to install it: a package with several programs is
+#otherwise run by some other name, and typing wat2wasm ran spectest-interp,
+#another program of the same package, with the user's arguments
+want="${bin_name:-${package##*/}}"
 
-#127 is the shell's word for "nothing ran", and the only status a caller can
-#tell apart from a program that ran and failed, so every step that stops the
-#program from running ends with it
-_request "${1}" || exit 127
-shift
-program="$(_remembered)" && exec "${program}" "${@}"
-_resolve || exit 127
-[ -n "${dry_run}" ] && { _show_paths; exit 0; }
-_locate  || exit 127
-_ask     || exit 127
-_obtain  || exit 127
-_remember
+#the cheapest answer first: one that was already decided costs no network at
+#all, and the second run of a command has to be indistinguishable from having
+#it installed
+if [ -z "${latest}" ] && [ -z "${dry_run}" ]; then
+    program="$(_remembered "${spec}" "${want}")" && exec "${program}" "${@}"
+fi
+
+resolution="$(_resolve "${spec}")" || exit "${NOTHING_RAN}"
+[ -n "${dry_run}" ] && { _show_paths "${resolution}" "${want}"; exit 0; }
+where="$(_locate "${resolution}" "${want}")" || exit "${NOTHING_RAN}"
+_ask "${resolution}" "${where}" "${spec}" || exit "${NOTHING_RAN}"
+program="$(_obtain "${resolution}" "${where}" "${want}" "${bin_name}")" || exit "${NOTHING_RAN}"
+_remember "${program}" "${asked}" "${spec}"
 exec "${program}" "${@}"
