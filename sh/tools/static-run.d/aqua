@@ -1,8 +1,8 @@
 #!/bin/sh
 #description: static-run channel - the aqua registry, read as a catalog of names
 #usage: aqua meta | aqua index | aqua search WORDS...
-#       aqua probe NAME|OWNER/REPO [VER] | aqua locate NAME|OWNER/REPO VER
-#       aqua obtain NAME|OWNER/REPO VER
+#       aqua probe NAME|OWNER/REPO [VER] | aqua locate NAME|OWNER/REPO VER [PROGRAM]
+#       aqua obtain NAME|OWNER/REPO VER [PROGRAM]
 #probe and locate exit 0 with an answer, 1 when there is none, 2 when there is
 #no local index to ask, and 3 when a name belongs to more than one package,
 #with each of them on a candidate= line
@@ -158,9 +158,10 @@ _indexer() {
 }
 
 _resolve() {
-    #$1 => a name or owner/repo. Leaves the repository in repo and the command
-    #in cmd, and answers 0 for one package, 1 for none, 2 for no index, and 3
-    #when the name belongs to several, which are left in cands
+    #$1 => a name or owner/repo, $2 => the program asked for. Leaves the
+    #repository in repo and the command in cmd, and answers 0 for one package,
+    #1 for none, 2 for no index, and 3 when the name belongs to several, which
+    #are left in cands
     why=""; repo=""; cmd=""; cands=""
     _resolve__idx="$(_index_file)"
     if [ ! -s "${_resolve__idx}" ]; then
@@ -170,12 +171,16 @@ _resolve() {
 
     case "${1}" in
         */*)
-            #a command named after the repository is the one meant when the
-            #repository is what was asked for; otherwise its first command
-            cmd="$(awk -F'\t' -v r="${1}" '
+            #the program asked for when the repository has it, then the one
+            #named after the repository, then its first. Without the first of
+            #those, typing wat2wasm ran spectest-interp, another program of
+            #WebAssembly/wabt, with the user's arguments
+            cmd="$(awk -F'\t' -v r="${1}" -v want="${2}" '
                 $2 == r { if (first == "") first = $1
-                          n = split(r, p, "/"); if ($1 == p[n]) { print $1; found = 1; exit } }
-                END { if (!found && first != "") print first }' "${_resolve__idx}")"
+                          if ($1 == want) hit = $1
+                          n = split(r, p, "/"); if ($1 == p[n]) own = $1 }
+                END { if (hit != "") print hit; else if (own != "") print own
+                      else if (first != "") print first }' "${_resolve__idx}")"
             [ -z "${cmd}" ] && return 1
             repo="${1}"
             return 0 ;;
@@ -278,7 +283,7 @@ case "${1}" in
 
     obtain)
         [ -z "${2}" ] || [ -z "${3}" ] && exit 1
-        _resolve "${2}"; _answer_unresolved "${?}"
+        _resolve "${2}" "${4}"; _answer_unresolved "${?}"
         aqua="${STATIC_RUN_REQUIRED}"
         if [ ! -x "${aqua}" ]; then
             printf "unreachable=%s\\n" "aqua is not available to install ${repo}"
@@ -349,7 +354,7 @@ case "${1}" in
 
     locate)
         [ -z "${2}" ] && exit 1
-        _resolve "${2}"; _answer_unresolved "${?}"
+        _resolve "${2}" "${4}"; _answer_unresolved "${?}"
         out="$("${0%/*}/github" locate "${repo}" "${3}")"; rc="${?}"
         if [ "${rc}" -ne "0" ]; then
             [ -n "${out}" ] && printf "%s\\n" "${out}"

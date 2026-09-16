@@ -738,6 +738,12 @@ version="$(_spec_version "${spec}")"
 
 [ -z "${package}" ] && _die "${PROGNAME}: '${spec}' names no package"
 
+#the program that was asked for, which a channel is told whenever it is asked
+#where something lives or to install it: a package with several programs is
+#otherwise run by some other name, and typing wat2wasm ran spectest-interp,
+#another program of the same package, with the user's arguments
+want_bin="${bin_name:-${package##*/}}"
+
 if [ -n "${channel}" ] && [ ! -x "$(_channels_dir)/${channel}" ]; then
     channel="$(_channel_by_alias "${channel}")" || {
         _say "${PROGNAME}: no channel called '$(_spec_channel "${spec}")'"
@@ -864,7 +870,7 @@ if [ -n "${dry_run}" ]; then
 
     printf "%s\\n" "${candidates}" | while read -r d_key d_ch d_ver d_by d_bg d_cf d_de d_pkg d_req; do
         d_kind="native"; [ X"${d_cf}" = X"yes" ] && d_kind="confined"
-        d_info="$("$(_channels_dir)/${d_ch}" locate "${d_pkg}" "${d_ver}" 2>/dev/null)"
+        d_info="$("$(_channels_dir)/${d_ch}" locate "${d_pkg}" "${d_ver}" "${want_bin}" 2>/dev/null)"
         case "${d_info}" in *'sha256='?*) d_bg="verified" ;; esac
         d_mark=""
         [ X"${d_ch}" = X"${w_channel}" ] && [ X"${d_ver}" = X"${w_version}" ] && d_mark="  <- elegido"
@@ -895,7 +901,7 @@ fi
 #asking where the artifact lives is also how its badge becomes known, and the
 #badge is part of what the user is being asked to agree to, so it happens
 #before the question and not after it
-info="$("$(_channels_dir)/${w_channel}" locate "${w_package}" "${w_version}" 2>/dev/null)"
+info="$("$(_channels_dir)/${w_channel}" locate "${w_package}" "${w_version}" "${want_bin}" 2>/dev/null)"
 if [ "${?}" -eq "2" ]; then
     _say "${PROGNAME}: ${w_channel} could not be asked where '${package}' lives: $(printf "%s\\n" "${info}" | \
         awk '/^unreachable=/ {sub(/^unreachable=/, ""); print; exit}')"
@@ -942,7 +948,7 @@ if [ -n "${w_requires}" ]; then
     #the tool installs, and verifies against the sums it was handed; what
     #comes back is where the program is and what was checked
     obtained="$(STATIC_RUN_REQUIRED="${req_program}" "$(_channels_dir)/${w_channel}" obtain \
-        "${w_package}" "${w_version}" 2>/dev/null)"
+        "${w_package}" "${w_version}" "${want_bin}" 2>/dev/null)"
     if [ "${?}" -ne "0" ]; then
         _say "${PROGNAME}: ${w_channel} could not install '${w_package}': $(printf "%s\\n" "${obtained}" | \
             awk -F= '$1=="failed" || $1=="unreachable" {sub(/^[a-z]+=/, ""); print; exit}')"

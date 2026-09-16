@@ -922,6 +922,16 @@ test -L am/by/aqua/filler/pkg1/2.0
 nottyh="$(pwd)/notty"
 { ! command -v setsid >/dev/null 2>&1; } || test X"$(STATIC_RUN_HOME="${nottyh}" setsid static-run tiny 2>&1 </dev/null | grep -c 'no terminal to ask on')" = X"1"
 { ! command -v setsid >/dev/null 2>&1; } || test X"$(STATIC_RUN_HOME="${nottyh}" setsid static-run tiny 2>&1 </dev/null | grep -c 'dev/tty')" = X"0"
+#a package with several programs runs the one that was typed. Without being
+#told, locate named the first, and typing two ran one with the user's arguments
+{ printf '%s\n' 'packages:' '  - type: github_release' '    repo_owner: acme' '    repo_name: multi' '    files:' '      - name: one' '      - name: two'; cat filler.yaml; } > regm.yaml
+STATIC_RUN_HOME="$(pwd)/aqm" STATIC_RUN_AQUA_REGISTRY="$(pwd)/regm.yaml" ../../tools/static-run.d/aqua index >/dev/null
+mkdir -p multi-src aqm/tmp && printf '%s\n' '#!/bin/sh' 'printf "%s\n" "one ran"' > multi-src/one && printf '%s\n' '#!/bin/sh' 'printf "%s\n" "two ran"' > multi-src/two && chmod 755 multi-src/one multi-src/two
+(cd multi-src && tar -czf ../multi.tar.gz one two)
+printf '{"tag_name":"1.0","assets":[{"name":"multi-linux-x86_64.tar.gz","size":300,"browser_download_url":"%s"}]}' "$(pwd)/multi.tar.gz" > aqm/tmp/github.acme_multi_.json
+aqmh="$(pwd)/aqm"
+test X"$(PATH="${c404}:${PATH}" STATIC_RUN_HOME="${aqmh}" ../../tools/static-run.d/aqua locate acme/multi 1.0 two | awk -F= '$1=="bin"{print $2}')" = X"two"
+test X"$(PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${aqmh}" static-run --yes two 2>/dev/null)" = X"two ran"
 @end
 
 @begin{staticus}
