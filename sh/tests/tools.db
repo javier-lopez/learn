@@ -877,26 +877,21 @@ PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${amh}" 
 test X"$(PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${amh}" FAKE_AQUA_ASSET="jqx-linux-x86_64|${jqxbin}" FAKE_AQUA_CMD=jqx FAKE_AQUA_LOG="$(pwd)/aqlog" static-run --yes jqx 2>/dev/null)" = X"jqx ran"
 test -L am/by/aqua/acme/jqx/1.0
 test -L am/by/github/aquaproj/aqua/v9
-test X"$(awk -F'\t' '$2=="aqua:acme/jqx@1.0" {print $4}' am/inventory)" = X"verified"
+#what aqua installs aqua answers for, and the placement says so
+test X"$(awk -F'\t' '$2=="aqua:acme/jqx@1.0" {print $4}' am/inventory)" = X"via aqua"
+#the resolver lists the channels whose tool it could not get, and a channel
+#only goes without its own: pkgx out of reach leaves aqua with aqua
+test X"$(PATH="${c404}:${PATH}" STATIC_RUN_HOME="${amh}" STATIC_RUN_NO_MANAGER=pkgx ../../tools/static-run.d/aqua probe jqx | awk -F= '$1=="requires"{print $2}')" = X"github:aquaproj/aqua"
+test X"$(PATH="${c404}:${PATH}" STATIC_RUN_HOME="${amh}" STATIC_RUN_NO_MANAGER="pkgx aqua" ../../tools/static-run.d/aqua probe jqx | awk -F= '$1=="requires"' | awk 'END {print NR}')" = X"0"
+#and static-run hands it no sums of its own: checking is aqua's
+test ! -e am/aqua/conf/acme_jqx_1.0/github-digests.tsv
+test ! -e am/aqua/conf/acme_jqx_1.0/aqua-checksums.json
 #attestations stay off unless asked for, and the second run is a plain exec
 test X"$(cat aqlog)" = X"attestations_disabled=true"
 test X"$(STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${amh}" static-run jqx 2>&1)" = X"jqx ran"
 #a second package reuses the aqua already placed, and says nothing about it
 test X"$(PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${amh}" FAKE_AQUA_ASSET="pkg1-linux-x86_64|${jqxbin}" FAKE_AQUA_CMD=pkg1 static-run --yes pkg1 2>&1 | grep -c 'first github:aquaproj/aqua')" = X"0"
 test -L am/by/aqua/filler/pkg1/2.0
-#an asset github kept no digest of had nothing handed over to check it with,
-#and the placement says none instead of borrowing a verified it did not earn
-printf '{"tag_name":"3.0","assets":[{"name":"pkg2-linux-x86_64","size":40,"browser_download_url":"%s","digest":null}]}' "${jqxbin}" > am/tmp/github.filler_pkg2_.json
-PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${amh}" FAKE_AQUA_ASSET="pkg2-linux-x86_64|${jqxbin}" FAKE_AQUA_CMD=pkg2 static-run --yes pkg2 >/dev/null 2>&1
-test X"$(awk -F'\t' '$2=="aqua:filler/pkg2@3.0" {print $4}' am/inventory)" = X"none"
-#aqua is handed github's digest, so a download that does not match it is
-#refused by aqua before anything is placed, and the resolver says why
-mkdir -p am2/tmp && cp -R aq/index am2/index && cp am/tmp/github.aquaproj_aqua_.json am2/tmp/
-printf '{"tag_name":"1.0","assets":[{"name":"jqx-linux-x86_64","size":40,"browser_download_url":"%s","digest":"sha256:%s"}]}' "${jqxbin}" "0000000000000000000000000000000000000000000000000000000000000000" > am2/tmp/github.acme_jqx_.json
-PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="$(pwd)/am2" FAKE_AQUA_ASSET="jqx-linux-x86_64|${jqxbin}" FAKE_AQUA_CMD=jqx static-run --yes jqx >/dev/null 2>&1; test X"${?}" = X"127"
-PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="$(pwd)/am2" FAKE_AQUA_ASSET="jqx-linux-x86_64|${jqxbin}" FAKE_AQUA_CMD=jqx static-run --yes jqx 2>&1 | grep 'could not install' >/dev/null
-test ! -e am2/by/aqua/acme/jqx/1.0
-test ! -e am2/aqua/root/pkgs/github_release/github.com/acme/jqx/1.0/jqx-linux-x86_64/jqx
 #STATIC_RUN_AQUA_ATTESTATIONS=on hands the choice back to aqua
 mkdir -p am3/tmp && cp -R aq/index am3/index && cp am/tmp/github.aquaproj_aqua_.json am/tmp/github.acme_jqx_.json am3/tmp/
 PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="$(pwd)/am3" FAKE_AQUA_ASSET="jqx-linux-x86_64|${jqxbin}" FAKE_AQUA_CMD=jqx FAKE_AQUA_LOG="$(pwd)/aqlog3" STATIC_RUN_AQUA_ATTESTATIONS=on static-run --yes jqx >/dev/null 2>&1
@@ -923,12 +918,6 @@ hop1h="$(pwd)/hop1"; hop2h="$(pwd)/hop2"
 test X"$(STATIC_RUN_HOME="${hop1h}" static-run -n hopname | tail -1 | awk '{print $2}')" = X"direct:hopname@1.0"
 STATIC_RUN_HOME="${hop2h}" static-run --yes alpha:tiny >/dev/null 2>&1
 test X"$(STATIC_RUN_HOME="${hop2h}" static-run -n hopname | tail -1 | awk '{print $2}')" = X"hopper:hopname@1.0"
-#a plan is the channel's word, so a place it names outside the home is refused
-#before anything is fetched for it
-esch="$(pwd)/esc/home"
-STATIC_RUN_HOME="${esch}" static-run --yes escaper > escout 2>&1; test X"${?}" = X"127"
-grep 'outside its home' escout >/dev/null
-test ! -e esc/escape
 #with no terminal to ask on it declines and says why. /dev/tty is there and
 #writable without a controlling terminal, and only opening it tells; and a
 #failed open of it must not end the shell, which posix does for a special builtin
@@ -945,9 +934,8 @@ printf '{"tag_name":"1.0","assets":[{"name":"multi-linux-x86_64.tar.gz","size":3
 aqmh="$(pwd)/aqm"
 test X"$(PATH="${c404}:${PATH}" STATIC_RUN_HOME="${aqmh}" ../../tools/static-run.d/aqua locate acme/multi 1.0 two | awk -F= '$1=="bin"{print $2}')" = X"two"
 test X"$(PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${aqmh}" static-run --yes two 2>/dev/null)" = X"two ran"
-#pkgx: a pantry, a dist and a pkgx, all stand-ins built here. pkgx resolves and
-#static-run fetches and checks, so the stand-in pkgx refuses to run at all
-#without PKGX_NO_INSTALL, which is what keeps the real one from downloading
+#pkgx: a pantry, a dist and a pkgx, all stand-ins built here. static-run reads
+#the catalog to name the package and estimate its cost; pkgx installs and runs
 plat="linux/$(uname -m | sed 's/^x86_64$/x86-64/; s/^amd64$/x86-64/; s/^arm64$/aarch64/')"
 mkdir -p px/pantry/projects/acme.org/tool/lib px/pantry/projects/acme.org/extra px/pantry/projects/acme.org/py px/pantry/projects/other.org/twin px/dist
 #the shapes the pantry really has, each of which a reader once got wrong: a list
@@ -1001,67 +989,100 @@ test X"$(printf "%s\n" "${pxprobe}" | awk -F= '$1=="estimate" || $1=="requires" 
 test -f pxh/tmp/pkgx/versions/acme.org/tool/lib/versions.txt
 test X"$(STATIC_RUN_HOME="${pxh}" STATIC_RUN_PKGX_DIST="${pxdist}" ../../tools/static-run.d/pkgx probe tool 1.9.0 | awk -F= '$1=="version"{print $2}')" = X"1.9.0"
 STATIC_RUN_HOME="${pxh}" STATIC_RUN_PKGX_DIST="${pxdist}" ../../tools/static-run.d/pkgx probe twin >/dev/null 2>&1; test X"${?}" = X"3"
-STATIC_RUN_HOME="${pxh}" STATIC_RUN_PKGX_DIST="${pxdist}" STATIC_RUN_NO_MANAGER=1 ../../tools/static-run.d/pkgx probe tool >/dev/null 2>&1; test X"${?}" = X"1"
+STATIC_RUN_HOME="${pxh}" STATIC_RUN_PKGX_DIST="${pxdist}" STATIC_RUN_NO_MANAGER="aqua pkgx" ../../tools/static-run.d/pkgx probe tool >/dev/null 2>&1; test X"${?}" = X"1"
 STATIC_RUN_HOME="$(pwd)/pxnone" STATIC_RUN_PKGX_DIST="${pxdist}" ../../tools/static-run.d/pkgx probe tool | grep -- '--index-update' >/dev/null
-#the whole chain: pkgx is fetched from its release, pkgx plans against a cellar
-#of empty directories, static-run fetches and checks every bottle, and pkgx sets
-#up the environment of what was placed, in the real cellar
-pxgraph="acme.org/tool=1.10.0 acme.org/tool/lib=1.0.0 acme.org/extra=1.0.0"; pxrt='FIXTURE_RUNTIME="${FIXTURE_RUNTIME:-runtime set}"'
+STATIC_RUN_HOME="$(pwd)/pxnone" STATIC_RUN_PKGX_DIST="${pxdist}" ../../tools/static-run.d/pkgx probe tool | grep -x 'needs=index' >/dev/null
+#aqua's catalog is here too, read from the test registry, so nothing below asks
+#a network for it
+STATIC_RUN_HOME="${pxh}" STATIC_RUN_AQUA_REGISTRY="$(pwd)/reg.yaml" ../../tools/static-run.d/aqua index >/dev/null
+#the whole chain: pkgx is fetched from its release and checked, since that
+#download is static-run's own; pkgx installs the package, and every run goes
+#through pkgx, which sets up the environment. What pkgx installs pkgx answers
+#for, and the question says who answers instead of claiming anything
+pxgraph="acme.org/tool=1.10.0 acme.org/tool/lib=1.0.0 acme.org/extra=1.0.0"; pxrt='FIXTURE_RUNTIME=runtime set'
 PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${pxh}" STATIC_RUN_PKGX_DIST="${pxdist}" FAKE_PKGX_GRAPH="${pxgraph}" FAKE_PKGX_EXTRA="${pxrt}" FAKE_PKGX_LOG="${pxlog}" static-run --yes tool > pxout 2> pxerr
 test X"$(cat pxout)" = X"tool ran, lib found, runtime set"
-grep 'tool 1.10.0 -> pkgx:acme.org/tool  about ' pxerr >/dev/null
+grep 'tool 1.10.0 -> pkgx:acme.org/tool  about .*  \[via pkgx\]  native' pxerr >/dev/null
 grep 'first github:pkgxdev/pkgx v9.9.9, 2.0 MB' pxerr >/dev/null
 #and the sum of the two, since that is what is being agreed to. pkgx is said to
 #weigh 2 MB and the bottles a few hundred bytes, still an estimate
 grep 'total about 2.0 MB' pxerr >/dev/null
+grep 'pkgx is installing acme.org/tool 1.10.0' pxerr >/dev/null
+test X"$(awk '{printf("%s ", $2)}' pxlog)" = X"acme.org/tool=1.10.0 acme.org/tool/lib=1.0.0 acme.org/extra=1.0.0 "
 test -L pxh/by/pkgx/acme.org/tool/1.10.0
-test X"$(awk 'END {print NR}' pxh/plans/pkgx/acme.org/tool/1.10.0)" = X"3"
-test X"$(awk -F'\t' '$2 ~ /^pkgx:pkgx\// && $4 == "verified"' pxh/inventory | awk 'END {print NR}')" = X"3"
-test X"$(awk -F'\t' '$2 == "pkgx:acme.org/tool@1.10.0" {print $4}' pxh/inventory)" = X"verified"
-test X"$(grep -c "^PKGX_DIR=${pxh}/tmp/pkgx/plan\.[0-9]*$" pxlog)" = X"1"
-test X"$(grep -c "^PKGX_DIR=${pxh}/pkgx$" pxlog)" = X"1"
-test X"$(ls -d pxh/tmp/pkgx/plan.* 2>/dev/null)" = X""
-#the second run is the launcher, with nothing asked of anybody
-test X"$(STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${pxh}" static-run tool 2>&1)" = X"tool ran, lib found, runtime set"
-#another program of the same package is the one that runs, and with pkgx here the
-#size asked about is exact: nothing is missing
+test X"$(awk 'END {print NR}' pxh/members/pkgx/acme.org/tool/1.10.0)" = X"3"
+test X"$(awk -F'\t' '$2 == "pkgx:acme.org/tool@1.10.0" {print $4}' pxh/inventory)" = X"via pkgx"
+test X"$(awk -F'\t' '$2 == "github:pkgxdev/pkgx@v9.9.9" {print $4}' pxh/inventory)" = X"verified"
+#the launcher names pkgx by its link and not by the file it is today, so an
+#update moves the link and no launcher has to be written again
+test -L pxh/managers/pkgx
+grep "${pxh}/managers/pkgx" pxh/run/pkgx/acme.org/tool/1.10.0/tool >/dev/null
+#the second run is the launcher and pkgx, with nothing asked of anybody
+test X"$(STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${pxh}" FAKE_PKGX_GRAPH="${pxgraph}" FAKE_PKGX_EXTRA="${pxrt}" static-run tool 2>&1)" = X"tool ran, lib found, runtime set"
+#another program of the same package is the one that runs, and nothing is
+#missing for it, which is still an estimate: only pkgx could say for sure
 PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${pxh}" STATIC_RUN_PKGX_DIST="${pxdist}" FAKE_PKGX_GRAPH="${pxgraph}" static-run --yes tool2 > pxout 2> pxerr
 test X"$(cat pxout)" = X"tool2 ran"
-grep 'tool2 1.10.0 -> pkgx:acme.org/tool  0 B  \[verified\]' pxerr >/dev/null
+grep 'tool2 1.10.0 -> pkgx:acme.org/tool  about 0 B  \[via pkgx\]' pxerr >/dev/null
+test X"$(grep -c 'first github:pkgxdev/pkgx' pxerr)" = X"0"
 PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${pxh}" STATIC_RUN_PKGX_DIST="${pxdist}" FAKE_PKGX_GRAPH="acme.org/extra=1.0.0" static-run --yes extra > pxout 2>/dev/null
 test X"$(cat pxout)" = X"extra ran"
-#purging a package takes its bottles, except the ones another package still uses
+#the first time there is no catalog here at all. Each channel's is fetched when
+#it is first needed, one after another and saying so, until one has the name:
+#here aqua's does not and pkgx's does
+pxb="$(pwd)/pxb"; regf="$(pwd)/reg.yaml"; c403="$(pwd)/c403"
+mkdir -p pxb/tmp && cp pxh/tmp/github.pkgxdev_pkgx_.json pxb/tmp/
+PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${pxb}" STATIC_RUN_AQUA_REGISTRY="${regf}" STATIC_RUN_PKGX_DIST="${pxdist}" FAKE_PKGX_GRAPH="acme.org/extra=1.0.0" static-run --yes extra > pxout 2> pxerr
+test X"$(cat pxout)" = X"extra ran"
+grep 'aqua has no catalog here yet, fetching it' pxerr >/dev/null
+grep "aqua has nothing called 'extra'" pxerr >/dev/null
+grep 'pkgx has no catalog here yet, fetching it' pxerr >/dev/null
+#and once one channel has the name, the catalogs after it are left for later
+pxb2="$(pwd)/pxb2"; mkdir -p pxb2/tmp && cp am/tmp/github.aquaproj_aqua_.json am/tmp/github.acme_jqx_.json pxb2/tmp/
+PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${pxb2}" STATIC_RUN_AQUA_REGISTRY="${regf}" STATIC_RUN_PKGX_DIST="${pxdist}" static-run -n jqx > pxout 2> pxerr
+grep 'aqua has no catalog here yet' pxerr >/dev/null
+test -s pxb2/index/aqua.tsv
+test ! -e pxb2/index/pkgx.tsv
+#a tool that cannot be fetched because github's limit is used up is said to be
+#exactly that, and whether the package exists is then not known, not denied
+pxq="$(pwd)/pxq"; mkdir -p pxq && cp -R pxh/index pxq/index
+PATH="${c403}:${PATH}" GITHUB_TOKEN= GH_TOKEN= STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${pxq}" STATIC_RUN_PKGX_DIST="${pxdist}" static-run --yes tool > pxout 2>&1; test X"${?}" = X"127"
+grep 'github:pkgxdev/pkgx could not be fetched: the github api limit' pxout >/dev/null
+grep "whether anything provides 'tool' is not known" pxout >/dev/null
+test X"$(grep -c 'nothing provides' pxout)" = X"0"
+#--index-update with a channel named brings that channel's catalog and tool up
+#to date and nobody else's. A newer pkgx is fetched and checked, the link moves
+#to it, the old one goes, and the launchers already written follow the link
+mkdir -p px/rel2 && { cat ../static-run.fake-pkgx; printf '%s\n' '#the next release'; } > px/rel2/pkgx && chmod 755 px/rel2/pkgx && (cd px/rel2 && tar -czf pkgx-9.9.10+linux+x86-64.tar.gz pkgx)
+pxrel2="$(pwd)/px/rel2/pkgx-9.9.10+linux+x86-64.tar.gz"; pxrel2sum="$(sha256sum px/rel2/pkgx-9.9.10+linux+x86-64.tar.gz | awk '{print $1}')"
+printf '{"tag_name":"v9.9.10","assets":[{"name":"pkgx-9.9.10+linux+x86-64.tar.gz","size":2097152,"browser_download_url":"%s","digest":"sha256:%s"}]}' "${pxrel2}" "${pxrel2sum}" > pxrel2.json
+mkdir -p crel && printf '%s\n' '#!/bin/sh' 'o=""; while [ $# -gt 0 ]; do [ X"$1" = X"-o" ] && { shift; o="$1"; }; shift; done' 'cat >/dev/null' 'cp "${FAKE_RELEASE}" "$o"' 'printf 200' > crel/curl && chmod 755 crel/curl
+crel="$(pwd)/crel"; pxrel2json="$(pwd)/pxrel2.json"; pxold="$(readlink pxh/managers/pkgx)"
+rm -f pxh/index/aqua.tsv
+PATH="${crel}:${PATH}" FAKE_RELEASE="${pxrel2json}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${pxh}" STATIC_RUN_PKGX_DIST="${pxdist}" STATIC_RUN_AQUA_REGISTRY="${regf}" static-run --index-update pkgx > pxout 2>&1
+grep 'pkgx: pkgx v9.9.9 -> v9.9.10' pxout >/dev/null
+test ! -e pxh/index/aqua.tsv
+test X"$(readlink pxh/managers/pkgx)" != X"${pxold}"
+test ! -e "${pxold}"
+test -L pxh/by/github/pkgxdev/pkgx/v9.9.10
+test ! -e pxh/by/github/pkgxdev/pkgx/v9.9.9
+grep 'the next release' "$(readlink pxh/managers/pkgx)" >/dev/null
+test X"$(STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${pxh}" FAKE_PKGX_GRAPH="acme.org/extra=1.0.0" static-run extra 2>&1)" = X"extra ran"
+PATH="${crel}:${PATH}" FAKE_RELEASE="${pxrel2json}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${pxh}" STATIC_RUN_PKGX_DIST="${pxdist}" static-run --index-update pkgx 2>&1 | grep 'pkgx v9.9.10 is the newest' >/dev/null
+#purging a package takes what pkgx installed for it, except what another
+#package still uses
 STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${pxh}" static-run --purge tool >/dev/null 2>&1
 test ! -e pxh/by/pkgx/acme.org/tool/1.10.0
 test ! -d pxh/pkgx/acme.org/tool/v1.10.0
 test ! -d pxh/pkgx/acme.org/tool/lib/v1.0.0
 test ! -d pxh/run/pkgx/acme.org/tool/1.10.0
 test -d pxh/pkgx/acme.org/extra/v1.0.0
+#and the links pkgx keeps beside a version do not outlive it, nor do the
+#directories that end up empty
+test ! -e pxh/pkgx/acme.org/tool
 STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${pxh}" static-run --purge extra >/dev/null 2>&1
 test ! -d pxh/pkgx/acme.org/extra/v1.0.0
-#a bottle that does not match the sum pkgx published is refused, and the package
-#it belongs to is not placed
-cp -R px/dist px/dist2 && printf '%s\n' '0000000000000000000000000000000000000000000000000000000000000000  x' > px/dist2/acme.org/extra/${plat}/v1.0.0.tar.xz.sha256sum
-mkdir -p pxh2/tmp && cp pxh/tmp/github.pkgxdev_pkgx_.json pxh2/tmp/ && cp -R pxh/index pxh2/index
-pxh2="$(pwd)/pxh2"; pxdist2="$(pwd)/px/dist2"
-PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${pxh2}" STATIC_RUN_PKGX_DIST="${pxdist2}" FAKE_PKGX_GRAPH="${pxgraph}" static-run --yes tool > pxout 2>&1; test X"${?}" = X"127"
-grep 'published checksum does not match' pxout >/dev/null
-test ! -d pxh2/pkgx/acme.org/extra/v1.0.0
-test ! -e pxh2/by/pkgx/acme.org/tool/1.10.0
-#a bottle with no published sum has nothing to check it against, and the package
-#says none rather than borrow a verified that one of its bottles did not earn
-cp -R px/dist px/dist3 && rm -f px/dist3/acme.org/extra/${plat}/v1.0.0.tar.xz.sha256sum
-mkdir -p pxh4/tmp && cp pxh/tmp/github.pkgxdev_pkgx_.json pxh4/tmp/ && cp -R pxh/index pxh4/index
-pxh4="$(pwd)/pxh4"; pxdist3="$(pwd)/px/dist3"
-test X"$(PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${pxh4}" STATIC_RUN_PKGX_DIST="${pxdist3}" FAKE_PKGX_GRAPH="${pxgraph}" static-run --yes tool 2>/dev/null)" = X"tool ran, lib found, no runtime"
-test X"$(awk -F'\t' '$2 == "pkgx:acme.org/tool@1.10.0" {print $4}' pxh4/inventory)" = X"none"
-test X"$(awk -F'\t' '$2 == "pkgx:pkgx/acme.org/extra/v1.0.0" {print $4}' pxh4/inventory)" = X"none"
-#an environment that would run something in the launcher is not written into one
-mkdir -p pxh3/tmp && cp pxh/tmp/github.pkgxdev_pkgx_.json pxh3/tmp/ && cp -R pxh/index pxh3/index
-pxh3="$(pwd)/pxh3"; pxbad='X="$(touch pwned)"'
-PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${pxh3}" STATIC_RUN_PKGX_DIST="${pxdist}" FAKE_PKGX_GRAPH="${pxgraph}" FAKE_PKGX_EXTRA="${pxbad}" static-run --yes tool >/dev/null 2>&1; test X"${?}" = X"127"
-test ! -e pwned
-test X"$(ls pxh3/run/pkgx/acme.org/tool/1.10.0 2>/dev/null)" = X""
+test ! -e pxh/pkgx/acme.org
 @end
 
 @begin{staticus}

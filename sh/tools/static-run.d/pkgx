@@ -1,36 +1,28 @@
 #!/bin/sh
-#description: static-run channel - pkgx's pantry, resolved by pkgx, verified by static-run
+#description: static-run channel - pkgx's pantry, installed and run by pkgx
 #usage: pkgx meta | pkgx index | pkgx search WORDS...
 #       pkgx probe NAME|PROJECT [VER] | pkgx locate PROJECT VER [PROGRAM]
-#       pkgx plan PROJECT VER | pkgx obtain PROJECT VER [PROGRAM]
+#       pkgx obtain PROJECT VER [PROGRAM]
 #probe and locate exit 0 with an answer, 1 when there is none, 2 when the
-#catalog could not be asked, with the reason on an unreachable= line, and 3
-#when a name belongs to more than one project, each on a candidate= line
+#catalog could not be asked, with the reason on an unreachable= line and
+#needs=index when what is missing is the local index, and 3 when a name
+#belongs to more than one project, each on a candidate= line
 
-#pkgx builds its packages relocatable and serves them from dist.pkgx.dev, a
-#bucket behind a cdn with no quota: versions.txt per project, a tar.xz per
-#version and a .sha256sum beside each one. A program in there does not start
-#on its own. Its libraries are found through LD_LIBRARY_PATH and friends,
-#which pkgx works out from the whole dependency graph, so the work splits in
-#two and each half goes where it already lives:
+#pkgx installs, and whatever checking of a download happens is pkgx's to do;
+#doing it again here would be one more copy of pkgx to keep in step with pkgx.
+#This channel reads pkgx's catalog and nothing more: which project provides a
+#command, which projects it depends on, and how big their bottles are, so the
+#cost can be shown and compared before anything is spent. obtain hands the
+#package to pkgx, and the launcher it leaves behind hands every run to pkgx,
+#which sets up the environment the program needs.
 #
-#  pkgx decides   which versions of which projects, and what environment they
-#                 need. That is a semver solver with 37 constraint shapes in
-#                 the pantry and special cases for openssl and icu, and it is
-#                 not written again here
-#  static-run     downloads every bottle, checks it against the sum pkgx
-#                 publishes and unpacks it. pkgx itself checks nothing: it
-#                 streams the download straight into tar
+#The catalog is dist.pkgx.dev, a bucket behind a cdn with no quota: the pantry,
+#a versions.txt per project and a tar.xz per version, laid out the same way for
+#pkgx 1 and pkgx 2.
 #
-#They meet through PKGX_NO_INSTALL, which makes pkgx refuse to download
-#anything. plan asks pkgx for a resolution against a cellar of empty
-#directories, one per version the dist has, so pkgx picks exactly what it would
-#pick online and fetches none of it. obtain asks pkgx for the environment of
-#what static-run placed, again with PKGX_NO_INSTALL, so if the two ever
-#disagree about a version pkgx fails loudly instead of fetching one unchecked
-#
-#STATIC_RUN_PKGX_DIST replaces https://dist.pkgx.dev, a directory included,
-#which is how the tests serve a dist without a network
+#STATIC_RUN_PKGX_DIST replaces https://dist.pkgx.dev, a directory included, and
+#is handed to pkgx as PKGX_DIST_URL: that is how the tests serve a dist and a
+#stand-in pkgx without a network
 
 DIST="${STATIC_RUN_PKGX_DIST:-https://dist.pkgx.dev}"
 home="${STATIC_RUN_HOME:-/tmp}"
@@ -204,23 +196,6 @@ _size() {
     printf "%s\\n" "${_size__n}"
 }
 
-_sum() {
-    #$1 => project, $2 => version. The sha256 pkgx publishes beside a bottle,
-    #or nothing: a malformed line is no sum rather than a sum nothing matches
-    _sum__f="${META}/sums/${1}/v${2}"
-    [ -s "${_sum__f}" ] && { cat "${_sum__f}"; return 0; }
-    mkdir -p "${_sum__f%/*}" 2>/dev/null
-    _get "$(_bottle "${1}" "${2}").sha256sum" "${_sum__f}.$$" || { rm -f "${_sum__f}.$$"; return 1; }
-    _sum__h="$(awk 'NR == 1 {print tolower($1)}' "${_sum__f}.$$")"
-    rm -f "${_sum__f}.$$"
-    case "${_sum__h}" in
-        *[!0-9a-f]*|'') return 1 ;;
-    esac
-    [ "${#_sum__h}" -eq "64" ] || return 1
-    printf "%s\\n" "${_sum__h}" > "${_sum__f}"
-    printf "%s\\n" "${_sum__h}"
-}
-
 _indexer() {
     #reads the pantry's package.yml files, named on stdin, and prints three
     #kinds of line: cmd <program> <project>, dep <project> <project>, and
@@ -326,9 +301,9 @@ _resolve() {
     #project in project and the program in cmd, and answers 0 for one project,
     #1 for none, 2 for no index, and 3 when a name belongs to several, which
     #are left in cands
-    why=""; project=""; cmd=""; cands=""
+    why=""; project=""; cmd=""; cands=""; noindex=""
     if [ ! -s "${INDEX}" ]; then
-        why="there is no local index yet, run: static-run --index-update"
+        why="there is no local index yet, run: static-run --index-update"; noindex="1"
         return 2
     fi
     cands="$(awk -F'\t' -v n="${1}" '$1 == "cmd" && $2 == n {print $3}' "${INDEX}" | LC_ALL=C sort -u)"
@@ -363,7 +338,9 @@ _answer_unresolved() {
     case "${1}" in
         0) return 0 ;;
         1) exit 1 ;;
-        2) printf "unreachable=%s\\n" "${why}"; exit 2 ;;
+        2) printf "unreachable=%s\\n" "${why}"
+           [ -n "${noindex}" ] && printf "needs=%s\\n" "index"
+           exit 2 ;;
         3) printf "%s\\n" "${cands}" | awk 'NF {print "candidate=" $0}'; exit 3 ;;
     esac
 }
@@ -386,26 +363,84 @@ _closure() {
 }
 
 _pkgx() {
-    #pkgx, pointed at this channel's pantry and cellar and forbidden to
-    #download. Everything that reaches the network in here is static-run's
-    PKGX_PANTRY_DIR="${PANTRY}" PKGX_NO_INSTALL=1 "${STATIC_RUN_REQUIRED}" "${@}"
+    #pkgx, pointed at this channel's cellar and at the pantry the names were
+    #read from: everything it keeps stays under the resolver's home, and it
+    #resolves against the same catalog the question was worked out from
+    if [ -n "${STATIC_RUN_PKGX_DIST}" ]; then
+        PKGX_DIR="${CELLAR}" PKGX_PANTRY_DIR="${PANTRY}" PKGX_DIST_URL="${DIST}" "${STATIC_RUN_REQUIRED}" "${@}"
+    else
+        PKGX_DIR="${CELLAR}" PKGX_PANTRY_DIR="${PANTRY}" "${STATIC_RUN_REQUIRED}" "${@}"
+    fi
 }
 
-_unsafe_path() {
-    #pkgx prints the environment as KEY="value" lines, meant to be sourced.
-    #A path with a quote, a dollar, a backquote or a backslash in it would be
-    #code in that file and not a path
+_unsafe() {
+    #the launcher is a shell script with paths and names written into it in
+    #double quotes. A quote, a dollar, a backquote or a backslash in one of
+    #them would be code in that file and not a path
     case "${1}" in
         *'"'*|*'$'*|*'`'*|*'\'*) return 0 ;;
     esac
     return 1
 }
 
+_installed() {
+    #reads what pkgx --json=v2 answers and prints each package it installed or
+    #found installed, project and version. Strings are read as strings and
+    #depth is counted, the way the github channel reads a release
+    awk '
+        function unesc(v) { gsub(/\\\\/, "\001", v); gsub(/\\"/, "\"", v); gsub(/\\\//, "/", v); gsub("\001", "\\", v); return v }
+        function take(opening,   s, k, rest, v) {
+            s = seg; seg = ""
+            if (s !~ /^[ \t\r]*"/) return
+            sub(/^[ \t\r]*"/, "", s)
+            k = s; sub(/".*$/, "", k)
+            rest = s; sub(/^[^"]*"[ \t\r]*/, "", rest)
+            if (rest !~ /^:/) return
+            if (opening) { key[depth + 1] = k; return }
+            sub(/^:[ \t\r]*/, "", rest); sub(/[ \t\r]+$/, "", rest)
+            v = rest
+            if (v ~ /^".*"$/) v = unesc(substr(v, 2, length(v) - 2))
+            if (depth == 3 && key[2] == "pkgs") {
+                if (k == "project") proj = v
+                else if (k == "version") ver = v
+            }
+        }
+        {
+            line = $0; n = length(line)
+            for (i = 1; i <= n; i++) {
+                c = substr(line, i, 1)
+                if (instr) {
+                    seg = seg c
+                    if (esc) esc = 0
+                    else if (c == "\\") esc = 1
+                    else if (c == "\"") instr = 0
+                    continue
+                }
+                if (c == "\"") { instr = 1; seg = seg c; continue }
+                if (c == "{" || c == "[") {
+                    take(1); depth++
+                    if (c == "{" && depth == 3 && key[2] == "pkgs") { proj = ""; ver = "" }
+                    continue
+                }
+                if (c == "}" || c == "]") {
+                    take(0)
+                    if (c == "}" && depth == 3 && key[2] == "pkgs" && proj != "" && ver != "")
+                        printf("%s\t%s\n", proj, ver)
+                    depth--
+                    continue
+                }
+                if (c == ",") { take(0); continue }
+                seg = seg c
+            }
+            seg = seg " "
+        }'
+}
+
 case "${1}" in
     meta)
-        #plan=yes: this channel installs more than one artifact, says which
-        #before any of them is fetched, and has the resolver place them
-        printf "%s\\n" "kind=artifact" "confines=no" "describes=self" "plan=yes"
+        #manager= names the tool this channel installs through, which the
+        #resolver keeps present and up to date
+        printf "%s\\n" "kind=artifact" "confines=no" "describes=self" "manager=github:pkgxdev/pkgx"
         exit 0
         ;;
 
@@ -476,7 +511,7 @@ case "${1}" in
         [ X"${cmd}" = X"-" ] && exit 1
         #nothing here installs without pkgx, and without it there is nothing
         #this channel can offer
-        [ -n "${STATIC_RUN_NO_MANAGER}" ] && exit 1
+        case " ${STATIC_RUN_NO_MANAGER} " in *" ${0##*/} "*) exit 1 ;; esac
 
         list="$(_versions "${project}")"
         case "${?}" in
@@ -533,203 +568,64 @@ case "${1}" in
         printf "url=%s\\n" "$(_bottle "${project}" "${3}")"
         printf "format=%s\\n" "tar.xz"
         printf "bin=%s\\n" "${cmd}"
-        sum="$(_sum "${project}" "${3}")" && printf "sha256=%s\\n" "${sum}"
-        exit 0
-        ;;
-
-    plan)
-        [ -z "${2}" ] || [ -z "${3}" ] && exit 1
-        _resolve "${2}" "${4}"; _answer_unresolved "${?}"
-        if [ ! -x "${STATIC_RUN_REQUIRED}" ]; then
-            printf "unreachable=%s\\n" "pkgx is not available to resolve ${project}"
-            exit 2
-        fi
-
-        #a cellar where every version the dist has for every project that
-        #could take part is an empty directory. pkgx prefers what is installed,
-        #so it resolves against these without asking the network, and since
-        #they are all there it picks the newest that satisfies each constraint,
-        #which is what it would pick online. Nothing in here is ever run
-        fake="${META}/plan.$$"; rm -rf "${fake}" "${fake}".*; mkdir -p "${fake}" 2>/dev/null || exit 1
-        trap 'rm -rf "${fake}" "${fake}".*' EXIT HUP INT TERM
-        n=0
-        for member in $(_closure "${project}"); do
-            n=$((n + 1))
-            (
-                _versions "${member}" > "${fake}.${n}.v" 2>/dev/null
-                printf "%s %s\\n" "${?}" "${member}" > "${fake}.${n}.rc"
-            ) &
-            _batch "${n}"
-        done
-        wait
-        #a project the dist has nothing of for this machine simply takes no
-        #part; one that could not be asked makes the whole answer unknown
-        unasked="$(cat "${fake}".*.rc 2>/dev/null | awk '$1 == "2" {print $2; exit}')"
-        if [ -n "${unasked}" ]; then
-            printf "unreachable=%s\\n" "dist.pkgx.dev could not be asked for the versions of ${unasked}"
-            exit 2
-        fi
-        i=0
-        while [ "${i}" -lt "${n}" ]; do
-            i=$((i + 1))
-            read -r rc member < "${fake}.${i}.rc"
-            [ X"${rc}" = X"0" ] || continue
-            awk -v m="${member}" 'NF && $1 !~ /[\/ ]/ {print m "/v" $1}' "${fake}.${i}.v"
-        done | (cd "${fake}" && xargs mkdir -p)
-
-        answer="$(PKGX_DIR="${fake}" _pkgx --json=v2 "+${project}=${3}" 2>&1)"
-        if [ "${?}" -ne "0" ]; then
-            printf "failed=%s\\n" "$(printf "%s\\n" "${answer}" | awk 'NF {l = $0} END {print l}')"
-            exit 1
-        fi
-
-        #the answer is json, and only the name and version of each package
-        #under "pkgs" are read. Strings are read as strings and depth is
-        #counted, the way the github channel reads a release
-        printf "%s\\n" "${answer}" | awk '
-            function unesc(v) { gsub(/\\\\/, "\001", v); gsub(/\\"/, "\"", v); gsub(/\\\//, "/", v); gsub("\001", "\\", v); return v }
-            function take(opening,   s, k, rest, v) {
-                s = seg; seg = ""
-                if (s !~ /^[ \t\r]*"/) return
-                sub(/^[ \t\r]*"/, "", s)
-                k = s; sub(/".*$/, "", k)
-                rest = s; sub(/^[^"]*"[ \t\r]*/, "", rest)
-                if (rest !~ /^:/) return
-                if (opening) { key[depth + 1] = k; return }
-                sub(/^:[ \t\r]*/, "", rest); sub(/[ \t\r]+$/, "", rest)
-                v = rest
-                if (v ~ /^".*"$/) v = unesc(substr(v, 2, length(v) - 2))
-                if (depth == 3 && key[2] == "pkgs") {
-                    if (k == "project") proj = v
-                    else if (k == "version") ver = v
-                }
-            }
-            {
-                line = $0; n = length(line)
-                for (i = 1; i <= n; i++) {
-                    c = substr(line, i, 1)
-                    if (instr) {
-                        seg = seg c
-                        if (esc) esc = 0
-                        else if (c == "\\") esc = 1
-                        else if (c == "\"") instr = 0
-                        continue
-                    }
-                    if (c == "\"") { instr = 1; seg = seg c; continue }
-                    if (c == "{" || c == "[") {
-                        take(1); depth++
-                        if (c == "{" && depth == 3 && key[2] == "pkgs") { proj = ""; ver = "" }
-                        continue
-                    }
-                    if (c == "}" || c == "]") {
-                        take(0)
-                        if (c == "}" && depth == 3 && key[2] == "pkgs" && proj != "" && ver != "")
-                            printf("%s\t%s\n", proj, ver)
-                        depth--
-                        continue
-                    }
-                    if (c == ",") { take(0); continue }
-                    seg = seg c
-                }
-                seg = seg " "
-            }' > "${fake}.pkgs"
-        if [ ! -s "${fake}.pkgs" ]; then
-            rm -f "${fake}.pkgs"
-            printf "failed=%s\\n" "pkgx resolved ${project} to nothing this channel could read"
-            exit 1
-        fi
-
-        #one line per bottle: url, published sum, format, size, where it goes
-        #under the resolver's home and what unpacking it creates there. The sum
-        #and the size of every bottle are asked for together: one at a time,
-        #httpie's 26 bottles took 44 seconds of waiting on 52 small answers
-        if awk -F'\t' '($1 "/" $2) ~ /\.\.|^\/|[^A-Za-z0-9._+\/-]/ {bad = 1} END {exit !bad}' "${fake}.pkgs"; then
-            printf "failed=%s\\n" "pkgx named a package this channel will not place"
-            exit 1
-        fi
-        i=0
-        while IFS='	' read -r p v; do
-            i=$((i + 1))
-            (
-                s="$(_sum "${p}" "${v}")" || s="-"
-                b="$(_size "${p}" "${v}")" || b="-"
-                printf "artifact=%s\\t%s\\t%s\\t%s\\t%s\\t%s\\n" "$(_bottle "${p}" "${v}")" "${s}" "tar.xz" "${b}" "pkgx" "${p}/v${v}" > "${fake}.${i}.art"
-            ) &
-            _batch "${i}"
-        done < "${fake}.pkgs"
-        wait
-        j=0
-        while [ "${j}" -lt "${i}" ]; do
-            j=$((j + 1))
-            cat "${fake}.${j}.art"
-        done
         exit 0
         ;;
 
     obtain)
         [ -z "${2}" ] || [ -z "${3}" ] && exit 1
         _resolve "${2}" "${4}"; _answer_unresolved "${?}"
+        [ X"${cmd}" = X"-" ] && { printf "failed=%s\\n" "${project} provides no program"; exit 1; }
         if [ ! -x "${STATIC_RUN_REQUIRED}" ]; then
-            printf "unreachable=%s\\n" "pkgx is not available to set up ${project}"
+            printf "unreachable=%s\\n" "pkgx is not available to install ${project}"
             exit 2
         fi
-        if _unsafe_path "${home}"; then
-            printf "failed=%s\\n" "${home} has a character that cannot be written into a launcher safely"
+        if _unsafe "${home}" || _unsafe "${STATIC_RUN_REQUIRED}" || _unsafe "${cmd}"; then
+            printf "failed=%s\\n" "a path or a name here cannot be written into a launcher safely"
             exit 1
         fi
 
-        #the environment of what static-run placed, as pkgx works it out. With
-        #PKGX_NO_INSTALL, a bottle static-run did not place is a refusal here
-        #and never a download
-        envfile="${META}/env.$$"; mkdir -p "${META}" 2>/dev/null
-        PKGX_DIR="${CELLAR}" _pkgx "+${project}=${3}" > "${envfile}" 2> "${envfile}.err"
+        #pkgx installs the version the question named: it resolves, downloads
+        #and checks whatever it checks. Its own progress reaches the terminal,
+        #which is where a wait gets explained; the answer lists what it holds
+        answer="$(_pkgx --json=v2 "+${project}=${3}")"
         if [ "${?}" -ne "0" ]; then
-            printf "failed=%s\\n" "$(awk 'NF {l = $0} END {print l}' "${envfile}.err")"
-            rm -f "${envfile}" "${envfile}.err"; exit 1
+            printf "failed=%s\\n" "pkgx could not install ${project} ${3}"
+            exit 1
         fi
-        rm -f "${envfile}.err"
-        #a line is KEY="value" and nothing else, and the only expansions a
-        #value may hold are the ones pkgx writes itself: $KEY, ${KEY:+...} and
-        #${KEY:-...}. Anything else - $( above all - would run in the launcher
-        if awk '
-            !/^[A-Z_][A-Z0-9_]*="[^"`\\]*"$/ {bad = 1; exit}
-            {
-                v = $0; sub(/^[^=]*="/, "", v)
-                gsub(/\$\{[A-Za-z_][A-Za-z0-9_]*:[-+]/, "", v)
-                gsub(/\$[A-Za-z_][A-Za-z0-9_]*/, "", v)
-                if (index(v, "$")) {bad = 1; exit}
-            }
-            END {exit !bad}' "${envfile}"; then
-            printf "failed=%s\\n" "pkgx described the environment in a shape this channel does not write into a launcher"
-            rm -f "${envfile}"; exit 1
+        members="$(printf "%s\\n" "${answer}" | _installed)"
+        if [ -z "${members}" ]; then
+            printf "failed=%s\\n" "pkgx installed ${project} and said nothing this channel could read about it"
+            exit 1
+        fi
+        if printf "%s\\n" "${members}" | awk -F'\t' '($1 "/" $2) ~ /\.\.|^\/|[^A-Za-z0-9._+\/-]/ {bad = 1} END {exit !bad}'; then
+            printf "failed=%s\\n" "pkgx named a package this channel will not record"
+            exit 1
+        fi
+        if [ ! -x "${CELLAR}/${project}/v${3}/bin/${cmd}" ] && [ ! -x "${CELLAR}/${project}/v${3}/sbin/${cmd}" ]; then
+            printf "failed=%s\\n" "pkgx installed ${project} ${3} but it has no program called ${cmd}"
+            exit 1
         fi
 
-        #the program is looked for where pkgx would look for it: along the
-        #PATH it just described, in that order
-        [ X"${cmd}" = X"-" ] && { printf "failed=%s\\n" "${project} provides no program"; rm -f "${envfile}"; exit 1; }
-        bin="$(awk -F'"' '/^PATH="/ {print $2; exit}' "${envfile}" | sed 's/\${PATH:+:\$PATH}$//' | tr ':' '\n' | \
-            while read -r d; do [ -n "${d}" ] && [ -x "${d}/${cmd}" ] && [ ! -d "${d}/${cmd}" ] && { printf "%s\\n" "${d}/${cmd}"; break; }; done)"
-        if [ -z "${bin}" ]; then
-            printf "failed=%s\\n" "pkgx set up ${project} but no program called ${cmd} is on its PATH"
-            rm -f "${envfile}"; exit 1
-        fi
-
-        #a launcher: the environment, then the program. It is written once and
-        #runs without pkgx, so the second run costs a shell and not a solver
+        #the launcher hands every run to pkgx, which sets up the environment
+        #the program needs from what it installed. That costs pkgx starting,
+        #about eight milliseconds, and keeps the environment pkgx's business
         run="${home}/run/pkgx/${project}/${3}"
-        mkdir -p "${run}" 2>/dev/null || { rm -f "${envfile}"; exit 1; }
+        mkdir -p "${run}" 2>/dev/null || exit 1
         {
-            printf "%s\\n" "#!/bin/sh" "#written by static-run from pkgx's account of what ${project} ${3} needs"
-            cat "${envfile}"
-            awk -F= '{printf("export %s\n", $1)}' "${envfile}"
-            printf 'exec "%s" "$@"\n' "${bin}"
+            printf "%s\\n" "#!/bin/sh" "#written by static-run: ${cmd}, from ${project} ${3}, run by pkgx"
+            printf 'PKGX_DIR="%s"\nPKGX_PANTRY_DIR="%s"\nexport PKGX_DIR PKGX_PANTRY_DIR\n' "${CELLAR}" "${PANTRY}"
+            [ -n "${STATIC_RUN_PKGX_DIST}" ] && ! _unsafe "${DIST}" && \
+                printf 'PKGX_DIST_URL="%s"\nexport PKGX_DIST_URL\n' "${DIST}"
+            printf 'exec "%s" "+%s=%s" -- "%s" "$@"\n' "${STATIC_RUN_REQUIRED}" "${project}" "${3}" "${cmd}"
         } > "${run}/${cmd}.$$" && chmod 755 "${run}/${cmd}.$$" && mv "${run}/${cmd}.$$" "${run}/${cmd}"
-        rm -f "${envfile}"
 
         printf "program=%s\\n" "${run}/${cmd}"
         printf "asset=%s\\n" "${project}/v${3}"
+        #what pkgx holds for this package, so purging it can take what no
+        #other placement still uses: curl and git share an openssl
+        printf "%s\\n" "${members}" | awk -F'\t' '{printf("member=pkgx/%s/v%s\n", $1, $2)}'
         exit 0
         ;;
 
-    *) printf "%s\\n" "usage: ${0##*/} meta|index|search|probe|locate|plan|obtain" >&2; exit 1 ;;
+    *) printf "%s\\n" "usage: ${0##*/} meta|index|search|probe|locate|obtain" >&2; exit 1 ;;
 esac

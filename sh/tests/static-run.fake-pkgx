@@ -1,43 +1,76 @@
 #!/bin/sh
-#a stand-in for pkgx, for the static-run tests. It behaves like pkgx where
-#static-run depends on it and nowhere else. Given +project=version it resolves
-#to the graph in FAKE_PKGX_GRAPH, "project=version" words with the one asked
-#for first, and like pkgx with PKGX_NO_INSTALL it refuses when a member is not
-#a directory in PKGX_DIR. Without PKGX_NO_INSTALL real pkgx would download, so
-#this one fails loudly instead. --json=v2 prints the resolution; without it the
-#environment is printed the way pkgx prints it, plus FAKE_PKGX_EXTRA verbatim.
-#FAKE_PKGX_LOG, when set, records every PKGX_DIR it was pointed at
+#a stand-in for pkgx, for the static-run tests. It does what static-run asks of
+#pkgx and nothing else, from a graph it is given rather than from a pantry:
+#FAKE_PKGX_GRAPH, "project=version" words with the one asked for first.
+#
+#  --json=v2 +project=version       installs every member of the graph that is
+#                                   not in PKGX_DIR, taking its bottle from
+#                                   PKGX_DIST_URL, a directory here, and prints
+#                                   what it holds the way pkgx does
+#  +project=version -- program ...  runs the program with the environment the
+#                                   graph needs: bin directories on PATH, lib
+#                                   directories on LD_LIBRARY_PATH, and
+#                                   FAKE_PKGX_EXTRA, one KEY=value, exported
+#  --version                        FAKE_PKGX_VERSION, which tells two releases
+#                                   of the stand-in apart
+#
+#Like pkgx with PKGX_NO_INSTALL it refuses to install. FAKE_PKGX_LOG, when set,
+#records every bottle it installed
 
-[ -n "${FAKE_PKGX_LOG}" ] && printf "PKGX_DIR=%s\n" "${PKGX_DIR}" >> "${FAKE_PKGX_LOG}"
-
-if [ -z "${PKGX_NO_INSTALL}" ]; then
-    printf "%s\n" "fake pkgx: PKGX_NO_INSTALL is not set, the real one would download" >&2
-    exit 99
+if [ X"${1}" = X"--version" ]; then
+    printf "pkgx %s\n" "${FAKE_PKGX_VERSION:-fake}"
+    exit 0
 fi
 
-json=""; top=""
-for arg in "${@}"; do
-    case "${arg}" in
+json=""; top=""; run=""
+while [ "${#}" -gt "0" ]; do
+    case "${1}" in
         --json=v2) json="1" ;;
-        +*) top="${arg#+}" ;;
+        +*) top="${1#+}" ;;
+        --) shift; run="1"; break ;;
     esac
+    shift
 done
 [ -z "${top}" ] && exit 2
 
 graph=""
 for member in ${FAKE_PKGX_GRAPH}; do
-    project="${member%=*}"; version="${member##*=}"
-    [ X"${project}=${version}" = X"${top}" ] || [ -n "${graph}" ] || continue
+    [ X"${member}" = X"${top}" ] || [ -n "${graph}" ] || continue
     graph="${graph} ${member}"
 done
 [ -z "${graph}" ] && { printf "%s\n" "Error: not-found: pkg: ${top}" >&2; exit 1; }
 
+plat="linux/$(uname -m | sed 's/^x86_64$/x86-64/; s/^amd64$/x86-64/; s/^arm64$/aarch64/')"
 for member in ${graph}; do
-    if [ ! -d "${PKGX_DIR}/${member%=*}/v${member##*=}" ]; then
+    project="${member%=*}"; version="${member##*=}"
+    [ -d "${PKGX_DIR}/${project}/v${version}" ] && continue
+    if [ -n "${PKGX_NO_INSTALL}" ]; then
         printf "%s\n" 'Error: "PKGX_NO_INSTALL is set, refusing to install pending packages"' >&2
         exit 1
     fi
+    bottle="${PKGX_DIST_URL}/${project}/${plat}/v${version}.tar.xz"
+    [ -f "${bottle}" ] || { printf "%s\n" "Error: no bottle at ${bottle}" >&2; exit 1; }
+    mkdir -p "${PKGX_DIR}" && tar -xJf "${bottle}" -C "${PKGX_DIR}" || exit 1
+    #pkgx points v* at the newest version it installed, and so does this
+    ln -sfn "v${version}" "${PKGX_DIR}/${project}/v*"
+    [ -n "${FAKE_PKGX_LOG}" ] && printf "installed %s\n" "${member}" >> "${FAKE_PKGX_LOG}"
 done
+
+if [ -n "${run}" ]; then
+    program="${1}"; shift
+    path=""; lib=""; found=""
+    for member in ${graph}; do
+        d="${PKGX_DIR}/${member%=*}/v${member##*=}"
+        [ -d "${d}/bin" ] && path="${path:+${path}:}${d}/bin"
+        [ -d "${d}/lib" ] && lib="${lib:+${lib}:}${d}/lib"
+        [ -z "${found}" ] && [ -x "${d}/bin/${program}" ] && found="${d}/bin/${program}"
+    done
+    [ -z "${found}" ] && { printf "%s\n" "Error: ${program} not found" >&2; exit 1; }
+    PATH="${path}${PATH:+:${PATH}}"; LD_LIBRARY_PATH="${lib}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+    export PATH LD_LIBRARY_PATH
+    [ -n "${FAKE_PKGX_EXTRA}" ] && export "${FAKE_PKGX_EXTRA}"
+    exec "${found}" "${@}"
+fi
 
 if [ -n "${json}" ]; then
     printf '{"pkgs":{'
@@ -49,16 +82,5 @@ if [ -n "${json}" ]; then
         sep=","
     done
     printf '},"env":{}}\n'
-    exit 0
 fi
-
-path=""; lib=""
-for member in ${graph}; do
-    d="${PKGX_DIR}/${member%=*}/v${member##*=}"
-    [ -d "${d}/bin" ] && path="${path:+${path}:}${d}/bin"
-    [ -d "${d}/lib" ] && lib="${lib:+${lib}:}${d}/lib"
-done
-[ -n "${lib}" ]  && printf '%s="%s${%s:+:$%s}"\n' LD_LIBRARY_PATH "${lib}" LD_LIBRARY_PATH LD_LIBRARY_PATH
-[ -n "${path}" ] && printf '%s="%s${%s:+:$%s}"\n' PATH "${path}" PATH PATH
-[ -n "${FAKE_PKGX_EXTRA}" ] && printf "%s\n" "${FAKE_PKGX_EXTRA}"
 exit 0
