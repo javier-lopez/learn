@@ -337,12 +337,21 @@ _probe_all() {
     done | LC_ALL=C sort
 }
 
+_tty() {
+    #whether there is a terminal to ask on. Permissions say nothing about that:
+    #without a controlling terminal - cron, a service, setsid - /dev/tty is
+    #there and writable, and opening it fails. Opening it is the only answer,
+    #and it is tried in a subshell: a redirection that fails on a special
+    #builtin such as : ends a posix shell outright, status 2 and no message
+    ( : > /dev/tty ) 2>/dev/null
+}
+
 _confirm() {
     #the question goes to the terminal and not to stdin, because stdin belongs
     #to the program being resolved: 'printf data | jq .' has to keep its data
     [ -n "${assume_yes}" ] && return 0
 
-    if [ -r "/dev/tty" ] && [ -w "/dev/tty" ]; then
+    if _tty; then
         printf "%s" "${1} [y/N] " > /dev/tty
         read -r _confirm__answer < /dev/tty || return 1
         case "${_confirm__answer}" in
@@ -362,7 +371,7 @@ _choose() {
     #$1 => the name, $2 => one channel:package per line. Prints the choice.
     #The terminal is asked and not stdin, for the same reason as _confirm, and
     #with no terminal there is nobody to ask, so nothing is chosen
-    [ -r "/dev/tty" ] && [ -w "/dev/tty" ] || return 1
+    _tty || return 1
     [ -n "${assume_yes}" ] && return 1
 
     printf "%s\\n" "${PROGNAME}: '${1}' is the name of more than one program:" > /dev/tty

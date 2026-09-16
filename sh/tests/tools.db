@@ -916,6 +916,12 @@ STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${amh}" static-run --purge jqx 
 test ! -e am/by/aqua/acme/jqx/1.0
 test ! -d am/aqua/root/pkgs/github_release/github.com/acme/jqx/1.0
 test -L am/by/aqua/filler/pkg1/2.0
+#with no terminal to ask on it declines and says why. /dev/tty is there and
+#writable without a controlling terminal, and only opening it tells; and a
+#failed open of it must not end the shell, which posix does for a special builtin
+nottyh="$(pwd)/notty"
+{ ! command -v setsid >/dev/null 2>&1; } || test X"$(STATIC_RUN_HOME="${nottyh}" setsid static-run tiny 2>&1 </dev/null | grep -c 'no terminal to ask on')" = X"1"
+{ ! command -v setsid >/dev/null 2>&1; } || test X"$(STATIC_RUN_HOME="${nottyh}" setsid static-run tiny 2>&1 </dev/null | grep -c 'dev/tty')" = X"0"
 @end
 
 @begin{staticus}
