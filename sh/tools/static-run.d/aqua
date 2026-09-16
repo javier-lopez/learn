@@ -31,10 +31,13 @@
 #and each one after that more than ten seconds
 
 REGISTRY_REPO="https://github.com/aquaproj/aqua-registry"
+#everything this channel has lives under one directory, so removing it removes
+#the channel: its index, aqua itself, what aqua installed and aqua's settings
+CH="${STATIC_RUN_HOME:-/tmp}/channels/${0##*/}"
 REGISTRY="${STATIC_RUN_AQUA_REGISTRY:-}"
 
 _index_file() {
-    printf "%s\\n" "${STATIC_RUN_HOME:-/tmp}/index/aqua.tsv"
+    printf "%s\\n" "${CH}/index/aqua.tsv"
 }
 
 _off() {
@@ -294,9 +297,9 @@ case "${1}" in
             exit 2
         fi
 
-        home="${STATIC_RUN_HOME:-/tmp}"
-        root="${home}/aqua/root"
-        conf="${home}/aqua/conf/$(printf "%s\\n" "${repo}@${3}" | tr '/@' '__')"
+        root="${CH}/root"
+        confname="$(printf "%s\\n" "${repo}@${3}" | tr '/@' '__')"
+        conf="${CH}/conf/${confname}"
         mkdir -p "${root}" "${conf}" 2>/dev/null || exit 1
 
         #checksum enabled is aqua's own feature: it checks against the sums the
@@ -331,6 +334,9 @@ case "${1}" in
         asset="${asset%%/*}"
         printf "program=%s\\n" "${program}"
         printf "asset=%s\\n" "${asset}"
+        #what aqua holds for this package, relative to this channel's
+        #directory, so purging it takes that and nothing another package uses
+        printf "member=%s\\n" "root/pkgs/github_release/github.com/${repo}/${3}" "conf/${confname}"
         exit 0
         ;;
 

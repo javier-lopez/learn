@@ -71,8 +71,9 @@ _api() {
 
 _cache_file() {
     #probe and locate ask the same question a second apart, and the rate limit
-    #for an unauthenticated caller is sixty questions an hour
-    printf "%s\\n" "${STATIC_RUN_HOME:-/tmp}/tmp/github.$(printf "%s\\n" "${1}@${2}" | tr '/@' '__').json"
+    #for an unauthenticated caller is sixty questions an hour. Kept in this
+    #channel's own directory, like everything else a channel has
+    printf "%s\\n" "${STATIC_RUN_HOME:-/tmp}/channels/${0##*/}/cache/$(printf "%s\\n" "${1}@${2}" | tr '/@' '__').json"
 }
 
 _fetch_release() {

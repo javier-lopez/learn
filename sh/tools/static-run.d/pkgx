@@ -25,11 +25,14 @@
 #stand-in pkgx without a network
 
 DIST="${STATIC_RUN_PKGX_DIST:-https://dist.pkgx.dev}"
-home="${STATIC_RUN_HOME:-/tmp}"
-INDEX="${home}/index/pkgx.tsv"
-PANTRY="${home}/index/pkgx.pantry"
-CELLAR="${home}/pkgx"
-META="${home}/tmp/pkgx"
+#everything this channel has lives under one directory, so removing it removes
+#the channel: its index and pantry, pkgx itself, what pkgx installed, the
+#launchers and the caches
+CH="${STATIC_RUN_HOME:-/tmp}/channels/${0##*/}"
+INDEX="${CH}/index/pkgx.tsv"
+PANTRY="${CH}/index/pantry"
+CELLAR="${CH}/cellar"
+META="${CH}/cache"
 
 _platform() {
     case "$(uname -s 2>/dev/null)/$(uname -m 2>/dev/null)" in
@@ -446,8 +449,8 @@ case "${1}" in
 
     index)
         _platform >/dev/null || { printf "unreachable=%s\\n" "pkgx builds nothing for $(uname -s)/$(uname -m)"; exit 2; }
-        mkdir -p "${home}/index" 2>/dev/null || exit 1
-        raw="${home}/index/pkgx.pantry.$$.tar.xz"; new="${home}/index/pkgx.pantry.$$"
+        mkdir -p "${CH}/index" 2>/dev/null || exit 1
+        raw="${CH}/index/pantry.$$.tar.xz"; new="${CH}/index/pantry.$$"
         _get "${DIST}/pantry.tar.xz" "${raw}"
         case "${?}" in
             0) ;;
@@ -579,7 +582,7 @@ case "${1}" in
             printf "unreachable=%s\\n" "pkgx is not available to install ${project}"
             exit 2
         fi
-        if _unsafe "${home}" || _unsafe "${STATIC_RUN_REQUIRED}" || _unsafe "${cmd}"; then
+        if _unsafe "${CH}" || _unsafe "${STATIC_RUN_REQUIRED}" || _unsafe "${cmd}"; then
             printf "failed=%s\\n" "a path or a name here cannot be written into a launcher safely"
             exit 1
         fi
@@ -609,7 +612,7 @@ case "${1}" in
         #the launcher hands every run to pkgx, which sets up the environment
         #the program needs from what it installed. That costs pkgx starting,
         #about eight milliseconds, and keeps the environment pkgx's business
-        run="${home}/run/pkgx/${project}/${3}"
+        run="${CH}/run/${project}/${3}"
         mkdir -p "${run}" 2>/dev/null || exit 1
         {
             printf "%s\\n" "#!/bin/sh" "#written by static-run: ${cmd}, from ${project} ${3}, run by pkgx"
@@ -623,7 +626,7 @@ case "${1}" in
         printf "asset=%s\\n" "${project}/v${3}"
         #what pkgx holds for this package, so purging it can take what no
         #other placement still uses: curl and git share an openssl
-        printf "%s\\n" "${members}" | awk -F'\t' '{printf("member=pkgx/%s/v%s\n", $1, $2)}'
+        printf "%s\\n" "${members}" | awk -F'\t' '{printf("member=cellar/%s/v%s\n", $1, $2)}'
         exit 0
         ;;
 

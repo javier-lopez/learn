@@ -662,10 +662,10 @@ test X"$(printf "%s\n" 'SIN CACHE' | STATIC_RUN_HOME="$(pwd)/home2" static-run -
 static-run tiny --code 3 >/dev/null 2>&1; test X"${?}" = X"3"
 #what was placed is named after what is inside it, and the link tree is what
 #a placement is: removing one is removing a link
-test -d home/store
-test -L home/by/alpha/tiny/1.0
-test -f home/inventory
-test X"$(awk '{print $2}' home/inventory)" = X"alpha:tiny@1.0"
+test -d home/channels/alpha/store
+test -L home/channels/alpha/by/tiny/1.0
+test -f home/channels/alpha/inventory
+test X"$(awk '{print $2}' home/channels/alpha/inventory)" = X"alpha:tiny@1.0"
 #the second run says nothing at all, which is the whole point of the cache
 test X"$(static-run tiny 2>&1 | head -1)" = X"alpha"
 #the badge is known before the question, because it is part of what is being
@@ -675,10 +675,10 @@ static-run --yes liar:x 2>&1 | grep "\[verified\]" >/dev/null
 #is a different file from the one the project meant to serve
 static-run --yes liar:x >/dev/null 2>&1; test X"${?}" = X"127"
 test X"$(static-run --yes liar:x 2>&1 | awk '/checksum/ {print $2, $3; exit}')" = X"published checksum"
-test ! -L home/by/liar/x/1.0
+test ! -L home/channels/liar/by/x/1.0
 #purging takes the placement away and collects what nothing points at
 static-run --purge alpha:tiny >/dev/null 2>&1
-test ! -L home/by/alpha/tiny/1.0
+test ! -L home/channels/alpha/by/tiny/1.0
 static-run --purge nothing-matches-this >/dev/null 2>&1; test X"${?}" = X"1"
 #a channel answers to the names it says it answers to, and the resolver keeps
 #no table of them. Both spellings reach the same channel and the answer names
@@ -689,14 +689,14 @@ static-run --yes nobodys-nickname:tiny >/dev/null 2>&1; test X"${?}" = X"127"
 test X"$(static-run --yes nobodys-nickname:tiny 2>&1)" = X"static-run: no channel called 'nobodys-nickname'"
 #the github channel reads a release the same way whatever the sender did with
 #whitespace. Its own cache is on disk, so this asks nothing of the network
-mkdir -p home/tmp
-printf '%s' '{"tag_name":"1.0","assets":[{"name":"thing-x86_64-linux.tar.gz","size":123,"browser_download_url":"http://example.invalid/t"}]}' > home/tmp/github.acme_thing_.json
-printf '%s\n' '{' '  "tag_name": "1.0",' '  "assets": [' '    {' '      "name": "thing-x86_64-linux.tar.gz",' '      "size": 123,' '      "browser_download_url": "http://example.invalid/t"' '    }' '  ]' '}' > home/tmp/github.acme_pretty_.json
+mkdir -p home/channels/github/cache
+printf '%s' '{"tag_name":"1.0","assets":[{"name":"thing-x86_64-linux.tar.gz","size":123,"browser_download_url":"http://example.invalid/t"}]}' > home/channels/github/cache/acme_thing_.json
+printf '%s\n' '{' '  "tag_name": "1.0",' '  "assets": [' '    {' '      "name": "thing-x86_64-linux.tar.gz",' '      "size": 123,' '      "browser_download_url": "http://example.invalid/t"' '    }' '  ]' '}' > home/channels/github/cache/acme_pretty_.json
 test X"$(STATIC_RUN_HOME="$(pwd)/home" ../../tools/static-run.d/github probe acme/thing  | awk -F= '$1=="bytes"{print $2}')" = X"123"
 test X"$(STATIC_RUN_HOME="$(pwd)/home" ../../tools/static-run.d/github probe acme/pretty | awk -F= '$1=="bytes"{print $2}')" = X"123"
 #and a release with nothing this machine can run answers 1, because saying 0
 #with nothing to show for it is how a channel that broke passes for one that works
-printf '%s' '{"tag_name":"1.0","assets":[{"name":"thing-windows.zip","size":9,"browser_download_url":"http://example.invalid/w"}]}' > home/tmp/github.acme_nix_.json
+printf '%s' '{"tag_name":"1.0","assets":[{"name":"thing-windows.zip","size":9,"browser_download_url":"http://example.invalid/w"}]}' > home/channels/github/cache/acme_nix_.json
 STATIC_RUN_HOME="$(pwd)/home" ../../tools/static-run.d/github probe acme/nix >/dev/null 2>&1; test X"${?}" = X"1"
 #a bare name is a question for a catalog, and this channel refuses to invent
 #an owner for one rather than write the package recipe this design avoids
@@ -728,14 +728,14 @@ PATH="$(pwd)/c000:${PATH}" STATIC_RUN_HOME="$(pwd)/g3" ../../tools/static-run.d/
 test X"$(PATH="$(pwd)/c403:${PATH}" STATIC_RUN_HOME="$(pwd)/g1" GITHUB_TOKEN= GH_TOKEN= ../../tools/static-run.d/github probe acme/thing | awk '/limit/ && /GITHUB_TOKEN/ {print "limit"}')" = X"limit"
 #yesterday's answer about "latest" is still a release that exists, and it is
 #used rather than failing when github cannot be asked
-mkdir -p g4/tmp
-printf '%s' '{"tag_name":"0.9","assets":[{"name":"thing-x86_64-linux.tar.gz","size":77,"browser_download_url":"http://example.invalid/t"}]}' > g4/tmp/github.acme_thing_.json
-touch -t 200001010000 g4/tmp/github.acme_thing_.json
+mkdir -p g4/channels/github/cache
+printf '%s' '{"tag_name":"0.9","assets":[{"name":"thing-x86_64-linux.tar.gz","size":77,"browser_download_url":"http://example.invalid/t"}]}' > g4/channels/github/cache/acme_thing_.json
+touch -t 200001010000 g4/channels/github/cache/acme_thing_.json
 test X"$(PATH="$(pwd)/c403:${PATH}" STATIC_RUN_HOME="$(pwd)/g4" ../../tools/static-run.d/github probe acme/thing | awk -F= '$1=="version"{print $2}')" = X"0.9"
 #a fresh answer is not asked for again, and being told to look again asks at
 #once: without that, --latest would hand back the same release forever
-mkdir -p g5/tmp
-printf '%s' '{"tag_name":"1.0","assets":[{"name":"thing-x86_64-linux.tar.gz","size":88,"browser_download_url":"http://example.invalid/t"}]}' > g5/tmp/github.acme_thing_.json
+mkdir -p g5/channels/github/cache
+printf '%s' '{"tag_name":"1.0","assets":[{"name":"thing-x86_64-linux.tar.gz","size":88,"browser_download_url":"http://example.invalid/t"}]}' > g5/channels/github/cache/acme_thing_.json
 PATH="$(pwd)/c404:${PATH}" STATIC_RUN_HOME="$(pwd)/g5" ../../tools/static-run.d/github probe acme/thing >/dev/null 2>&1; test X"${?}" = X"0"
 PATH="$(pwd)/c404:${PATH}" STATIC_RUN_HOME="$(pwd)/g5" STATIC_RUN_REFRESH=1 ../../tools/static-run.d/github probe acme/thing >/dev/null 2>&1; test X"${?}" = X"1"
 #a token goes to the api through curl's stdin and never on its command line,
@@ -748,14 +748,14 @@ test X"$(grep -c not-a-real-token stdin.txt)" = X"1"
 #the release reader counts depth and closes an asset with its own object, so
 #an object nested inside one cannot lend it a name, and the order its fields
 #arrive in does not matter. Both used to go wrong without an error
-mkdir -p gj/tmp
-printf '%s' '{"tag_name":"v3","assets":[{"name":"real-linux-x86_64.tar.gz","uploader":{"name":"impostor","size":999},"size":444,"browser_download_url":"http://example.invalid/4"}]}' > gj/tmp/github.acme_nested_.json
-printf '%s' '{"tag_name":"v4","assets":[{"browser_download_url":"http://example.invalid/5","size":555,"name":"order-linux-x86_64.tar.gz"}]}' > gj/tmp/github.acme_order_.json
+mkdir -p gj/channels/github/cache
+printf '%s' '{"tag_name":"v3","assets":[{"name":"real-linux-x86_64.tar.gz","uploader":{"name":"impostor","size":999},"size":444,"browser_download_url":"http://example.invalid/4"}]}' > gj/channels/github/cache/acme_nested_.json
+printf '%s' '{"tag_name":"v4","assets":[{"browser_download_url":"http://example.invalid/5","size":555,"name":"order-linux-x86_64.tar.gz"}]}' > gj/channels/github/cache/acme_order_.json
 test X"$(STATIC_RUN_HOME="$(pwd)/gj" ../../tools/static-run.d/github probe acme/nested | awk -F= '$1=="bytes"{print $2}')" = X"444"
 test X"$(STATIC_RUN_HOME="$(pwd)/gj" ../../tools/static-run.d/github probe acme/order  | awk -F= '$1=="bytes"{print $2}')" = X"555"
 #"latest" is kept under its own tag as well, so asking for the release by the
 #tag that probe reported costs no second request
-test -s gj/tmp/github.acme_nested_.json
+test -s gj/channels/github/cache/acme_nested_.json
 test X"$(PATH="$(pwd)/c404:${PATH}" STATIC_RUN_HOME="$(pwd)/gj" ../../tools/static-run.d/github locate acme/nested v3 | awk -F= '$1=="format"{print $2}')" = X"tar.gz"
 #a name two programs answer to is not resolved by picking one. With nobody to
 #ask it is refused and both are named, so the full name is one copy away
@@ -784,13 +784,13 @@ i=0; while [ ${i} -lt 120 ]; do printf '  - type: github_release\n    repo_owner
 printf '%s\n' 'packages:' '  - type: github_release' '    repo_owner: acme' '    repo_name: jqx' '    description: A JSON thing for tests' '  - name: other/nsc' '    type: github_release' '    repo_owner: other' '    repo_name: nsc-src' '    files:' '      - name: nsc' '  - type: github_release' '    repo_owner: acme' '    repo_name: ripgrepx' '    description: >-' '      searches' '      for text' '    version_constraint: "false"' '    version_overrides:' '      - version_constraint: semver("<= 0.1")' '        files:' '          - name: oldname' '      - version_constraint: "true"' '        files:' '          - name: rgx' '  - type: github_release' '    repo_owner: left' '    repo_name: dup' '    files:' '      - name: dupcmd # a comment yaml drops' '  - type: github_release' '    repo_owner: right' '    repo_name: dup' '    files:' '      - name: dupcmd' > reg.yaml
 cat filler.yaml >> reg.yaml
 STATIC_RUN_HOME="$(pwd)/aq" STATIC_RUN_AQUA_REGISTRY="$(pwd)/reg.yaml" ../../tools/static-run.d/aqua index >/dev/null
-test X"$(awk -F'\t' '$1=="nsc" {print $2}' aq/index/aqua.tsv)" = X"other/nsc-src"
-test X"$(awk -F'\t' '$2=="acme/jqx" {n++} END {print n+0}' aq/index/aqua.tsv)" = X"1"
+test X"$(awk -F'\t' '$1=="nsc" {print $2}' aq/channels/aqua/index/aqua.tsv)" = X"other/nsc-src"
+test X"$(awk -F'\t' '$2=="acme/jqx" {n++} END {print n+0}' aq/channels/aqua/index/aqua.tsv)" = X"1"
 #a command is what the current version calls it, not what an old one did
-test X"$(awk -F'\t' '$1=="rgx" {print $2}' aq/index/aqua.tsv)" = X"acme/ripgrepx"
-test X"$(awk -F'\t' '$1=="oldname" {n++} END {print n+0}' aq/index/aqua.tsv)" = X"0"
+test X"$(awk -F'\t' '$1=="rgx" {print $2}' aq/channels/aqua/index/aqua.tsv)" = X"acme/ripgrepx"
+test X"$(awk -F'\t' '$1=="oldname" {n++} END {print n+0}' aq/channels/aqua/index/aqua.tsv)" = X"0"
 #a comment after a value is not part of it
-test X"$(awk -F'\t' '$1=="dupcmd" {n++} END {print n+0}' aq/index/aqua.tsv)" = X"2"
+test X"$(awk -F'\t' '$1=="dupcmd" {n++} END {print n+0}' aq/channels/aqua/index/aqua.tsv)" = X"2"
 #what the channel answers about a name
 STATIC_RUN_HOME="$(pwd)/aq" ../../tools/static-run.d/aqua probe nosuchname >/dev/null 2>&1; test X"${?}" = X"1"
 STATIC_RUN_HOME="$(pwd)/aq" ../../tools/static-run.d/aqua probe dupcmd >/dev/null 2>&1; test X"${?}" = X"3"
@@ -803,14 +803,14 @@ test X"$(STATIC_RUN_HOME="$(pwd)/aq" ../../tools/static-run.d/aqua search search
 #works: every name would silently become "not there"
 printf '%s\n' 'packages: []' > broken.yaml
 STATIC_RUN_HOME="$(pwd)/aq" STATIC_RUN_AQUA_REGISTRY="$(pwd)/broken.yaml" ../../tools/static-run.d/aqua index >/dev/null 2>&1; test X"${?}" = X"2"
-test X"$(awk -F'\t' '$1=="jqx" {print $2}' aq/index/aqua.tsv)" = X"acme/jqx"
+test X"$(awk -F'\t' '$1=="jqx" {print $2}' aq/channels/aqua/index/aqua.tsv)" = X"acme/jqx"
 #and the whole chain with no network at all: the index names the repository,
 #the release is on disk, the artifact is a file here, and the line the user is
 #asked about names the owner and not only the word they typed
-mkdir -p aq/tmp
+mkdir -p aq/channels/github/cache
 printf '%s\n' '#!/bin/sh' 'printf "%s\n" "jqx ran"' > jqx-bin
 chmod 755 jqx-bin
-printf '{"tag_name":"1.0","assets":[{"name":"jqx-linux-x86_64","size":40,"browser_download_url":"%s"}]}' "$(pwd)/jqx-bin" > aq/tmp/github.acme_jqx_.json
+printf '{"tag_name":"1.0","assets":[{"name":"jqx-linux-x86_64","size":40,"browser_download_url":"%s"}]}' "$(pwd)/jqx-bin" > aq/channels/github/cache/acme_jqx_.json
 #paths are worked out first: under the runner's sh -x, a command
 #substitution nested in an assignment traces into whatever 2>&1 captures
 realch="$(cd ../.. && pwd)/tools/static-run.d"; aqh="$(pwd)/aq"; c404="$(pwd)/c404"
@@ -820,10 +820,10 @@ test X"$(STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${aqh}" static-run jqx
 #github keeps a sha256 of every asset, and it counts as verification: it guards
 #against what a checksum the project publishes guards against, a download that
 #arrived corrupt or altered. A digest that is null or malformed is not one
-mkdir -p gd/tmp
-printf '%s' '{"tag_name":"1.0","assets":[{"name":"dg-linux-x86_64","size":10,"browser_download_url":"http://example.invalid/d","digest":"sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"}]}' > gd/tmp/github.acme_dg_.json
-printf '%s' '{"tag_name":"1.0","assets":[{"name":"nul-linux-x86_64","size":10,"browser_download_url":"http://example.invalid/n","digest":null}]}' > gd/tmp/github.acme_nul_.json
-printf '%s' '{"tag_name":"1.0","assets":[{"name":"bad-linux-x86_64","size":10,"browser_download_url":"http://example.invalid/b","digest":"sha256:not-hex"}]}' > gd/tmp/github.acme_bad_.json
+mkdir -p gd/channels/github/cache
+printf '%s' '{"tag_name":"1.0","assets":[{"name":"dg-linux-x86_64","size":10,"browser_download_url":"http://example.invalid/d","digest":"sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"}]}' > gd/channels/github/cache/acme_dg_.json
+printf '%s' '{"tag_name":"1.0","assets":[{"name":"nul-linux-x86_64","size":10,"browser_download_url":"http://example.invalid/n","digest":null}]}' > gd/channels/github/cache/acme_nul_.json
+printf '%s' '{"tag_name":"1.0","assets":[{"name":"bad-linux-x86_64","size":10,"browser_download_url":"http://example.invalid/b","digest":"sha256:not-hex"}]}' > gd/channels/github/cache/acme_bad_.json
 gdh="$(pwd)/gd"
 test X"$(PATH="${c404}:${PATH}" STATIC_RUN_HOME="${gdh}" ../../tools/static-run.d/github probe acme/dg | awk -F= '$1=="badge"{print $2}')" = X"verified"
 test X"$(PATH="${c404}:${PATH}" STATIC_RUN_HOME="${gdh}" ../../tools/static-run.d/github locate acme/dg | awk -F= '$1=="sha256"{print $2}')" = X"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
@@ -848,13 +848,13 @@ test ! -e "${calls}"
 printf '%s\n' '#!/bin/sh' 'printf "%s\n" "dgx ran"' > dgx-bin
 chmod 755 dgx-bin
 dgxsum="$(sha256sum dgx-bin | awk '{print $1}')"; dgxbin="$(pwd)/dgx-bin"; dhh="$(pwd)/dh"; dh2h="$(pwd)/dh2"
-mkdir -p dh/tmp dh2/tmp
-printf '{"tag_name":"1.0","assets":[{"name":"dgx-linux-x86_64","size":40,"browser_download_url":"%s","digest":"sha256:%s"}]}' "${dgxbin}" "${dgxsum}" > dh/tmp/github.acme_dgx_.json
-printf '{"tag_name":"1.0","assets":[{"name":"dgx-linux-x86_64","size":40,"browser_download_url":"%s","digest":"sha256:%s"}]}' "${dgxbin}" "0000000000000000000000000000000000000000000000000000000000000000" > dh2/tmp/github.acme_dgx_.json
+mkdir -p dh/channels/github/cache dh2/channels/github/cache
+printf '{"tag_name":"1.0","assets":[{"name":"dgx-linux-x86_64","size":40,"browser_download_url":"%s","digest":"sha256:%s"}]}' "${dgxbin}" "${dgxsum}" > dh/channels/github/cache/acme_dgx_.json
+printf '{"tag_name":"1.0","assets":[{"name":"dgx-linux-x86_64","size":40,"browser_download_url":"%s","digest":"sha256:%s"}]}' "${dgxbin}" "0000000000000000000000000000000000000000000000000000000000000000" > dh2/channels/github/cache/acme_dgx_.json
 PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${dhh}" static-run -n github:acme/dgx | grep '\[verified\]' >/dev/null
 test X"$(PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${dhh}" static-run --yes github:acme/dgx 2>/dev/null)" = X"dgx ran"
 PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${dh2h}" static-run --yes github:acme/dgx >/dev/null 2>&1; test X"${?}" = X"127"
-test ! -d dh2/by/github/acme/dgx
+test ! -d dh2/channels/github/by/acme/dgx
 #the channels are found next to the file itself, however it was reached: a link
 #under another name, the way someone might alias it, still finds static-run.d
 ln -s "$(cd ../../tools && pwd)/static-run" srl
@@ -865,54 +865,54 @@ PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS= STATIC_RUN_HOME="${gdh}" ./srl -n gi
 #hop included, runs without a network
 aqsrc="$(cd .. && pwd)/static-run.fake-aqua"; aqsum="$(sha256sum "${aqsrc}" | awk '{print $1}')"
 jqxbin="$(pwd)/jqx-bin"; jqxsum="$(sha256sum jqx-bin | awk '{print $1}')"; amh="$(pwd)/am"
-mkdir -p am/tmp && cp -R aq/index am/index
-printf '{"tag_name":"v9","assets":[{"name":"aqua-linux-x86_64","size":2000,"browser_download_url":"%s","digest":"sha256:%s"}]}' "${aqsrc}" "${aqsum}" > am/tmp/github.aquaproj_aqua_.json
-printf '{"tag_name":"1.0","assets":[{"name":"jqx-linux-x86_64","size":40,"browser_download_url":"%s","digest":"sha256:%s"}]}' "${jqxbin}" "${jqxsum}" > am/tmp/github.acme_jqx_.json
-printf '{"tag_name":"2.0","assets":[{"name":"pkg1-linux-x86_64","size":40,"browser_download_url":"%s","digest":"sha256:%s"}]}' "${jqxbin}" "${jqxsum}" > am/tmp/github.filler_pkg1_.json
+mkdir -p am/channels/github/cache && mkdir -p am/channels/aqua && cp -R aq/channels/aqua/index am/channels/aqua/index
+printf '{"tag_name":"v9","assets":[{"name":"aqua-linux-x86_64","size":2000,"browser_download_url":"%s","digest":"sha256:%s"}]}' "${aqsrc}" "${aqsum}" > am/channels/github/cache/aquaproj_aqua_.json
+printf '{"tag_name":"1.0","assets":[{"name":"jqx-linux-x86_64","size":40,"browser_download_url":"%s","digest":"sha256:%s"}]}' "${jqxbin}" "${jqxsum}" > am/channels/github/cache/acme_jqx_.json
+printf '{"tag_name":"2.0","assets":[{"name":"pkg1-linux-x86_64","size":40,"browser_download_url":"%s","digest":"sha256:%s"}]}' "${jqxbin}" "${jqxsum}" > am/channels/github/cache/filler_pkg1_.json
 PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${amh}" static-run -n jqx | grep 'needed once' >/dev/null
 test X"$(PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${amh}" FAKE_AQUA_ASSET="jqx-linux-x86_64|${jqxbin}" FAKE_AQUA_CMD=jqx FAKE_AQUA_LOG="$(pwd)/aqlog" static-run --yes jqx 2>/dev/null)" = X"jqx ran"
-test -L am/by/aqua/acme/jqx/1.0
-test -L am/by/github/aquaproj/aqua/v9
+test -L am/channels/aqua/by/acme/jqx/1.0
+test -d am/channels/aqua/tool/v9 && test -L am/channels/aqua/tool/current
 #what aqua installs aqua answers for, and the placement says so
-test X"$(awk -F'\t' '$2=="aqua:acme/jqx@1.0" {print $4}' am/inventory)" = X"via aqua"
+test X"$(awk -F'\t' '$2=="aqua:acme/jqx@1.0" {print $4}' am/channels/aqua/inventory)" = X"via aqua"
 #the resolver lists the channels whose tool it could not get, and a channel
 #only goes without its own: pkgx out of reach leaves aqua with aqua
 test X"$(PATH="${c404}:${PATH}" STATIC_RUN_HOME="${amh}" STATIC_RUN_NO_MANAGER=pkgx ../../tools/static-run.d/aqua probe jqx | awk -F= '$1=="requires"{print $2}')" = X"github:aquaproj/aqua"
 test X"$(PATH="${c404}:${PATH}" STATIC_RUN_HOME="${amh}" STATIC_RUN_NO_MANAGER="pkgx aqua" ../../tools/static-run.d/aqua probe jqx | awk -F= '$1=="requires"' | awk 'END {print NR}')" = X"0"
 #and static-run hands it no sums of its own: checking is aqua's
-test ! -e am/aqua/conf/acme_jqx_1.0/github-digests.tsv
-test ! -e am/aqua/conf/acme_jqx_1.0/aqua-checksums.json
+test ! -e am/channels/aqua/conf/acme_jqx_1.0/github-digests.tsv
+test ! -e am/channels/aqua/conf/acme_jqx_1.0/aqua-checksums.json
 #attestations stay off unless asked for, and the second run is a plain exec
 test X"$(cat aqlog)" = X"attestations_disabled=true"
 test X"$(STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${amh}" static-run jqx 2>&1)" = X"jqx ran"
 #a second package reuses the aqua already placed, and says nothing about it
 test X"$(PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${amh}" FAKE_AQUA_ASSET="pkg1-linux-x86_64|${jqxbin}" FAKE_AQUA_CMD=pkg1 static-run --yes pkg1 2>&1 | grep -c 'first github:aquaproj/aqua')" = X"0"
-test -L am/by/aqua/filler/pkg1/2.0
+test -L am/channels/aqua/by/filler/pkg1/2.0
 #STATIC_RUN_AQUA_ATTESTATIONS=on hands the choice back to aqua
-mkdir -p am3/tmp && cp -R aq/index am3/index && cp am/tmp/github.aquaproj_aqua_.json am/tmp/github.acme_jqx_.json am3/tmp/
+mkdir -p am3/channels/github/cache && mkdir -p am3/channels/aqua && cp -R aq/channels/aqua/index am3/channels/aqua/index && cp am/channels/github/cache/aquaproj_aqua_.json am/channels/github/cache/acme_jqx_.json am3/channels/github/cache/
 PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="$(pwd)/am3" FAKE_AQUA_ASSET="jqx-linux-x86_64|${jqxbin}" FAKE_AQUA_CMD=jqx FAKE_AQUA_LOG="$(pwd)/aqlog3" STATIC_RUN_AQUA_ATTESTATIONS=on static-run --yes jqx >/dev/null 2>&1
 test X"$(cat aqlog3)" = X"attestations_disabled="
 #with the api switched off aqua is not used, because its client cannot be kept
 #off the api; the old way answers from what is cached
-mkdir -p am4/tmp && cp -R aq/index am4/index && cp am/tmp/github.aquaproj_aqua_.json am/tmp/github.acme_jqx_.json am4/tmp/
+mkdir -p am4/channels/github/cache && mkdir -p am4/channels/aqua && cp -R aq/channels/aqua/index am4/channels/aqua/index && cp am/channels/github/cache/aquaproj_aqua_.json am/channels/github/cache/acme_jqx_.json am4/channels/github/cache/
 test X"$(PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="$(pwd)/am4" STATIC_RUN_GITHUB_API=off static-run -n jqx | grep -c 'needed once')" = X"0"
 test X"$(PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="$(pwd)/am4" STATIC_RUN_GITHUB_API=off static-run --yes jqx 2>/dev/null)" = X"jqx ran"
-test ! -d am4/aqua
+test ! -d am4/channels/aqua/root
 #and when aqua cannot be had at all, jqx is still had, the old way, and it says so
-mkdir -p am5/tmp && cp -R aq/index am5/index && cp am/tmp/github.acme_jqx_.json am5/tmp/
+mkdir -p am5/channels/github/cache && mkdir -p am5/channels/aqua && cp -R aq/channels/aqua/index am5/channels/aqua/index && cp am/channels/github/cache/acme_jqx_.json am5/channels/github/cache/
 PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="$(pwd)/am5" static-run --yes jqx 2>&1 | grep 'could not be had' >/dev/null
 test X"$(STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="$(pwd)/am5" static-run jqx 2>/dev/null)" = X"jqx ran"
 #purging an aqua placement takes what aqua installed with it
 STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${amh}" static-run --purge jqx >/dev/null 2>&1
-test ! -e am/by/aqua/acme/jqx/1.0
-test ! -d am/aqua/root/pkgs/github_release/github.com/acme/jqx/1.0
-test -L am/by/aqua/filler/pkg1/2.0
+test ! -e am/channels/aqua/by/acme/jqx/1.0
+test ! -d am/channels/aqua/root/pkgs/github_release/github.com/acme/jqx/1.0
+test -L am/channels/aqua/by/filler/pkg1/2.0
 #what is still missing includes the tool a channel installs through. Cheap on
 #its own and needing a tool not fetched yet loses to dearer and needing nothing,
 #and wins once the tool is here
 hop1h="$(pwd)/hop1"; hop2h="$(pwd)/hop2"
 test X"$(STATIC_RUN_HOME="${hop1h}" static-run -n hopname | tail -1 | awk '{print $2}')" = X"direct:hopname@1.0"
-STATIC_RUN_HOME="${hop2h}" static-run --yes alpha:tiny >/dev/null 2>&1
+mkdir -p hop2/channels/hopper/tool/1.0 && cp /bin/true hop2/channels/hopper/tool/1.0/tiny && ln -s "${hop2h}/channels/hopper/tool/1.0/tiny" hop2/channels/hopper/tool/current
 test X"$(STATIC_RUN_HOME="${hop2h}" static-run -n hopname | tail -1 | awk '{print $2}')" = X"hopper:hopname@1.0"
 #with no terminal to ask on it declines and says why. /dev/tty is there and
 #writable without a controlling terminal, and only opening it tells; and a
@@ -924,9 +924,9 @@ nottyh="$(pwd)/notty"
 #told, locate named the first, and typing two ran one with the user's arguments
 { printf '%s\n' 'packages:' '  - type: github_release' '    repo_owner: acme' '    repo_name: multi' '    files:' '      - name: one' '      - name: two'; cat filler.yaml; } > regm.yaml
 STATIC_RUN_HOME="$(pwd)/aqm" STATIC_RUN_AQUA_REGISTRY="$(pwd)/regm.yaml" ../../tools/static-run.d/aqua index >/dev/null
-mkdir -p multi-src aqm/tmp && printf '%s\n' '#!/bin/sh' 'printf "%s\n" "one ran"' > multi-src/one && printf '%s\n' '#!/bin/sh' 'printf "%s\n" "two ran"' > multi-src/two && chmod 755 multi-src/one multi-src/two
+mkdir -p multi-src aqm/channels/github/cache && printf '%s\n' '#!/bin/sh' 'printf "%s\n" "one ran"' > multi-src/one && printf '%s\n' '#!/bin/sh' 'printf "%s\n" "two ran"' > multi-src/two && chmod 755 multi-src/one multi-src/two
 (cd multi-src && tar -czf ../multi.tar.gz one two)
-printf '{"tag_name":"1.0","assets":[{"name":"multi-linux-x86_64.tar.gz","size":300,"browser_download_url":"%s"}]}' "$(pwd)/multi.tar.gz" > aqm/tmp/github.acme_multi_.json
+printf '{"tag_name":"1.0","assets":[{"name":"multi-linux-x86_64.tar.gz","size":300,"browser_download_url":"%s"}]}' "$(pwd)/multi.tar.gz" > aqm/channels/github/cache/acme_multi_.json
 aqmh="$(pwd)/aqm"
 test X"$(PATH="${c404}:${PATH}" STATIC_RUN_HOME="${aqmh}" ../../tools/static-run.d/aqua locate acme/multi 1.0 two | awk -F= '$1=="bin"{print $2}')" = X"two"
 test X"$(PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${aqmh}" static-run --yes two 2>/dev/null)" = X"two ran"
@@ -964,17 +964,17 @@ printf '%s' '1.0.0' > px/dist/acme.org/extra/${plat}/versions.txt
 mkdir -p px/rel && cp ../static-run.fake-pkgx px/rel/pkgx && chmod 755 px/rel/pkgx && (cd px/rel && tar -czf pkgx-9.9.9+linux+x86-64.tar.gz pkgx)
 pxrel="$(pwd)/px/rel/pkgx-9.9.9+linux+x86-64.tar.gz"; pxrelsum="$(sha256sum px/rel/pkgx-9.9.9+linux+x86-64.tar.gz | awk '{print $1}')"
 pxh="$(pwd)/pxh"; pxdist="$(pwd)/px/dist"; pxlog="$(pwd)/pxlog"
-mkdir -p pxh/tmp
-printf '{"tag_name":"v9.9.9","assets":[{"name":"pkgx-9.9.9+linux+x86-64.tar.gz","size":2097152,"browser_download_url":"%s","digest":"sha256:%s"}]}' "${pxrel}" "${pxrelsum}" > pxh/tmp/github.pkgxdev_pkgx_.json
+mkdir -p pxh/channels/github/cache
+printf '{"tag_name":"v9.9.9","assets":[{"name":"pkgx-9.9.9+linux+x86-64.tar.gz","size":2097152,"browser_download_url":"%s","digest":"sha256:%s"}]}' "${pxrel}" "${pxrelsum}" > pxh/channels/github/cache/pkgxdev_pkgx_.json
 #pkgx names its release x86-64, a spelling github's channel did not know
 test X"$(PATH="${c404}:${PATH}" STATIC_RUN_HOME="${pxh}" ../../tools/static-run.d/github probe pkgxdev/pkgx | awk -F= '$1=="bytes"{print $2}')" = X"2097152"
 STATIC_RUN_HOME="${pxh}" STATIC_RUN_PKGX_DIST="${pxdist}" ../../tools/static-run.d/pkgx index >/dev/null
-test X"$(awk -F'\t' '$1=="cmd" && $2=="tool" {print $3}' pxh/index/pkgx.tsv)" = X"acme.org/tool"
-test X"$(awk -F'\t' '$1=="cmd" && $3=="acme.org/tool"' pxh/index/pkgx.tsv | awk 'END {print NR}')" = X"2"
-test X"$(awk -F'\t' '$1=="name" && $2=="acme.org/tool" {print $3}' pxh/index/pkgx.tsv)" = X"Acme Tool"
-test X"$(awk -F'\t' '$1=="dep" && $2=="acme.org/tool" {printf("%s ", $3)}' pxh/index/pkgx.tsv)" = X"acme.org/extra acme.org/tool/lib "
-test X"$(awk -F'\t' '$1=="cmd" && $3=="acme.org/extra" {print $2}' pxh/index/pkgx.tsv)" = X"extra"
-test X"$(grep -c '{' pxh/index/pkgx.tsv)" = X"0"
+test X"$(awk -F'\t' '$1=="cmd" && $2=="tool" {print $3}' pxh/channels/pkgx/index/pkgx.tsv)" = X"acme.org/tool"
+test X"$(awk -F'\t' '$1=="cmd" && $3=="acme.org/tool"' pxh/channels/pkgx/index/pkgx.tsv | awk 'END {print NR}')" = X"2"
+test X"$(awk -F'\t' '$1=="name" && $2=="acme.org/tool" {print $3}' pxh/channels/pkgx/index/pkgx.tsv)" = X"Acme Tool"
+test X"$(awk -F'\t' '$1=="dep" && $2=="acme.org/tool" {printf("%s ", $3)}' pxh/channels/pkgx/index/pkgx.tsv)" = X"acme.org/extra acme.org/tool/lib "
+test X"$(awk -F'\t' '$1=="cmd" && $3=="acme.org/extra" {print $2}' pxh/channels/pkgx/index/pkgx.tsv)" = X"extra"
+test X"$(grep -c '{' pxh/channels/pkgx/index/pkgx.tsv)" = X"0"
 #probe: pkgx's newest version, and the size of every bottle still missing, the
 #dependencies included, as an estimate until pkgx itself is here to say
 pxprobe="$(STATIC_RUN_HOME="${pxh}" STATIC_RUN_PKGX_DIST="${pxdist}" ../../tools/static-run.d/pkgx probe tool)"
@@ -982,7 +982,7 @@ pxbytes="$(cat px/dist/acme.org/tool/${plat}/v1.10.0.tar.xz px/dist/acme.org/too
 test X"$(printf "%s\n" "${pxprobe}" | awk -F= '$1=="version"{print $2}')" = X"1.10.0"
 test X"$(printf "%s\n" "${pxprobe}" | awk -F= '$1=="bytes"{print $2}')" = X"${pxbytes}"
 test X"$(printf "%s\n" "${pxprobe}" | awk -F= '$1=="estimate" || $1=="requires" || $1=="package" {printf("%s ", $2)}')" = X"yes acme.org/tool github:pkgxdev/pkgx "
-test -f pxh/tmp/pkgx/versions/acme.org/tool/lib/versions.txt
+test -f pxh/channels/pkgx/cache/versions/acme.org/tool/lib/versions.txt
 test X"$(STATIC_RUN_HOME="${pxh}" STATIC_RUN_PKGX_DIST="${pxdist}" ../../tools/static-run.d/pkgx probe tool 1.9.0 | awk -F= '$1=="version"{print $2}')" = X"1.9.0"
 STATIC_RUN_HOME="${pxh}" STATIC_RUN_PKGX_DIST="${pxdist}" ../../tools/static-run.d/pkgx probe twin >/dev/null 2>&1; test X"${?}" = X"3"
 STATIC_RUN_HOME="${pxh}" STATIC_RUN_PKGX_DIST="${pxdist}" STATIC_RUN_NO_MANAGER="aqua pkgx" ../../tools/static-run.d/pkgx probe tool >/dev/null 2>&1; test X"${?}" = X"1"
@@ -1005,14 +1005,14 @@ grep 'first github:pkgxdev/pkgx v9.9.9, 2.0 MB' pxerr >/dev/null
 grep 'total about 2.0 MB' pxerr >/dev/null
 grep 'pkgx is installing acme.org/tool 1.10.0' pxerr >/dev/null
 test X"$(awk '{printf("%s ", $2)}' pxlog)" = X"acme.org/tool=1.10.0 acme.org/tool/lib=1.0.0 acme.org/extra=1.0.0 "
-test -L pxh/by/pkgx/acme.org/tool/1.10.0
-test X"$(awk 'END {print NR}' pxh/members/pkgx/acme.org/tool/1.10.0)" = X"3"
-test X"$(awk -F'\t' '$2 == "pkgx:acme.org/tool@1.10.0" {print $4}' pxh/inventory)" = X"via pkgx"
-test X"$(awk -F'\t' '$2 == "github:pkgxdev/pkgx@v9.9.9" {print $4}' pxh/inventory)" = X"verified"
+test -L pxh/channels/pkgx/by/acme.org/tool/1.10.0
+test X"$(awk 'END {print NR}' pxh/channels/pkgx/members/acme.org/tool/1.10.0)" = X"3"
+test X"$(awk -F'\t' '$2 == "pkgx:acme.org/tool@1.10.0" {print $4}' pxh/channels/pkgx/inventory)" = X"via pkgx"
+test X"$(awk -F'\t' '$2 == "github:pkgxdev/pkgx@v9.9.9" {print $4}' pxh/channels/pkgx/inventory)" = X"verified"
 #the launcher names pkgx by its link and not by the file it is today, so an
 #update moves the link and no launcher has to be written again
-test -L pxh/managers/pkgx
-grep "${pxh}/managers/pkgx" pxh/run/pkgx/acme.org/tool/1.10.0/tool >/dev/null
+test -L pxh/channels/pkgx/tool/current
+grep "${pxh}/channels/pkgx/tool/current" pxh/channels/pkgx/run/acme.org/tool/1.10.0/tool >/dev/null
 #the second run is the launcher and pkgx, with nothing asked of anybody
 test X"$(STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${pxh}" FAKE_PKGX_GRAPH="${pxgraph}" FAKE_PKGX_EXTRA="${pxrt}" static-run tool 2>&1)" = X"tool ran, lib found, runtime set"
 #another program of the same package is the one that runs, and nothing is
@@ -1027,21 +1027,21 @@ test X"$(cat pxout)" = X"extra ran"
 #it is first needed, one after another and saying so, until one has the name:
 #here aqua's does not and pkgx's does
 pxb="$(pwd)/pxb"; regf="$(pwd)/reg.yaml"; c403="$(pwd)/c403"
-mkdir -p pxb/tmp && cp pxh/tmp/github.pkgxdev_pkgx_.json pxb/tmp/
+mkdir -p pxb/channels/github/cache && cp pxh/channels/github/cache/pkgxdev_pkgx_.json pxb/channels/github/cache/
 PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${pxb}" STATIC_RUN_AQUA_REGISTRY="${regf}" STATIC_RUN_PKGX_DIST="${pxdist}" FAKE_PKGX_GRAPH="acme.org/extra=1.0.0" static-run --yes extra > pxout 2> pxerr
 test X"$(cat pxout)" = X"extra ran"
 grep 'aqua has no catalog here yet, fetching it' pxerr >/dev/null
 grep "aqua has nothing called 'extra'" pxerr >/dev/null
 grep 'pkgx has no catalog here yet, fetching it' pxerr >/dev/null
 #and once one channel has the name, the catalogs after it are left for later
-pxb2="$(pwd)/pxb2"; mkdir -p pxb2/tmp && cp am/tmp/github.aquaproj_aqua_.json am/tmp/github.acme_jqx_.json pxb2/tmp/
+pxb2="$(pwd)/pxb2"; mkdir -p pxb2/channels/github/cache && cp am/channels/github/cache/aquaproj_aqua_.json am/channels/github/cache/acme_jqx_.json pxb2/channels/github/cache/
 PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${pxb2}" STATIC_RUN_AQUA_REGISTRY="${regf}" STATIC_RUN_PKGX_DIST="${pxdist}" static-run -n jqx > pxout 2> pxerr
 grep 'aqua has no catalog here yet' pxerr >/dev/null
-test -s pxb2/index/aqua.tsv
-test ! -e pxb2/index/pkgx.tsv
+test -s pxb2/channels/aqua/index/aqua.tsv
+test ! -e pxb2/channels/pkgx/index/pkgx.tsv
 #a tool that cannot be fetched because github's limit is used up is said to be
 #exactly that, and whether the package exists is then not known, not denied
-pxq="$(pwd)/pxq"; mkdir -p pxq && cp -R pxh/index pxq/index
+pxq="$(pwd)/pxq"; mkdir -p pxq && mkdir -p pxq/channels/aqua pxq/channels/pkgx && cp -R pxh/channels/aqua/index pxq/channels/aqua/ && cp -R pxh/channels/pkgx/index pxq/channels/pkgx/
 PATH="${c403}:${PATH}" GITHUB_TOKEN= GH_TOKEN= STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${pxq}" STATIC_RUN_PKGX_DIST="${pxdist}" static-run --yes tool > pxout 2>&1; test X"${?}" = X"127"
 grep 'github:pkgxdev/pkgx could not be fetched: the github api limit' pxout >/dev/null
 grep "whether anything provides 'tool' is not known" pxout >/dev/null
@@ -1053,32 +1053,38 @@ mkdir -p px/rel2 && { cat ../static-run.fake-pkgx; printf '%s\n' '#the next rele
 pxrel2="$(pwd)/px/rel2/pkgx-9.9.10+linux+x86-64.tar.gz"; pxrel2sum="$(sha256sum px/rel2/pkgx-9.9.10+linux+x86-64.tar.gz | awk '{print $1}')"
 printf '{"tag_name":"v9.9.10","assets":[{"name":"pkgx-9.9.10+linux+x86-64.tar.gz","size":2097152,"browser_download_url":"%s","digest":"sha256:%s"}]}' "${pxrel2}" "${pxrel2sum}" > pxrel2.json
 mkdir -p crel && printf '%s\n' '#!/bin/sh' 'o=""; while [ $# -gt 0 ]; do [ X"$1" = X"-o" ] && { shift; o="$1"; }; shift; done' 'cat >/dev/null' 'cp "${FAKE_RELEASE}" "$o"' 'printf 200' > crel/curl && chmod 755 crel/curl
-crel="$(pwd)/crel"; pxrel2json="$(pwd)/pxrel2.json"; pxold="$(readlink pxh/managers/pkgx)"
-rm -f pxh/index/aqua.tsv
+crel="$(pwd)/crel"; pxrel2json="$(pwd)/pxrel2.json"; pxold="$(readlink pxh/channels/pkgx/tool/current)"
+rm -f pxh/channels/aqua/index/aqua.tsv
 PATH="${crel}:${PATH}" FAKE_RELEASE="${pxrel2json}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${pxh}" STATIC_RUN_PKGX_DIST="${pxdist}" STATIC_RUN_AQUA_REGISTRY="${regf}" static-run --index-update pkgx > pxout 2>&1
 grep 'pkgx: pkgx v9.9.9 -> v9.9.10' pxout >/dev/null
-test ! -e pxh/index/aqua.tsv
-test X"$(readlink pxh/managers/pkgx)" != X"${pxold}"
+test ! -e pxh/channels/aqua/index/aqua.tsv
+test X"$(readlink pxh/channels/pkgx/tool/current)" != X"${pxold}"
 test ! -e "${pxold}"
-test -L pxh/by/github/pkgxdev/pkgx/v9.9.10
-test ! -e pxh/by/github/pkgxdev/pkgx/v9.9.9
-grep 'the next release' "$(readlink pxh/managers/pkgx)" >/dev/null
+test -d pxh/channels/pkgx/tool/v9.9.10
+test ! -e pxh/channels/pkgx/tool/v9.9.9
+grep 'the next release' "$(readlink pxh/channels/pkgx/tool/current)" >/dev/null
 test X"$(STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${pxh}" FAKE_PKGX_GRAPH="acme.org/extra=1.0.0" static-run extra 2>&1)" = X"extra ran"
 PATH="${crel}:${PATH}" FAKE_RELEASE="${pxrel2json}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${pxh}" STATIC_RUN_PKGX_DIST="${pxdist}" static-run --index-update pkgx 2>&1 | grep 'pkgx v9.9.10 is the newest' >/dev/null
 #purging a package takes what pkgx installed for it, except what another
 #package still uses
 STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${pxh}" static-run --purge tool >/dev/null 2>&1
-test ! -e pxh/by/pkgx/acme.org/tool/1.10.0
-test ! -d pxh/pkgx/acme.org/tool/v1.10.0
-test ! -d pxh/pkgx/acme.org/tool/lib/v1.0.0
-test ! -d pxh/run/pkgx/acme.org/tool/1.10.0
-test -d pxh/pkgx/acme.org/extra/v1.0.0
+test ! -e pxh/channels/pkgx/by/acme.org/tool/1.10.0
+test ! -d pxh/channels/pkgx/cellar/acme.org/tool/v1.10.0
+test ! -d pxh/channels/pkgx/cellar/acme.org/tool/lib/v1.0.0
+test ! -d pxh/channels/pkgx/run/acme.org/tool/1.10.0
+test -d pxh/channels/pkgx/cellar/acme.org/extra/v1.0.0
 #and the links pkgx keeps beside a version do not outlive it, nor do the
 #directories that end up empty
-test ! -e pxh/pkgx/acme.org/tool
+test ! -e pxh/channels/pkgx/cellar/acme.org/tool
 STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${pxh}" static-run --purge extra >/dev/null 2>&1
-test ! -d pxh/pkgx/acme.org/extra/v1.0.0
-test ! -e pxh/pkgx/acme.org
+test ! -d pxh/channels/pkgx/cellar/acme.org/extra/v1.0.0
+test ! -e pxh/channels/pkgx/cellar/acme.org
+#everything a channel has lives in its directory, so one rm removes it: nothing
+#of pkgx is left anywhere else, and a decision that pointed in there is made
+#again the next time, from nothing
+rm -rf pxh/channels/pkgx
+test X"$(find pxh -name '*pkgx*' ! -path 'pxh/channels/github/*')" = X""
+test X"$(PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${pxh}" STATIC_RUN_PKGX_DIST="${pxdist}" STATIC_RUN_AQUA_REGISTRY="${regf}" FAKE_PKGX_GRAPH="acme.org/extra=1.0.0" static-run --yes extra 2>/dev/null)" = X"extra ran"
 @end
 
 @begin{staticus}

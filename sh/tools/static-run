@@ -344,7 +344,7 @@ _probe_all() {
 
         #marginal bytes: what is already placed costs nothing to place again
         _probe_all__marginal="${_probe_all__b}"
-        [ -e "${home}/by/${_probe_all__c}/${_probe_all__p}/${_probe_all__v}" ] && \
+        [ -e "$(_channel_home "${_probe_all__c}")/by/${_probe_all__p}/${_probe_all__v}" ] && \
             _probe_all__marginal="0"
 
         #and what is still missing includes the tool the channel installs
@@ -354,8 +354,7 @@ _probe_all() {
         #through aqua, which is, by being smaller on its own
         _probe_all__hops="0"
         if [ X"${_probe_all__r}" != X"-" ]; then
-            _probe_all__rp="$(_cache_get "${_probe_all__r}" 2>/dev/null)" || _probe_all__rp=""
-            if [ -z "${_probe_all__rp}" ] || [ ! -f "${_probe_all__rp}" ] || [ ! -x "${_probe_all__rp}" ]; then
+            if ! _tool_here "${_probe_all__c}" >/dev/null; then
                 _probe_all__hops="1"
                 _probe_all__rb="$(_requires_bytes "${_probe_all__r}")"
                 #an unknown size plus anything is unknown
@@ -515,12 +514,22 @@ _fetch_verified() {
     fi
 }
 
+_channel_home() {
+    #$1 => channel. Everything a channel has here lives under one directory:
+    #its catalog, its tool, what the tool installed, launchers, caches and
+    #records. Removing that directory removes the channel and nothing else, and
+    #nothing outside it breaks: a remembered decision that pointed in there is
+    #simply made again
+    printf "%s\\n" "${home}/channels/${1}"
+}
+
 _place() {
     #$1 => channel, $2 => package, $3 => version, $4 => what locate answered.
     #Nothing is placed under its final name until its digest is known, so an
     #interrupted download leaves rubbish in one sweepable place and never
     #something that looks installed
     _place__ch="${1}"; _place__pkg="${2}"; _place__ver="${3}"; _place__info="${4}"
+    _place__home="$(_channel_home "${_place__ch}")"
 
     _place__url="$(printf "%s\\n"    "${_place__info}" | awk -F= '$1=="url"{sub(/^url=/,""); print; exit}')"
     _place__format="$(printf "%s\\n" "${_place__info}" | awk -F= '$1=="format"{print $2; exit}')"
@@ -532,14 +541,14 @@ _place() {
     _fetch_verified "${_place__url}" "${_place__sha}" || return 1
     _place__art="${fetched}"; _place__digest="${fetched_digest}"
 
-    _place__store="${home}/store/${_place__digest}"
+    _place__store="${_place__home}/store/${_place__digest}"
     if [ ! -d "${_place__store}" ]; then
         _unpack "${_place__art}" "${_place__format}" "${_place__art}.d" "${_place__bin}" || {
             rm -rf "${_place__art}" "${_place__art}.d"
             _say "${PROGNAME}: could not unpack the ${_place__format:-raw} artifact"
             return 1
         }
-        _mkdir_p "${home}/store" || return 1
+        _mkdir_p "${_place__home}/store" || return 1
         mv "${_place__art}.d" "${_place__store}" 2>/dev/null || {
             rm -rf "${_place__art}" "${_place__art}.d"
             return 1
@@ -549,7 +558,7 @@ _place() {
 
     #the link tree keeps the model the proposal got right: removing a
     #placement is removing a link, and the store is collected afterwards
-    _place__link="${home}/by/${_place__ch}/${_place__pkg}/${_place__ver}"
+    _place__link="${_place__home}/by/${_place__pkg}/${_place__ver}"
     _mkdir_p "${_place__link%/*}" || return 1
     rm -f "${_place__link}"
     ln -s "${_place__store}" "${_place__link}" 2>/dev/null
@@ -558,9 +567,71 @@ _place() {
     [ -n "${_place__sha}" ] && _place__badge="verified"
     printf "%s\\t%s\\t%s\\t%s\\t%s\\n" "$(date +%Y-%m-%dT%H:%M:%S)" \
         "${_place__ch}:${_place__pkg}@${_place__ver}" "${_place__digest}" \
-        "${_place__badge}" "${_place__url}" >> "${home}/inventory"
+        "${_place__badge}" "${_place__url}" >> "${_place__home}/inventory"
 
     printf "%s\\n" "${_place__store}"
+}
+
+_tool_here() {
+    #$1 => channel. Prints the tool it installs through when the tool is here
+    _th__link="$(_channel_home "${1}")/tool/current"
+    [ -x "${_th__link}" ] || return 1
+    printf "%s\\n" "${_th__link}"
+}
+
+_tool_version() {
+    #$1 => channel. The version of the tool current points at
+    _tv__home="$(_channel_home "${1}")"
+    _tv__target="$(readlink "${_tv__home}/tool/current" 2>/dev/null)" || return 1
+    _tv__target="${_tv__target#${_tv__home}/tool/}"
+    printf "%s\\n" "${_tv__target%%/*}"
+}
+
+_place_tool() {
+    #$1 => the channel that installs through the tool, $2 => the tool's spec,
+    #$3 => version, $4 => what locate answered. Prints the link it is reached
+    #by. The tool is fetched and checked like anything static-run fetches, and
+    #kept in the directory of the channel that uses it, one directory per
+    #version with current pointing at the program. Launchers write current
+    #down, so an update moves it and no launcher has to be rewritten
+    _pt__home="$(_channel_home "${1}")"
+    case "${3}" in
+        ''|*/*|.|..|current) return 1 ;;
+    esac
+    _pt__url="$(printf "%s\\n"    "${4}" | awk -F= '$1=="url"{sub(/^url=/,""); print; exit}')"
+    _pt__format="$(printf "%s\\n" "${4}" | awk -F= '$1=="format"{print $2; exit}')"
+    _pt__bin="$(printf "%s\\n"    "${4}" | awk -F= '$1=="bin"{print $2; exit}')"
+    _pt__sha="$(printf "%s\\n"    "${4}" | awk -F= '$1=="sha256"{print $2; exit}')"
+    [ -z "${_pt__url}" ] && return 1
+    if [ -z "${_pt__bin}" ]; then
+        _pt__bin="$(_spec_package "${2}")"; _pt__bin="${_pt__bin##*/}"
+    fi
+
+    _pt__dir="${_pt__home}/tool/${3}"
+    if [ ! -d "${_pt__dir}" ]; then
+        _fetch_verified "${_pt__url}" "${_pt__sha}" || return 1
+        if ! _unpack "${fetched}" "${_pt__format}" "${fetched}.d" "${_pt__bin}"; then
+            rm -rf "${fetched}" "${fetched}.d"
+            _say "${PROGNAME}: could not unpack the ${_pt__format:-raw} artifact"
+            return 1
+        fi
+        rm -f "${fetched}"
+        _mkdir_p "${_pt__home}/tool" && mv "${fetched}.d" "${_pt__dir}" 2>/dev/null || {
+            rm -rf "${fetched}.d"
+            return 1
+        }
+        _pt__badge="none"; [ -n "${_pt__sha}" ] && _pt__badge="verified"
+        printf "%s\\t%s\\t%s\\t%s\\t%s\\n" "$(date +%Y-%m-%dT%H:%M:%S)" \
+            "${2}@${3}" "${fetched_digest}" "${_pt__badge}" "${_pt__url}" >> "${_pt__home}/inventory"
+    fi
+    _pt__prog="$(_find_program "${_pt__dir}" "${_pt__bin}")" || return 1
+    _pt__link="${_pt__home}/tool/current"
+    if [ X"$(readlink "${_pt__link}" 2>/dev/null)" != X"${_pt__prog}" ]; then
+        rm -f "${_pt__link}.$$"
+        ln -s "${_pt__prog}" "${_pt__link}.$$" 2>/dev/null && \
+            mv -f "${_pt__link}.$$" "${_pt__link}" || return 1
+    fi
+    printf "%s\\n" "${_pt__link}"
 }
 
 ###############################################################################
@@ -587,29 +658,36 @@ _cache_put() {
 ###############################################################################
 
 _list() {
-    [ -d "${home}/by" ] || { _say "${PROGNAME}: nothing placed yet"; return 0; }
+    [ -d "${home}/channels" ] || { _say "${PROGNAME}: nothing placed yet"; return 0; }
 
-    find "${home}/by" -type l 2>/dev/null | sort | while read -r _list__link; do
-        _list__rest="${_list__link#${home}/by/}"
-        _list__ch="${_list__rest%%/*}"
-        _list__rest="${_list__rest#*/}"
-        _list__ver="${_list__rest##*/}"
-        _list__pkg="${_list__rest%/*}"
-        [ -n "${1}" ] && case "${_list__pkg}" in *"${1}"*) ;; *) continue ;; esac
-
-        _list__store="$(readlink "${_list__link}" 2>/dev/null)"
-        _list__size="$(du -sk "${_list__store}" 2>/dev/null | awk '{print $1*1024; exit}')"
-        #what a tool installed is what it holds for the package, not the
-        #launcher the link names
-        _list__plan="${home}/members/${_list__ch}/${_list__pkg}/${_list__ver}"
-        if [ -f "${_list__plan}" ]; then
-            _list__size="$(while read -r _list__m; do
-                    du -sk "${home}/${_list__m}" 2>/dev/null
-                done < "${_list__plan}" | awk '{t += $1} END {print t*1024}')"
+    for _list__home in "${home}"/channels/*; do
+        [ -d "${_list__home}" ] || continue
+        _list__ch="${_list__home##*/}"
+        _list__kind="$(_channel_meta "${_list__ch}" confines | awk '{print ($0=="yes") ? "confined" : "native"}')"
+        if [ -L "${_list__home}/tool/current" ]; then
+            _list__size="$(du -sk "${_list__home}/tool" 2>/dev/null | awk '{print $1*1024; exit}')"
+            printf "  %-34s %10s  %s\\n" "${_list__ch}, its tool, $(_tool_version "${_list__ch}")" \
+                "$(_human "${_list__size}")" "tool"
         fi
-        printf "  %-34s %10s  %s\\n" "${_list__ch}:${_list__pkg}@${_list__ver}" \
-            "$(_human "${_list__size}")" "$(_channel_meta "${_list__ch}" confines \
-                | awk '{print ($0=="yes") ? "confined" : "native"}')"
+        find "${_list__home}/by" -type l 2>/dev/null | sort | while read -r _list__link; do
+            _list__rest="${_list__link#${_list__home}/by/}"
+            _list__ver="${_list__rest##*/}"
+            _list__pkg="${_list__rest%/*}"
+            [ -n "${1}" ] && case "${_list__pkg}" in *"${1}"*) ;; *) continue ;; esac
+
+            _list__store="$(readlink "${_list__link}" 2>/dev/null)"
+            _list__size="$(du -sk "${_list__store}" 2>/dev/null | awk '{print $1*1024; exit}')"
+            #what a tool installed is what it holds for the package, not the
+            #launcher the link names
+            _list__plan="${_list__home}/members/${_list__pkg}/${_list__ver}"
+            if [ -f "${_list__plan}" ]; then
+                _list__size="$(while read -r _list__m; do
+                        du -sk "${_list__home}/${_list__m}" 2>/dev/null
+                    done < "${_list__plan}" | awk '{t += $1} END {print t*1024}')"
+            fi
+            printf "  %-34s %10s  %s\\n" "${_list__ch}:${_list__pkg}@${_list__ver}" \
+                "$(_human "${_list__size}")" "${_list__kind}"
+        done
     done
 }
 
@@ -626,97 +704,96 @@ _purge() {
     _purge__ver="$(_spec_version "${1}")"
     _purge__gone="0"
     _purge__target="$(_cache_get "${1}" 2>/dev/null)" || _purge__target=""
-    #what the cached program was placed as: its store entry, or for a tool's
-    #install, the directory the placement links to. A name that is not the
+    #what the cached program was placed as: its store entry, or for what a tool
+    #installed, the directory the placement links to. A name that is not the
     #package's - rg for ripgrep, curl for curl.se - is found that way
     case "${_purge__target}" in
-        "${home}/store/"*) _purge__target="${_purge__target#${home}/store/}"
-                           _purge__target="${home}/store/${_purge__target%%/*}" ;;
-        "${home}/"*/*)     _purge__target="${_purge__target%/*}" ;;
+        "${home}/channels/"*/store/*)
+            _purge__rest="${_purge__target#${home}/channels/}"
+            _purge__tch="${_purge__rest%%/*}"; _purge__rest="${_purge__rest#*/store/}"
+            _purge__target="${home}/channels/${_purge__tch}/store/${_purge__rest%%/*}" ;;
+        "${home}/channels/"*/*) _purge__target="${_purge__target%/*}" ;;
         *) _purge__target="" ;;
     esac
+    _mkdir_p "${home}/tmp" || return 1
     _purge__members="${home}/tmp/purged.$$"; rm -f "${_purge__members}"
 
-    for _purge__link in $(find "${home}/by" -type l 2>/dev/null | sort); do
-        _purge__rest="${_purge__link#${home}/by/}"
-        _purge__lch="${_purge__rest%%/*}"
-        _purge__rest="${_purge__rest#*/}"
-        _purge__lver="${_purge__rest##*/}"
-        _purge__lpkg="${_purge__rest%/*}"
+    for _purge__home in "${home}"/channels/*; do
+        [ -d "${_purge__home}/by" ] || continue
+        _purge__lch="${_purge__home##*/}"
+        [ -n "${_purge__ch}" ] && [ X"${_purge__ch}" != X"${_purge__lch}" ] && continue
 
-        [ -n "${_purge__ch}"  ] && [ X"${_purge__ch}"  != X"${_purge__lch}"  ] && continue
-        [ -n "${_purge__ver}" ] && [ X"${_purge__ver}" != X"${_purge__lver}" ] && continue
-        #a bare name matches the repository it resolved to: jq purges
-        #jqlang/jq, and rg purges whichever rg was chosen to mean
-        if [ X"${_purge__pkg}" != X"${_purge__lpkg}" ] && \
-           [ X"${_purge__pkg}" != X"${_purge__lpkg##*/}" ]; then
-            [ -n "${_purge__target}" ] || continue
-            [ X"$(readlink "${_purge__link}" 2>/dev/null)" = X"${_purge__target}" ] || continue
-        fi
+        for _purge__link in $(find "${_purge__home}/by" -type l 2>/dev/null | sort); do
+            _purge__rest="${_purge__link#${_purge__home}/by/}"
+            _purge__lver="${_purge__rest##*/}"
+            _purge__lpkg="${_purge__rest%/*}"
 
-        #what a tool of a channel's own installed is not in the store, so it is
-        #removed with its placement rather than collected afterwards
-        _purge__aq="${home}/aqua/root/pkgs/github_release/github.com/${_purge__lpkg}/${_purge__lver}"
-        case "$(readlink "${_purge__link}" 2>/dev/null)" in
-            "${_purge__aq}"/*)
-                _purge__size="$(du -sk "${_purge__aq}" 2>/dev/null | awk '{print $1*1024; exit}')"
-                _purge__aqfreed="$((${_purge__aqfreed:-0} + ${_purge__size:-0}))"
-                rm -rf "${_purge__aq}" \
-                    "${home}/aqua/conf/$(printf "%s\\n" "${_purge__lpkg}@${_purge__lver}" | tr '/@' '__')" ;;
-        esac
-        #a placement a tool installed goes with its launcher and its record,
-        #and what the tool holds for it is collected below once no other
-        #placement names it
-        _purge__plan="${home}/members/${_purge__lch}/${_purge__lpkg}/${_purge__lver}"
-        if [ -f "${_purge__plan}" ]; then
-            _mkdir_p "${home}/tmp" && cat "${_purge__plan}" >> "${_purge__members}"
-            rm -f "${_purge__plan}"
-            case "$(readlink "${_purge__link}" 2>/dev/null)" in
-                "${home}/run/"?*) rm -rf "$(readlink "${_purge__link}")" ;;
-            esac
-        fi
-        rm -f "${_purge__link}"
-        _purge__gone="$((${_purge__gone} + 1))"
+            [ -n "${_purge__ver}" ] && [ X"${_purge__ver}" != X"${_purge__lver}" ] && continue
+            #a bare name matches the repository it resolved to: jq purges
+            #jqlang/jq, and rg purges whichever rg was chosen to mean
+            if [ X"${_purge__pkg}" != X"${_purge__lpkg}" ] && \
+               [ X"${_purge__pkg}" != X"${_purge__lpkg##*/}" ]; then
+                [ -n "${_purge__target}" ] || continue
+                [ X"$(readlink "${_purge__link}" 2>/dev/null)" = X"${_purge__target}" ] || continue
+            fi
+
+            #a placement a tool installed goes with its launcher and its
+            #record, and what the tool holds for it is collected below once no
+            #other placement of the same channel names it
+            _purge__plan="${_purge__home}/members/${_purge__lpkg}/${_purge__lver}"
+            if [ -f "${_purge__plan}" ]; then
+                awk -v h="${_purge__home}" 'NF {printf("%s\t%s\n", h, $0)}' "${_purge__plan}" >> "${_purge__members}"
+                rm -f "${_purge__plan}"
+                case "$(readlink "${_purge__link}" 2>/dev/null)" in
+                    "${_purge__home}/run/"?*) rm -rf "$(readlink "${_purge__link}")" ;;
+                esac
+            fi
+            rm -f "${_purge__link}"
+            _purge__gone="$((${_purge__gone} + 1))"
+        done
     done
 
-    [ X"${_purge__gone}" = X"0" ] && { _say "${PROGNAME}: nothing matched '${1}'"; return 1; }
+    [ X"${_purge__gone}" = X"0" ] && { rm -f "${_purge__members}"; _say "${PROGNAME}: nothing matched '${1}'"; return 1; }
 
-    #a store entry outlives the link that named it only until nobody else
-    #points at it, which is what content addressing buys
-    _purge__kept="0"; _purge__freed="${_purge__aqfreed:-0}"
-    #and what a tool installed outlives its placement only until no other
-    #placement names it: curl and git share an openssl
+    _purge__kept="0"; _purge__freed="0"
+    #what a tool installed outlives its placement only until no other placement
+    #names it: curl and git share an openssl
     if [ -f "${_purge__members}" ]; then
         LC_ALL=C sort -u "${_purge__members}" > "${_purge__members}.u"
-        while read -r _purge__m; do
+        while IFS='	' read -r _purge__mh _purge__m; do
             case "${_purge__m}" in
                 ''|*..*|/*) continue ;;
             esac
-            if [ -d "${home}/members" ] && \
-               find "${home}/members" -type f -exec cat {} + 2>/dev/null | grep -Fx "${_purge__m}" >/dev/null; then
+            if [ -d "${_purge__mh}/members" ] && \
+               find "${_purge__mh}/members" -type f -exec cat {} + 2>/dev/null | grep -Fx "${_purge__m}" >/dev/null; then
                 _purge__kept="$((${_purge__kept} + 1))"
                 continue
             fi
-            [ -d "${home}/${_purge__m}" ] || continue
-            _purge__size="$(du -sk "${home}/${_purge__m}" 2>/dev/null | awk '{print $1*1024; exit}')"
+            [ -d "${_purge__mh}/${_purge__m}" ] || continue
+            _purge__size="$(du -sk "${_purge__mh}/${_purge__m}" 2>/dev/null | awk '{print $1*1024; exit}')"
             _purge__freed="$((${_purge__freed} + ${_purge__size:-0}))"
-            rm -rf "${home}/${_purge__m}"
+            rm -rf "${_purge__mh}/${_purge__m}"
             #a tool keeps links beside what it installs - pkgx points v1 and v*
             #at a version - and once that is gone they point nowhere. Those go
             #too, and then every directory the removal left empty
-            _purge__d="${home}/${_purge__m%/*}"
+            _purge__d="${_purge__mh}/${_purge__m%/*}"
             for _purge__l in "${_purge__d}"/* "${_purge__d}"/.[!.]*; do
                 [ -L "${_purge__l}" ] && [ ! -e "${_purge__l}" ] && rm -f "${_purge__l}"
             done
-            while [ X"${_purge__d}" != X"${home}" ] && rmdir "${_purge__d}" 2>/dev/null; do
+            while [ X"${_purge__d}" != X"${_purge__mh}" ] && rmdir "${_purge__d}" 2>/dev/null; do
                 _purge__d="${_purge__d%/*}"
             done
         done < "${_purge__members}.u"
-        rm -f "${_purge__members}" "${_purge__members}.u"
+        rm -f "${_purge__members}.u"
     fi
-    for _purge__dir in "${home}"/store/*; do
+    rm -f "${_purge__members}"
+
+    #a store entry outlives the link that named it only until nobody else
+    #points at it, which is what content addressing buys
+    for _purge__dir in "${home}"/channels/*/store/*; do
         [ -d "${_purge__dir}" ] || continue
-        if find "${home}/by" -type l -lname "${_purge__dir}" 2>/dev/null | \
+        _purge__sh="${_purge__dir%/store/*}"
+        if find "${_purge__sh}/by" -type l -lname "${_purge__dir}" 2>/dev/null | \
            awk 'NF{n++} END{exit !(n+0)}'; then
             _purge__kept="$((${_purge__kept} + 1))"
         else
@@ -727,7 +804,7 @@ _purge() {
     done
 
     rm -f "${home}/cache/$(_cache_key "${1}")"
-    _say "${PROGNAME}: removed ${_purge__gone} placement(s), freed $(_human "${_purge__freed}"), ${_purge__kept} store entries still referenced"
+    _say "${PROGNAME}: removed ${_purge__gone} placement(s), freed $(_human "${_purge__freed}"), ${_purge__kept} still referenced"
 }
 
 ###############################################################################
@@ -749,30 +826,14 @@ _index_one() {
     return 2
 }
 
-_manager_link() {
-    #$1 => the spec of a tool channels install through, $2 => its program.
-    #Prints the link the tool is reached through, named after it. A launcher
-    #writes that link down and not the program, so updating the tool moves
-    #the link and every launcher follows without being rewritten
-    _ml__name="$(_spec_package "${1}")"; _ml__name="${_ml__name##*/}"
-    _mkdir_p "${home}/managers" || return 1
-    if [ X"$(readlink "${home}/managers/${_ml__name}" 2>/dev/null)" != X"${2}" ]; then
-        rm -f "${home}/managers/${_ml__name}.$$"
-        ln -s "${2}" "${home}/managers/${_ml__name}.$$" 2>/dev/null && \
-            mv -f "${home}/managers/${_ml__name}.$$" "${home}/managers/${_ml__name}" || return 1
-    fi
-    printf "%s\\n" "${home}/managers/${_ml__name}"
-}
-
 _manager_update() {
     #$1 => channel, $2 => the spec of the tool it installs through. A tool that
     #is here is brought to its newest release: fetched and checked like
-    #anything else static-run fetches, put in the old one's place, and the old
-    #one removed. A tool not fetched yet is left for the first time it is
-    #needed, which is when its cost can be asked about
+    #anything else static-run fetches, current moved to it, and the old one
+    #removed. A tool not fetched yet is left for the first time it is needed,
+    #which is when its cost can be asked about
     _mu__name="$(_spec_package "${2}")"; _mu__name="${_mu__name##*/}"
-    _mu__cur="$(_cache_get "${2}")" || _mu__cur=""
-    if [ -z "${_mu__cur}" ] || [ ! -x "${_mu__cur}" ]; then
+    if ! _tool_here "${1}" >/dev/null; then
         _say "${PROGNAME}: ${1}: ${_mu__name} is not here yet, it is fetched the first time ${1} is needed"
         return 0
     fi
@@ -785,27 +846,21 @@ _manager_update() {
         return 1
     fi
     _mu__ver="$(printf "%s\\n" "${_mu__line}" | awk '{print $3}')"
-    _mu__old="$(find "${home}/by/${_mu__ch}/${_mu__pkg}" -type l 2>/dev/null | awk -F/ '{print $NF}' | LC_ALL=C sort | tr '\n' ' ')"
-    if [ -e "${home}/by/${_mu__ch}/${_mu__pkg}/${_mu__ver}" ]; then
-        _manager_link "${2}" "${_mu__cur}" >/dev/null
+    _mu__old="$(_tool_version "${1}")"
+    if [ X"${_mu__old}" = X"${_mu__ver}" ]; then
         _say "${PROGNAME}: ${1}: ${_mu__name} ${_mu__ver} is the newest"
         return 0
     fi
     _mu__info="$("$(_channels_dir)/${_mu__ch}" locate "${_mu__pkg}" "${_mu__ver}" 2>/dev/null)" || _mu__info=""
-    _say "${PROGNAME}: ${1}: ${_mu__name} ${_mu__old:+${_mu__old}}-> ${_mu__ver}, $(_human "$(printf "%s\\n" "${_mu__line}" | awk '{print $4}')")"
-    _mu__store="" ; _mu__prog=""
-    [ -n "${_mu__info}" ] && \
-        _mu__store="$(_place "${_mu__ch}" "${_mu__pkg}" "${_mu__ver}" "${_mu__info}")" && \
-        _mu__prog="$(_find_program "${_mu__store}" "$(printf "%s\\n" "${_mu__info}" | awk -F= '$1=="bin"{print $2; exit}')")"
-    if [ -z "${_mu__prog}" ]; then
+    _say "${PROGNAME}: ${1}: ${_mu__name} ${_mu__old} -> ${_mu__ver}, $(_human "$(printf "%s\\n" "${_mu__line}" | awk '{print $4}')")"
+    if [ -z "${_mu__info}" ] || ! _place_tool "${1}" "${2}" "${_mu__ver}" "${_mu__info}" >/dev/null; then
         _say "${PROGNAME}: ${1}: ${_mu__name} ${_mu__ver} could not be placed, the one here stays"
         return 1
     fi
-    _cache_put "${2}" "${_mu__prog}"
-    _manager_link "${2}" "${_mu__prog}" >/dev/null || return 1
-    for _mu__o in ${_mu__old}; do
-        [ X"${_mu__o}" = X"${_mu__ver}" ] && continue
-        _purge "${_mu__ch}:${_mu__pkg}@${_mu__o}" >/dev/null 2>&1
+    for _mu__d in "$(_channel_home "${1}")"/tool/*; do
+        [ -d "${_mu__d}" ] && [ ! -L "${_mu__d}" ] || continue
+        [ X"${_mu__d##*/}" = X"${_mu__ver}" ] && continue
+        rm -rf "${_mu__d}"
     done
     return 0
 }
@@ -866,7 +921,7 @@ _apropos() {
                     awk '/^unreachable=/ {sub(/^unreachable=/, ""); print; exit}')" ;;
         esac
     done
-    if [ -d "${home}/index" ] && [ -n "$(find "${home}/index" -type f -mtime +7 2>/dev/null)" ]; then
+    if [ -n "$(find "${home}/channels" -path '*/index/*' -type f -mtime +7 2>/dev/null)" ]; then
         _say "${PROGNAME}: an index is more than a week old, --index-update refreshes it"
     fi
     [ -n "${_ap__found}" ] || { _say "${PROGNAME}: nothing matched '${*}'"; return 1; }
@@ -1061,11 +1116,7 @@ _winner
 _tool_for_winner() {
     req_program=""; req_channel=""; req_package=""; req_version=""; req_bytes=""; req_info=""; req_why=""
     [ -z "${w_requires}" ] && return 0
-    req_cached="$(_cache_get "${w_requires}")" || req_cached=""
-    if [ -n "${req_cached}" ] && [ -f "${req_cached}" ] && [ -x "${req_cached}" ]; then
-        req_program="$(_manager_link "${w_requires}" "${req_cached}")"
-        return 0
-    fi
+    req_program="$(_tool_here "${w_channel}")" && return 0
     req_channel="$(_spec_channel "${w_requires}")"
     req_package="$(_spec_package "${w_requires}")"
     req_probed="$(_probe_all "${req_package}" "" "${req_channel}")"
@@ -1211,11 +1262,7 @@ if [ -n "${w_requires}" ]; then
         #the path that was agreed to goes through this tool. If it cannot be
         #placed now, nothing else is fetched instead of it
         _say "${PROGNAME}: fetching ${req_package##*/} ${req_version}, to install ${w_package} with"
-        req_store="$(_place "${req_channel}" "${req_package}" "${req_version}" "${req_info}")" && \
-        req_program="$(_find_program "${req_store}" \
-            "$(printf "%s\\n" "${req_info}" | awk -F= '$1=="bin"{print $2; exit}')")" && \
-        _cache_put "${w_requires}" "${req_program}" && \
-        req_program="$(_manager_link "${w_requires}" "${req_program}")"
+        req_program="$(_place_tool "${w_channel}" "${w_requires}" "${req_version}" "${req_info}")" || req_program=""
         if [ -z "${req_program}" ]; then
             _say "${PROGNAME}: ${w_requires} could not be placed, and nothing was installed"
             exit 127
@@ -1235,21 +1282,22 @@ if [ -n "${w_requires}" ]; then
     program="$(printf "%s\\n" "${obtained}" | awk '/^program=/ {sub(/^program=/, ""); print; exit}')"
     o_asset="$(printf "%s\\n" "${obtained}" | awk '/^asset=/ {sub(/^asset=/, ""); print; exit}')"
     [ -x "${program}" ] || { _say "${PROGNAME}: ${w_channel} reported no program for '${w_package}'"; exit 127; }
-    o_link="${home}/by/${w_channel}/${w_package}/${w_version}"
+    o_home="$(_channel_home "${w_channel}")"
+    o_link="${o_home}/by/${w_package}/${w_version}"
     _mkdir_p "${o_link%/*}" && rm -f "${o_link}" && ln -s "${program%/*}" "${o_link}" 2>/dev/null
-    #what the tool holds for this package, under this home and nowhere else,
-    #so that purging it can take what no other placement still uses
+    #what the tool holds for this package, under the channel's directory and
+    #nowhere else, so that purging it can take what no other placement uses
     o_members="$(printf "%s\\n" "${obtained}" | awk '/^member=/ {
         sub(/^member=/, "")
         if ($0 != "" && index($0, "..") == 0 && $0 !~ /^\// && $0 !~ /[^A-Za-z0-9._+\/-]/) print
     }')"
     if [ -n "${o_members}" ]; then
-        o_record="${home}/members/${w_channel}/${w_package}/${w_version}"
+        o_record="${o_home}/members/${w_package}/${w_version}"
         _mkdir_p "${o_record%/*}" && printf "%s\\n" "${o_members}" > "${o_record}"
     fi
     printf "%s\\t%s\\t%s\\t%s\\t%s\\n" "$(date +%Y-%m-%dT%H:%M:%S)" \
         "${w_channel}:${w_package}@${w_version}" "-" "via ${w_channel}" \
-        "${w_channel}:${o_asset}" >> "${home}/inventory"
+        "${w_channel}:${o_asset}" >> "${o_home}/inventory"
 else
     store="$(_place "${w_channel}" "${w_package}" "${w_version}" "${info}")" || exit 127
     program="$(_find_program "${store}" "${bin_name:-${w_bin}}")" || {
