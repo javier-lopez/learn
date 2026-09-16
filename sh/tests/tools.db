@@ -413,6 +413,17 @@ test ! -e DEL
 test ! -e PIPE
 #options still arrive through stdin, which is what the pipes above all assume
 test X"$(printf "%s" '--hook' | fuck | head -1)"   = X"command_not_found_handle() {"
+#the case the hook exists for, and the one nothing above covers: an
+#interactive shell, the tool present, and nothing to resolve. Defining a
+#handler silences the shell's own message, so if this path does not answer
+#127 the typo goes by in silence
+test X"$(bash --norc -i -c '. ./hook.sh; nosuchcmdxyz' 2>&1 | tail -1)" = X"bash: nosuchcmdxyz: command not found"
+bash --norc -i -c '. ./hook.sh; nosuchcmdxyz' >/dev/null 2>&1; test X"${?}" = X"127"
+fuck -c nosuchcmdxyz >/dev/null 2>&1; test X"${?}"  = X"127"
+#and a status that is not 127 has to mean something really ran
+test X"$(fuck -c '2+2')"                           = X"4"
+fuck -c '2+2' >/dev/null 2>&1; test X"${?}"        = X"0"
+test X"$(bash --norc -i -c '. ./hook.sh; 7*6' 2>&1 | tail -1)" = X"42"
 @end
 
 @begin{governator}

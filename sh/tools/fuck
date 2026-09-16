@@ -13,7 +13,7 @@
 #example: fuck you firefox
 #ヽ(`Д´)ﾉ⌒ xoɟǝɹᴉɟ
 
-VERSION="2026.09.16-00:05"
+VERSION="2026.09.16-02:40"
 
 _usage() {
     printf "%s\\n" "Usage: ${PROGNAME} [you|off] [program ...]"
@@ -70,6 +70,16 @@ _exec() {
 
 _open() {
     [ -z "${1}" ] && return 1
+
+    #xdg-open accepts any word and answers with its own failure when that word
+    #is neither a url nor a path that exists, which is exactly what a missing
+    #command looks like. That status then travels up as if something had been
+    #tried. The branch below already made this distinction and returned 1; it
+    #is made here so both halves of this function agree on what is openable
+    case "${1}" in
+        http://*|https://*|ftp://*) ;;
+        *) [ -e "${1}" ] || return 1 ;;
+    esac
 
     if command -v "xdg-open" >/dev/null 2>&1; then
         xdg-open "${@}" 2>/dev/null
@@ -193,6 +203,16 @@ _fuck_process() {
             fi
         fi
     done
+}
+
+_exit_not_found() { #answer the command-not-found path in the shell's own
+                    #language: 127 is "nothing ran", and it is the only status
+                    #a hook can tell apart from a program that ran and failed.
+                    #_exec never returns - it ends in exit - so arriving here
+                    #at all means nothing was executed, whatever the internals
+                    #bubbled up on the way
+    [ "${1}" -eq "0" ] && exit 0
+    exit 127
 }
 
 _fuck_command_not_found() {
@@ -408,19 +428,19 @@ case "${1}" in
                     case "${2}" in
                         -*) _die "Option '${arg}' requires a parameter" ;;
                     esac
-                    shift && { _fuck_command_not_found "${@}"; exit "${?}"; }
+                    shift && { _fuck_command_not_found "${@}"; _exit_not_found "${?}"; }
                 else
                     _die "Option '${arg}' requires a parameter"
                 fi
                 ;;
 
             -c*)arg="${1#-c}"
-                shift && { _fuck_command_not_found "${arg} ${@}"; exit "${?}"; }
+                shift && { _fuck_command_not_found "${arg} ${@}"; _exit_not_found "${?}"; }
                 ;;
 
             --command-not-found*)
                 arg="${1#--command-not-found}"
-                shift && _fuck_command_not_found "${arg} ${@}"
+                shift && { _fuck_command_not_found "${arg} ${@}"; _exit_not_found "${?}"; }
                 ;;
         esac
         ;;
