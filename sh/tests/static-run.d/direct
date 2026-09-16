@@ -1,0 +1,9 @@
+#!/bin/sh
+#dearer than hopper on its own, and needing nothing else
+
+case "${1}" in
+    meta)  printf "%s\n" "kind=artifact" "confines=no" "describes=self" ;;
+    probe) [ X"${2}" = X"hopname" ] || exit 1
+           printf "%s\n" "version=1.0" "bytes=1000" "badge=none" ;;
+    *) exit 1 ;;
+esac

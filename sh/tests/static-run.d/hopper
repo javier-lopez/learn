@@ -1,0 +1,11 @@
+#!/bin/sh
+#a channel that is cheap on its own and installs through a tool it does not
+#have yet. What is still missing is both, so a channel that is dearer on its
+#own but needs nothing has to win until the tool is here
+
+case "${1}" in
+    meta)  printf "%s\n" "kind=artifact" "confines=no" "describes=self" ;;
+    probe) [ X"${2}" = X"hopname" ] || exit 1
+           printf "%s\n" "version=1.0" "bytes=100" "badge=none" "requires=alpha:tiny" ;;
+    *) exit 1 ;;
+esac

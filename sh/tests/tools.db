@@ -916,6 +916,13 @@ STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${amh}" static-run --purge jqx 
 test ! -e am/by/aqua/acme/jqx/1.0
 test ! -d am/aqua/root/pkgs/github_release/github.com/acme/jqx/1.0
 test -L am/by/aqua/filler/pkg1/2.0
+#what is still missing includes the tool a channel installs through. Cheap on
+#its own and needing a tool not fetched yet loses to dearer and needing nothing,
+#and wins once the tool is here
+hop1h="$(pwd)/hop1"; hop2h="$(pwd)/hop2"
+test X"$(STATIC_RUN_HOME="${hop1h}" static-run -n hopname | tail -1 | awk '{print $2}')" = X"direct:hopname@1.0"
+STATIC_RUN_HOME="${hop2h}" static-run --yes alpha:tiny >/dev/null 2>&1
+test X"$(STATIC_RUN_HOME="${hop2h}" static-run -n hopname | tail -1 | awk '{print $2}')" = X"hopper:hopname@1.0"
 #with no terminal to ask on it declines and says why. /dev/tty is there and
 #writable without a controlling terminal, and only opening it tells; and a
 #failed open of it must not end the shell, which posix does for a special builtin

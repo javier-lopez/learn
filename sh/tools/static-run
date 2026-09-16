@@ -322,6 +322,29 @@ _probe_all() {
         [ -e "${home}/by/${_probe_all__c}/${_probe_all__p}/${_probe_all__v}" ] && \
             _probe_all__marginal="0"
 
+        #and what is still missing includes the tool the channel installs
+        #through. A channel already fetched costs nothing, so one not fetched
+        #yet costs what fetching it does, and that is also the hop. Without it
+        #a package through pkgx, which is not here, beat the same package
+        #through aqua, which is, by being smaller on its own
+        _probe_all__hops="0"
+        if [ X"${_probe_all__r}" != X"-" ]; then
+            _probe_all__rp="$(_cache_get "${_probe_all__r}" 2>/dev/null)" || _probe_all__rp=""
+            if [ -z "${_probe_all__rp}" ] || [ ! -f "${_probe_all__rp}" ] || [ ! -x "${_probe_all__rp}" ]; then
+                _probe_all__hops="1"
+                _probe_all__rb="$(_requires_bytes "${_probe_all__r}")"
+                #an unknown size plus anything is unknown
+                case "${_probe_all__marginal}" in
+                    ''|*[!0-9]*) _probe_all__marginal="-" ;;
+                    *) if [ -n "${_probe_all__rb}" ]; then
+                           _probe_all__marginal="$((${_probe_all__marginal} + ${_probe_all__rb}))"
+                       else
+                           _probe_all__marginal="-"
+                       fi ;;
+                esac
+            fi
+        fi
+
         #a size the catalog did not announce sorts last within its class
         case "${_probe_all__marginal}" in
             ''|*[!0-9]*) _probe_all__key="99999999999999" ;;
@@ -329,12 +352,29 @@ _probe_all() {
                              'BEGIN {printf("%014d", b)}')" ;;
         esac
 
-        printf "%s %s %s %s %s %s %s %s %s\\n" \
-            "${_probe_all__class}${_probe_all__key}0" "${_probe_all__c}" \
+        printf "%s %s %s %s %s %s %s %s %s %s\\n" \
+            "${_probe_all__class}${_probe_all__key}${_probe_all__hops}" "${_probe_all__c}" \
             "${_probe_all__v}" "${_probe_all__b}" "${_probe_all__g}" \
             "${_probe_all__conf}" "$(_channel_meta "${_probe_all__c}" describes)" \
-            "${_probe_all__p}" "${_probe_all__r}"
+            "${_probe_all__p}" "${_probe_all__r}" "${_probe_all__marginal:--}"
     done | LC_ALL=C sort
+}
+
+_requires_bytes() {
+    #$1 => the spec of a tool a channel installs through. What fetching it
+    #costs, asked once per resolution however many channels need it
+    case "${_requires_memo}" in
+        *"
+${1} "*) printf "%s\\n" "${_requires_memo}" | awk -v s="${1}" '$1 == s {print $2; exit}'
+             return 0 ;;
+    esac
+    _rb__ch="$(_spec_channel "${1}")"; _rb__pkg="$(_spec_package "${1}")"
+    _rb__n="$("$(_channels_dir)/${_rb__ch}" probe "${_rb__pkg}" "" 2>/dev/null | \
+        awk -F= '$1 == "bytes" && $2 ~ /^[0-9]+$/ {print $2; exit}')"
+    _requires_memo="${_requires_memo}
+${1} ${_rb__n:--}"
+    [ -n "${_rb__n}" ] && printf "%s\\n" "${_rb__n}"
+    return 0
 }
 
 _tty() {
@@ -824,6 +864,7 @@ _winner() {
     w_confines="$(printf "%s\\n" "${winner}" | awk '{print $6}')"
     w_package="$(printf  "%s\\n" "${winner}" | awk '{print $8}')"
     w_requires="$(printf "%s\\n" "${winner}" | awk '{print $9}')"
+    w_marginal="$(printf "%s\\n" "${winner}" | awk '{print $10}')"
     [ -z "${w_package}" ] && w_package="${package}"
     [ X"${w_requires}" = X"-" ] && w_requires=""
     w_kind="native"
@@ -865,10 +906,11 @@ if [ -n "${dry_run}" ]; then
     #artifact lives, because that answer is also its badge, and a badge is
     #most of what someone inspecting came to find out
     printf "%s\\n" "${package##*/}"
-    cheapest="$(printf "%s\\n" "${candidates}" | awk '{print $4}' | \
+    #cheapest in bytes still missing, the tool to install through included
+    cheapest="$(printf "%s\\n" "${candidates}" | awk '{print $10}' | \
         awk 'BEGIN{m=""} /^[0-9]+$/ {if (m=="" || $1<m) m=$1} END{print m}')"
 
-    printf "%s\\n" "${candidates}" | while read -r d_key d_ch d_ver d_by d_bg d_cf d_de d_pkg d_req; do
+    printf "%s\\n" "${candidates}" | while read -r d_key d_ch d_ver d_by d_bg d_cf d_de d_pkg d_req d_total; do
         d_kind="native"; [ X"${d_cf}" = X"yes" ] && d_kind="confined"
         d_info="$("$(_channels_dir)/${d_ch}" locate "${d_pkg}" "${d_ver}" "${want_bin}" 2>/dev/null)"
         case "${d_info}" in *'sha256='?*) d_bg="verified" ;; esac
@@ -889,7 +931,7 @@ if [ -n "${dry_run}" ]; then
     reason="${w_kind}"
     [ X"${w_kind}" = X"native" ] && reason="nativo"
     [ X"${w_kind}" = X"confined" ] && reason="confinado"
-    if [ X"${w_bytes}" = X"${cheapest}" ]; then
+    if [ X"${w_marginal}" = X"${cheapest}" ]; then
         reason="${reason}, el más barato"
     else
         reason="${reason}, aunque no el más barato"
