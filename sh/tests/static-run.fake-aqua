@@ -1,0 +1,37 @@
+#!/bin/sh
+#a stand-in for aqua, for the static-run tests. It behaves like aqua where
+#static-run depends on it and nowhere else: install reads the one package in
+#AQUA_CONFIG, checks the asset it picks against the sum it was handed in
+#aqua-checksums.json and refuses a mismatch before placing anything, then
+#places the program; which prints where it went. Which asset it picks is
+#FAKE_AQUA_ASSET, name|path, standing in for the registry's template, and
+#FAKE_AQUA_LOG, when set, records what install was told about attestations
+
+conf="${AQUA_CONFIG}"; root="${AQUA_ROOT_DIR}"
+pkg="$(awk '/- name:/ {sub(/.*- name: */, ""); print; exit}' "${conf}" 2>/dev/null)"
+repo="${pkg%@*}"; ver="${pkg##*@}"
+name="${FAKE_AQUA_ASSET%%|*}"; src="${FAKE_AQUA_ASSET#*|}"
+dest="${root}/pkgs/github_release/github.com/${repo}/${ver}/${name}"
+
+case "${1}" in
+    install)
+        [ -n "${FAKE_AQUA_LOG}" ] && \
+            printf "attestations_disabled=%s\n" "${AQUA_DISABLE_GITHUB_ARTIFACT_ATTESTATION}" >> "${FAKE_AQUA_LOG}"
+        got="$(sha256sum "${src}" | awk '{print toupper($1)}')"
+        want="$(awk -v id="github_release/github.com/${repo}/${ver}/${name}" '
+            index($0, "\"" id "\"") && match($0, /"checksum": "[0-9A-F]+"/) {
+                print substr($0, RSTART + 13, RLENGTH - 14); exit
+            }' "${conf%/*}/aqua-checksums.json")"
+        if [ -n "${want}" ] && [ X"${want}" != X"${got}" ]; then
+            printf "%s\n" "ERR install the package error=\"checksum is invalid\" expected_checksum=${want} actual_checksum=${got}" >&2
+            exit 1
+        fi
+        mkdir -p "${dest}" && cp "${src}" "${dest}/${FAKE_AQUA_CMD}" && chmod 755 "${dest}/${FAKE_AQUA_CMD}"
+        ;;
+    which)
+        [ -x "${dest}/${2}" ] || exit 1
+        printf "%s\n" "${dest}/${2}"
+        ;;
+    --version) printf "%s\n" "aqua version fake" ;;
+    *) exit 1 ;;
+esac

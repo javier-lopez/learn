@@ -863,6 +863,59 @@ test ! -d dh2/by/github/acme/dgx
 #under another name, the way someone might alias it, still finds static-run.d
 ln -s "$(cd ../../tools && pwd)/static-run" srl
 PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS= STATIC_RUN_HOME="${gdh}" ./srl -n github:acme/dg | grep 'github:acme/dg@1.0' >/dev/null
+#aqua installs what its registry names, and the resolver gets aqua first, the
+#way it gets anything else. A stand-in plays aqua - it checks the asset it picks
+#against the sum it was handed and refuses a mismatch - so the whole path, the
+#hop included, runs without a network
+aqsrc="$(cd .. && pwd)/static-run.fake-aqua"; aqsum="$(sha256sum "${aqsrc}" | awk '{print $1}')"
+jqxbin="$(pwd)/jqx-bin"; jqxsum="$(sha256sum jqx-bin | awk '{print $1}')"; amh="$(pwd)/am"
+mkdir -p am/tmp && cp -R aq/index am/index
+printf '{"tag_name":"v9","assets":[{"name":"aqua-linux-x86_64","size":2000,"browser_download_url":"%s","digest":"sha256:%s"}]}' "${aqsrc}" "${aqsum}" > am/tmp/github.aquaproj_aqua_.json
+printf '{"tag_name":"1.0","assets":[{"name":"jqx-linux-x86_64","size":40,"browser_download_url":"%s","digest":"sha256:%s"}]}' "${jqxbin}" "${jqxsum}" > am/tmp/github.acme_jqx_.json
+printf '{"tag_name":"2.0","assets":[{"name":"pkg1-linux-x86_64","size":40,"browser_download_url":"%s","digest":"sha256:%s"}]}' "${jqxbin}" "${jqxsum}" > am/tmp/github.filler_pkg1_.json
+PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${amh}" static-run -n jqx | grep 'needed once' >/dev/null
+test X"$(PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${amh}" FAKE_AQUA_ASSET="jqx-linux-x86_64|${jqxbin}" FAKE_AQUA_CMD=jqx FAKE_AQUA_LOG="$(pwd)/aqlog" static-run --yes jqx 2>/dev/null)" = X"jqx ran"
+test -L am/by/aqua/acme/jqx/1.0
+test -L am/by/github/aquaproj/aqua/v9
+test X"$(awk -F'\t' '$2=="aqua:acme/jqx@1.0" {print $4}' am/inventory)" = X"verified"
+#attestations stay off unless asked for, and the second run is a plain exec
+test X"$(cat aqlog)" = X"attestations_disabled=true"
+test X"$(STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${amh}" static-run jqx 2>&1)" = X"jqx ran"
+#a second package reuses the aqua already placed, and says nothing about it
+test X"$(PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${amh}" FAKE_AQUA_ASSET="pkg1-linux-x86_64|${jqxbin}" FAKE_AQUA_CMD=pkg1 static-run --yes pkg1 2>&1 | grep -c 'first github:aquaproj/aqua')" = X"0"
+test -L am/by/aqua/filler/pkg1/2.0
+#an asset github kept no digest of had nothing handed over to check it with,
+#and the placement says none instead of borrowing a verified it did not earn
+printf '{"tag_name":"3.0","assets":[{"name":"pkg2-linux-x86_64","size":40,"browser_download_url":"%s","digest":null}]}' "${jqxbin}" > am/tmp/github.filler_pkg2_.json
+PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${amh}" FAKE_AQUA_ASSET="pkg2-linux-x86_64|${jqxbin}" FAKE_AQUA_CMD=pkg2 static-run --yes pkg2 >/dev/null 2>&1
+test X"$(awk -F'\t' '$2=="aqua:filler/pkg2@3.0" {print $4}' am/inventory)" = X"none"
+#aqua is handed github's digest, so a download that does not match it is
+#refused by aqua before anything is placed, and the resolver says why
+mkdir -p am2/tmp && cp -R aq/index am2/index && cp am/tmp/github.aquaproj_aqua_.json am2/tmp/
+printf '{"tag_name":"1.0","assets":[{"name":"jqx-linux-x86_64","size":40,"browser_download_url":"%s","digest":"sha256:%s"}]}' "${jqxbin}" "0000000000000000000000000000000000000000000000000000000000000000" > am2/tmp/github.acme_jqx_.json
+PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="$(pwd)/am2" FAKE_AQUA_ASSET="jqx-linux-x86_64|${jqxbin}" FAKE_AQUA_CMD=jqx static-run --yes jqx >/dev/null 2>&1; test X"${?}" = X"127"
+PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="$(pwd)/am2" FAKE_AQUA_ASSET="jqx-linux-x86_64|${jqxbin}" FAKE_AQUA_CMD=jqx static-run --yes jqx 2>&1 | grep 'could not install' >/dev/null
+test ! -e am2/by/aqua/acme/jqx/1.0
+test ! -e am2/aqua/root/pkgs/github_release/github.com/acme/jqx/1.0/jqx-linux-x86_64/jqx
+#STATIC_RUN_AQUA_ATTESTATIONS=on hands the choice back to aqua
+mkdir -p am3/tmp && cp -R aq/index am3/index && cp am/tmp/github.aquaproj_aqua_.json am/tmp/github.acme_jqx_.json am3/tmp/
+PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="$(pwd)/am3" FAKE_AQUA_ASSET="jqx-linux-x86_64|${jqxbin}" FAKE_AQUA_CMD=jqx FAKE_AQUA_LOG="$(pwd)/aqlog3" STATIC_RUN_AQUA_ATTESTATIONS=on static-run --yes jqx >/dev/null 2>&1
+test X"$(cat aqlog3)" = X"attestations_disabled="
+#with the api switched off aqua is not used, because its client cannot be kept
+#off the api; the old way answers from what is cached
+mkdir -p am4/tmp && cp -R aq/index am4/index && cp am/tmp/github.aquaproj_aqua_.json am/tmp/github.acme_jqx_.json am4/tmp/
+test X"$(PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="$(pwd)/am4" STATIC_RUN_GITHUB_API=off static-run -n jqx | grep -c 'needed once')" = X"0"
+test X"$(PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="$(pwd)/am4" STATIC_RUN_GITHUB_API=off static-run --yes jqx 2>/dev/null)" = X"jqx ran"
+test ! -d am4/aqua
+#and when aqua cannot be had at all, jqx is still had, the old way, and it says so
+mkdir -p am5/tmp && cp -R aq/index am5/index && cp am/tmp/github.acme_jqx_.json am5/tmp/
+PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="$(pwd)/am5" static-run --yes jqx 2>&1 | grep 'could not be had' >/dev/null
+test X"$(STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="$(pwd)/am5" static-run jqx 2>/dev/null)" = X"jqx ran"
+#purging an aqua placement takes what aqua installed with it
+STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${amh}" static-run --purge jqx >/dev/null 2>&1
+test ! -e am/by/aqua/acme/jqx/1.0
+test ! -d am/aqua/root/pkgs/github_release/github.com/acme/jqx/1.0
+test -L am/by/aqua/filler/pkg1/2.0
 @end
 
 @begin{staticus}

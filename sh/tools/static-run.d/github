@@ -1,6 +1,7 @@
 #!/bin/sh
 #description: static-run channel - a program published as a release asset on github
 #usage: github meta | github probe OWNER/REPO [VER] | github locate OWNER/REPO VER
+#       github digests OWNER/REPO VER
 #probe and locate exit 0 with an answer, 1 when there is none, and 2 when
 #github could not be asked, with the reason on an unreachable= line
 
@@ -391,5 +392,30 @@ case "${1}" in
         exit 0
         ;;
 
-    *) printf "%s\\n" "usage: ${0##*/} meta|probe|locate" >&2; exit 1 ;;
+    digests)
+        #every asset of the release that github keeps a digest of, one per
+        #line: name and sha256. Another channel that installs through its own
+        #tool hands these to that tool beforehand, so whichever asset the tool
+        #decides on, it is checked against github's digest - and a tool that
+        #otherwise verifies only what its registry declares verifies this too.
+        #It is the same answer probe already fetched, so it costs no request
+        [ -z "${2}" ] && exit 1
+        _fetch_release "${2}" "${3}"
+        case "${?}" in
+            0) ;;
+            1) exit 1 ;;
+            *) printf "unreachable=%s\\n" "${why}"; exit 2 ;;
+        esac
+        _off "${STATIC_RUN_GITHUB_DIGEST}" && exit 0
+        _fields < "${release_file}" | awk -F'\t' '
+            $1 == "asset" {
+                d = tolower($5)
+                if (substr(d, 1, 7) != "sha256:") next
+                h = substr(d, 8)
+                if (length(h) == 64 && h ~ /^[0-9a-f]+$/) printf("%s\t%s\n", $2, h)
+            }'
+        exit 0
+        ;;
+
+    *) printf "%s\\n" "usage: ${0##*/} meta|probe|locate|digests" >&2; exit 1 ;;
 esac

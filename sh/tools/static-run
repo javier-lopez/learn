@@ -308,6 +308,10 @@ _probe_all() {
         #that repository is what gets shown, placed and asked about from here
         _probe_all__p="$(printf "%s\\n" "${_probe_all__out}" | awk -F= '$1=="package"{print $2; exit}')"
         [ -z "${_probe_all__p}" ] && _probe_all__p="${_probe_all__pkg}"
+        #a channel that installs through a tool of its own names that tool as a
+        #spec, and the resolver gets it the way it gets anything else
+        _probe_all__r="$(printf "%s\\n" "${_probe_all__out}" | awk -F= '$1=="requires"{print $2; exit}')"
+        [ -z "${_probe_all__r}" ] && _probe_all__r="-"
 
         _probe_all__conf="$(_channel_meta "${_probe_all__c}" confines)"
         _probe_all__class="0"
@@ -325,11 +329,11 @@ _probe_all() {
                              'BEGIN {printf("%014d", b)}')" ;;
         esac
 
-        printf "%s %s %s %s %s %s %s %s\\n" \
+        printf "%s %s %s %s %s %s %s %s %s\\n" \
             "${_probe_all__class}${_probe_all__key}0" "${_probe_all__c}" \
             "${_probe_all__v}" "${_probe_all__b}" "${_probe_all__g}" \
             "${_probe_all__conf}" "$(_channel_meta "${_probe_all__c}" describes)" \
-            "${_probe_all__p}"
+            "${_probe_all__p}" "${_probe_all__r}"
     done | LC_ALL=C sort
 }
 
@@ -557,6 +561,16 @@ _purge() {
             [ X"$(readlink "${_purge__link}" 2>/dev/null)" = X"${_purge__target}" ] || continue
         fi
 
+        #what a tool of a channel's own installed is not in the store, so it is
+        #removed with its placement rather than collected afterwards
+        _purge__aq="${home}/aqua/root/pkgs/github_release/github.com/${_purge__lpkg}/${_purge__lver}"
+        case "$(readlink "${_purge__link}" 2>/dev/null)" in
+            "${_purge__aq}"/*)
+                _purge__size="$(du -sk "${_purge__aq}" 2>/dev/null | awk '{print $1*1024; exit}')"
+                _purge__aqfreed="$((${_purge__aqfreed:-0} + ${_purge__size:-0}))"
+                rm -rf "${_purge__aq}" \
+                    "${home}/aqua/conf/$(printf "%s\\n" "${_purge__lpkg}@${_purge__lver}" | tr '/@' '__')" ;;
+        esac
         rm -f "${_purge__link}"
         _purge__gone="$((${_purge__gone} + 1))"
     done
@@ -565,7 +579,7 @@ _purge() {
 
     #a store entry outlives the link that named it only until nobody else
     #points at it, which is what content addressing buys
-    _purge__kept="0"; _purge__freed="0"
+    _purge__kept="0"; _purge__freed="${_purge__aqfreed:-0}"
     for _purge__dir in "${home}"/store/*; do
         [ -d "${_purge__dir}" ] || continue
         if find "${home}/by" -type l -lname "${_purge__dir}" 2>/dev/null | \
@@ -786,17 +800,50 @@ if [ -z "${candidates}" ]; then
     exit 127
 fi
 
-winner="$(printf "%s\\n" "${candidates}" | head -1)"
-w_channel="$(printf  "%s\\n" "${winner}" | awk '{print $2}')"
-w_version="$(printf  "%s\\n" "${winner}" | awk '{print $3}')"
-w_bytes="$(printf    "%s\\n" "${winner}" | awk '{print $4}')"
-w_badge="$(printf    "%s\\n" "${winner}" | awk '{print $5}')"
-w_confines="$(printf "%s\\n" "${winner}" | awk '{print $6}')"
-w_package="$(printf  "%s\\n" "${winner}" | awk '{print $8}')"
-[ -z "${w_package}" ] && w_package="${package}"
+_winner() {
+    winner="$(printf "%s\\n" "${candidates}" | head -1)"
+    w_channel="$(printf  "%s\\n" "${winner}" | awk '{print $2}')"
+    w_version="$(printf  "%s\\n" "${winner}" | awk '{print $3}')"
+    w_bytes="$(printf    "%s\\n" "${winner}" | awk '{print $4}')"
+    w_badge="$(printf    "%s\\n" "${winner}" | awk '{print $5}')"
+    w_confines="$(printf "%s\\n" "${winner}" | awk '{print $6}')"
+    w_package="$(printf  "%s\\n" "${winner}" | awk '{print $8}')"
+    w_requires="$(printf "%s\\n" "${winner}" | awk '{print $9}')"
+    [ -z "${w_package}" ] && w_package="${package}"
+    [ X"${w_requires}" = X"-" ] && w_requires=""
+    w_kind="native"
+    [ X"${w_confines}" = X"yes" ] && w_kind="confined"
+}
+_winner
 
-w_kind="native"
-[ X"${w_confines}" = X"yes" ] && w_kind="confined"
+#a winner that installs through a tool of its own needs that tool first. It is
+#reused when already placed; otherwise it is looked up now, so its cost is part
+#of the question and not a surprise after it. When it cannot be had at all, the
+#same channel is asked again without its tool, and says so: aqua being out of
+#reach is no reason for jq to be
+req_program=""; req_channel=""; req_package=""; req_version=""; req_bytes=""; req_info=""
+if [ -n "${w_requires}" ]; then
+    req_cached="$(_cache_get "${w_requires}")" || req_cached=""
+    if [ -n "${req_cached}" ] && [ -f "${req_cached}" ] && [ -x "${req_cached}" ]; then
+        req_program="${req_cached}"
+    else
+        req_channel="$(_spec_channel "${w_requires}")"
+        req_package="$(_spec_package "${w_requires}")"
+        req_line="$(_probe_all "${req_package}" "" "${req_channel}" | awk 'NF && $1 !~ /^~/' | head -1)"
+        if [ -n "${req_line}" ]; then
+            req_version="$(printf "%s\\n" "${req_line}" | awk '{print $3}')"
+            req_bytes="$(printf   "%s\\n" "${req_line}" | awk '{print $4}')"
+            req_info="$("$(_channels_dir)/${req_channel}" locate "${req_package}" "${req_version}" 2>/dev/null)" || req_info=""
+        fi
+        if [ -z "${req_info}" ]; then
+            _say "${PROGNAME}: ${w_requires} could not be had, so ${w_channel} goes without it"
+            STATIC_RUN_NO_MANAGER="1"; export STATIC_RUN_NO_MANAGER
+            candidates="$(_probe_all "${w_package}" "${version}" "${w_channel}" | awk 'NF && $1 !~ /^~/')"
+            [ -z "${candidates}" ] && { _say "${PROGNAME}: and without it, nothing provides '${package}'"; exit 127; }
+            _winner
+        fi
+    fi
+fi
 
 if [ -n "${dry_run}" ]; then
     #inspecting is the one time it is worth asking every candidate where its
@@ -806,7 +853,7 @@ if [ -n "${dry_run}" ]; then
     cheapest="$(printf "%s\\n" "${candidates}" | awk '{print $4}' | \
         awk 'BEGIN{m=""} /^[0-9]+$/ {if (m=="" || $1<m) m=$1} END{print m}')"
 
-    printf "%s\\n" "${candidates}" | while read -r d_key d_ch d_ver d_by d_bg d_cf d_de d_pkg; do
+    printf "%s\\n" "${candidates}" | while read -r d_key d_ch d_ver d_by d_bg d_cf d_de d_pkg d_req; do
         d_kind="native"; [ X"${d_cf}" = X"yes" ] && d_kind="confined"
         d_info="$("$(_channels_dir)/${d_ch}" locate "${d_pkg}" "${d_ver}" 2>/dev/null)"
         case "${d_info}" in *'sha256='?*) d_bg="verified" ;; esac
@@ -819,6 +866,10 @@ if [ -n "${dry_run}" ]; then
     [ -n "${unreachable}" ] && printf "%s\\n" "${unreachable}" | while read -r u_ch u_why; do
         _say "  ${u_ch}: could not be asked, ${u_why}"
     done
+
+    if [ -n "${w_requires}" ] && [ -z "${req_program}" ]; then
+        printf "  %-32s %10s  %s\\n" "+ ${w_requires}@${req_version}" "$(_human "${req_bytes}")" "needed once, to install through"
+    fi
 
     reason="${w_kind}"
     [ X"${w_kind}" = X"native" ] && reason="nativo"
@@ -859,16 +910,52 @@ _say "${PROGNAME}: ${w_bin} ${w_version} -> ${w_channel}:${w_package}  $(_human 
 [ -n "${unreachable}" ] && printf "%s\\n" "${unreachable}" | while read -r u_ch u_why; do
     _say "            (${u_ch} could not be asked, a cheaper path may exist: ${u_why})"
 done
+if [ -n "${w_requires}" ] && [ -z "${req_program}" ]; then
+    _say "            first ${w_requires} ${req_version}, $(_human "${req_bytes}"), fetched once and kept"
+fi
 
 if [ -z "$(_cache_get "${spec}")" ]; then
     _confirm "${PROGNAME}: proceed?" || exit 127
 fi
 
-store="$(_place "${w_channel}" "${w_package}" "${w_version}" "${info}")" || exit 127
-program="$(_find_program "${store}" "${bin_name:-${w_bin}}")" || {
-    _say "${PROGNAME}: nothing executable called '${bin_name:-${w_bin}}' inside the artifact"
-    exit 127
-}
+if [ -n "${w_requires}" ] && [ -z "${req_program}" ]; then
+    req_store="$(_place "${req_channel}" "${req_package}" "${req_version}" "${req_info}")" && \
+    req_program="$(_find_program "${req_store}" \
+        "$(printf "%s\\n" "${req_info}" | awk -F= '$1=="bin"{print $2; exit}')")" && \
+    _cache_put "${w_requires}" "${req_program}"
+    if [ -z "${req_program}" ]; then
+        _say "${PROGNAME}: ${w_requires} could not be placed, so ${w_channel} goes without it"
+        w_requires=""
+    fi
+fi
+
+if [ -n "${w_requires}" ]; then
+    #the tool installs, and verifies against the sums it was handed; what
+    #comes back is where the program is and what was checked
+    obtained="$(STATIC_RUN_REQUIRED="${req_program}" "$(_channels_dir)/${w_channel}" obtain \
+        "${w_package}" "${w_version}" 2>/dev/null)"
+    if [ "${?}" -ne "0" ]; then
+        _say "${PROGNAME}: ${w_channel} could not install '${w_package}': $(printf "%s\\n" "${obtained}" | \
+            awk -F= '$1=="failed" || $1=="unreachable" {sub(/^[a-z]+=/, ""); print; exit}')"
+        exit 127
+    fi
+    program="$(printf "%s\\n" "${obtained}" | awk '/^program=/ {sub(/^program=/, ""); print; exit}')"
+    o_badge="$(printf "%s\\n" "${obtained}" | awk -F= '$1=="badge"{print $2; exit}')"
+    o_sha="$(printf   "%s\\n" "${obtained}" | awk -F= '$1=="sha256"{print $2; exit}')"
+    o_asset="$(printf "%s\\n" "${obtained}" | awk '/^asset=/ {sub(/^asset=/, ""); print; exit}')"
+    [ -x "${program}" ] || { _say "${PROGNAME}: ${w_channel} reported no program for '${w_package}'"; exit 127; }
+    o_link="${home}/by/${w_channel}/${w_package}/${w_version}"
+    _mkdir_p "${o_link%/*}" && rm -f "${o_link}" && ln -s "${program%/*}" "${o_link}" 2>/dev/null
+    printf "%s\\t%s\\t%s\\t%s\\t%s\\n" "$(date +%Y-%m-%dT%H:%M:%S)" \
+        "${w_channel}:${w_package}@${w_version}" "${o_sha:--}" "${o_badge:-none}" \
+        "${w_channel}:${o_asset}" >> "${home}/inventory"
+else
+    store="$(_place "${w_channel}" "${w_package}" "${w_version}" "${info}")" || exit 127
+    program="$(_find_program "${store}" "${bin_name:-${w_bin}}")" || {
+        _say "${PROGNAME}: nothing executable called '${bin_name:-${w_bin}}' inside the artifact"
+        exit 127
+    }
+fi
 
 #remembered under what was asked for, which for a bare name is the name: a
 #choice between programs that share one is made once and not every time

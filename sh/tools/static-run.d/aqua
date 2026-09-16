@@ -2,21 +2,72 @@
 #description: static-run channel - the aqua registry, read as a catalog of names
 #usage: aqua meta | aqua index | aqua search WORDS...
 #       aqua probe NAME|OWNER/REPO [VER] | aqua locate NAME|OWNER/REPO VER
+#       aqua obtain NAME|OWNER/REPO VER
 #probe and locate exit 0 with an answer, 1 when there is none, 2 when there is
 #no local index to ask, and 3 when a name belongs to more than one package,
 #with each of them on a candidate= line
 
 #this channel answers one question the github channel refuses to: who is jq.
-#The registry maps a command name to the repository that publishes it, and
-#everything after that - which asset, what it weighs, where it lives, whether
-#it is verified - is the github channel's answer, asked of it directly. Nine
-#in ten packages in the registry are github releases, so this is an edge onto
-#that channel and not a second copy of it
+#The registry maps a command name to the repository that publishes it. What
+#the release weighs and whether github has a digest of it is the github
+#channel's answer, asked of it directly.
+#
+#Installing is aqua's job and not this file's. aqua knows the exact asset from
+#the registry's template, which the github channel can only guess at, so when
+#aqua is at hand probe says requires=github:aquaproj/aqua, the resolver gets
+#aqua that way, and obtain has aqua install the package. Before it does, every
+#digest github keeps for that release is written where aqua looks for sums, so
+#aqua checks what it downloads against github's digest - which it would not do
+#on its own for a package whose registry entry declares no checksum - and it
+#refuses a mismatch before anything is placed.
+#
+#Two cases go the old way, through github locate: STATIC_RUN_GITHUB_API=off,
+#because aqua's own client cannot be kept off the api and has no setting to
+#point it elsewhere, and STATIC_RUN_NO_MANAGER, which the resolver sets when
+#aqua itself could not be obtained.
+#
+#STATIC_RUN_AQUA_ATTESTATIONS=on has aqua verify github artifact attestations
+#where the registry declares them. They are off by default: they cost the whole
+#github cli once and more than ten seconds per package, and every package that
+#declares them now has github's digest checked anyway
 
-REGISTRY="${STATIC_RUN_AQUA_REGISTRY:-https://raw.githubusercontent.com/aquaproj/aqua-registry/main/registry.yaml}"
+REGISTRY_REPO="https://github.com/aquaproj/aqua-registry"
+REGISTRY="${STATIC_RUN_AQUA_REGISTRY:-}"
 
 _index_file() {
     printf "%s\\n" "${STATIC_RUN_HOME:-/tmp}/index/aqua.tsv"
+}
+
+_off() {
+    case "${1}" in
+        off|OFF|no|NO|0|false|FALSE) return 0 ;;
+    esac
+    return 1
+}
+
+_on() {
+    case "${1}" in
+        on|ON|yes|YES|1|true|TRUE) return 0 ;;
+    esac
+    return 1
+}
+
+_manager() {
+    #whether this resolution goes through aqua, or the old way
+    _off "${STATIC_RUN_GITHUB_API}" && return 1
+    [ -n "${STATIC_RUN_NO_MANAGER}" ] && return 1
+    [ -s "$(_index_file).ref" ] || return 1
+    return 0
+}
+
+_latest_tag() {
+    #the tag "latest" points at, read from the redirect github.com answers with
+    #and not from the api: that answer carries no quota
+    if command -v "curl" >/dev/null 2>&1; then
+        curl -sSI "${1}/releases/latest" 2>/dev/null
+    elif command -v "wget" >/dev/null 2>&1; then
+        wget -S --spider --max-redirect=0 "${1}/releases/latest" 2>&1
+    fi | awk 'tolower($0) ~ /^ *location:/ {n = split($0, p, "/"); t = p[n]} END {gsub(/\r/, "", t); print t}'
 }
 
 _retrieve() {
@@ -158,6 +209,18 @@ case "${1}" in
         idx="$(_index_file)"
         mkdir -p "${idx%/*}" 2>/dev/null || exit 1
         raw="${idx}.$$.yaml"; new="${idx}.$$"
+        #the index is read from a tagged registry and the tag is kept beside it,
+        #so the registry aqua installs from is the one the names were read from
+        if [ -n "${REGISTRY}" ]; then
+            ref="${STATIC_RUN_AQUA_REF:-main}"
+        else
+            ref="$(_latest_tag "${REGISTRY_REPO}")"
+            if [ -z "${ref}" ]; then
+                printf "unreachable=%s\\n" "the latest aqua registry tag could not be read from github.com"
+                exit 2
+            fi
+            REGISTRY="https://raw.githubusercontent.com/aquaproj/aqua-registry/${ref}/registry.yaml"
+        fi
         if ! _retrieve "${REGISTRY}" "${raw}"; then
             rm -f "${raw}"
             printf "unreachable=%s\\n" "the aqua registry could not be downloaded"
@@ -175,6 +238,7 @@ case "${1}" in
             exit 2
         fi
         mv "${new}" "${idx}"
+        printf "%s\\n" "${ref}" > "${idx}.ref"
         printf "packages=%s\\n" "$(awk -F'\t' '!seen[$2]++' "${idx}" | awk 'END {print NR}')"
         printf "names=%s\\n" "$(awk 'END {print NR}' "${idx}")"
         exit 0
@@ -208,7 +272,79 @@ case "${1}" in
         #asked to agree to names the owner and not only the word they typed.
         #That is the defence against a registry that maps jq somewhere else
         [ "${rc}" -eq "0" ] && printf "package=%s\\n" "${repo}"
+        [ "${rc}" -eq "0" ] && _manager && printf "requires=%s\\n" "github:aquaproj/aqua"
         exit "${rc}"
+        ;;
+
+    obtain)
+        [ -z "${2}" ] || [ -z "${3}" ] && exit 1
+        _resolve "${2}"; _answer_unresolved "${?}"
+        aqua="${STATIC_RUN_REQUIRED}"
+        if [ ! -x "${aqua}" ]; then
+            printf "unreachable=%s\\n" "aqua is not available to install ${repo}"
+            exit 2
+        fi
+
+        home="${STATIC_RUN_HOME:-/tmp}"
+        root="${home}/aqua/root"
+        conf="${home}/aqua/conf/$(printf "%s\\n" "${repo}@${3}" | tr '/@' '__')"
+        mkdir -p "${root}" "${conf}" 2>/dev/null || exit 1
+
+        printf "%s\\n" "checksum:" "  enabled: true" "registries:" "  - type: standard" \
+            "    ref: $(cat "$(_index_file).ref")" "packages:" "  - name: ${repo}@${3}" \
+            > "${conf}/aqua.yaml"
+
+        #github's digests, written where aqua looks for sums before it looks
+        #anywhere else. The list is also kept apart: aqua rewrites that file in
+        #its own layout once it adds a sum of its own, the registry's, so what
+        #was handed to it is read back from here and not from there
+        "${0%/*}/github" digests "${repo}" "${3}" > "${conf}/github-digests.tsv" 2>/dev/null
+        awk -F'\t' -v p="github_release/github.com/${repo}/${3}/" '
+            BEGIN { printf("{\n  \"checksums\": [\n") }
+            NF == 2 {
+                id = p $1; gsub(/\\/, "\\\\", id); gsub(/"/, "\\\"", id)
+                printf("%s    {\"id\": \"%s\", \"checksum\": \"%s\", \"algorithm\": \"sha256\"}", (n++ ? ",\n" : ""), id, toupper($2))
+            }
+            END { printf("\n  ]\n}\n") }' "${conf}/github-digests.tsv" > "${conf}/aqua-checksums.json"
+
+        if _on "${STATIC_RUN_AQUA_ATTESTATIONS}"; then
+            _obtain__att=""
+        else
+            _obtain__att="true"
+        fi
+        out="$(cd "${conf}" && AQUA_ROOT_DIR="${root}" AQUA_CONFIG="${conf}/aqua.yaml" \
+            AQUA_LOG_LEVEL=warn AQUA_LOG_COLOR=never \
+            AQUA_DISABLE_GITHUB_ARTIFACT_ATTESTATION="${_obtain__att}" \
+            "${aqua}" install 2>&1)"
+        if [ "${?}" -ne "0" ]; then
+            printf "failed=%s\\n" "$(printf "%s\\n" "${out}" | awk 'NF {l = $0} /checksum/ {c = $0} END {print (c != "" ? c : l)}' | sed 's/\x1b\[[0-9;]*m//g')"
+            exit 1
+        fi
+
+        program="$(cd "${conf}" && AQUA_ROOT_DIR="${root}" AQUA_CONFIG="${conf}/aqua.yaml" \
+            AQUA_LOG_LEVEL=warn "${aqua}" which "${cmd}" 2>/dev/null)"
+        if [ ! -x "${program}" ]; then
+            printf "failed=%s\\n" "aqua installed ${repo} but has no program called ${cmd} in it"
+            exit 1
+        fi
+
+        #which asset aqua chose is the directory it unpacked it into, and the
+        #badge is whether github had a digest of that asset to hand it: aqua
+        #installing with that sum in front of it means the sum matched. A sum
+        #aqua fetched from a checksum file the registry names cannot be told
+        #apart from one it merely recorded, so that case says none
+        asset="${program#${root}/pkgs/github_release/github.com/${repo}/${3}/}"
+        asset="${asset%%/*}"
+        sum="$(awk -F'\t' -v a="${asset}" '$1 == a {print $2; exit}' "${conf}/github-digests.tsv")"
+        printf "program=%s\\n" "${program}"
+        printf "asset=%s\\n" "${asset}"
+        if [ -n "${sum}" ]; then
+            printf "sha256=%s\\n" "${sum}"
+            printf "badge=%s\\n" "verified"
+        else
+            printf "badge=%s\\n" "none"
+        fi
+        exit 0
         ;;
 
     locate)
@@ -226,5 +362,5 @@ case "${1}" in
         exit 0
         ;;
 
-    *) printf "%s\\n" "usage: ${0##*/} meta|index|search|probe|locate" >&2; exit 1 ;;
+    *) printf "%s\\n" "usage: ${0##*/} meta|index|search|probe|locate|obtain" >&2; exit 1 ;;
 esac
