@@ -1,0 +1,22 @@
+#!/bin/sh
+#a catalog that takes a while to arrive, a byte at a time. Stopped, it keeps
+#what arrived and goes on from there the next time, and says where it went on
+#from in its log. It only has names that start with "cat"
+
+h="${STATIC_RUN_HOME:-/tmp}/channels/${0##*/}"
+
+case "${1}" in
+    meta)  printf "%s\n" "kind=artifact" "confines=no" "describes=self" ;;
+    index) mkdir -p "${h}/index"; part="${h}/index/names.part"
+           [ -f "${part}" ] && printf "resumed from %s\n" "$(wc -c < "${part}" | awk '{print $1}')" >> "${h}/index/log"
+           while [ "$(cat "${part}" 2>/dev/null | wc -c | awk '{print $1}')" -lt "12" ]; do
+               printf "%s" "x" >> "${part}"; sleep 0.05
+           done
+           printf "%s\n" "catname" "catother" > "${h}/index/names" && rm -f "${part}"
+           printf "%s\n" "packages=2" "bytes=12" ;;
+    probe) case "${2}" in cat*) ;; *) exit 1 ;; esac
+           [ -f "${h}/index/names" ] || { printf "%s\n" "unreachable=no catalog here yet" "needs=index"; exit 2; }
+           grep -x "${2}" "${h}/index/names" >/dev/null || exit 1
+           printf "%s\n" "version=1.0" "bytes=10" ;;
+    *) exit 1 ;;
+esac

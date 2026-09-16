@@ -268,120 +268,264 @@ _spec_version() {
 ################################## resolution #################################
 ###############################################################################
 
+_is_number() {
+    case "${1}" in
+        ''|*[!0-9]*) return 1 ;;
+    esac
+    return 0
+}
+
+_now_ms() {
+    #milliseconds, where date can say them, and whole seconds where it cannot
+    _nm__t="$(date +%s%N 2>/dev/null)"
+    case "${_nm__t}" in
+        ''|*[!0-9]*) printf "%s\\n" "$(( $(date +%s) * 1000 ))" ;;
+        *) printf "%s\\n" "$(( _nm__t / 1000000 ))" ;;
+    esac
+}
+
+_timing_add() {
+    #$1 => channel, $2 => what was timed: index, tool, fetch or install,
+    #$3 => bytes, $4 => milliseconds. Kept in the channel's own directory
+    case "${3}${4}" in
+        ''|*[!0-9]*) return 0 ;;
+    esac
+    [ "${3}" -gt "0" ] || return 0
+    _ta__home="$(_channel_home "${1}")"
+    _mkdir_p "${_ta__home}" || return 0
+    printf "%s\\t%s\\t%s\\n" "${2}" "${3}" "${4}" >> "${_ta__home}/timings"
+}
+
+_speed() {
+    #$1 => channel, $2 => what: bytes a second, as measured on this machine
+    #over the last ten times, or a megabyte a second when there is no record
+    #yet. Whatever a step costs besides its bytes - a tool unpacking, linking,
+    #starting - is in the measure, since what is timed is the whole step
+    _sp__f="$(_channel_home "${1}")/timings"
+    _sp__v=""
+    [ -f "${_sp__f}" ] && _sp__v="$(awk -F'\t' -v s="${2}" '
+        $1 == s && $2 > 0 { b[++n] = $2; m[n] = $3 }
+        END {
+            k = (n > 10) ? n - 9 : 1
+            for (i = k; i <= n; i++) { tb += b[i]; tm += m[i] }
+            if (tb > 0) { if (tm < 1) tm = 1; printf("%d\n", tb * 1000 / tm) }
+        }' "${_sp__f}")"
+    printf "%s\\n" "${_sp__v:-1048576}"
+}
+
+_est_us() {
+    #$1 => bytes, $2 => channel, $3 => what. Microseconds it should take here:
+    #whole milliseconds tie two small downloads that are not the same size
+    case "${1}" in
+        ''|*[!0-9]*) printf "%s\\n" "-"; return 0 ;;
+    esac
+    awk -v b="${1}" -v s="$(_speed "${2}" "${3}")" 'BEGIN { printf("%d\n", b * 1000000 / s) }'
+}
+
+_human_us() {
+    case "${1}" in
+        ''|*[!0-9]*) printf "%s" "time unknown"; return 0 ;;
+    esac
+    awk -v u="${1}" 'BEGIN {
+        if (u < 1000000)       printf("<1 s")
+        else if (u < 90000000) printf("~%d s", (u + 500000) / 1000000)
+        else                   printf("~%d min", (u + 30000000) / 60000000)
+    }'
+}
+
+_probe_emit() {
+    #$1 => channel, $2 => what its probe answered, $3 => its status, $4 => the
+    #package asked about. Prints the candidate line, already carrying the sort
+    #key, or the line that says why there is none. Answers 0 when the channel
+    #had the name
+    _pe__c="${1}"; _pe__out="${2}"; _pe__rc="${3}"; _pe__pkg="${4}"
+    case "${_pe__rc}" in
+        0) ;;
+        2)  #a channel that could not be asked did not say no, and is kept
+            #apart so it is never reported as one: that is how "the network
+            #is down" reaches the user as "this does not exist"
+            _pe__why="$(printf "%s\\n" "${_pe__out}" | \
+                awk '/^unreachable=/ {sub(/^unreachable=/, ""); print; exit}')"
+            printf "~unreachable %s %s\\n" "${_pe__c}" "${_pe__why:-it gave no reason}"
+            return 1 ;;
+        3)  #a name that belongs to more than one package is not resolved
+            #by picking one. Which program was meant is the user's to say
+            printf "~ambiguous %s %s\\n" "${_pe__c}" \
+                "$(printf "%s\\n" "${_pe__out}" | \
+                    awk '/^candidate=/ {sub(/^candidate=/, ""); printf("%s ", $0)}')"
+            return 0 ;;
+        *) return 1 ;;
+    esac
+
+    _pe__v="$(printf "%s\\n" "${_pe__out}" | awk -F= '$1=="version"{print $2; exit}')"
+    _pe__b="$(printf "%s\\n" "${_pe__out}" | awk -F= '$1=="bytes"{print $2; exit}')"
+    _pe__g="$(printf "%s\\n" "${_pe__out}" | awk -F= '$1=="badge"{print $2; exit}')"
+    [ -z "${_pe__v}" ] && return 1
+    [ -z "${_pe__g}" ] && _pe__g="none"
+    #a catalog that turns a name into a repository says which one, and that
+    #repository is what gets shown, placed and asked about from here
+    _pe__p="$(printf "%s\\n" "${_pe__out}" | awk -F= '$1=="package"{print $2; exit}')"
+    [ -z "${_pe__p}" ] && _pe__p="${_pe__pkg}"
+    #a channel that installs through a tool of its own names that tool as a
+    #spec, and the resolver gets it the way it gets anything else
+    _pe__r="$(printf "%s\\n" "${_pe__out}" | awk -F= '$1=="requires"{print $2; exit}')"
+    [ -z "${_pe__r}" ] && _pe__r="-"
+    #a size the channel could only estimate is said to be one wherever it is
+    #shown, and still sorts by what was estimated
+    _pe__e="$(printf "%s\\n" "${_pe__out}" | awk -F= '$1=="estimate"{print $2; exit}')"
+    [ X"${_pe__e}" = X"yes" ] || _pe__e="-"
+
+    _pe__conf="$(_channel_meta "${_pe__c}" confines)"
+    _pe__class="0"
+    [ X"${_pe__conf}" = X"yes" ] && _pe__class="1"
+
+    #marginal bytes: what is already placed costs nothing to place again. The
+    #package is fetched by static-run, or installed by the channel's tool, and
+    #each is timed apart, since a tool that unpacks and links takes longer per
+    #byte than a download
+    _pe__marginal="${_pe__b}"
+    [ -e "$(_channel_home "${_pe__c}")/by/${_pe__p}/${_pe__v}" ] && _pe__marginal="0"
+    _pe__step="fetch"; [ X"${_pe__r}" != X"-" ] && _pe__step="install"
+    _pe__ms="$(_est_us "${_pe__marginal}" "${_pe__c}" "${_pe__step}")"
+
+    #and what is still missing includes the tool the channel installs through.
+    #A channel already fetched costs nothing, so one not fetched yet costs what
+    #fetching it does, in bytes and in time, and that is also the hop
+    _pe__hops="0"
+    if [ X"${_pe__r}" != X"-" ] && ! _tool_here "${_pe__c}" >/dev/null; then
+        _pe__hops="1"
+        _pe__rb="$(_requires_bytes "${_pe__r}")"
+        _pe__rms="$(_est_us "${_pe__rb}" "${_pe__c}" "tool")"
+        #an unknown plus anything is unknown, and each side is checked on its
+        #own: glued together, an empty one hides behind the other one's digits
+        if _is_number "${_pe__marginal}" && _is_number "${_pe__rb}"; then
+            _pe__marginal="$((${_pe__marginal} + ${_pe__rb}))"
+        else
+            _pe__marginal="-"
+        fi
+        if _is_number "${_pe__ms}" && _is_number "${_pe__rms}"; then
+            _pe__ms="$((${_pe__ms} + ${_pe__rms}))"
+        else
+            _pe__ms="-"
+        fi
+    fi
+
+    #a path is quicker than another by class first, then by the time it should
+    #take here, then by hops. Class before time is the whole point - no saving
+    #buys being put inside a container - and a time nobody can estimate sorts
+    #last within its class
+    case "${_pe__ms}" in
+        ''|*[!0-9]*) _pe__key="99999999999999" ;;
+                  *) _pe__key="$(awk -v t="${_pe__ms}" 'BEGIN {printf("%014d", t)}')" ;;
+    esac
+
+    printf "%s %s %s %s %s %s %s %s %s %s %s %s\\n" \
+        "${_pe__class}${_pe__key}${_pe__hops}" "${_pe__c}" \
+        "${_pe__v}" "${_pe__b}" "${_pe__g}" \
+        "${_pe__conf}" "$(_channel_meta "${_pe__c}" describes)" \
+        "${_pe__p}" "${_pe__r}" "${_pe__e}" "${_pe__marginal:--}" "${_pe__ms:--}"
+    return 0
+}
+
+_first_catalogs() {
+    #$1 => package, $2 => version, then the channels with no catalog here. The
+    #first time, getting to run the command is what matters, so the catalogs
+    #are all fetched at once and each is read as it arrives. The first that has
+    #the name is taken, and the ones still arriving are stopped keeping what
+    #arrived: the next time the catalogs here do not have a name, they go on
+    #from there
+    _fc__pkg="${1}"; _fc__ver="${2}"; shift 2
+    _mkdir_p "${home}/tmp" || return 1
+    _say "${PROGNAME}: no catalog here has '${_fc__pkg}'; fetching $(printf "%s\\n" "${@}" | \
+        awk 'NF {a[++n] = $0} END {for (i = 1; i <= n; i++) printf("%s%s", (i == 1 ? "" : (i == n ? " and " : ", ")), a[i])}') at once"
+    _fc__run=""
+    for _fc__c in "${@}"; do
+        "$(_channels_dir)/${_fc__c}" index > "${home}/tmp/index.$$.${_fc__c}" 2>/dev/null &
+        _fc__run="${_fc__run} ${_fc__c}:${!}:$(_now_ms)"
+    done
+
+    while [ -n "${_fc__run}" ]; do
+        _fc__left=""
+        for _fc__e in ${_fc__run}; do
+            _fc__c="${_fc__e%%:*}"; _fc__rest="${_fc__e#*:}"
+            _fc__pid="${_fc__rest%%:*}"; _fc__t0="${_fc__rest#*:}"
+            if kill -0 "${_fc__pid}" 2>/dev/null; then
+                _fc__left="${_fc__left} ${_fc__e}"
+                continue
+            fi
+            wait "${_fc__pid}"; _fc__rc="${?}"
+            _fc__out="$(cat "${home}/tmp/index.$$.${_fc__c}" 2>/dev/null)"
+            rm -f "${home}/tmp/index.$$.${_fc__c}"
+            if [ "${_fc__rc}" -ne "0" ]; then
+                _fc__why="$(printf "%s\\n" "${_fc__out}" | awk '/^unreachable=/ {sub(/^unreachable=/, ""); print; exit}')"
+                _say "${PROGNAME}: ${_fc__c}: not fetched, ${_fc__why:-it gave no reason}"
+                printf "~unreachable %s %s\\n" "${_fc__c}" "${_fc__why:-its catalog could not be fetched}"
+                continue
+            fi
+            _timing_add "${_fc__c}" "index" \
+                "$(printf "%s\\n" "${_fc__out}" | awk -F= '$1 == "bytes" {print $2; exit}')" \
+                "$(( $(_now_ms) - _fc__t0 ))"
+            _say "${PROGNAME}: ${_fc__c}: $(printf "%s\\n" "${_fc__out}" | \
+                awk -F= 'NF == 2 && $1 != "bytes" {printf("%s%s %s", (n++ ? ", " : ""), $2, $1)}')"
+            _fc__probe="$("$(_channels_dir)/${_fc__c}" probe "${_fc__pkg}" "${_fc__ver}" 2>/dev/null)"
+            if _probe_emit "${_fc__c}" "${_fc__probe}" "${?}" "${_fc__pkg}"; then
+                #the answer is here: whatever is still arriving is stopped, and
+                #keeps what arrived for the next time it is needed
+                _fc__paused=""
+                for _fc__o in ${_fc__left} $(printf "%s\\n" "${_fc__run}" | awk -v e="${_fc__e}" '{
+                        for (i = 1; i <= NF; i++) if (seen) print $i; else if ($i == e) seen = 1 }'); do
+                    _fc__oc="${_fc__o%%:*}"; _fc__ot0="${_fc__o##*:}"
+                    _fc__opid="${_fc__o#*:}"; _fc__opid="${_fc__opid%%:*}"
+                    if kill -0 "${_fc__opid}" 2>/dev/null; then
+                        kill "${_fc__opid}" 2>/dev/null
+                        wait "${_fc__opid}" 2>/dev/null
+                        _fc__paused="${_fc__paused:+${_fc__paused}, }${_fc__oc}"
+                    elif wait "${_fc__opid}" 2>/dev/null; then
+                        #one that arrived meanwhile is kept as it is, and what
+                        #it took is kept too, without holding anything up
+                        _timing_add "${_fc__oc}" "index" "$(awk -F= '$1 == "bytes" {print $2; exit}' \
+                            "${home}/tmp/index.$$.${_fc__oc}" 2>/dev/null)" "$(( $(_now_ms) - _fc__ot0 ))"
+                    fi
+                    rm -f "${home}/tmp/index.$$.${_fc__oc}"
+                done
+                [ -n "${_fc__paused}" ] && \
+                    _say "${PROGNAME}: ${_fc__c} has '${_fc__pkg}'; ${_fc__paused} paused, to go on when needed"
+                return 0
+            fi
+            _say "${PROGNAME}: ${_fc__c} has nothing called '${_fc__pkg}'"
+        done
+        _fc__run="${_fc__left}"
+        [ -n "${_fc__run}" ] && { sleep 0.1 2>/dev/null || sleep 1; }
+    done
+    return 1
+}
+
 _probe_all() {
     #$1 => package, $2 => version, $3 => channel or empty for all of them.
-    #One line per candidate, already carrying the sort key: a path is cheaper
-    #than another by class first, then by the bytes still missing, then by
-    #hops. Class before bytes is the whole point - no download saving buys
-    #being put inside a container
+    #One line per candidate, carrying its sort key, sorted
     _probe_all__pkg="${1}"; _probe_all__ver="${2}"; _probe_all__only="${3}"
-    _probe_all__found=""
-
-    for _probe_all__c in $(_channels); do
-        [ -n "${_probe_all__only}" ] && \
-            [ X"${_probe_all__only}" != X"${_probe_all__c}" ] && continue
-
-        _probe_all__out="$("$(_channels_dir)/${_probe_all__c}" probe \
-            "${_probe_all__pkg}" "${_probe_all__ver}" 2>/dev/null)"
-        _probe_all__rc="${?}"
-        #the first time, a channel has no copy of its catalog here. It is
-        #fetched then, one channel after another and saying so, since nothing
-        #else explains the wait - until one of them has an answer: after the
-        #first match nothing more is fetched, and the rest are left for later
-        if [ X"${_probe_all__rc}" = X"2" ] && \
-           printf "%s\\n" "${_probe_all__out}" | grep -x 'needs=index' >/dev/null; then
-            [ -n "${_probe_all__found}" ] && continue
-            _say "${PROGNAME}: ${_probe_all__c} has no catalog here yet, fetching it, the first time only"
-            if _index_one "${_probe_all__c}"; then
-                _probe_all__out="$("$(_channels_dir)/${_probe_all__c}" probe \
-                    "${_probe_all__pkg}" "${_probe_all__ver}" 2>/dev/null)"
-                _probe_all__rc="${?}"
-                [ X"${_probe_all__rc}" = X"1" ] && \
-                    _say "${PROGNAME}: ${_probe_all__c} has nothing called '${_probe_all__pkg}'"
+    {
+        _probe_all__found=""; _probe_all__missing=""
+        for _probe_all__c in $(_channels); do
+            [ -n "${_probe_all__only}" ] && \
+                [ X"${_probe_all__only}" != X"${_probe_all__c}" ] && continue
+            _probe_all__out="$("$(_channels_dir)/${_probe_all__c}" probe \
+                "${_probe_all__pkg}" "${_probe_all__ver}" 2>/dev/null)"
+            _probe_all__rc="${?}"
+            #a channel with no catalog here is left for below: its catalog is
+            #only fetched when the ones here do not have the name
+            if [ X"${_probe_all__rc}" = X"2" ] && \
+               printf "%s\\n" "${_probe_all__out}" | grep -x 'needs=index' >/dev/null; then
+                _probe_all__missing="${_probe_all__missing} ${_probe_all__c}"
+                continue
             fi
+            _probe_emit "${_probe_all__c}" "${_probe_all__out}" "${_probe_all__rc}" \
+                "${_probe_all__pkg}" && _probe_all__found="1"
+        done
+        if [ -z "${_probe_all__found}" ] && [ -n "${_probe_all__missing}" ]; then
+            _first_catalogs "${_probe_all__pkg}" "${_probe_all__ver}" ${_probe_all__missing}
         fi
-        case "${_probe_all__rc}" in
-            0) _probe_all__found="1" ;;
-            2)  #a channel that could not be asked did not say no, and is kept
-                #apart so it is never reported as one: that is how "the network
-                #is down" reaches the user as "this does not exist"
-                _probe_all__why="$(printf "%s\\n" "${_probe_all__out}" | \
-                    awk '/^unreachable=/ {sub(/^unreachable=/, ""); print; exit}')"
-                printf "~unreachable %s %s\\n" "${_probe_all__c}" \
-                    "${_probe_all__why:-it gave no reason}"
-                continue ;;
-            3)  #a name that belongs to more than one package is not resolved
-                #by picking one. Which program was meant is the user's to say
-                _probe_all__found="1"
-                printf "~ambiguous %s %s\\n" "${_probe_all__c}" \
-                    "$(printf "%s\\n" "${_probe_all__out}" | \
-                        awk '/^candidate=/ {sub(/^candidate=/, ""); printf("%s ", $0)}')"
-                continue ;;
-            *) continue ;;
-        esac
-
-        _probe_all__v="$(printf "%s\\n" "${_probe_all__out}" | awk -F= '$1=="version"{print $2; exit}')"
-        _probe_all__b="$(printf "%s\\n" "${_probe_all__out}" | awk -F= '$1=="bytes"{print $2; exit}')"
-        _probe_all__g="$(printf "%s\\n" "${_probe_all__out}" | awk -F= '$1=="badge"{print $2; exit}')"
-        [ -z "${_probe_all__v}" ] && continue
-        [ -z "${_probe_all__g}" ] && _probe_all__g="none"
-        #a catalog that turns a name into a repository says which one, and
-        #that repository is what gets shown, placed and asked about from here
-        _probe_all__p="$(printf "%s\\n" "${_probe_all__out}" | awk -F= '$1=="package"{print $2; exit}')"
-        [ -z "${_probe_all__p}" ] && _probe_all__p="${_probe_all__pkg}"
-        #a channel that installs through a tool of its own names that tool as a
-        #spec, and the resolver gets it the way it gets anything else
-        _probe_all__r="$(printf "%s\\n" "${_probe_all__out}" | awk -F= '$1=="requires"{print $2; exit}')"
-        [ -z "${_probe_all__r}" ] && _probe_all__r="-"
-        #a size the channel could only estimate is said to be one wherever it
-        #is shown, and still sorts by what was estimated
-        _probe_all__e="$(printf "%s\\n" "${_probe_all__out}" | awk -F= '$1=="estimate"{print $2; exit}')"
-        [ X"${_probe_all__e}" = X"yes" ] || _probe_all__e="-"
-
-        _probe_all__conf="$(_channel_meta "${_probe_all__c}" confines)"
-        _probe_all__class="0"
-        [ X"${_probe_all__conf}" = X"yes" ] && _probe_all__class="1"
-
-        #marginal bytes: what is already placed costs nothing to place again
-        _probe_all__marginal="${_probe_all__b}"
-        [ -e "$(_channel_home "${_probe_all__c}")/by/${_probe_all__p}/${_probe_all__v}" ] && \
-            _probe_all__marginal="0"
-
-        #and what is still missing includes the tool the channel installs
-        #through. A channel already fetched costs nothing, so one not fetched
-        #yet costs what fetching it does, and that is also the hop. Without it
-        #a package through pkgx, which is not here, beat the same package
-        #through aqua, which is, by being smaller on its own
-        _probe_all__hops="0"
-        if [ X"${_probe_all__r}" != X"-" ]; then
-            if ! _tool_here "${_probe_all__c}" >/dev/null; then
-                _probe_all__hops="1"
-                _probe_all__rb="$(_requires_bytes "${_probe_all__r}")"
-                #an unknown size plus anything is unknown
-                case "${_probe_all__marginal}" in
-                    ''|*[!0-9]*) _probe_all__marginal="-" ;;
-                    *) if [ -n "${_probe_all__rb}" ]; then
-                           _probe_all__marginal="$((${_probe_all__marginal} + ${_probe_all__rb}))"
-                       else
-                           _probe_all__marginal="-"
-                       fi ;;
-                esac
-            fi
-        fi
-
-        #a size the catalog did not announce sorts last within its class
-        case "${_probe_all__marginal}" in
-            ''|*[!0-9]*) _probe_all__key="99999999999999" ;;
-                      *) _probe_all__key="$(awk -v b="${_probe_all__marginal}" \
-                             'BEGIN {printf("%014d", b)}')" ;;
-        esac
-
-        printf "%s %s %s %s %s %s %s %s %s %s %s\\n" \
-            "${_probe_all__class}${_probe_all__key}${_probe_all__hops}" "${_probe_all__c}" \
-            "${_probe_all__v}" "${_probe_all__b}" "${_probe_all__g}" \
-            "${_probe_all__conf}" "$(_channel_meta "${_probe_all__c}" describes)" \
-            "${_probe_all__p}" "${_probe_all__r}" "${_probe_all__e}" "${_probe_all__marginal:--}"
-    done | LC_ALL=C sort
+    } | LC_ALL=C sort
 }
 
 _requires_bytes() {
@@ -538,8 +682,10 @@ _place() {
     [ -z "${_place__url}" ] && return 1
     [ -z "${_place__bin}" ] && _place__bin="${_place__pkg##*/}"
 
+    _place__t0="$(_now_ms)"
     _fetch_verified "${_place__url}" "${_place__sha}" || return 1
     _place__art="${fetched}"; _place__digest="${fetched_digest}"
+    _timing_add "${_place__ch}" "fetch" "$(wc -c < "${_place__art}" | awk '{print $1}')" "$(( $(_now_ms) - _place__t0 ))"
 
     _place__store="${_place__home}/store/${_place__digest}"
     if [ ! -d "${_place__store}" ]; then
@@ -609,7 +755,9 @@ _place_tool() {
 
     _pt__dir="${_pt__home}/tool/${3}"
     if [ ! -d "${_pt__dir}" ]; then
+        _pt__t0="$(_now_ms)"
         _fetch_verified "${_pt__url}" "${_pt__sha}" || return 1
+        _timing_add "${1}" "tool" "$(wc -c < "${fetched}" | awk '{print $1}')" "$(( $(_now_ms) - _pt__t0 ))"
         if ! _unpack "${fetched}" "${_pt__format}" "${fetched}.d" "${_pt__bin}"; then
             rm -rf "${fetched}" "${fetched}.d"
             _say "${PROGNAME}: could not unpack the ${_pt__format:-raw} artifact"
@@ -814,10 +962,13 @@ _purge() {
 _index_one() {
     #$1 => channel. Refreshes its catalog and says what came of it. Answers 0
     #when it did, 1 when it could not, and 2 for a channel that keeps none
+    _io__t0="$(_now_ms)"
     _io__out="$("$(_channels_dir)/${1}" index 2>/dev/null)"
     case "${?}" in
-        0)  _say "${PROGNAME}: ${1}: $(printf "%s\\n" "${_io__out}" | \
-                awk -F= 'NF == 2 {printf("%s%s %s", (n++ ? ", " : ""), $2, $1)}')"
+        0)  _timing_add "${1}" "index" "$(printf "%s\\n" "${_io__out}" | \
+                awk -F= '$1 == "bytes" {print $2; exit}')" "$(( $(_now_ms) - _io__t0 ))"
+            _say "${PROGNAME}: ${1}: $(printf "%s\\n" "${_io__out}" | \
+                awk -F= 'NF == 2 && $1 != "bytes" {printf("%s%s %s", (n++ ? ", " : ""), $2, $1)}')"
             return 0 ;;
         2)  _say "${PROGNAME}: ${1}: not updated, $(printf "%s\\n" "${_io__out}" | \
                 awk '/^unreachable=/ {sub(/^unreachable=/, ""); print; exit}')"
@@ -1101,6 +1252,7 @@ _winner() {
     w_requires="$(printf "%s\\n" "${winner}" | awk '{print $9}')"
     w_estimate="$(printf "%s\\n" "${winner}" | awk '{print $10}')"
     w_marginal="$(printf "%s\\n" "${winner}" | awk '{print $11}')"
+    w_ms="$(printf "%s\\n" "${winner}" | awk '{print $12}')"
     [ -z "${w_package}" ] && w_package="${package}"
     [ X"${w_requires}" = X"-" ] && w_requires=""
     [ X"${w_estimate}" = X"-" ] && w_estimate=""
@@ -1164,11 +1316,12 @@ if [ -n "${dry_run}" ]; then
     #artifact lives, because that answer is also its badge, and a badge is
     #most of what someone inspecting came to find out
     printf "%s\\n" "${package##*/}"
-    #cheapest in bytes still missing, the tool to install through included
-    cheapest="$(printf "%s\\n" "${candidates}" | awk '{print $11}' | \
+    #quickest by the time it should take here, the tool to install through
+    #included
+    quickest="$(printf "%s\\n" "${candidates}" | awk '{print $12}' | \
         awk 'BEGIN{m=""} /^[0-9]+$/ {if (m=="" || $1<m) m=$1} END{print m}')"
 
-    printf "%s\\n" "${candidates}" | while read -r d_key d_ch d_ver d_by d_bg d_cf d_de d_pkg d_req d_est d_total; do
+    printf "%s\\n" "${candidates}" | while read -r d_key d_ch d_ver d_by d_bg d_cf d_de d_pkg d_req d_est d_total d_ms; do
         d_kind="native"; [ X"${d_cf}" = X"yes" ] && d_kind="confined"
         if [ X"${d_req}" != X"-" ]; then
             #what a tool installs, the tool answers for
@@ -1180,8 +1333,8 @@ if [ -n "${dry_run}" ]; then
         d_mark=""
         [ X"${d_ch}" = X"${w_channel}" ] && [ X"${d_ver}" = X"${w_version}" ] && d_mark="  <- elegido"
         d_size="$(_human "${d_by}")"; [ X"${d_est}" = X"yes" ] && d_size="~${d_size}"
-        printf "  %-32s %10s  %-8s  [%s]%s\\n" \
-            "${d_ch}:${d_pkg}@${d_ver}" "${d_size}" "${d_kind}" "${d_bg}" "${d_mark}"
+        printf "  %-32s %10s %8s  %-8s  [%s]%s\\n" \
+            "${d_ch}:${d_pkg}@${d_ver}" "${d_size}" "$(_human_us "${d_ms}")" "${d_kind}" "${d_bg}" "${d_mark}"
     done
 
     [ -n "${unreachable}" ] && printf "%s\\n" "${unreachable}" | while read -r u_ch u_why; do
@@ -1195,10 +1348,10 @@ if [ -n "${dry_run}" ]; then
     reason="${w_kind}"
     [ X"${w_kind}" = X"native" ] && reason="nativo"
     [ X"${w_kind}" = X"confined" ] && reason="confinado"
-    if [ X"${w_marginal}" = X"${cheapest}" ]; then
-        reason="${reason}, el más barato"
+    if [ X"${w_ms}" = X"${quickest}" ]; then
+        reason="${reason}, el más rápido"
     else
-        reason="${reason}, aunque no el más barato"
+        reason="${reason}, aunque no el más rápido"
     fi
     printf "elegido: %s:%s@%s   motivo: %s\\n" "${w_channel}" "${w_package}" "${w_version}" "${reason}"
     exit 0
@@ -1232,12 +1385,15 @@ w_bin="$(printf "%s\\n" "${info}" | awk -F= '$1=="bin"{print $2; exit}')"
 #the line names the repository and not only the word typed: a catalog that
 #maps a name somewhere unexpected is caught here, by a person, or not at all
 w_size="$(_human "${w_bytes}")"; [ -n "${w_estimate}" ] && w_size="about ${w_size}"
-_say "${PROGNAME}: ${w_bin} ${w_version} -> ${w_channel}:${w_package}  ${w_size}  [${w_badge}]  ${w_kind}"
+w_step="fetch"; [ -n "${w_requires}" ] && w_step="install"
+w_step_ms="$(_est_us "${w_bytes}" "${w_channel}" "${w_step}")"
+_say "${PROGNAME}: ${w_bin} ${w_version} -> ${w_channel}:${w_package}  ${w_size}, $(_human_us "${w_step_ms}")  [${w_badge}]  ${w_kind}"
 [ -n "${unreachable}" ] && printf "%s\\n" "${unreachable}" | while read -r u_ch u_why; do
-    _say "            (${u_ch} could not be asked, a cheaper path may exist: ${u_why})"
+    _say "            (${u_ch} could not be asked, a quicker path may exist: ${u_why})"
 done
 if [ -n "${w_requires}" ] && [ -z "${req_program}" ]; then
-    _say "            first ${w_requires} ${req_version}, $(_human "${req_bytes}"), fetched once and kept up to date"
+    req_ms="$(_est_us "${req_bytes}" "${w_channel}" "tool")"
+    _say "            first ${w_requires} ${req_version}, $(_human "${req_bytes}"), $(_human_us "${req_ms}"), fetched once and kept up to date"
     #what is being agreed to is the sum of the two, so the sum is written out
     #rather than left for the reader to add up. Unknown plus anything is
     #unknown, and an estimate plus anything is still an estimate
@@ -1247,7 +1403,10 @@ if [ -n "${w_requires}" ] && [ -z "${req_program}" ]; then
         *) case "${req_bytes}" in
                ''|*[!0-9]*) ;;
                *) w_total="$(_human "$((${w_bytes} + ${req_bytes}))")"
-                  [ -n "${w_estimate}" ] && w_total="about ${w_total}" ;;
+                  [ -n "${w_estimate}" ] && w_total="about ${w_total}"
+                  if _is_number "${w_step_ms}" && _is_number "${req_ms}"; then
+                      w_total="${w_total}, $(_human_us "$((${w_step_ms} + ${req_ms}))")"
+                  fi ;;
            esac ;;
     esac
     _say "            total ${w_total}"
@@ -1272,9 +1431,12 @@ if [ -n "${w_requires}" ]; then
     #the tool installs, and checks whatever it checks: that is its job. What
     #comes back is where the program is and what the tool holds for it
     _say "${PROGNAME}: ${w_channel} is installing ${w_package} ${w_version}"
+    o_t0="$(_now_ms)"
     obtained="$(STATIC_RUN_REQUIRED="${req_program}" "$(_channels_dir)/${w_channel}" obtain \
         "${w_package}" "${w_version}" "${want_bin}")"
-    if [ "${?}" -ne "0" ]; then
+    o_rc="${?}"
+    [ "${o_rc}" -eq "0" ] && _timing_add "${w_channel}" "install" "${w_bytes}" "$(( $(_now_ms) - o_t0 ))"
+    if [ "${o_rc}" -ne "0" ]; then
         _say "${PROGNAME}: ${w_channel} could not install '${w_package}': $(printf "%s\\n" "${obtained}" | \
             awk -F= '$1=="failed" || $1=="unreachable" {sub(/^[a-z]+=/, ""); print; exit}')"
         exit 127

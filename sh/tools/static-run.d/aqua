@@ -87,6 +87,49 @@ _retrieve() {
     fi
 }
 
+_fetch_resumable() {
+    #$1 => url or path, $2 => a partial file. A download that is stopped keeps
+    #what arrived, and the next call goes on from there: that is how a catalog
+    #left paused, because another one already had the answer, is picked up
+    #later. Answers 0 when it is complete, 1 when it is not there, 2 when it
+    #could not be had
+    case "${1}" in
+        file://*|/*|./*)
+            [ -f "${1#file://}" ] || return 1
+            cp "${1#file://}" "${2}" 2>/dev/null || return 2
+            return 0 ;;
+    esac
+    if command -v "curl" >/dev/null 2>&1; then
+        _fr__tool="curl"
+        curl -sSL -C - -o "${2}" -w '%{http_code}' "${1}" > "${2}.code" 2>/dev/null &
+    elif command -v "wget" >/dev/null 2>&1; then
+        _fr__tool="wget"
+        wget -q -c -O "${2}" "${1}" 2>/dev/null &
+    else
+        return 2
+    fi
+    _fr__pid="${!}"
+    #stopped from outside, the download stops with it and what arrived stays
+    trap 'kill "${_fr__pid}" 2>/dev/null; exit 143' TERM INT HUP
+    wait "${_fr__pid}"; _fr__rc="${?}"
+    trap - TERM INT HUP
+    if [ X"${_fr__tool}" = X"wget" ]; then
+        case "${_fr__rc}" in
+            0) return 0 ;;
+            8) rm -f "${2}"; return 1 ;;
+        esac
+        return 2
+    fi
+    _fr__code="$(cat "${2}.code" 2>/dev/null)"; rm -f "${2}.code"
+    case "${_fr__code}" in
+        200|206) [ "${_fr__rc}" -eq "0" ] && [ -s "${2}" ] && return 0 ;;
+        #asked to go on past the end: there was nothing left to fetch
+        416) [ -s "${2}" ] && return 0 ;;
+        403|404|410) rm -f "${2}"; return 1 ;;
+    esac
+    return 2
+}
+
 _indexer() {
     #the registry is yaml, and this reads the part of it a name needs: which
     #repository, which commands, what it says it is. It is checked against a
@@ -220,11 +263,14 @@ case "${1}" in
     index)
         idx="$(_index_file)"
         mkdir -p "${idx%/*}" 2>/dev/null || exit 1
-        raw="${idx}.$$.yaml"; new="${idx}.$$"
+        new="${idx}.$$"
         #the index is read from a tagged registry and the tag is kept beside it,
-        #so the registry aqua installs from is the one the names were read from
+        #so the registry aqua installs from is the one the names were read from.
+        #What arrived of a registry is kept under its tag: a part of another
+        #release is another file, and does not join onto this one
         if [ -n "${REGISTRY}" ]; then
             ref="${STATIC_RUN_AQUA_REF:-main}"
+            part="${idx%/*}/registry.local.part"; rm -f "${part}"
         else
             ref="$(_latest_tag "${REGISTRY_REPO}")"
             if [ -z "${ref}" ]; then
@@ -232,14 +278,23 @@ case "${1}" in
                 exit 2
             fi
             REGISTRY="https://raw.githubusercontent.com/aquaproj/aqua-registry/${ref}/registry.yaml"
+            part="${idx%/*}/registry.${ref}.part"
+            for old in "${idx%/*}"/registry.*.part; do
+                [ -f "${old}" ] && [ X"${old}" != X"${part}" ] && rm -f "${old}"
+            done
         fi
-        if ! _retrieve "${REGISTRY}" "${raw}"; then
-            rm -f "${raw}"
-            printf "unreachable=%s\\n" "the aqua registry could not be downloaded"
-            exit 2
-        fi
-        _indexer < "${raw}" | LC_ALL=C sort -u > "${new}"
-        rm -f "${raw}"
+        _fetch_resumable "${REGISTRY}" "${part}"
+        case "${?}" in
+            0) ;;
+            1) printf "unreachable=%s\\n" "there is no aqua registry at ${REGISTRY}"; exit 2 ;;
+            *) printf "unreachable=%s\\n" "the aqua registry could not be downloaded; what arrived is kept, and the next try goes on from there"; exit 2 ;;
+        esac
+        bytes="$(wc -c < "${part}" | awk '{print $1}')"
+        #from here on it is quick, and it is not cut short: stopped now, the old
+        #index could be left half replaced
+        trap '' TERM INT HUP
+        _indexer < "${part}" | LC_ALL=C sort -u > "${new}"
+        rm -f "${part}"
 
         #an index that comes out nearly empty is not a small registry, it is a
         #registry in a shape this reader no longer understands, and swapping
@@ -253,6 +308,7 @@ case "${1}" in
         printf "%s\\n" "${ref}" > "${idx}.ref"
         printf "packages=%s\\n" "$(awk -F'\t' '!seen[$2]++' "${idx}" | awk 'END {print NR}')"
         printf "names=%s\\n" "$(awk 'END {print NR}' "${idx}")"
+        printf "bytes=%s\\n" "${bytes}"
         exit 0
         ;;
 

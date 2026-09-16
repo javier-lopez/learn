@@ -1,0 +1,16 @@
+#!/bin/sh
+#a catalog that is quick to fetch. It only has names that start with "cat", so
+#no test that asks for another name ever sees it want a catalog
+
+h="${STATIC_RUN_HOME:-/tmp}/channels/${0##*/}"
+
+case "${1}" in
+    meta)  printf "%s\n" "kind=artifact" "confines=no" "describes=self" ;;
+    index) mkdir -p "${h}/index" && printf "%s\n" "catname" > "${h}/index/names"
+           printf "%s\n" "packages=1" "bytes=10" ;;
+    probe) case "${2}" in cat*) ;; *) exit 1 ;; esac
+           [ -f "${h}/index/names" ] || { printf "%s\n" "unreachable=no catalog here yet" "needs=index"; exit 2; }
+           grep -x "${2}" "${h}/index/names" >/dev/null || exit 1
+           printf "%s\n" "version=1.0" "bytes=10" ;;
+    *) exit 1 ;;
+esac
