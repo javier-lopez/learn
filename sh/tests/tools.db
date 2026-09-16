@@ -383,6 +383,36 @@ htop   2>&1 >/dev/null & : && sleep 0.1
 top -b 2>&1 >/dev/null & : && sleep 0.1
 test X"$(fuck you htop top | head -1)"             = X"ヽ(\`Д´)ﾉ⌒ doʇɥ"
 sleep 0.2 && test X"$(pgrep -x top)" = X"" && test X"$(pgrep -x dmenu)" = X""
+#--hook prints a shell function, and refuses a shell it has no hook for
+fuck --hook; test X"${?}"                          = X"0"
+fuck --hook bash; test X"${?}"                     = X"0"
+fuck --hook zsh; test X"${?}"                      = X"0"
+fuck --hook fish; test X"${?}"                     = X"1"
+test X"$(fuck --hook | head -1)"                   = X"command_not_found_handle() {"
+test X"$(fuck --hook bash | head -1)"              = X"command_not_found_handle() {"
+test X"$(fuck --hook zsh  | head -1)"              = X"command_not_found_handler() {"
+test X"$(fuck --hook fish 2>&1 | head -1)"         = X"fuck: no hook for 'fish', known shells are bash and zsh"
+#printing text is not enough: the shell has to accept it and end up with the
+#function defined, which is all the caller pastes into an rc file
+fuck --hook bash > hook.sh
+test X"$(bash --norc -c '. ./hook.sh; type -t command_not_found_handle')" = X"function"
+#and it stays inert where resolving would be wrong: outside an interactive
+#session, and inside anything the hook itself resolved
+test X"$(bash --norc -c '. ./hook.sh; nosuchcommand' 2>&1)" = X"bash: nosuchcommand: command not found"
+bash --norc -c '. ./hook.sh; nosuchcommand' 2>/dev/null; test X"${?}" = X"127"
+FUCK_HOOK=1 bash --norc -i -c '. ./hook.sh; nosuchcommand' >/dev/null 2>&1; test X"${?}" = X"127"
+#the not found path must not read stdin: those bytes belong to the command
+#being resolved, and reading them here loses the data and turns it into
+#arguments. touch names what it is given, so three extra files is the proof
+printf "%s\n" 'PALABRAS DEL PIPE' | fuck -c touch marca
+#the touch is detached with setsid, so it gets waited for and not slept on
+i=0; while [ ! -e marca ] && [ ${i} -lt 40 ]; do sleep 0.02; i=$((i+1)); done
+test -e marca
+test ! -e PALABRAS
+test ! -e DEL
+test ! -e PIPE
+#options still arrive through stdin, which is what the pipes above all assume
+test X"$(printf "%s" '--hook' | fuck | head -1)"   = X"command_not_found_handle() {"
 @end
 
 @begin{governator}
