@@ -117,7 +117,7 @@ _mkdir_p() {
     mkdir -p "${1}" 2>/dev/null
 }
 
-_realdir() {
+_realpath() {
     #where this file really lives, which is not where it was called from: the
     #plugin manager exposes every tool as a link in a directory on the PATH,
     #so ${0%/*} is that directory and the channels are not next to it
@@ -132,9 +132,14 @@ _realdir() {
         _realdir__hops="$((${_realdir__hops} + 1))"
     done
     case "${_realdir__path}" in
-        */*) printf "%s\\n" "${_realdir__path%/*}" ;;
-          *) printf "%s\\n" "." ;;
+        */*) printf "%s\\n" "${_realdir__path}" ;;
+          *) printf "%s\\n" "./${_realdir__path}" ;;
     esac
+}
+
+_realdir() {
+    _realdir__real="$(_realpath "${1}")"
+    printf "%s\\n" "${_realdir__real%/*}"
 }
 
 ###############################################################################
@@ -155,9 +160,13 @@ _channels_dir() {
     #an environment variable replaces the directory outright, which is how the
     #tests hand this program channels that answer without a network
     [ -n "${STATIC_RUN_CHANNELS}" ] && { printf "%s\\n" "${STATIC_RUN_CHANNELS}"; return 0; }
-    #beside the tools directory and not inside it: the test runner lists every
-    #file under tools as a command, and a channel is not one
-    printf "%s\\n" "$(_realdir "${0}")/../${PROGNAME}.d"
+    #next to this file. The plugin manager exposes regular files only, so the
+    #directory never shows up as a command, and a checkout, a bundle and a
+    #copy all carry their channels with them
+    #named after the file itself and not the name it was run by, so a link
+    #called sr still finds static-run.d
+    _channels_dir__real="$(_realpath "${0}")"
+    printf "%s\\n" "${_channels_dir__real}.d"
 }
 
 _channels() {

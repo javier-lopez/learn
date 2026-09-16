@@ -696,15 +696,15 @@ test X"$(static-run --yes nobodys-nickname:tiny 2>&1)" = X"static-run: no channe
 mkdir -p home/tmp
 printf '%s' '{"tag_name":"1.0","assets":[{"name":"thing-x86_64-linux.tar.gz","size":123,"browser_download_url":"http://example.invalid/t"}]}' > home/tmp/github.acme_thing_.json
 printf '%s\n' '{' '  "tag_name": "1.0",' '  "assets": [' '    {' '      "name": "thing-x86_64-linux.tar.gz",' '      "size": 123,' '      "browser_download_url": "http://example.invalid/t"' '    }' '  ]' '}' > home/tmp/github.acme_pretty_.json
-test X"$(STATIC_RUN_HOME="$(pwd)/home" ../../static-run.d/github probe acme/thing  | awk -F= '$1=="bytes"{print $2}')" = X"123"
-test X"$(STATIC_RUN_HOME="$(pwd)/home" ../../static-run.d/github probe acme/pretty | awk -F= '$1=="bytes"{print $2}')" = X"123"
+test X"$(STATIC_RUN_HOME="$(pwd)/home" ../../tools/static-run.d/github probe acme/thing  | awk -F= '$1=="bytes"{print $2}')" = X"123"
+test X"$(STATIC_RUN_HOME="$(pwd)/home" ../../tools/static-run.d/github probe acme/pretty | awk -F= '$1=="bytes"{print $2}')" = X"123"
 #and a release with nothing this machine can run answers 1, because saying 0
 #with nothing to show for it is how a channel that broke passes for one that works
 printf '%s' '{"tag_name":"1.0","assets":[{"name":"thing-windows.zip","size":9,"browser_download_url":"http://example.invalid/w"}]}' > home/tmp/github.acme_nix_.json
-STATIC_RUN_HOME="$(pwd)/home" ../../static-run.d/github probe acme/nix >/dev/null 2>&1; test X"${?}" = X"1"
+STATIC_RUN_HOME="$(pwd)/home" ../../tools/static-run.d/github probe acme/nix >/dev/null 2>&1; test X"${?}" = X"1"
 #a bare name is a question for a catalog, and this channel refuses to invent
 #an owner for one rather than write the package recipe this design avoids
-STATIC_RUN_HOME="$(pwd)/home" ../../static-run.d/github probe jq >/dev/null 2>&1; test X"${?}" = X"1"
+STATIC_RUN_HOME="$(pwd)/home" ../../tools/static-run.d/github probe jq >/dev/null 2>&1; test X"${?}" = X"1"
 #a channel that could not reach its catalog did not say no. When it is the
 #only one that might have had the package, the answer is that nobody knows;
 #"no channel provides" in its place is the lie a rate limit once told about jq
@@ -726,27 +726,27 @@ printf '%s\n' '#!/bin/sh' 'o=""; while [ $# -gt 0 ]; do [ X"$1" = X"-o" ] && { s
 printf '%s\n' '#!/bin/sh' 'o=""; while [ $# -gt 0 ]; do [ X"$1" = X"-o" ] && { shift; o="$1"; }; shift; done' 'cat >/dev/null' 'printf "%s" "{\"message\":\"Not Found\"}" > "$o"' 'printf 404' > c404/curl
 printf '%s\n' '#!/bin/sh' 'cat >/dev/null' 'printf 000' 'exit 7' > c000/curl
 chmod 755 c403/curl c404/curl c000/curl
-PATH="$(pwd)/c403:${PATH}" STATIC_RUN_HOME="$(pwd)/g1" ../../static-run.d/github probe acme/thing >/dev/null 2>&1; test X"${?}" = X"2"
-PATH="$(pwd)/c404:${PATH}" STATIC_RUN_HOME="$(pwd)/g2" ../../static-run.d/github probe acme/thing >/dev/null 2>&1; test X"${?}" = X"1"
-PATH="$(pwd)/c000:${PATH}" STATIC_RUN_HOME="$(pwd)/g3" ../../static-run.d/github probe acme/thing >/dev/null 2>&1; test X"${?}" = X"2"
-test X"$(PATH="$(pwd)/c403:${PATH}" STATIC_RUN_HOME="$(pwd)/g1" GITHUB_TOKEN= GH_TOKEN= ../../static-run.d/github probe acme/thing | awk '/limit/ && /GITHUB_TOKEN/ {print "limit"}')" = X"limit"
+PATH="$(pwd)/c403:${PATH}" STATIC_RUN_HOME="$(pwd)/g1" ../../tools/static-run.d/github probe acme/thing >/dev/null 2>&1; test X"${?}" = X"2"
+PATH="$(pwd)/c404:${PATH}" STATIC_RUN_HOME="$(pwd)/g2" ../../tools/static-run.d/github probe acme/thing >/dev/null 2>&1; test X"${?}" = X"1"
+PATH="$(pwd)/c000:${PATH}" STATIC_RUN_HOME="$(pwd)/g3" ../../tools/static-run.d/github probe acme/thing >/dev/null 2>&1; test X"${?}" = X"2"
+test X"$(PATH="$(pwd)/c403:${PATH}" STATIC_RUN_HOME="$(pwd)/g1" GITHUB_TOKEN= GH_TOKEN= ../../tools/static-run.d/github probe acme/thing | awk '/limit/ && /GITHUB_TOKEN/ {print "limit"}')" = X"limit"
 #yesterday's answer about "latest" is still a release that exists, and it is
 #used rather than failing when github cannot be asked
 mkdir -p g4/tmp
 printf '%s' '{"tag_name":"0.9","assets":[{"name":"thing-x86_64-linux.tar.gz","size":77,"browser_download_url":"http://example.invalid/t"}]}' > g4/tmp/github.acme_thing_.json
 touch -t 200001010000 g4/tmp/github.acme_thing_.json
-test X"$(PATH="$(pwd)/c403:${PATH}" STATIC_RUN_HOME="$(pwd)/g4" ../../static-run.d/github probe acme/thing | awk -F= '$1=="version"{print $2}')" = X"0.9"
+test X"$(PATH="$(pwd)/c403:${PATH}" STATIC_RUN_HOME="$(pwd)/g4" ../../tools/static-run.d/github probe acme/thing | awk -F= '$1=="version"{print $2}')" = X"0.9"
 #a fresh answer is not asked for again, and being told to look again asks at
 #once: without that, --latest would hand back the same release forever
 mkdir -p g5/tmp
 printf '%s' '{"tag_name":"1.0","assets":[{"name":"thing-x86_64-linux.tar.gz","size":88,"browser_download_url":"http://example.invalid/t"}]}' > g5/tmp/github.acme_thing_.json
-PATH="$(pwd)/c404:${PATH}" STATIC_RUN_HOME="$(pwd)/g5" ../../static-run.d/github probe acme/thing >/dev/null 2>&1; test X"${?}" = X"0"
-PATH="$(pwd)/c404:${PATH}" STATIC_RUN_HOME="$(pwd)/g5" STATIC_RUN_REFRESH=1 ../../static-run.d/github probe acme/thing >/dev/null 2>&1; test X"${?}" = X"1"
+PATH="$(pwd)/c404:${PATH}" STATIC_RUN_HOME="$(pwd)/g5" ../../tools/static-run.d/github probe acme/thing >/dev/null 2>&1; test X"${?}" = X"0"
+PATH="$(pwd)/c404:${PATH}" STATIC_RUN_HOME="$(pwd)/g5" STATIC_RUN_REFRESH=1 ../../tools/static-run.d/github probe acme/thing >/dev/null 2>&1; test X"${?}" = X"1"
 #a token goes to the api through curl's stdin and never on its command line,
 #where any other account on the machine could read it out of ps
 printf '%s\n' '#!/bin/sh' 'printf "%s\n" "$@" > argv.txt' 'cat > stdin.txt' 'o=""; while [ $# -gt 0 ]; do [ X"$1" = X"-o" ] && { shift; o="$1"; }; shift; done' 'printf "%s" "{}" > "$o"' 'printf 404' > cspy/curl
 chmod 755 cspy/curl
-PATH="$(pwd)/cspy:${PATH}" STATIC_RUN_HOME="$(pwd)/g6" GITHUB_TOKEN=not-a-real-token ../../static-run.d/github probe acme/thing >/dev/null 2>&1; test X"${?}" = X"1"
+PATH="$(pwd)/cspy:${PATH}" STATIC_RUN_HOME="$(pwd)/g6" GITHUB_TOKEN=not-a-real-token ../../tools/static-run.d/github probe acme/thing >/dev/null 2>&1; test X"${?}" = X"1"
 test X"$(grep -c not-a-real-token argv.txt)"  = X"0"
 test X"$(grep -c not-a-real-token stdin.txt)" = X"1"
 #the release reader counts depth and closes an asset with its own object, so
@@ -755,12 +755,12 @@ test X"$(grep -c not-a-real-token stdin.txt)" = X"1"
 mkdir -p gj/tmp
 printf '%s' '{"tag_name":"v3","assets":[{"name":"real-linux-x86_64.tar.gz","uploader":{"name":"impostor","size":999},"size":444,"browser_download_url":"http://example.invalid/4"}]}' > gj/tmp/github.acme_nested_.json
 printf '%s' '{"tag_name":"v4","assets":[{"browser_download_url":"http://example.invalid/5","size":555,"name":"order-linux-x86_64.tar.gz"}]}' > gj/tmp/github.acme_order_.json
-test X"$(STATIC_RUN_HOME="$(pwd)/gj" ../../static-run.d/github probe acme/nested | awk -F= '$1=="bytes"{print $2}')" = X"444"
-test X"$(STATIC_RUN_HOME="$(pwd)/gj" ../../static-run.d/github probe acme/order  | awk -F= '$1=="bytes"{print $2}')" = X"555"
+test X"$(STATIC_RUN_HOME="$(pwd)/gj" ../../tools/static-run.d/github probe acme/nested | awk -F= '$1=="bytes"{print $2}')" = X"444"
+test X"$(STATIC_RUN_HOME="$(pwd)/gj" ../../tools/static-run.d/github probe acme/order  | awk -F= '$1=="bytes"{print $2}')" = X"555"
 #"latest" is kept under its own tag as well, so asking for the release by the
 #tag that probe reported costs no second request
 test -s gj/tmp/github.acme_nested_.json
-test X"$(PATH="$(pwd)/c404:${PATH}" STATIC_RUN_HOME="$(pwd)/gj" ../../static-run.d/github locate acme/nested v3 | awk -F= '$1=="format"{print $2}')" = X"tar.gz"
+test X"$(PATH="$(pwd)/c404:${PATH}" STATIC_RUN_HOME="$(pwd)/gj" ../../tools/static-run.d/github locate acme/nested v3 | awk -F= '$1=="format"{print $2}')" = X"tar.gz"
 #a name two programs answer to is not resolved by picking one. With nobody to
 #ask it is refused and both are named, so the full name is one copy away
 static-run --yes twin >/dev/null 2>&1; test X"${?}" = X"127"
@@ -787,7 +787,7 @@ test X"$(printf "%s\n" "${tw2out}" | grep -c 'which one')" = X"0"
 i=0; while [ ${i} -lt 120 ]; do printf '  - type: github_release\n    repo_owner: filler\n    repo_name: pkg%s\n' "${i}"; i=$((i+1)); done > filler.yaml
 printf '%s\n' 'packages:' '  - type: github_release' '    repo_owner: acme' '    repo_name: jqx' '    description: A JSON thing for tests' '  - name: other/nsc' '    type: github_release' '    repo_owner: other' '    repo_name: nsc-src' '    files:' '      - name: nsc' '  - type: github_release' '    repo_owner: acme' '    repo_name: ripgrepx' '    description: >-' '      searches' '      for text' '    version_constraint: "false"' '    version_overrides:' '      - version_constraint: semver("<= 0.1")' '        files:' '          - name: oldname' '      - version_constraint: "true"' '        files:' '          - name: rgx' '  - type: github_release' '    repo_owner: left' '    repo_name: dup' '    files:' '      - name: dupcmd # a comment yaml drops' '  - type: github_release' '    repo_owner: right' '    repo_name: dup' '    files:' '      - name: dupcmd' > reg.yaml
 cat filler.yaml >> reg.yaml
-STATIC_RUN_HOME="$(pwd)/aq" STATIC_RUN_AQUA_REGISTRY="$(pwd)/reg.yaml" ../../static-run.d/aqua index >/dev/null
+STATIC_RUN_HOME="$(pwd)/aq" STATIC_RUN_AQUA_REGISTRY="$(pwd)/reg.yaml" ../../tools/static-run.d/aqua index >/dev/null
 test X"$(awk -F'\t' '$1=="nsc" {print $2}' aq/index/aqua.tsv)" = X"other/nsc-src"
 test X"$(awk -F'\t' '$2=="acme/jqx" {n++} END {print n+0}' aq/index/aqua.tsv)" = X"1"
 #a command is what the current version calls it, not what an old one did
@@ -796,17 +796,17 @@ test X"$(awk -F'\t' '$1=="oldname" {n++} END {print n+0}' aq/index/aqua.tsv)" = 
 #a comment after a value is not part of it
 test X"$(awk -F'\t' '$1=="dupcmd" {n++} END {print n+0}' aq/index/aqua.tsv)" = X"2"
 #what the channel answers about a name
-STATIC_RUN_HOME="$(pwd)/aq" ../../static-run.d/aqua probe nosuchname >/dev/null 2>&1; test X"${?}" = X"1"
-STATIC_RUN_HOME="$(pwd)/aq" ../../static-run.d/aqua probe dupcmd >/dev/null 2>&1; test X"${?}" = X"3"
-test X"$(STATIC_RUN_HOME="$(pwd)/aq" ../../static-run.d/aqua probe dupcmd | awk -F= '$1=="candidate"' | awk 'END {print NR}')" = X"2"
-STATIC_RUN_HOME="$(pwd)/noindex" ../../static-run.d/aqua probe jqx >/dev/null 2>&1; test X"${?}" = X"2"
-STATIC_RUN_HOME="$(pwd)/noindex" ../../static-run.d/aqua probe jqx | grep -- '--index-update' >/dev/null
+STATIC_RUN_HOME="$(pwd)/aq" ../../tools/static-run.d/aqua probe nosuchname >/dev/null 2>&1; test X"${?}" = X"1"
+STATIC_RUN_HOME="$(pwd)/aq" ../../tools/static-run.d/aqua probe dupcmd >/dev/null 2>&1; test X"${?}" = X"3"
+test X"$(STATIC_RUN_HOME="$(pwd)/aq" ../../tools/static-run.d/aqua probe dupcmd | awk -F= '$1=="candidate"' | awk 'END {print NR}')" = X"2"
+STATIC_RUN_HOME="$(pwd)/noindex" ../../tools/static-run.d/aqua probe jqx >/dev/null 2>&1; test X"${?}" = X"2"
+STATIC_RUN_HOME="$(pwd)/noindex" ../../tools/static-run.d/aqua probe jqx | grep -- '--index-update' >/dev/null
 #searching reads names, repositories and descriptions, folded ones included
-test X"$(STATIC_RUN_HOME="$(pwd)/aq" ../../static-run.d/aqua search searches text | awk -F'\t' '{print $1}')" = X"aqua:acme/ripgrepx"
+test X"$(STATIC_RUN_HOME="$(pwd)/aq" ../../tools/static-run.d/aqua search searches text | awk -F'\t' '{print $1}')" = X"aqua:acme/ripgrepx"
 #a registry this reader no longer understands does not replace an index that
 #works: every name would silently become "not there"
 printf '%s\n' 'packages: []' > broken.yaml
-STATIC_RUN_HOME="$(pwd)/aq" STATIC_RUN_AQUA_REGISTRY="$(pwd)/broken.yaml" ../../static-run.d/aqua index >/dev/null 2>&1; test X"${?}" = X"2"
+STATIC_RUN_HOME="$(pwd)/aq" STATIC_RUN_AQUA_REGISTRY="$(pwd)/broken.yaml" ../../tools/static-run.d/aqua index >/dev/null 2>&1; test X"${?}" = X"2"
 test X"$(awk -F'\t' '$1=="jqx" {print $2}' aq/index/aqua.tsv)" = X"acme/jqx"
 #and the whole chain with no network at all: the index names the repository,
 #the release is on disk, the artifact is a file here, and the line the user is
@@ -817,7 +817,7 @@ chmod 755 jqx-bin
 printf '{"tag_name":"1.0","assets":[{"name":"jqx-linux-x86_64","size":40,"browser_download_url":"%s"}]}' "$(pwd)/jqx-bin" > aq/tmp/github.acme_jqx_.json
 #paths are worked out first: under the runner's sh -x, a command
 #substitution nested in an assignment traces into whatever 2>&1 captures
-realch="$(cd ../.. && pwd)/static-run.d"; aqh="$(pwd)/aq"; c404="$(pwd)/c404"
+realch="$(cd ../.. && pwd)/tools/static-run.d"; aqh="$(pwd)/aq"; c404="$(pwd)/c404"
 test X"$(PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${aqh}" static-run --yes jqx 2>/dev/null)" = X"jqx ran"
 PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${aqh}" static-run -n jqx | grep 'aqua:acme/jqx@1.0' >/dev/null
 test X"$(STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${aqh}" static-run jqx 2>&1)" = X"jqx ran"
@@ -829,23 +829,23 @@ printf '%s' '{"tag_name":"1.0","assets":[{"name":"dg-linux-x86_64","size":10,"br
 printf '%s' '{"tag_name":"1.0","assets":[{"name":"nul-linux-x86_64","size":10,"browser_download_url":"http://example.invalid/n","digest":null}]}' > gd/tmp/github.acme_nul_.json
 printf '%s' '{"tag_name":"1.0","assets":[{"name":"bad-linux-x86_64","size":10,"browser_download_url":"http://example.invalid/b","digest":"sha256:not-hex"}]}' > gd/tmp/github.acme_bad_.json
 gdh="$(pwd)/gd"
-test X"$(PATH="${c404}:${PATH}" STATIC_RUN_HOME="${gdh}" ../../static-run.d/github probe acme/dg | awk -F= '$1=="badge"{print $2}')" = X"verified"
-test X"$(PATH="${c404}:${PATH}" STATIC_RUN_HOME="${gdh}" ../../static-run.d/github locate acme/dg | awk -F= '$1=="sha256"{print $2}')" = X"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-test X"$(PATH="${c404}:${PATH}" STATIC_RUN_HOME="${gdh}" ../../static-run.d/github probe acme/nul | awk -F= '$1=="badge"{print $2}')" = X"none"
-test X"$(PATH="${c404}:${PATH}" STATIC_RUN_HOME="${gdh}" ../../static-run.d/github probe acme/bad | awk -F= '$1=="badge"{print $2}')" = X"none"
-test X"$(PATH="${c404}:${PATH}" STATIC_RUN_HOME="${gdh}" ../../static-run.d/github locate acme/nul | awk -F= '$1=="sha256"' | awk 'END {print NR}')" = X"0"
+test X"$(PATH="${c404}:${PATH}" STATIC_RUN_HOME="${gdh}" ../../tools/static-run.d/github probe acme/dg | awk -F= '$1=="badge"{print $2}')" = X"verified"
+test X"$(PATH="${c404}:${PATH}" STATIC_RUN_HOME="${gdh}" ../../tools/static-run.d/github locate acme/dg | awk -F= '$1=="sha256"{print $2}')" = X"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+test X"$(PATH="${c404}:${PATH}" STATIC_RUN_HOME="${gdh}" ../../tools/static-run.d/github probe acme/nul | awk -F= '$1=="badge"{print $2}')" = X"none"
+test X"$(PATH="${c404}:${PATH}" STATIC_RUN_HOME="${gdh}" ../../tools/static-run.d/github probe acme/bad | awk -F= '$1=="badge"{print $2}')" = X"none"
+test X"$(PATH="${c404}:${PATH}" STATIC_RUN_HOME="${gdh}" ../../tools/static-run.d/github locate acme/nul | awk -F= '$1=="sha256"' | awk 'END {print NR}')" = X"0"
 #two settings, each doing one thing. DIGEST=off keeps the digest from counting
-test X"$(PATH="${c404}:${PATH}" STATIC_RUN_HOME="${gdh}" STATIC_RUN_GITHUB_DIGEST=off ../../static-run.d/github probe acme/dg | awk -F= '$1=="badge"{print $2}')" = X"none"
-test X"$(PATH="${c404}:${PATH}" STATIC_RUN_HOME="${gdh}" STATIC_RUN_GITHUB_DIGEST=off ../../static-run.d/github locate acme/dg | awk -F= '$1=="sha256"' | awk 'END {print NR}')" = X"0"
+test X"$(PATH="${c404}:${PATH}" STATIC_RUN_HOME="${gdh}" STATIC_RUN_GITHUB_DIGEST=off ../../tools/static-run.d/github probe acme/dg | awk -F= '$1=="badge"{print $2}')" = X"none"
+test X"$(PATH="${c404}:${PATH}" STATIC_RUN_HOME="${gdh}" STATIC_RUN_GITHUB_DIGEST=off ../../tools/static-run.d/github locate acme/dg | awk -F= '$1=="sha256"' | awk 'END {print NR}')" = X"0"
 #and API=off asks api.github.com nothing: what is cached still answers, and what
 #is not is reported as not asked, naming the setting, without a single request
 mkdir -p ccount
 printf '%s\n' '#!/bin/sh' 'printf "%s\n" "called" >> "${CALLS_FILE}"' 'cat >/dev/null' 'printf 200' > ccount/curl
 chmod 755 ccount/curl
 ccount="$(pwd)/ccount"; calls="$(pwd)/calls.txt"
-test X"$(PATH="${ccount}:${PATH}" CALLS_FILE="${calls}" STATIC_RUN_HOME="${gdh}" STATIC_RUN_GITHUB_API=off ../../static-run.d/github probe acme/dg | awk -F= '$1=="version"{print $2}')" = X"1.0"
-PATH="${ccount}:${PATH}" CALLS_FILE="${calls}" STATIC_RUN_HOME="${gdh}" STATIC_RUN_GITHUB_API=off ../../static-run.d/github probe acme/nothing-cached >/dev/null 2>&1; test X"${?}" = X"2"
-PATH="${ccount}:${PATH}" CALLS_FILE="${calls}" STATIC_RUN_HOME="${gdh}" STATIC_RUN_GITHUB_API=off ../../static-run.d/github probe acme/nothing-cached | grep 'STATIC_RUN_GITHUB_API=off' >/dev/null
+test X"$(PATH="${ccount}:${PATH}" CALLS_FILE="${calls}" STATIC_RUN_HOME="${gdh}" STATIC_RUN_GITHUB_API=off ../../tools/static-run.d/github probe acme/dg | awk -F= '$1=="version"{print $2}')" = X"1.0"
+PATH="${ccount}:${PATH}" CALLS_FILE="${calls}" STATIC_RUN_HOME="${gdh}" STATIC_RUN_GITHUB_API=off ../../tools/static-run.d/github probe acme/nothing-cached >/dev/null 2>&1; test X"${?}" = X"2"
+PATH="${ccount}:${PATH}" CALLS_FILE="${calls}" STATIC_RUN_HOME="${gdh}" STATIC_RUN_GITHUB_API=off ../../tools/static-run.d/github probe acme/nothing-cached | grep 'STATIC_RUN_GITHUB_API=off' >/dev/null
 test ! -e "${calls}"
 #through the resolver, a digest that matches what arrived is verified and runs,
 #and one that does not is a different file, and is refused before it can run
@@ -859,6 +859,10 @@ PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${dhh}" 
 test X"$(PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${dhh}" static-run --yes github:acme/dgx 2>/dev/null)" = X"dgx ran"
 PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${dh2h}" static-run --yes github:acme/dgx >/dev/null 2>&1; test X"${?}" = X"127"
 test ! -d dh2/by/github/acme/dgx
+#the channels are found next to the file itself, however it was reached: a link
+#under another name, the way someone might alias it, still finds static-run.d
+ln -s "$(cd ../../tools && pwd)/static-run" srl
+PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS= STATIC_RUN_HOME="${gdh}" ./srl -n github:acme/dg | grep 'github:acme/dg@1.0' >/dev/null
 @end
 
 @begin{staticus}
