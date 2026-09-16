@@ -11,6 +11,25 @@
 
 API="https://api.github.com/repos"
 
+#two settings, each doing one thing, both read from the environment because
+#the shell hook that calls this cannot pass options:
+#
+#  STATIC_RUN_GITHUB_API=off     never ask api.github.com. Answers come only
+#                                from what is already cached, and a package
+#                                with nothing cached is reported as not asked,
+#                                naming this setting. Downloading an asset or
+#                                a checksum file is not the api and still works
+#  STATIC_RUN_GITHUB_DIGEST=off  github's digest does not count as verification;
+#                                only a checksum the project publishes does.
+#                                It saves no request: the digest arrives in the
+#                                same answer as the list of assets
+_off() {
+    case "${1}" in
+        off|OFF|no|NO|0|false|FALSE) return 0 ;;
+    esac
+    return 1
+}
+
 _retrieve() {
     #a plain download, never authenticated: these urls redirect to storage
     #that is not github's api, and a token has no business travelling there
@@ -97,6 +116,14 @@ _fetch_release() {
         _fetch_release__url="${API}/${1}/releases/tags/${2}"
     fi
 
+    #the api was switched off by the user: whatever is cached is the answer,
+    #even a stale "latest", and with nothing cached that is said plainly
+    if _off "${STATIC_RUN_GITHUB_API}"; then
+        [ -s "${release_file}" ] && return 0
+        why="STATIC_RUN_GITHUB_API=off and nothing about ${1} is cached"
+        return 2
+    fi
+
     mkdir -p "${release_file%/*}" 2>/dev/null
     _fetch_release__tmp="${release_file}.$$"
     _api "${_fetch_release__url}" "${_fetch_release__tmp}"
@@ -143,7 +170,7 @@ _fields() {
     #the release, reduced to the two things this channel reads from it:
     #
     #    tag    <tag_name>
-    #    asset  <name>  <size>  <browser_download_url>
+    #    asset  <name>  <size>  <browser_download_url>  <digest>
     #
     #It is a small json reader and not a pattern match, because the patterns
     #were each a promise about github's serializer that nobody made. Reading
@@ -175,6 +202,7 @@ _fields() {
                 if (k == "name") name = v
                 else if (k == "size") size = v
                 else if (k == "browser_download_url") url = v
+                else if (k == "digest") digest = v
             }
         }
         {
@@ -192,13 +220,13 @@ _fields() {
                 if (c == "{" || c == "[") {
                     take(1); depth++
                     if (c == "[" && depth == 2) in_assets = (arrkey == "assets")
-                    if (c == "{" && in_assets && depth == 3) { name = ""; size = ""; url = "" }
+                    if (c == "{" && in_assets && depth == 3) { name = ""; size = ""; url = ""; digest = "" }
                     continue
                 }
                 if (c == "}" || c == "]") {
                     take(0)
                     if (c == "}" && in_assets && depth == 3 && name != "" && size != "" && url != "")
-                        printf("asset\t%s\t%s\t%s\n", name, size, url)
+                        printf("asset\t%s\t%s\t%s\t%s\n", name, size, url, digest)
                     if (c == "]" && depth == 2) in_assets = 0
                     depth--
                     continue
@@ -211,9 +239,19 @@ _fields() {
 }
 
 _assets() {
-    #one line per asset this machine can run: name, size, url
+    #one line per asset this machine can run: name, size, url, sha256. The last
+    #is github's digest when it is a well formed one and empty otherwise: an
+    #asset uploaded before github kept digests says null, and a digest in some
+    #other algorithm is not one this resolver can compare
     _fields | awk -F'\t' -v arches="$(_platform)" '
-        $1 == "asset" && usable($2) { printf("%s\t%s\t%s\n", $2, $3, $4) }
+        $1 == "asset" && usable($2) {
+            d = tolower($5); h = ""
+            if (substr(d, 1, 7) == "sha256:") {
+                h = substr(d, 8)
+                if (length(h) != 64 || h !~ /^[0-9a-f]+$/) h = ""
+            }
+            printf("%s\t%s\t%s\t%s\n", $2, $3, $4, h)
+        }
         function usable(n,   lower, n_arches, a, i) {
             lower = tolower(n)
             #signatures, checksums and distribution packages are not programs
@@ -291,9 +329,15 @@ case "${1}" in
         [ -z "${version}" ] && exit 1
         printf "version=%s\\n" "${version}"
         printf "bytes=%s\\n"   "$(printf "%s\\n" "${asset}" | awk -F'\t' '{print $2}')"
-        #github publishes no checksum of its own; whether one exists is a
-        #question about this project, and locate is where it gets asked
-        printf "badge=%s\\n"   "none"
+        #github's own digest of the asset is known right here, in the same
+        #answer. A checksum the project publishes needs a download of its own,
+        #so without a digest the badge stays none until locate has looked
+        if ! _off "${STATIC_RUN_GITHUB_DIGEST}" && \
+           [ -n "$(printf "%s\\n" "${asset}" | awk -F'\t' '{print $4}')" ]; then
+            printf "badge=%s\\n" "verified"
+        else
+            printf "badge=%s\\n" "none"
+        fi
         exit 0
         ;;
 
@@ -309,16 +353,29 @@ case "${1}" in
         asset="$(printf "%s\\n" "${body}" | _assets | _best)"
         [ -z "${asset}" ] && exit 1
 
-        name="$(printf "%s\\n" "${asset}" | awk -F'\t' '{print $1}')"
-        url="$(printf  "%s\\n" "${asset}" | awk -F'\t' '{print $3}')"
+        name="$(printf "%s\\n" "${asset}"   | awk -F'\t' '{print $1}')"
+        url="$(printf  "%s\\n" "${asset}"   | awk -F'\t' '{print $3}')"
+        digest="$(printf "%s\\n" "${asset}" | awk -F'\t' '{print $4}')"
 
         printf "url=%s\\n"    "${url}"
         printf "format=%s\\n" "$(_format_of "${name}")"
         printf "bin=%s\\n"    "${2##*/}"
 
-        #a checksum published next to the artifact is the only thing that can
-        #turn the badge from none into verified, so it is looked for by the
-        #two names projects actually use
+        #github keeps a sha256 of every asset it stores, and that protects
+        #against exactly what a checksum published by the project protects
+        #against: a download that arrived corrupt or altered. Neither stops a
+        #stolen account, which uploads the binary and its checksum together,
+        #and github computes the digest of whatever it was given. So the digest
+        #is enough, it is asked for first, as aqua does, and it saves the
+        #download of a checksum file
+        if [ -n "${digest}" ] && ! _off "${STATIC_RUN_GITHUB_DIGEST}"; then
+            printf "sha256=%s\\n" "${digest}"
+            exit 0
+        fi
+
+        #without one, a checksum published next to the artifact is the only
+        #thing left that can make the badge verified, looked for by the two
+        #names projects actually use
         sums="$(printf "%s\\n" "${body}" | _fields | awk -F'\t' '
             $1 == "asset" {
                 u = $4; l = tolower(u)

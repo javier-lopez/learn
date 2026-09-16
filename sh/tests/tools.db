@@ -821,6 +821,44 @@ realch="$(cd ../.. && pwd)/static-run.d"; aqh="$(pwd)/aq"; c404="$(pwd)/c404"
 test X"$(PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${aqh}" static-run --yes jqx 2>/dev/null)" = X"jqx ran"
 PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${aqh}" static-run -n jqx | grep 'aqua:acme/jqx@1.0' >/dev/null
 test X"$(STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${aqh}" static-run jqx 2>&1)" = X"jqx ran"
+#github keeps a sha256 of every asset, and it counts as verification: it guards
+#against what a checksum the project publishes guards against, a download that
+#arrived corrupt or altered. A digest that is null or malformed is not one
+mkdir -p gd/tmp
+printf '%s' '{"tag_name":"1.0","assets":[{"name":"dg-linux-x86_64","size":10,"browser_download_url":"http://example.invalid/d","digest":"sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"}]}' > gd/tmp/github.acme_dg_.json
+printf '%s' '{"tag_name":"1.0","assets":[{"name":"nul-linux-x86_64","size":10,"browser_download_url":"http://example.invalid/n","digest":null}]}' > gd/tmp/github.acme_nul_.json
+printf '%s' '{"tag_name":"1.0","assets":[{"name":"bad-linux-x86_64","size":10,"browser_download_url":"http://example.invalid/b","digest":"sha256:not-hex"}]}' > gd/tmp/github.acme_bad_.json
+gdh="$(pwd)/gd"
+test X"$(PATH="${c404}:${PATH}" STATIC_RUN_HOME="${gdh}" ../../static-run.d/github probe acme/dg | awk -F= '$1=="badge"{print $2}')" = X"verified"
+test X"$(PATH="${c404}:${PATH}" STATIC_RUN_HOME="${gdh}" ../../static-run.d/github locate acme/dg | awk -F= '$1=="sha256"{print $2}')" = X"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+test X"$(PATH="${c404}:${PATH}" STATIC_RUN_HOME="${gdh}" ../../static-run.d/github probe acme/nul | awk -F= '$1=="badge"{print $2}')" = X"none"
+test X"$(PATH="${c404}:${PATH}" STATIC_RUN_HOME="${gdh}" ../../static-run.d/github probe acme/bad | awk -F= '$1=="badge"{print $2}')" = X"none"
+test X"$(PATH="${c404}:${PATH}" STATIC_RUN_HOME="${gdh}" ../../static-run.d/github locate acme/nul | awk -F= '$1=="sha256"' | awk 'END {print NR}')" = X"0"
+#two settings, each doing one thing. DIGEST=off keeps the digest from counting
+test X"$(PATH="${c404}:${PATH}" STATIC_RUN_HOME="${gdh}" STATIC_RUN_GITHUB_DIGEST=off ../../static-run.d/github probe acme/dg | awk -F= '$1=="badge"{print $2}')" = X"none"
+test X"$(PATH="${c404}:${PATH}" STATIC_RUN_HOME="${gdh}" STATIC_RUN_GITHUB_DIGEST=off ../../static-run.d/github locate acme/dg | awk -F= '$1=="sha256"' | awk 'END {print NR}')" = X"0"
+#and API=off asks api.github.com nothing: what is cached still answers, and what
+#is not is reported as not asked, naming the setting, without a single request
+mkdir -p ccount
+printf '%s\n' '#!/bin/sh' 'printf "%s\n" "called" >> "${CALLS_FILE}"' 'cat >/dev/null' 'printf 200' > ccount/curl
+chmod 755 ccount/curl
+ccount="$(pwd)/ccount"; calls="$(pwd)/calls.txt"
+test X"$(PATH="${ccount}:${PATH}" CALLS_FILE="${calls}" STATIC_RUN_HOME="${gdh}" STATIC_RUN_GITHUB_API=off ../../static-run.d/github probe acme/dg | awk -F= '$1=="version"{print $2}')" = X"1.0"
+PATH="${ccount}:${PATH}" CALLS_FILE="${calls}" STATIC_RUN_HOME="${gdh}" STATIC_RUN_GITHUB_API=off ../../static-run.d/github probe acme/nothing-cached >/dev/null 2>&1; test X"${?}" = X"2"
+PATH="${ccount}:${PATH}" CALLS_FILE="${calls}" STATIC_RUN_HOME="${gdh}" STATIC_RUN_GITHUB_API=off ../../static-run.d/github probe acme/nothing-cached | grep 'STATIC_RUN_GITHUB_API=off' >/dev/null
+test ! -e "${calls}"
+#through the resolver, a digest that matches what arrived is verified and runs,
+#and one that does not is a different file, and is refused before it can run
+printf '%s\n' '#!/bin/sh' 'printf "%s\n" "dgx ran"' > dgx-bin
+chmod 755 dgx-bin
+dgxsum="$(sha256sum dgx-bin | awk '{print $1}')"; dgxbin="$(pwd)/dgx-bin"; dhh="$(pwd)/dh"; dh2h="$(pwd)/dh2"
+mkdir -p dh/tmp dh2/tmp
+printf '{"tag_name":"1.0","assets":[{"name":"dgx-linux-x86_64","size":40,"browser_download_url":"%s","digest":"sha256:%s"}]}' "${dgxbin}" "${dgxsum}" > dh/tmp/github.acme_dgx_.json
+printf '{"tag_name":"1.0","assets":[{"name":"dgx-linux-x86_64","size":40,"browser_download_url":"%s","digest":"sha256:%s"}]}' "${dgxbin}" "0000000000000000000000000000000000000000000000000000000000000000" > dh2/tmp/github.acme_dgx_.json
+PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${dhh}" static-run -n github:acme/dgx | grep '\[verified\]' >/dev/null
+test X"$(PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${dhh}" static-run --yes github:acme/dgx 2>/dev/null)" = X"dgx ran"
+PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${dh2h}" static-run --yes github:acme/dgx >/dev/null 2>&1; test X"${?}" = X"127"
+test ! -d dh2/by/github/acme/dgx
 @end
 
 @begin{staticus}
