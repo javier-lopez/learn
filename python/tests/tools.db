@@ -1,8 +1,4 @@
 #Based on the GNU shtool test suite
-
-#just enough tests to ensure third party scripts
-#with dependencies in external websites work
-
 @begin{simple-dhcpd}
 simple-dhcpd -h; test X"${?}"                = X"0"
 simple-dhcpd --help; test X"${?}"            = X"0"

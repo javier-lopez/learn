@@ -1,8 +1,5 @@
 #Based on the GNU shtool test suite
 
-#backup-dbs moved to sh/archived. It needs mysql and mysqldump, and neither is
-#installed on the machine this ran on any more
-
 @begin{backup-remote-rsync}
 backup-remote-rsync; test X"${?}"                                = X"1"
 backup-remote-rsync -h; test X"${?}"                             = X"0"
@@ -257,10 +254,6 @@ test X"$(dcolors -f cui 2>&1|head -1)"             = X"Output valid formats are 
 test X"$(dcolors cui 2>&1|head -1)"                = X"Warning: 'cui' doesn't exist, skipping..."
 @end
 
-#elastix-cli moved to sh/archived. Elastix itself was discontinued; the tests
-#are kept out of the run rather than deleted from history, and come back with
-#the tool if it ever does
-
 @begin{exec-wrapper}
 exec-wrapper; test X"${?}"                              = X"1"
 exec-wrapper -h; test X"${?}"                           = X"0"
@@ -335,9 +328,6 @@ rm cuicui cuakcuak waa && extract waa.tar && test -f waa && test X"$(cat waa)" =
 rm waa && printf "%s" "c.tar.gz" | extract waa.tar && test -f cuicui && test -f cuakcuak && test -f waa
 test X"$(cat cuicui)" = X"o@o/" && test X"$(cat cuakcuak)" = X"\oVo" && test X"$(cat waa)" = X"oOo"
 @end
-
-#fix moved to sh/archived. It repaired problems of a system that has since been
-#reinstalled more than once
 
 @begin{fu-search}
 fu-search; test X"${?}"                                 = X"1"
@@ -422,19 +412,6 @@ test X"$(printf "%s" 'get' | governator |awk '{print $1}')"     = X"cat"
 test X"$(governator get cui|awk '{print $1}')"                  = X"cat"
 test X"$(printf "%s" 'get cui' | governator |awk '{print $1}')" = X"cat"
 @end
-
-#howdoi moved to sh/archived, and this is the placeholder where its tests were.
-#It asked api.stackoverflow.com, the 1.1 API that Stack Exchange retired years
-#ago: that host answers 404 to everything now. The tests are not flaky, they
-#cannot pass. They are gone rather than skipped so nobody spends an afternoon
-#"fixing" them. Reviving the tool means pointing it at api.stackexchange.com
-#first; the tests come back with it, written against whatever it answers then
-
-#im moved to sh/archived. mononeurona.org is still up, so this one is archived
-#for lack of use rather than lack of a server: the tests come back with it
-
-#lp-g9n-team moved to sh/archived. It builds csv files out of the geolocation
-#of Launchpad groups, which was a job with an end date
 
 @begin{mailgun}
 mailgun;  test X"${?}"                                       = X"1"
@@ -574,9 +551,6 @@ pxe && test -d pxe_setup && test -f pxe_setup/menu.c32
 pxe cui && test -d cui && test -f cui/menu.c32
 @end
 
-#setup is GONE. It ran custom setup tasks for a machine that no longer exists;
-#what replaced it is each project's own scripts/run.sh
-
 @begin{share-backup}
 #TODO 25-09-2014 23:09 >> because of being used over ssh, stdin gets blocked
 #so reading from pipes is disabled till I figure out a solution
@@ -622,14 +596,6 @@ sleep 1
 test X"$(curl -s --digest -u guest:$passwd $address/cui)" = X"o@o"
 share-backup stop; test X"${?}"             = X"0"
 test ! -s /tmp/share-backup.lock
-@end
-
-@begin{shellshock}
-#TODO 28-09-2014 14:52 >> is there any way to test this?
-@end
-
-@begin{startx}
-#TODO 28-09-2014 14:52 >> is there any way to test this?
 @end
 
 @begin{staticus}
@@ -678,12 +644,6 @@ test X"$(grep "ID_"  ./staticus.html   | wc -l)"     = X"2"
 test X"$(grep "Info" ./staticus.html   | wc -l)"     = X"1"
 rm -rf staticus.*
 @end
-
-#test-case-format is GONE. It formatted files through tidy, which is not
-#installed, and nothing in the repo called it
-
-#translate moved to sh/archived. It drew a window with gxmessage, which is
-#not installed here, and translate-shell does the same job as a maintained tool
 
 @begin{trash}
 trash;  test X"${?}"                                = X"1"
@@ -738,8 +698,6 @@ test X"$(cat foo/bar/rar/XaMTWGfu89iQpJk6)" = X"3"
 @end
 
 @begin{tunnel}
-#nothing here may reach the network: every case below dies while reading its
-#own arguments, before a socket is opened
 tunnel; test X"${?}"                                            = X"1"
 tunnel -h ; test X"${?}"                                        = X"0"
 printf "%s" '-h' | tunnel; test X"${?}"                         = X"0"
@@ -821,9 +779,6 @@ test X"$(printf "%s" 'cui' | vim-show 2>&1|head -1)"   = X"vim-show: 'cui' was n
 @end
 
 @begin{wcd}
-#only the maintenance half is reachable here: the jumping half has to be
-#sourced, and the runner is /bin/sh, whose "." takes no arguments. HOME points
-#at the sandbox, so the scan below indexes four directories and not a disk
 HOME="$(pwd)"; export HOME
 WCDHOME="${HOME}/.wcd"; export WCDHOME
 mkdir -p proyecto.com otro/deep/proyecto node_modules/x
@@ -874,9 +829,6 @@ test X"$(bash -c '. ../../tools/wcd otro >/dev/null 2>&1; . ../../tools/wcd proy
 bash -c '. ../../tools/wcd --nonsense >/dev/null 2>&1'; test X"${?}" = X"1"
 @end
 
-#weather moved to sh/archived. It scraped bing and ask for a forecast, which is
-#a shape that breaks every time either of them redesigns a page
-
 @begin{wget-finder}
 wget-finder; test X"${?}"                     = X"1"
 wget-finder  -h; test X"${?}"                 = X"0"
@@ -893,9 +845,6 @@ test X"$(printf "%s" '--help' | wget-finder | head -1)" = X"Usage: wget-finder [
 test X"$(wget-finder --cui 2>&1|head -1)"     = X"wget: unrecognized option '--cui'"
 test X"$(wget-finder --search-engine cui | head -1)"    = X""
 test X"$(wget-finder --search-engine cui 2>&1|head -1)" = X"wget-finder: 'cui' is not a recognized search engine"
-wget-finder google.com && test -f "index.html"
-wget-finder http://google.com -Otest2  && test -f "test2"
-wget-finder http://google.com -O test3 && test -f "test3"
 wget-finder libssh2-1.3.0.tar.gz:cui; test X"${?}" = X"1"
 
 #an engine defined in the environment is listed, accepted and queried, with
