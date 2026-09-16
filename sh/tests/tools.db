@@ -636,14 +636,17 @@ static-run -V | grep "static-run" >/dev/null
 static-run >/dev/null 2>&1; test X"${?}"           = X"1"
 static-run --nonsense x >/dev/null 2>&1; test X"${?}" = X"1"
 #everything below answers without a network. That the channel directory is a
-#variable is the whole reason this block does not depend on anybody's uptime
+#variable is the whole reason this block does not depend on anybody's uptime.
+#The fake-* files there are not channels: they stand in for aqua, pkgx and AM,
+#and are copied wherever a test needs one. They are not executable, which is
+#how the resolver tells them from a channel
 STATIC_RUN_CHANNELS="$(cd .. && pwd)/static-run.d"; export STATIC_RUN_CHANNELS
 STATIC_RUN_HOME="$(pwd)/home"; export STATIC_RUN_HOME
 #AM's catalog comes from a repository here and not from github, for every
 #command below that uses the real channels: the first time, a channel with no
 #catalog fetches it, and that must never mean a network
 amarch="$(uname -m | sed 's/^amd64$/x86_64/; s/^arm64$/aarch64/')"
-mkdir -p amrepo/programs && cp ../static-run.fake-appman amrepo/APP-MANAGER
+mkdir -p amrepo/programs && cp ../static-run.d/fake-appman amrepo/APP-MANAGER
 { printf '%s\n' 'some header line that is not a program' '◆ amtool : A tool for the tests. #itsdesktopapp' '◆ amother : Another one.'; i=0; while [ ${i} -lt 110 ]; do printf '◆ amfill%s : filler\n' "${i}"; i=$((i+1)); done; } > "amrepo/programs/${amarch}-apps"
 STATIC_RUN_AM_REPO="$(pwd)/amrepo"; export STATIC_RUN_AM_REPO
 #nothing to serve is 127 and nothing on stdout, so that a caller can tell
@@ -879,7 +882,7 @@ PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS= STATIC_RUN_HOME="${gdh}" ./srl -n gi
 #way it gets anything else. A stand-in plays aqua - it checks the asset it picks
 #against the sum it was handed and refuses a mismatch - so the whole path, the
 #hop included, runs without a network
-aqsrc="$(cd .. && pwd)/static-run.fake-aqua"; aqsum="$(sha256sum "${aqsrc}" | awk '{print $1}')"
+aqsrc="$(cd .. && pwd)/static-run.d/fake-aqua"; aqsum="$(sha256sum "${aqsrc}" | awk '{print $1}')"
 jqxbin="$(pwd)/jqx-bin"; jqxsum="$(sha256sum jqx-bin | awk '{print $1}')"; amh="$(pwd)/am"
 mkdir -p am/channels/github/cache && mkdir -p am/channels/aqua && cp -R aq/channels/aqua/index am/channels/aqua/index
 printf '{"tag_name":"v9","assets":[{"name":"aqua-linux-x86_64","size":2000,"browser_download_url":"%s","digest":"sha256:%s"}]}' "${aqsrc}" "${aqsum}" > am/channels/github/cache/aquaproj_aqua_.json
@@ -1002,7 +1005,7 @@ for p in acme.org/tool=1.10.0 acme.org/tool/lib=1.0.0 acme.org/extra=1.0.0; do d
 printf '%s\n%s\n%s\n%s\n%s' '2026.1.0' '1.9' '1.10.0-rc.1' 'latest' '1.10.0' > px/dist/acme.org/tool/${plat}/versions.txt
 printf '%s' '1.0.0' > px/dist/acme.org/tool/lib/${plat}/versions.txt
 printf '%s' '1.0.0' > px/dist/acme.org/extra/${plat}/versions.txt
-mkdir -p px/rel && cp ../static-run.fake-pkgx px/rel/pkgx && chmod 755 px/rel/pkgx && (cd px/rel && tar -czf pkgx-9.9.9+linux+x86-64.tar.gz pkgx)
+mkdir -p px/rel && cp ../static-run.d/fake-pkgx px/rel/pkgx && chmod 755 px/rel/pkgx && (cd px/rel && tar -czf pkgx-9.9.9+linux+x86-64.tar.gz pkgx)
 pxrel="$(pwd)/px/rel/pkgx-9.9.9+linux+x86-64.tar.gz"; pxrelsum="$(sha256sum px/rel/pkgx-9.9.9+linux+x86-64.tar.gz | awk '{print $1}')"
 pxh="$(pwd)/pxh"; pxdist="$(pwd)/px/dist"; pxlog="$(pwd)/pxlog"
 mkdir -p pxh/channels/github/cache
@@ -1090,7 +1093,7 @@ test X"$(grep -c 'nothing provides' pxout)" = X"0"
 #--index-update with a channel named brings that channel's catalog and tool up
 #to date and nobody else's. A newer pkgx is fetched and checked, the link moves
 #to it, the old one goes, and the launchers already written follow the link
-mkdir -p px/rel2 && { cat ../static-run.fake-pkgx; printf '%s\n' '#the next release'; } > px/rel2/pkgx && chmod 755 px/rel2/pkgx && (cd px/rel2 && tar -czf pkgx-9.9.10+linux+x86-64.tar.gz pkgx)
+mkdir -p px/rel2 && { cat ../static-run.d/fake-pkgx; printf '%s\n' '#the next release'; } > px/rel2/pkgx && chmod 755 px/rel2/pkgx && (cd px/rel2 && tar -czf pkgx-9.9.10+linux+x86-64.tar.gz pkgx)
 pxrel2="$(pwd)/px/rel2/pkgx-9.9.10+linux+x86-64.tar.gz"; pxrel2sum="$(sha256sum px/rel2/pkgx-9.9.10+linux+x86-64.tar.gz | awk '{print $1}')"
 printf '{"tag_name":"v9.9.10","assets":[{"name":"pkgx-9.9.10+linux+x86-64.tar.gz","size":2097152,"browser_download_url":"%s","digest":"sha256:%s"}]}' "${pxrel2}" "${pxrel2sum}" > pxrel2.json
 mkdir -p crel && printf '%s\n' '#!/bin/sh' 'o=""; while [ $# -gt 0 ]; do [ X"$1" = X"-o" ] && { shift; o="$1"; }; shift; done' 'cat >/dev/null' 'cp "${FAKE_RELEASE}" "$o"' 'printf 200' > crel/curl && chmod 755 crel/curl
@@ -1136,7 +1139,7 @@ STATIC_RUN_HOME="${amh}" ../../tools/static-run.d/am index >/dev/null
 test X"$(awk -F'\t' '$1 == "amtool" {print $2}' amh/channels/am/index/apps.tsv)" = X"A tool for the tests."
 test X"$(awk 'END {print NR}' amh/channels/am/index/apps.tsv)" = X"112"
 test X"$(STATIC_RUN_HOME="${amh}" ../../tools/static-run.d/am probe amtool | tr '\n' ' ')" = X"version=latest requires=am:APP-MANAGER "
-test X"$(STATIC_RUN_HOME="${amh}" ../../tools/static-run.d/am probe APP-MANAGER | tr '\n' ' ')" = X"version=9.9-1 bytes=$(wc -c < ../static-run.fake-appman | awk '{print $1}') "
+test X"$(STATIC_RUN_HOME="${amh}" ../../tools/static-run.d/am probe APP-MANAGER | tr '\n' ' ')" = X"version=9.9-1 bytes=$(wc -c < ../static-run.d/fake-appman | awk '{print $1}') "
 STATIC_RUN_HOME="${amh}" ../../tools/static-run.d/am probe nosuchapp >/dev/null 2>&1; test X"${?}" = X"1"
 PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${amh}" STATIC_RUN_LIBFUSE2=no FAKE_AM_LOG="${amlog}" static-run --yes amtool > amout 2> amerr
 test X"$(cat amout)" = X"amtool ran"
@@ -1167,7 +1170,7 @@ test ! -e amh/channels/am/share/applications/amtool-AM.desktop
 test ! -e amh/channels/am/run/amtool
 test -x amh/channels/am/bin/amother
 #a newer AM takes the old one's place, and the modules the old one kept go
-sed 's/^AMVERSION="9.9-1"/AMVERSION="9.9-2"/' ../static-run.fake-appman > amrepo/APP-MANAGER
+sed 's/^AMVERSION="9.9-1"/AMVERSION="9.9-2"/' ../static-run.d/fake-appman > amrepo/APP-MANAGER
 STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${amh}" static-run --index-update am 2>&1 | grep 'am: APP-MANAGER 9.9-1 -> 9.9-2' >/dev/null
 test X"$(readlink amh/channels/am/tool/current)" = X"${amh}/channels/am/tool/9.9-2/appman"
 test ! -e amh/channels/am/tool/9.9-1
@@ -1176,7 +1179,7 @@ test X"$(cat amh/channels/am/apps/appman/modules/.static-run-version)" = X"9.9-1
 PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${amh}" STATIC_RUN_LIBFUSE2=yes static-run --yes amtool >/dev/null 2>&1
 test X"$(cat amh/channels/am/apps/appman/modules/.static-run-version)" = X"9.9-2"
 test ! -e amh/channels/am/apps/appman/modules/left-by-the-old-am
-cp ../static-run.fake-appman amrepo/APP-MANAGER
+cp ../static-run.d/fake-appman amrepo/APP-MANAGER
 @end
 
 @begin{staticus}
