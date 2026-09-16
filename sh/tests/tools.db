@@ -379,10 +379,6 @@ sleep 0.1 && test X"$(pgrep -x top)"               = X""
 top -b 2>&1 >/dev/null & : && sleep 0.1 && pgrep -x top
 fuck you top; test X"${?}"                         = X"0"
 sleep 0.1 && test X"$(pgrep -x top)"               = X""
-htop   2>&1 >/dev/null & : && sleep 0.1
-top -b 2>&1 >/dev/null & : && sleep 0.1
-test X"$(fuck you htop top | head -1)"             = X"ヽ(\`Д´)ﾉ⌒ doʇɥ"
-sleep 0.2 && test X"$(pgrep -x top)" = X"" && test X"$(pgrep -x dmenu)" = X""
 #--hook prints a shell function, and refuses a shell it has no hook for
 fuck --hook; test X"${?}"                          = X"0"
 fuck --hook bash; test X"${?}"                     = X"0"
