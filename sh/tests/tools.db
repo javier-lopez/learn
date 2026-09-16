@@ -981,9 +981,9 @@ mkdir -p px/rel && cp ../static-run.fake-pkgx px/rel/pkgx && chmod 755 px/rel/pk
 pxrel="$(pwd)/px/rel/pkgx-9.9.9+linux+x86-64.tar.gz"; pxrelsum="$(sha256sum px/rel/pkgx-9.9.9+linux+x86-64.tar.gz | awk '{print $1}')"
 pxh="$(pwd)/pxh"; pxdist="$(pwd)/px/dist"; pxlog="$(pwd)/pxlog"
 mkdir -p pxh/tmp
-printf '{"tag_name":"v9.9.9","assets":[{"name":"pkgx-9.9.9+linux+x86-64.tar.gz","size":999,"browser_download_url":"%s","digest":"sha256:%s"}]}' "${pxrel}" "${pxrelsum}" > pxh/tmp/github.pkgxdev_pkgx_.json
+printf '{"tag_name":"v9.9.9","assets":[{"name":"pkgx-9.9.9+linux+x86-64.tar.gz","size":2097152,"browser_download_url":"%s","digest":"sha256:%s"}]}' "${pxrel}" "${pxrelsum}" > pxh/tmp/github.pkgxdev_pkgx_.json
 #pkgx names its release x86-64, a spelling github's channel did not know
-test X"$(PATH="${c404}:${PATH}" STATIC_RUN_HOME="${pxh}" ../../tools/static-run.d/github probe pkgxdev/pkgx | awk -F= '$1=="bytes"{print $2}')" = X"999"
+test X"$(PATH="${c404}:${PATH}" STATIC_RUN_HOME="${pxh}" ../../tools/static-run.d/github probe pkgxdev/pkgx | awk -F= '$1=="bytes"{print $2}')" = X"2097152"
 STATIC_RUN_HOME="${pxh}" STATIC_RUN_PKGX_DIST="${pxdist}" ../../tools/static-run.d/pkgx index >/dev/null
 test X"$(awk -F'\t' '$1=="cmd" && $2=="tool" {print $3}' pxh/index/pkgx.tsv)" = X"acme.org/tool"
 test X"$(awk -F'\t' '$1=="cmd" && $3=="acme.org/tool"' pxh/index/pkgx.tsv | awk 'END {print NR}')" = X"2"
@@ -1010,7 +1010,10 @@ pxgraph="acme.org/tool=1.10.0 acme.org/tool/lib=1.0.0 acme.org/extra=1.0.0"; pxr
 PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${pxh}" STATIC_RUN_PKGX_DIST="${pxdist}" FAKE_PKGX_GRAPH="${pxgraph}" FAKE_PKGX_EXTRA="${pxrt}" FAKE_PKGX_LOG="${pxlog}" static-run --yes tool > pxout 2> pxerr
 test X"$(cat pxout)" = X"tool ran, lib found, runtime set"
 grep 'tool 1.10.0 -> pkgx:acme.org/tool  about ' pxerr >/dev/null
-grep 'first github:pkgxdev/pkgx v9.9.9' pxerr >/dev/null
+grep 'first github:pkgxdev/pkgx v9.9.9, 2.0 MB' pxerr >/dev/null
+#and the sum of the two, since that is what is being agreed to. pkgx is said to
+#weigh 2 MB and the bottles a few hundred bytes, still an estimate
+grep 'total about 2.0 MB' pxerr >/dev/null
 test -L pxh/by/pkgx/acme.org/tool/1.10.0
 test X"$(awk 'END {print NR}' pxh/plans/pkgx/acme.org/tool/1.10.0)" = X"3"
 test X"$(awk -F'\t' '$2 ~ /^pkgx:pkgx\// && $4 == "verified"' pxh/inventory | awk 'END {print NR}')" = X"3"

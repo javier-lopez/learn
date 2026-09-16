@@ -1133,6 +1133,19 @@ _say "${PROGNAME}: ${w_bin} ${w_version} -> ${w_channel}:${w_package}  ${w_size}
 done
 if [ -n "${w_requires}" ] && [ -z "${req_program}" ]; then
     _say "            first ${w_requires} ${req_version}, $(_human "${req_bytes}"), fetched once and kept"
+    #what is being agreed to is the sum of the two, so the sum is written out
+    #rather than left for the reader to add up. Unknown plus anything is
+    #unknown, and an estimate plus anything is still an estimate
+    w_total="unknown"
+    case "${w_bytes}" in
+        ''|*[!0-9]*) ;;
+        *) case "${req_bytes}" in
+               ''|*[!0-9]*) ;;
+               *) w_total="$(_human "$((${w_bytes} + ${req_bytes}))")"
+                  [ -n "${w_estimate}" ] && w_total="about ${w_total}" ;;
+           esac ;;
+    esac
+    _say "            total ${w_total}"
 fi
 
 if [ -z "$(_cache_get "${spec}")" ]; then
