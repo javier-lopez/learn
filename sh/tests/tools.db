@@ -923,6 +923,12 @@ hop1h="$(pwd)/hop1"; hop2h="$(pwd)/hop2"
 test X"$(STATIC_RUN_HOME="${hop1h}" static-run -n hopname | tail -1 | awk '{print $2}')" = X"direct:hopname@1.0"
 STATIC_RUN_HOME="${hop2h}" static-run --yes alpha:tiny >/dev/null 2>&1
 test X"$(STATIC_RUN_HOME="${hop2h}" static-run -n hopname | tail -1 | awk '{print $2}')" = X"hopper:hopname@1.0"
+#a plan is the channel's word, so a place it names outside the home is refused
+#before anything is fetched for it
+esch="$(pwd)/esc/home"
+STATIC_RUN_HOME="${esch}" static-run --yes escaper > escout 2>&1; test X"${?}" = X"127"
+grep 'outside its home' escout >/dev/null
+test ! -e esc/escape
 #with no terminal to ask on it declines and says why. /dev/tty is there and
 #writable without a controlling terminal, and only opening it tells; and a
 #failed open of it must not end the shell, which posix does for a special builtin
@@ -939,6 +945,120 @@ printf '{"tag_name":"1.0","assets":[{"name":"multi-linux-x86_64.tar.gz","size":3
 aqmh="$(pwd)/aqm"
 test X"$(PATH="${c404}:${PATH}" STATIC_RUN_HOME="${aqmh}" ../../tools/static-run.d/aqua locate acme/multi 1.0 two | awk -F= '$1=="bin"{print $2}')" = X"two"
 test X"$(PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${aqmh}" static-run --yes two 2>/dev/null)" = X"two ran"
+#pkgx: a pantry, a dist and a pkgx, all stand-ins built here. pkgx resolves and
+#static-run fetches and checks, so the stand-in pkgx refuses to run at all
+#without PKGX_NO_INSTALL, which is what keeps the real one from downloading
+plat="linux/$(uname -m | sed 's/^x86_64$/x86-64/; s/^amd64$/x86-64/; s/^arm64$/aarch64/')"
+mkdir -p px/pantry/projects/acme.org/tool/lib px/pantry/projects/acme.org/extra px/pantry/projects/acme.org/py px/pantry/projects/other.org/twin px/dist
+#the shapes the pantry really has, each of which a reader once got wrong: a list
+#at the column of its key, a comment after a platform key, a value on the line
+#below its key, a display name there too, a linux block, and a program name
+#with a template in it that nobody can type
+printf '%s\n' 'display-name:' '  Acme Tool' 'provides:' '- bin/tool' '- bin/tool2' 'dependencies:' '  acme.org/tool/lib: ^1' '  darwin: # only there' '    acme.org/maconly: "*"' 'companions:' '  acme.org/extra:' '    1 # on a line of its own' > px/pantry/projects/acme.org/tool/package.yml
+printf '%s\n' 'versions:' '  github: acme/lib' > px/pantry/projects/acme.org/tool/lib/package.yml
+printf '%s\n' 'provides:' '  linux:' '    - bin/extra' '  darwin:' '    - bin/macextra' > px/pantry/projects/acme.org/extra/package.yml
+printf '%s\n' 'provides:' '  - bin/py{{ version.major }}' '  - bin/twin' > px/pantry/projects/acme.org/py/package.yml
+printf '%s\n' 'provides:' '  - bin/twin' > px/pantry/projects/other.org/twin/package.yml
+i=0; while [ ${i} -lt 110 ]; do mkdir -p px/pantry/projects/filler.org/p${i} && printf 'provides:\n  - bin/filler%s\n' "${i}" > px/pantry/projects/filler.org/p${i}/package.yml; i=$((i+1)); done
+(cd px/pantry && tar -cJf ../dist/pantry.tar.xz projects)
+#bottles. The program reports whether its library directory is on the path and
+#whether the pantry's runtime environment reached it, which is what the launcher
+#is for; tool/lib nests inside tool, the way curl.se/ca-certs nests in curl.se
+mkdir -p px/b/acme.org/tool/v1.10.0/bin px/b/acme.org/tool/lib/v1.0.0/lib px/b/acme.org/extra/v1.0.0/bin
+printf '%s\n' '#!/bin/sh' 'lib=missing; IFS=:; for d in ${LD_LIBRARY_PATH}; do [ -f "${d}/marker" ] && lib=found; done' 'printf "%s\n" "tool ran, lib ${lib}, ${FIXTURE_RUNTIME:-no runtime}"' > px/b/acme.org/tool/v1.10.0/bin/tool
+printf '%s\n' '#!/bin/sh' 'printf "%s\n" "tool2 ran"' > px/b/acme.org/tool/v1.10.0/bin/tool2
+printf '%s\n' '#!/bin/sh' 'printf "%s\n" "extra ran"' > px/b/acme.org/extra/v1.0.0/bin/extra
+: > px/b/acme.org/tool/lib/v1.0.0/lib/marker
+chmod 755 px/b/acme.org/tool/v1.10.0/bin/tool px/b/acme.org/tool/v1.10.0/bin/tool2 px/b/acme.org/extra/v1.0.0/bin/extra
+for p in acme.org/tool=1.10.0 acme.org/tool/lib=1.0.0 acme.org/extra=1.0.0; do d="px/dist/${p%=*}/${plat}"; mkdir -p "${d}" && (cd px/b && tar -cJf "../../${d}/v${p##*=}.tar.xz" "${p%=*}/v${p##*=}") && sha256sum "${d}/v${p##*=}.tar.xz" | awk '{print $1 "  /tmp/x.tar.xz"}' > "${d}/v${p##*=}.tar.xz.sha256sum"; done
+#pkgx orders versions its own way: a date sorts below 0.0.0, 1.10 is above 1.9,
+#a prerelease is below its release, a line that is not a version is skipped, and
+#the newest one is the last line, which ends without a newline
+printf '%s\n%s\n%s\n%s\n%s' '2026.1.0' '1.9' '1.10.0-rc.1' 'latest' '1.10.0' > px/dist/acme.org/tool/${plat}/versions.txt
+printf '%s' '1.0.0' > px/dist/acme.org/tool/lib/${plat}/versions.txt
+printf '%s' '1.0.0' > px/dist/acme.org/extra/${plat}/versions.txt
+mkdir -p px/rel && cp ../static-run.fake-pkgx px/rel/pkgx && chmod 755 px/rel/pkgx && (cd px/rel && tar -czf pkgx-9.9.9+linux+x86-64.tar.gz pkgx)
+pxrel="$(pwd)/px/rel/pkgx-9.9.9+linux+x86-64.tar.gz"; pxrelsum="$(sha256sum px/rel/pkgx-9.9.9+linux+x86-64.tar.gz | awk '{print $1}')"
+pxh="$(pwd)/pxh"; pxdist="$(pwd)/px/dist"; pxlog="$(pwd)/pxlog"
+mkdir -p pxh/tmp
+printf '{"tag_name":"v9.9.9","assets":[{"name":"pkgx-9.9.9+linux+x86-64.tar.gz","size":999,"browser_download_url":"%s","digest":"sha256:%s"}]}' "${pxrel}" "${pxrelsum}" > pxh/tmp/github.pkgxdev_pkgx_.json
+#pkgx names its release x86-64, a spelling github's channel did not know
+test X"$(PATH="${c404}:${PATH}" STATIC_RUN_HOME="${pxh}" ../../tools/static-run.d/github probe pkgxdev/pkgx | awk -F= '$1=="bytes"{print $2}')" = X"999"
+STATIC_RUN_HOME="${pxh}" STATIC_RUN_PKGX_DIST="${pxdist}" ../../tools/static-run.d/pkgx index >/dev/null
+test X"$(awk -F'\t' '$1=="cmd" && $2=="tool" {print $3}' pxh/index/pkgx.tsv)" = X"acme.org/tool"
+test X"$(awk -F'\t' '$1=="cmd" && $3=="acme.org/tool"' pxh/index/pkgx.tsv | awk 'END {print NR}')" = X"2"
+test X"$(awk -F'\t' '$1=="name" && $2=="acme.org/tool" {print $3}' pxh/index/pkgx.tsv)" = X"Acme Tool"
+test X"$(awk -F'\t' '$1=="dep" && $2=="acme.org/tool" {printf("%s ", $3)}' pxh/index/pkgx.tsv)" = X"acme.org/extra acme.org/tool/lib "
+test X"$(awk -F'\t' '$1=="cmd" && $3=="acme.org/extra" {print $2}' pxh/index/pkgx.tsv)" = X"extra"
+test X"$(grep -c '{' pxh/index/pkgx.tsv)" = X"0"
+#probe: pkgx's newest version, and the size of every bottle still missing, the
+#dependencies included, as an estimate until pkgx itself is here to say
+pxprobe="$(STATIC_RUN_HOME="${pxh}" STATIC_RUN_PKGX_DIST="${pxdist}" ../../tools/static-run.d/pkgx probe tool)"
+pxbytes="$(cat px/dist/acme.org/tool/${plat}/v1.10.0.tar.xz px/dist/acme.org/tool/lib/${plat}/v1.0.0.tar.xz px/dist/acme.org/extra/${plat}/v1.0.0.tar.xz | wc -c | awk '{print $1}')"
+test X"$(printf "%s\n" "${pxprobe}" | awk -F= '$1=="version"{print $2}')" = X"1.10.0"
+test X"$(printf "%s\n" "${pxprobe}" | awk -F= '$1=="bytes"{print $2}')" = X"${pxbytes}"
+test X"$(printf "%s\n" "${pxprobe}" | awk -F= '$1=="estimate" || $1=="requires" || $1=="package" {printf("%s ", $2)}')" = X"yes acme.org/tool github:pkgxdev/pkgx "
+test -f pxh/tmp/pkgx/versions/acme.org/tool/lib/versions.txt
+test X"$(STATIC_RUN_HOME="${pxh}" STATIC_RUN_PKGX_DIST="${pxdist}" ../../tools/static-run.d/pkgx probe tool 1.9.0 | awk -F= '$1=="version"{print $2}')" = X"1.9.0"
+STATIC_RUN_HOME="${pxh}" STATIC_RUN_PKGX_DIST="${pxdist}" ../../tools/static-run.d/pkgx probe twin >/dev/null 2>&1; test X"${?}" = X"3"
+STATIC_RUN_HOME="${pxh}" STATIC_RUN_PKGX_DIST="${pxdist}" STATIC_RUN_NO_MANAGER=1 ../../tools/static-run.d/pkgx probe tool >/dev/null 2>&1; test X"${?}" = X"1"
+STATIC_RUN_HOME="$(pwd)/pxnone" STATIC_RUN_PKGX_DIST="${pxdist}" ../../tools/static-run.d/pkgx probe tool | grep -- '--index-update' >/dev/null
+#the whole chain: pkgx is fetched from its release, pkgx plans against a cellar
+#of empty directories, static-run fetches and checks every bottle, and pkgx sets
+#up the environment of what was placed, in the real cellar
+pxgraph="acme.org/tool=1.10.0 acme.org/tool/lib=1.0.0 acme.org/extra=1.0.0"; pxrt='FIXTURE_RUNTIME="${FIXTURE_RUNTIME:-runtime set}"'
+PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${pxh}" STATIC_RUN_PKGX_DIST="${pxdist}" FAKE_PKGX_GRAPH="${pxgraph}" FAKE_PKGX_EXTRA="${pxrt}" FAKE_PKGX_LOG="${pxlog}" static-run --yes tool > pxout 2> pxerr
+test X"$(cat pxout)" = X"tool ran, lib found, runtime set"
+grep 'tool 1.10.0 -> pkgx:acme.org/tool  about ' pxerr >/dev/null
+grep 'first github:pkgxdev/pkgx v9.9.9' pxerr >/dev/null
+test -L pxh/by/pkgx/acme.org/tool/1.10.0
+test X"$(awk 'END {print NR}' pxh/plans/pkgx/acme.org/tool/1.10.0)" = X"3"
+test X"$(awk -F'\t' '$2 ~ /^pkgx:pkgx\// && $4 == "verified"' pxh/inventory | awk 'END {print NR}')" = X"3"
+test X"$(awk -F'\t' '$2 == "pkgx:acme.org/tool@1.10.0" {print $4}' pxh/inventory)" = X"verified"
+test X"$(grep -c "^PKGX_DIR=${pxh}/tmp/pkgx/plan\.[0-9]*$" pxlog)" = X"1"
+test X"$(grep -c "^PKGX_DIR=${pxh}/pkgx$" pxlog)" = X"1"
+test X"$(ls -d pxh/tmp/pkgx/plan.* 2>/dev/null)" = X""
+#the second run is the launcher, with nothing asked of anybody
+test X"$(STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${pxh}" static-run tool 2>&1)" = X"tool ran, lib found, runtime set"
+#another program of the same package is the one that runs, and with pkgx here the
+#size asked about is exact: nothing is missing
+PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${pxh}" STATIC_RUN_PKGX_DIST="${pxdist}" FAKE_PKGX_GRAPH="${pxgraph}" static-run --yes tool2 > pxout 2> pxerr
+test X"$(cat pxout)" = X"tool2 ran"
+grep 'tool2 1.10.0 -> pkgx:acme.org/tool  0 B  \[verified\]' pxerr >/dev/null
+PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${pxh}" STATIC_RUN_PKGX_DIST="${pxdist}" FAKE_PKGX_GRAPH="acme.org/extra=1.0.0" static-run --yes extra > pxout 2>/dev/null
+test X"$(cat pxout)" = X"extra ran"
+#purging a package takes its bottles, except the ones another package still uses
+STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${pxh}" static-run --purge tool >/dev/null 2>&1
+test ! -e pxh/by/pkgx/acme.org/tool/1.10.0
+test ! -d pxh/pkgx/acme.org/tool/v1.10.0
+test ! -d pxh/pkgx/acme.org/tool/lib/v1.0.0
+test ! -d pxh/run/pkgx/acme.org/tool/1.10.0
+test -d pxh/pkgx/acme.org/extra/v1.0.0
+STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${pxh}" static-run --purge extra >/dev/null 2>&1
+test ! -d pxh/pkgx/acme.org/extra/v1.0.0
+#a bottle that does not match the sum pkgx published is refused, and the package
+#it belongs to is not placed
+cp -R px/dist px/dist2 && printf '%s\n' '0000000000000000000000000000000000000000000000000000000000000000  x' > px/dist2/acme.org/extra/${plat}/v1.0.0.tar.xz.sha256sum
+mkdir -p pxh2/tmp && cp pxh/tmp/github.pkgxdev_pkgx_.json pxh2/tmp/ && cp -R pxh/index pxh2/index
+pxh2="$(pwd)/pxh2"; pxdist2="$(pwd)/px/dist2"
+PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${pxh2}" STATIC_RUN_PKGX_DIST="${pxdist2}" FAKE_PKGX_GRAPH="${pxgraph}" static-run --yes tool > pxout 2>&1; test X"${?}" = X"127"
+grep 'published checksum does not match' pxout >/dev/null
+test ! -d pxh2/pkgx/acme.org/extra/v1.0.0
+test ! -e pxh2/by/pkgx/acme.org/tool/1.10.0
+#a bottle with no published sum has nothing to check it against, and the package
+#says none rather than borrow a verified that one of its bottles did not earn
+cp -R px/dist px/dist3 && rm -f px/dist3/acme.org/extra/${plat}/v1.0.0.tar.xz.sha256sum
+mkdir -p pxh4/tmp && cp pxh/tmp/github.pkgxdev_pkgx_.json pxh4/tmp/ && cp -R pxh/index pxh4/index
+pxh4="$(pwd)/pxh4"; pxdist3="$(pwd)/px/dist3"
+test X"$(PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${pxh4}" STATIC_RUN_PKGX_DIST="${pxdist3}" FAKE_PKGX_GRAPH="${pxgraph}" static-run --yes tool 2>/dev/null)" = X"tool ran, lib found, no runtime"
+test X"$(awk -F'\t' '$2 == "pkgx:acme.org/tool@1.10.0" {print $4}' pxh4/inventory)" = X"none"
+test X"$(awk -F'\t' '$2 == "pkgx:pkgx/acme.org/extra/v1.0.0" {print $4}' pxh4/inventory)" = X"none"
+#an environment that would run something in the launcher is not written into one
+mkdir -p pxh3/tmp && cp pxh/tmp/github.pkgxdev_pkgx_.json pxh3/tmp/ && cp -R pxh/index pxh3/index
+pxh3="$(pwd)/pxh3"; pxbad='X="$(touch pwned)"'
+PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${pxh3}" STATIC_RUN_PKGX_DIST="${pxdist}" FAKE_PKGX_GRAPH="${pxgraph}" FAKE_PKGX_EXTRA="${pxbad}" static-run --yes tool >/dev/null 2>&1; test X"${?}" = X"127"
+test ! -e pwned
+test X"$(ls pxh3/run/pkgx/acme.org/tool/1.10.0 2>/dev/null)" = X""
 @end
 
 @begin{staticus}

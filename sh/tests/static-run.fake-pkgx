@@ -1,0 +1,64 @@
+#!/bin/sh
+#a stand-in for pkgx, for the static-run tests. It behaves like pkgx where
+#static-run depends on it and nowhere else. Given +project=version it resolves
+#to the graph in FAKE_PKGX_GRAPH, "project=version" words with the one asked
+#for first, and like pkgx with PKGX_NO_INSTALL it refuses when a member is not
+#a directory in PKGX_DIR. Without PKGX_NO_INSTALL real pkgx would download, so
+#this one fails loudly instead. --json=v2 prints the resolution; without it the
+#environment is printed the way pkgx prints it, plus FAKE_PKGX_EXTRA verbatim.
+#FAKE_PKGX_LOG, when set, records every PKGX_DIR it was pointed at
+
+[ -n "${FAKE_PKGX_LOG}" ] && printf "PKGX_DIR=%s\n" "${PKGX_DIR}" >> "${FAKE_PKGX_LOG}"
+
+if [ -z "${PKGX_NO_INSTALL}" ]; then
+    printf "%s\n" "fake pkgx: PKGX_NO_INSTALL is not set, the real one would download" >&2
+    exit 99
+fi
+
+json=""; top=""
+for arg in "${@}"; do
+    case "${arg}" in
+        --json=v2) json="1" ;;
+        +*) top="${arg#+}" ;;
+    esac
+done
+[ -z "${top}" ] && exit 2
+
+graph=""
+for member in ${FAKE_PKGX_GRAPH}; do
+    project="${member%=*}"; version="${member##*=}"
+    [ X"${project}=${version}" = X"${top}" ] || [ -n "${graph}" ] || continue
+    graph="${graph} ${member}"
+done
+[ -z "${graph}" ] && { printf "%s\n" "Error: not-found: pkg: ${top}" >&2; exit 1; }
+
+for member in ${graph}; do
+    if [ ! -d "${PKGX_DIR}/${member%=*}/v${member##*=}" ]; then
+        printf "%s\n" 'Error: "PKGX_NO_INSTALL is set, refusing to install pending packages"' >&2
+        exit 1
+    fi
+done
+
+if [ -n "${json}" ]; then
+    printf '{"pkgs":{'
+    sep=""
+    for member in ${graph}; do
+        printf '%s"%s":{"project":"%s","version":"%s","env":{"PATH":["%s/%s/v%s/bin"]},"path":"%s/%s/v%s"}' \
+            "${sep}" "${member%=*}" "${member%=*}" "${member##*=}" \
+            "${PKGX_DIR}" "${member%=*}" "${member##*=}" "${PKGX_DIR}" "${member%=*}" "${member##*=}"
+        sep=","
+    done
+    printf '},"env":{}}\n'
+    exit 0
+fi
+
+path=""; lib=""
+for member in ${graph}; do
+    d="${PKGX_DIR}/${member%=*}/v${member##*=}"
+    [ -d "${d}/bin" ] && path="${path:+${path}:}${d}/bin"
+    [ -d "${d}/lib" ] && lib="${lib:+${lib}:}${d}/lib"
+done
+[ -n "${lib}" ]  && printf '%s="%s${%s:+:$%s}"\n' LD_LIBRARY_PATH "${lib}" LD_LIBRARY_PATH LD_LIBRARY_PATH
+[ -n "${path}" ] && printf '%s="%s${%s:+:$%s}"\n' PATH "${path}" PATH PATH
+[ -n "${FAKE_PKGX_EXTRA}" ] && printf "%s\n" "${FAKE_PKGX_EXTRA}"
+exit 0

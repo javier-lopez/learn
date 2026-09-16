@@ -160,8 +160,11 @@ _fetch_release() {
 }
 
 _platform() {
+    #every spelling a release is seen to use. x86-64 is pkgx's, and without it
+    #the tool the pkgx channel installs through was not a release this machine
+    #could run
     case "$(uname -m 2>/dev/null)" in
-        x86_64|amd64) printf "%s\\n" "x86_64|amd64|x64" ;;
+        x86_64|amd64) printf "%s\\n" "x86_64|x86-64|amd64|x64" ;;
         aarch64|arm64) printf "%s\\n" "aarch64|arm64" ;;
         *) printf "%s\\n" "$(uname -m 2>/dev/null)" ;;
     esac

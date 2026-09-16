@@ -312,6 +312,10 @@ _probe_all() {
         #spec, and the resolver gets it the way it gets anything else
         _probe_all__r="$(printf "%s\\n" "${_probe_all__out}" | awk -F= '$1=="requires"{print $2; exit}')"
         [ -z "${_probe_all__r}" ] && _probe_all__r="-"
+        #a size the channel could only estimate is said to be one wherever it
+        #is shown, and still sorts by what was estimated
+        _probe_all__e="$(printf "%s\\n" "${_probe_all__out}" | awk -F= '$1=="estimate"{print $2; exit}')"
+        [ X"${_probe_all__e}" = X"yes" ] || _probe_all__e="-"
 
         _probe_all__conf="$(_channel_meta "${_probe_all__c}" confines)"
         _probe_all__class="0"
@@ -352,11 +356,11 @@ _probe_all() {
                              'BEGIN {printf("%014d", b)}')" ;;
         esac
 
-        printf "%s %s %s %s %s %s %s %s %s %s\\n" \
+        printf "%s %s %s %s %s %s %s %s %s %s %s\\n" \
             "${_probe_all__class}${_probe_all__key}${_probe_all__hops}" "${_probe_all__c}" \
             "${_probe_all__v}" "${_probe_all__b}" "${_probe_all__g}" \
             "${_probe_all__conf}" "$(_channel_meta "${_probe_all__c}" describes)" \
-            "${_probe_all__p}" "${_probe_all__r}" "${_probe_all__marginal:--}"
+            "${_probe_all__p}" "${_probe_all__r}" "${_probe_all__e}" "${_probe_all__marginal:--}"
     done | LC_ALL=C sort
 }
 
@@ -457,6 +461,134 @@ _find_program() {
     return 1
 }
 
+_fetch_verified() {
+    #$1 => url, $2 => the sha256 published for it, or nothing. Leaves the file
+    #in fetched and its digest in fetched_digest. Every artifact goes through
+    #here, one alone or one of a plan's, so the badge means the same thing for
+    #all of them
+    fetched="${home}/tmp/artifact.$$"; fetched_digest=""
+    _mkdir_p "${home}/tmp" || return 1
+    rm -rf "${fetched}" "${fetched}.d"
+
+    _verbose "${PROGNAME}: fetching ${1}"
+    _retriever "${1}" "${fetched}" || {
+        rm -f "${fetched}"
+        _say "${PROGNAME}: could not fetch ${1}"
+        return 1
+    }
+
+    fetched_digest="$(_digest "${fetched}")" || {
+        rm -f "${fetched}"
+        _say "${PROGNAME}: no sha256 program here, cannot name what was downloaded"
+        return 1
+    }
+
+    #verification is a badge and not a gate, with one exception: a checksum
+    #that was published and does not match is not a missing badge, it is a
+    #different file from the one the project meant to serve
+    if [ -n "${2}" ] && [ X"${2}" != X"${fetched_digest}" ]; then
+        rm -f "${fetched}"
+        _say "${PROGNAME}: published checksum does not match what arrived"
+        _say "${PROGNAME}: wanted ${2}"
+        _say "${PROGNAME}: got    ${fetched_digest}"
+        return 1
+    fi
+}
+
+_plan_place() {
+    #$1 => channel, $2 => package, $3 => version, $4 => what plan answered.
+    #A channel that installs several artifacts names each of them before any
+    #is fetched, and they are fetched, checked and unpacked here like any
+    #other: the channel says where, the resolver does the rest. An artifact
+    #already in place is not fetched again. Leaves verified or none in
+    #plan_badge, and records the members so that purging this placement can
+    #collect what nothing else still uses
+    _pp__list="${home}/tmp/plan.$$"
+    _mkdir_p "${home}/tmp" || return 1
+    printf "%s\\n" "${4}" | awk '/^artifact=/ {sub(/^artifact=/, ""); print}' > "${_pp__list}"
+    if [ ! -s "${_pp__list}" ]; then
+        rm -f "${_pp__list}"
+        _say "${PROGNAME}: ${1} named nothing to place for '${2}'"
+        return 1
+    fi
+
+    plan_badge="verified"; _pp__members="${home}/tmp/members.$$"; : > "${_pp__members}"
+    #fields are tab separated and none is ever empty, a dash standing for
+    #nothing: a tab is whitespace to read, and two in a row would be one
+    while IFS='	' read -r _pp__url _pp__sha _pp__fmt _pp__size _pp__into _pp__creates; do
+        #a plan places under this home and nowhere else
+        case "${_pp__into}/${_pp__creates}" in
+            *..*|/*|*[!A-Za-z0-9._+/-]*|/|*//*)
+                _say "${PROGNAME}: ${1} named a place outside its home, '${_pp__into}/${_pp__creates}', and nothing was placed"
+                rm -f "${_pp__list}" "${_pp__members}"; return 1 ;;
+        esac
+        [ X"${_pp__sha}" = X"-" ] && _pp__sha=""
+        [ -z "${_pp__sha}" ] && plan_badge="none"
+        printf "%s\\n" "${_pp__into}/${_pp__creates}" >> "${_pp__members}"
+
+        _pp__target="${home}/${_pp__into}/${_pp__creates}"
+        [ -d "${_pp__target}" ] && continue
+
+        _fetch_verified "${_pp__url}" "${_pp__sha}" || { rm -f "${_pp__list}" "${_pp__members}"; return 1; }
+        if ! _unpack "${fetched}" "${_pp__fmt}" "${fetched}.d"; then
+            rm -rf "${fetched}" "${fetched}.d" "${_pp__list}" "${_pp__members}"
+            _say "${PROGNAME}: could not unpack ${_pp__url}"
+            return 1
+        fi
+        #what the plan said unpacking creates is what is moved into place,
+        #whole or not at all, so a half placed artifact never looks placed
+        if [ ! -d "${fetched}.d/${_pp__creates}" ] || \
+           ! _mkdir_p "${_pp__target%/*}" || \
+           ! mv "${fetched}.d/${_pp__creates}" "${_pp__target}" 2>/dev/null; then
+            rm -rf "${fetched}" "${fetched}.d" "${_pp__list}" "${_pp__members}"
+            _say "${PROGNAME}: ${_pp__url} did not hold ${_pp__creates}"
+            return 1
+        fi
+        _pp__badge="none"; [ -n "${_pp__sha}" ] && _pp__badge="verified"
+        printf "%s\\t%s\\t%s\\t%s\\t%s\\n" "$(date +%Y-%m-%dT%H:%M:%S)" \
+            "${1}:${_pp__into}/${_pp__creates}" "${fetched_digest}" "${_pp__badge}" \
+            "${_pp__url}" >> "${home}/inventory"
+        rm -rf "${fetched}" "${fetched}.d"
+    done < "${_pp__list}"
+    rm -f "${_pp__list}"
+
+    _pp__record="${home}/plans/${1}/${2}/${3}"
+    _mkdir_p "${_pp__record%/*}" && mv "${_pp__members}" "${_pp__record}"
+}
+
+_plan_ask() {
+    #the channel's plan for the winner, which names every artifact it needs.
+    #Leaves it in plan, and what is still missing of it in w_bytes, which is no
+    #longer an estimate, and whether every artifact has a published sum in
+    #w_badge
+    plan="$(STATIC_RUN_REQUIRED="${req_program}" "$(_channels_dir)/${w_channel}" plan \
+        "${w_package}" "${w_version}" "${want_bin}" 2>/dev/null)"
+    if [ "${?}" -ne "0" ]; then
+        _say "${PROGNAME}: ${w_channel} could not work out what '${w_package}' needs: $(printf "%s\\n" "${plan}" | \
+            awk -F= '$1=="failed" || $1=="unreachable" {sub(/^[a-z]+=/, ""); print; exit}')"
+        return 1
+    fi
+    w_bytes="0"; w_badge="verified"; w_estimate=""
+    _pa__list="$(printf "%s\\n" "${plan}" | awk '/^artifact=/ {sub(/^artifact=/, ""); print}')"
+    [ -z "${_pa__list}" ] && { _say "${PROGNAME}: ${w_channel} named nothing to place for '${w_package}'"; return 1; }
+    _pa__tab="$(printf '\t')"
+    _pa__old_ifs="${IFS}"; IFS="
+"
+    for _pa__line in ${_pa__list}; do
+        IFS="${_pa__tab}"
+        set -- ${_pa__line}
+        IFS="
+"
+        [ X"${2}" = X"-" ] && w_badge="none"
+        [ -d "${home}/${5}/${6}" ] && continue
+        case "${4}" in
+            ''|*[!0-9]*) w_bytes="-" ;;
+            *) [ X"${w_bytes}" != X"-" ] && w_bytes="$((${w_bytes} + ${4}))" ;;
+        esac
+    done
+    IFS="${_pa__old_ifs}"
+}
+
 _place() {
     #$1 => channel, $2 => package, $3 => version, $4 => what locate answered.
     #Nothing is placed under its final name until its digest is known, so an
@@ -471,35 +603,8 @@ _place() {
     [ -z "${_place__url}" ] && return 1
     [ -z "${_place__bin}" ] && _place__bin="${_place__pkg##*/}"
 
-    _mkdir_p "${home}/tmp" || return 1
-    _place__art="${home}/tmp/artifact.$$"
-    rm -rf "${_place__art}" "${_place__art}.d"
-
-    _verbose "${PROGNAME}: fetching ${_place__url}"
-    _retriever "${_place__url}" "${_place__art}" || {
-        rm -f "${_place__art}"
-        _say "${PROGNAME}: could not fetch ${_place__url}"
-        return 1
-    }
-
-    _place__digest="$(_digest "${_place__art}")" || {
-        rm -f "${_place__art}"
-        _say "${PROGNAME}: no sha256 program here, cannot name what was downloaded"
-        return 1
-    }
-
-    #verification is a badge and not a gate, with one exception: a checksum
-    #that was published and does not match is not a missing badge, it is a
-    #different file from the one the project meant to serve
-    if [ -n "${_place__sha}" ]; then
-        if [ X"${_place__sha}" != X"${_place__digest}" ]; then
-            rm -f "${_place__art}"
-            _say "${PROGNAME}: published checksum does not match what arrived"
-            _say "${PROGNAME}: wanted ${_place__sha}"
-            _say "${PROGNAME}: got    ${_place__digest}"
-            return 1
-        fi
-    fi
+    _fetch_verified "${_place__url}" "${_place__sha}" || return 1
+    _place__art="${fetched}"; _place__digest="${fetched_digest}"
 
     _place__store="${home}/store/${_place__digest}"
     if [ ! -d "${_place__store}" ]; then
@@ -568,6 +673,13 @@ _list() {
 
         _list__store="$(readlink "${_list__link}" 2>/dev/null)"
         _list__size="$(du -sk "${_list__store}" 2>/dev/null | awk '{print $1*1024; exit}')"
+        #what a plan placed is its artifacts, not the launcher the link names
+        _list__plan="${home}/plans/${_list__ch}/${_list__pkg}/${_list__ver}"
+        if [ -f "${_list__plan}" ]; then
+            _list__size="$(while read -r _list__m; do
+                    du -sk "${home}/${_list__m}" 2>/dev/null
+                done < "${_list__plan}" | awk '{t += $1} END {print t*1024}')"
+        fi
         printf "  %-34s %10s  %s\\n" "${_list__ch}:${_list__pkg}@${_list__ver}" \
             "$(_human "${_list__size}")" "$(_channel_meta "${_list__ch}" confines \
                 | awk '{print ($0=="yes") ? "confined" : "native"}')"
@@ -587,11 +699,16 @@ _purge() {
     _purge__ver="$(_spec_version "${1}")"
     _purge__gone="0"
     _purge__target="$(_cache_get "${1}" 2>/dev/null)" || _purge__target=""
+    #what the cached program was placed as: its store entry, or for a tool's
+    #install, the directory the placement links to. A name that is not the
+    #package's - rg for ripgrep, curl for curl.se - is found that way
     case "${_purge__target}" in
         "${home}/store/"*) _purge__target="${_purge__target#${home}/store/}"
                            _purge__target="${home}/store/${_purge__target%%/*}" ;;
+        "${home}/"*/*)     _purge__target="${_purge__target%/*}" ;;
         *) _purge__target="" ;;
     esac
+    _purge__members="${home}/tmp/purged.$$"; rm -f "${_purge__members}"
 
     for _purge__link in $(find "${home}/by" -type l 2>/dev/null | sort); do
         _purge__rest="${_purge__link#${home}/by/}"
@@ -620,6 +737,16 @@ _purge() {
                 rm -rf "${_purge__aq}" \
                     "${home}/aqua/conf/$(printf "%s\\n" "${_purge__lpkg}@${_purge__lver}" | tr '/@' '__')" ;;
         esac
+        #a placement made from a plan goes with its launcher and its record,
+        #and its members are collected below once nothing else names them
+        _purge__plan="${home}/plans/${_purge__lch}/${_purge__lpkg}/${_purge__lver}"
+        if [ -f "${_purge__plan}" ]; then
+            _mkdir_p "${home}/tmp" && cat "${_purge__plan}" >> "${_purge__members}"
+            rm -f "${_purge__plan}"
+            case "$(readlink "${_purge__link}" 2>/dev/null)" in
+                "${home}/run/"?*) rm -rf "$(readlink "${_purge__link}")" ;;
+            esac
+        fi
         rm -f "${_purge__link}"
         _purge__gone="$((${_purge__gone} + 1))"
     done
@@ -629,6 +756,27 @@ _purge() {
     #a store entry outlives the link that named it only until nobody else
     #points at it, which is what content addressing buys
     _purge__kept="0"; _purge__freed="${_purge__aqfreed:-0}"
+    #and an artifact a plan placed outlives its placement only until no other
+    #plan names it: curl and git share an openssl
+    if [ -f "${_purge__members}" ]; then
+        LC_ALL=C sort -u "${_purge__members}" > "${_purge__members}.u"
+        while read -r _purge__m; do
+            case "${_purge__m}" in
+                ''|*..*|/*) continue ;;
+            esac
+            if [ -d "${home}/plans" ] && \
+               find "${home}/plans" -type f -exec cat {} + 2>/dev/null | grep -Fx "${_purge__m}" >/dev/null; then
+                _purge__kept="$((${_purge__kept} + 1))"
+                continue
+            fi
+            [ -d "${home}/${_purge__m}" ] || continue
+            _purge__size="$(du -sk "${home}/${_purge__m}" 2>/dev/null | awk '{print $1*1024; exit}')"
+            _purge__freed="$((${_purge__freed} + ${_purge__size:-0}))"
+            rm -rf "${home}/${_purge__m}"
+            rmdir "${home}/${_purge__m%/*}" 2>/dev/null
+        done < "${_purge__members}.u"
+        rm -f "${_purge__members}" "${_purge__members}.u"
+    fi
     for _purge__dir in "${home}"/store/*; do
         [ -d "${_purge__dir}" ] || continue
         if find "${home}/by" -type l -lname "${_purge__dir}" 2>/dev/null | \
@@ -864,9 +1012,11 @@ _winner() {
     w_confines="$(printf "%s\\n" "${winner}" | awk '{print $6}')"
     w_package="$(printf  "%s\\n" "${winner}" | awk '{print $8}')"
     w_requires="$(printf "%s\\n" "${winner}" | awk '{print $9}')"
-    w_marginal="$(printf "%s\\n" "${winner}" | awk '{print $10}')"
+    w_estimate="$(printf "%s\\n" "${winner}" | awk '{print $10}')"
+    w_marginal="$(printf "%s\\n" "${winner}" | awk '{print $11}')"
     [ -z "${w_package}" ] && w_package="${package}"
     [ X"${w_requires}" = X"-" ] && w_requires=""
+    [ X"${w_estimate}" = X"-" ] && w_estimate=""
     w_kind="native"
     [ X"${w_confines}" = X"yes" ] && w_kind="confined"
 }
@@ -907,17 +1057,18 @@ if [ -n "${dry_run}" ]; then
     #most of what someone inspecting came to find out
     printf "%s\\n" "${package##*/}"
     #cheapest in bytes still missing, the tool to install through included
-    cheapest="$(printf "%s\\n" "${candidates}" | awk '{print $10}' | \
+    cheapest="$(printf "%s\\n" "${candidates}" | awk '{print $11}' | \
         awk 'BEGIN{m=""} /^[0-9]+$/ {if (m=="" || $1<m) m=$1} END{print m}')"
 
-    printf "%s\\n" "${candidates}" | while read -r d_key d_ch d_ver d_by d_bg d_cf d_de d_pkg d_req d_total; do
+    printf "%s\\n" "${candidates}" | while read -r d_key d_ch d_ver d_by d_bg d_cf d_de d_pkg d_req d_est d_total; do
         d_kind="native"; [ X"${d_cf}" = X"yes" ] && d_kind="confined"
         d_info="$("$(_channels_dir)/${d_ch}" locate "${d_pkg}" "${d_ver}" "${want_bin}" 2>/dev/null)"
         case "${d_info}" in *'sha256='?*) d_bg="verified" ;; esac
         d_mark=""
         [ X"${d_ch}" = X"${w_channel}" ] && [ X"${d_ver}" = X"${w_version}" ] && d_mark="  <- elegido"
+        d_size="$(_human "${d_by}")"; [ X"${d_est}" = X"yes" ] && d_size="~${d_size}"
         printf "  %-32s %10s  %-8s  [%s]%s\\n" \
-            "${d_ch}:${d_pkg}@${d_ver}" "$(_human "${d_by}")" "${d_kind}" "${d_bg}" "${d_mark}"
+            "${d_ch}:${d_pkg}@${d_ver}" "${d_size}" "${d_kind}" "${d_bg}" "${d_mark}"
     done
 
     [ -n "${unreachable}" ] && printf "%s\\n" "${unreachable}" | while read -r u_ch u_why; do
@@ -961,9 +1112,22 @@ esac
 w_bin="$(printf "%s\\n" "${info}" | awk -F= '$1=="bin"{print $2; exit}')"
 [ -z "${w_bin}" ] && w_bin="${w_package##*/}"
 
+#a channel that places several artifacts names them in a plan, and it needs
+#its tool to make one. With the tool already here the plan is made before the
+#question, so the size asked about is what is really missing and not an
+#estimate, and the badge covers every artifact and not only the first
+plan=""; w_plans=""
+if [ -n "${w_requires}" ] && [ X"$(_channel_meta "${w_channel}" plan)" = X"yes" ]; then
+    w_plans="1"
+    if [ -n "${req_program}" ]; then
+        _plan_ask || exit 127
+    fi
+fi
+
 #the line names the repository and not only the word typed: a catalog that
 #maps a name somewhere unexpected is caught here, by a person, or not at all
-_say "${PROGNAME}: ${w_bin} ${w_version} -> ${w_channel}:${w_package}  $(_human "${w_bytes}")  [${w_badge}]  ${w_kind}"
+w_size="$(_human "${w_bytes}")"; [ -n "${w_estimate}" ] && w_size="about ${w_size}"
+_say "${PROGNAME}: ${w_bin} ${w_version} -> ${w_channel}:${w_package}  ${w_size}  [${w_badge}]  ${w_kind}"
 [ -n "${unreachable}" ] && printf "%s\\n" "${unreachable}" | while read -r u_ch u_why; do
     _say "            (${u_ch} could not be asked, a cheaper path may exist: ${u_why})"
 done
@@ -981,9 +1145,24 @@ if [ -n "${w_requires}" ] && [ -z "${req_program}" ]; then
         "$(printf "%s\\n" "${req_info}" | awk -F= '$1=="bin"{print $2; exit}')")" && \
     _cache_put "${w_requires}" "${req_program}"
     if [ -z "${req_program}" ]; then
+        #a plan is made by the tool, so a channel that plans has no way
+        #around it, and what locate named alone would not start on its own
+        if [ -n "${w_plans}" ]; then
+            _say "${PROGNAME}: ${w_requires} could not be placed, and ${w_channel} cannot do without it"
+            exit 127
+        fi
         _say "${PROGNAME}: ${w_requires} could not be placed, so ${w_channel} goes without it"
         w_requires=""
     fi
+fi
+
+if [ -n "${w_plans}" ]; then
+    #every artifact the plan names is fetched and checked here, and only then
+    #does the tool set up what was placed
+    if [ -z "${plan}" ]; then
+        _plan_ask || exit 127
+    fi
+    _plan_place "${w_channel}" "${w_package}" "${w_version}" "${plan}" || exit 127
 fi
 
 if [ -n "${w_requires}" ]; then
@@ -1000,6 +1179,8 @@ if [ -n "${w_requires}" ]; then
     o_badge="$(printf "%s\\n" "${obtained}" | awk -F= '$1=="badge"{print $2; exit}')"
     o_sha="$(printf   "%s\\n" "${obtained}" | awk -F= '$1=="sha256"{print $2; exit}')"
     o_asset="$(printf "%s\\n" "${obtained}" | awk '/^asset=/ {sub(/^asset=/, ""); print; exit}')"
+    #what a plan placed was checked here, so here is where its badge comes from
+    [ -n "${w_plans}" ] && o_badge="${plan_badge}"
     [ -x "${program}" ] || { _say "${PROGNAME}: ${w_channel} reported no program for '${w_package}'"; exit 127; }
     o_link="${home}/by/${w_channel}/${w_package}/${w_version}"
     _mkdir_p "${o_link%/*}" && rm -f "${o_link}" && ln -s "${program%/*}" "${o_link}" 2>/dev/null

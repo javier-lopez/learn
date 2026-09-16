@@ -1,0 +1,14 @@
+#!/bin/sh
+#a channel whose plan names a place outside the resolver's home. The plan is
+#the channel's word and not the resolver's, so it is checked before anything is
+#fetched on its behalf
+
+case "${1}" in
+    meta)   printf "%s\n" "kind=artifact" "confines=no" "describes=self" "plan=yes" ;;
+    probe)  [ X"${2}" = X"escaper" ] || exit 1
+            printf "%s\n" "version=1.0" "bytes=10" "badge=none" "requires=alpha:tiny" ;;
+    locate) [ X"${2}" = X"escaper" ] || exit 1
+            printf "%s\n" "url=/nonexistent" "format=raw" "bin=escaper" ;;
+    plan)   printf "artifact=%s\t-\traw\t10\t..\tescape\n" "${0}" ;;
+    *) exit 1 ;;
+esac

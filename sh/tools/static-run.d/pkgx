@@ -1,0 +1,735 @@
+#!/bin/sh
+#description: static-run channel - pkgx's pantry, resolved by pkgx, verified by static-run
+#usage: pkgx meta | pkgx index | pkgx search WORDS...
+#       pkgx probe NAME|PROJECT [VER] | pkgx locate PROJECT VER [PROGRAM]
+#       pkgx plan PROJECT VER | pkgx obtain PROJECT VER [PROGRAM]
+#probe and locate exit 0 with an answer, 1 when there is none, 2 when the
+#catalog could not be asked, with the reason on an unreachable= line, and 3
+#when a name belongs to more than one project, each on a candidate= line
+
+#pkgx builds its packages relocatable and serves them from dist.pkgx.dev, a
+#bucket behind a cdn with no quota: versions.txt per project, a tar.xz per
+#version and a .sha256sum beside each one. A program in there does not start
+#on its own. Its libraries are found through LD_LIBRARY_PATH and friends,
+#which pkgx works out from the whole dependency graph, so the work splits in
+#two and each half goes where it already lives:
+#
+#  pkgx decides   which versions of which projects, and what environment they
+#                 need. That is a semver solver with 37 constraint shapes in
+#                 the pantry and special cases for openssl and icu, and it is
+#                 not written again here
+#  static-run     downloads every bottle, checks it against the sum pkgx
+#                 publishes and unpacks it. pkgx itself checks nothing: it
+#                 streams the download straight into tar
+#
+#They meet through PKGX_NO_INSTALL, which makes pkgx refuse to download
+#anything. plan asks pkgx for a resolution against a cellar of empty
+#directories, one per version the dist has, so pkgx picks exactly what it would
+#pick online and fetches none of it. obtain asks pkgx for the environment of
+#what static-run placed, again with PKGX_NO_INSTALL, so if the two ever
+#disagree about a version pkgx fails loudly instead of fetching one unchecked
+#
+#STATIC_RUN_PKGX_DIST replaces https://dist.pkgx.dev, a directory included,
+#which is how the tests serve a dist without a network
+
+DIST="${STATIC_RUN_PKGX_DIST:-https://dist.pkgx.dev}"
+home="${STATIC_RUN_HOME:-/tmp}"
+INDEX="${home}/index/pkgx.tsv"
+PANTRY="${home}/index/pkgx.pantry"
+CELLAR="${home}/pkgx"
+META="${home}/tmp/pkgx"
+
+_platform() {
+    case "$(uname -s 2>/dev/null)/$(uname -m 2>/dev/null)" in
+        Linux/x86_64|Linux/amd64)  printf "%s\\n" "linux/x86-64" ;;
+        Linux/aarch64|Linux/arm64) printf "%s\\n" "linux/aarch64" ;;
+        *) return 1 ;;
+    esac
+}
+
+_get() {
+    #$1 => url or path, $2 => destination. 0 fetched, 1 not there, 2 could not
+    #ask. A missing key in the bucket is a 404, and a 404 is an answer
+    case "${1}" in
+        file://*|/*|./*)
+            [ -f "${1#file://}" ] || return 1
+            cp "${1#file://}" "${2}" 2>/dev/null || return 2
+            return 0 ;;
+    esac
+    if command -v "curl" >/dev/null 2>&1; then
+        #the status the server sent is not the whole answer: a 200 that could
+        #not be written down is nothing fetched, and it was once read as a
+        #fetched empty list, which quietly left a project out of a plan
+        _get__code="$(curl -sSL -o "${2}" -w '%{http_code}' "${1}" 2>/dev/null)"
+        _get__rc="${?}"
+        case "${_get__code}" in
+            200) [ "${_get__rc}" -eq "0" ] && [ -f "${2}" ] && return 0
+                 rm -f "${2}"; return 2 ;;
+            403|404|410) rm -f "${2}"; return 1 ;;
+            *) rm -f "${2}"; return 2 ;;
+        esac
+    elif command -v "wget" >/dev/null 2>&1; then
+        wget -q -O "${2}" "${1}" 2>/dev/null
+        case "${?}" in
+            0) return 0 ;;
+            8) rm -f "${2}"; return 1 ;;
+            *) rm -f "${2}"; return 2 ;;
+        esac
+    fi
+    return 2
+}
+
+_head_size() {
+    #bytes a url would transfer, asked without transferring them
+    case "${1}" in
+        file://*|/*|./*) [ -f "${1#file://}" ] && wc -c < "${1#file://}" | awk '{print $1}'; return ;;
+    esac
+    if command -v "curl" >/dev/null 2>&1; then
+        curl -sSIL "${1}" 2>/dev/null
+    elif command -v "wget" >/dev/null 2>&1; then
+        wget -S --spider "${1}" 2>&1
+    fi | tr -d '\r' | awk 'tolower($1) ~ /^content-length:$/ && $2 ~ /^[0-9]+$/ {n = $2} END {if (n != "") print n}'
+}
+
+_fresh() {
+    #whether a cached answer can stand in for asking: a day old at most, and
+    #never when the user said to look again
+    [ -s "${1}" ] || return 1
+    [ -n "${STATIC_RUN_REFRESH}" ] && return 1
+    [ -n "$(find "${1}" -mmin -1440 2>/dev/null)" ]
+}
+
+_versions() {
+    #$1 => project. Every version the dist has for this machine, one per line.
+    #Leaves the reason in why when it answers 2. Kept where the dist keeps it,
+    #under the project and not as it: projects nest, curl.se/ca-certs inside
+    #curl.se, and a file called curl.se leaves no room for the other one
+    _versions__f="${META}/versions/${1}/versions.txt"
+    _fresh "${_versions__f}" && { cat "${_versions__f}"; return 0; }
+    mkdir -p "${_versions__f%/*}" 2>/dev/null
+    _get "${DIST}/${1}/$(_platform)/versions.txt" "${_versions__f}.$$"
+    case "${?}" in
+        0)  #kept one version per line with the last one ended, so nothing
+            #appended after it can fuse with the newest version
+            awk 'NF {print $1}' "${_versions__f}.$$" > "${_versions__f}.$$.n"
+            mv "${_versions__f}.$$.n" "${_versions__f}"; rm -f "${_versions__f}.$$"
+            cat "${_versions__f}"; return 0 ;;
+        1)  return 1 ;;
+        *)  #yesterday's list is still a list of versions that exist
+            [ -s "${_versions__f}" ] && { cat "${_versions__f}"; return 0; }
+            why="dist.pkgx.dev could not be asked for the versions of ${1}"
+            return 2 ;;
+    esac
+}
+
+_newest() {
+    #$1 => a version to look for, or nothing for the newest. Versions are read
+    #and ordered the way pkgx orders them, which is libsemverator's way and not
+    #the obvious one: a major of 1996 or more is a date and sorts below 0.0.0,
+    #so a project that went from 2026.8.0 to 1.22.1 is at 1.22.1; a letter is
+    #one more component, 1.1.1w being 1.1.1.23; a prerelease sorts below its
+    #release and its parts compare as text. A line pkgx cannot read is not a
+    #version. What is printed is the version as pkgx writes it: 2.5 as 2.5.0.
+    #Checked against pkgx's own choice for every project the dist serves
+    LC_ALL=C awk -v want="${1}" '
+        function parse(s, id,   core, rest, n, i, letter, raw) {
+            sub(/^v+/, "", s)
+            if (s !~ /^[0-9]+(\.[0-9]+)*[a-z]?(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$/) return 0
+            raw = s
+            match(s, /^[0-9]+(\.[0-9]+)*/); core = substr(s, 1, RLENGTH); rest = substr(s, RLENGTH + 1)
+            n = split(core, c, "."); for (i = 1; i <= n; i++) cc[id, i] = c[i] + 0
+            if (rest ~ /^[a-z]/) { cc[id, ++n] = index("abcdefghijklmnopqrstuvwxyz", substr(rest, 1, 1)); rest = substr(rest, 2) }
+            cn[id] = n; pre[id] = ""; bld[id] = ""
+            if (rest ~ /^-/) { match(rest, /^-[0-9A-Za-z.-]+/); pre[id] = substr(rest, 2, RLENGTH - 1); rest = substr(rest, RLENGTH + 1) }
+            if (rest ~ /^\+/) bld[id] = substr(rest, 2)
+            if (raw ~ /^[0-9]+(\.[0-9]+)?([-+].*)?$/) {
+                raw = cc[id, 1] "." ((n >= 2) ? cc[id, 2] : 0) "." ((n >= 3) ? cc[id, 3] : 0)
+                if (pre[id] != "") raw = raw "-" pre[id]
+                if (bld[id] != "") raw = raw "+" bld[id]
+            }
+            out[id] = raw
+            return 1
+        }
+        function list(a, b,   pa, pb, na, nb, n, i) {
+            na = (a == "") ? 0 : split(a, pa, "."); nb = (b == "") ? 0 : split(b, pb, ".")
+            n = (na > nb) ? na : nb
+            for (i = 1; i <= n; i++) {
+                if (i > na) return -1
+                if (i > nb) return 1
+                if ((pa[i] "") > (pb[i] "")) return 1
+                if ((pa[i] "") < (pb[i] "")) return -1
+            }
+            return 0
+        }
+        function cmp(a, b,   oa, ob, n, i, x, y) {
+            oa = (cc[a, 1] >= 1996) ? 3 : 0; ob = (cc[b, 1] >= 1996) ? 3 : 0
+            n = (cn[a] + oa > cn[b] + ob) ? cn[a] + oa : cn[b] + ob
+            for (i = 1; i <= n; i++) {
+                x = (i <= oa || i - oa > cn[a]) ? 0 : cc[a, i - oa]
+                y = (i <= ob || i - ob > cn[b]) ? 0 : cc[b, i - ob]
+                if (x != y) return (x < y) ? -1 : 1
+            }
+            if (pre[a] == "" && pre[b] != "") return 1
+            if (pre[a] != "" && pre[b] == "") return -1
+            i = list(pre[a], pre[b]); if (i) return i
+            return list(bld[a], bld[b])
+        }
+        BEGIN { if (want != "" && !parse(want, "want")) exit }
+        NF && parse($1, NR) {
+            if (want != "") { if (cmp(NR, "want") == 0) best = NR }
+            else if (best == "" || cmp(NR, best) >= 0) best = NR
+        }
+        END { if (best != "") print out[best] }'
+}
+
+_batch() {
+    #$1 => how many questions have gone out. They go out sixteen at a time, so
+    #a package with a hundred bottles does not open a hundred connections
+    [ $(( ${1} % 16 )) -eq 0 ] && wait
+    return 0
+}
+
+_bottle() {
+    printf "%s\\n" "${DIST}/${1}/$(_platform)/v${2}.tar.xz"
+}
+
+_size() {
+    #$1 => project, $2 => version. A bottle never changes once published, so
+    #its size is asked once
+    _size__f="${META}/sizes/${1}/v${2}"
+    [ -s "${_size__f}" ] && { cat "${_size__f}"; return 0; }
+    _size__n="$(_head_size "$(_bottle "${1}" "${2}")")"
+    [ -z "${_size__n}" ] && return 1
+    mkdir -p "${_size__f%/*}" 2>/dev/null && printf "%s\\n" "${_size__n}" > "${_size__f}"
+    printf "%s\\n" "${_size__n}"
+}
+
+_sum() {
+    #$1 => project, $2 => version. The sha256 pkgx publishes beside a bottle,
+    #or nothing: a malformed line is no sum rather than a sum nothing matches
+    _sum__f="${META}/sums/${1}/v${2}"
+    [ -s "${_sum__f}" ] && { cat "${_sum__f}"; return 0; }
+    mkdir -p "${_sum__f%/*}" 2>/dev/null
+    _get "$(_bottle "${1}" "${2}").sha256sum" "${_sum__f}.$$" || { rm -f "${_sum__f}.$$"; return 1; }
+    _sum__h="$(awk 'NR == 1 {print tolower($1)}' "${_sum__f}.$$")"
+    rm -f "${_sum__f}.$$"
+    case "${_sum__h}" in
+        *[!0-9a-f]*|'') return 1 ;;
+    esac
+    [ "${#_sum__h}" -eq "64" ] || return 1
+    printf "%s\\n" "${_sum__h}" > "${_sum__f}"
+    printf "%s\\n" "${_sum__h}"
+}
+
+_indexer() {
+    #reads the pantry's package.yml files, named on stdin, and prints three
+    #kinds of line: cmd <program> <project>, dep <project> <project>, and
+    #name <project> <display name>. It reads what pkgx reads and the way pkgx
+    #reads it on linux: a dependency is a key of dependencies or companions
+    #whose value is a scalar, or one inside a linux: block, and every other
+    #platform block is skipped; a program is an item of provides, or of its
+    #linux: block. It is checked against pkgx --query and against a yaml parser
+    #applying those rules, over the whole pantry
+    while read -r _indexer__f; do
+        _indexer__p="${_indexer__f%/package.yml}"
+        _indexer__p="${_indexer__p#*/projects/}"
+        printf "%s\\t%s\\n" "${_indexer__p}" "${_indexer__f}"
+    done | awk -F'\t' '
+        function unquote(v) {
+            if (v ~ /^"/)      { sub(/^"/, "", v); sub(/"[ \t]*(#.*)?$/, "", v) }
+            else if (v ~ /^'\''/) { sub(/^'\''/, "", v); sub(/'\''[ \t]*(#.*)?$/, "", v) }
+            else               { sub(/^#.*$/, "", v); sub(/[ \t]+#.*$/, "", v); sub(/[ \t]+$/, "", v) }
+            return v
+        }
+        {
+            project = $1; file = $2; sect = ""; sub_key = ""; sub_ind = -1; pend = ""
+            while ((getline line < file) > 0) {
+                if (line ~ /^[ \t]*#/ || line ~ /^[ \t]*$/) continue
+                if (sect == "display-name") {
+                    if (line ~ /^ /) {
+                        val = line; sub(/^ +/, "", val); val = unquote(val)
+                        if (val != "") printf("name\t%s\t%s\n", project, val)
+                    }
+                    sect = ""
+                    if (line ~ /^ /) continue
+                }
+                #yaml lets a list sit at the same column as its key, so a
+                #"- " at column 0 is still an item of provides
+                if (sect == "provides" && line ~ /^- /) line = " " line
+                if (line ~ /^[^ ]/) {
+                    sect = ""; sub_key = ""; sub_ind = -1; pend = ""
+                    if (match(line, /^[A-Za-z0-9_-]+:/)) {
+                        key = substr(line, 1, RLENGTH - 1)
+                        val = substr(line, RLENGTH + 1); sub(/^[ \t]+/, "", val)
+                        if (key == "display-name") {
+                            val = unquote(val)
+                            if (val != "") printf("name\t%s\t%s\n", project, val)
+                            else sect = key
+                        } else if (key == "provides" || key == "dependencies" || key == "companions") {
+                            sect = key
+                        }
+                    }
+                    continue
+                }
+                if (sect == "") continue
+                match(line, /^ +/); ind = RLENGTH; body = substr(line, ind + 1)
+                if (sub_ind >= 0 && ind <= sub_ind) { sub_key = ""; sub_ind = -1 }
+
+                if (sect == "provides") {
+                    if (body ~ /^[A-Za-z0-9\/_-]+:[ \t]*(#.*)?$/) {
+                        sub_key = body; sub(/:.*$/, "", sub_key); sub_ind = ind; continue
+                    }
+                    if (body !~ /^- /) continue
+                    if (sub_ind >= 0 && sub_key != "linux") continue
+                    item = body; sub(/^- +/, "", item); item = unquote(item)
+                    n = split(item, parts, "/"); prog = parts[n]
+                    #a name with a template in it is kept by pkgx as written,
+                    #braces and all, and nobody types that
+                    if (prog != "" && prog !~ /[{} ]/) printf("cmd\t%s\t%s\n", prog, project)
+                    continue
+                }
+
+                #dependencies and companions. A project whose constraint is on
+                #the lines below it is still a dependency: yaml folds them into
+                #its value, and pkgx reads "14" where the file says
+                #"gnu.org/gcc:" and then "14" on its own line
+                if (pend != "") {
+                    if (ind > pend_ind && body !~ /^[^:#]+:/) {
+                        if (pend_counts) printf("dep\t%s\t%s\n", project, pend)
+                        pend = ""; continue
+                    }
+                    pend = ""
+                }
+                if (!match(body, /^[^:#]+:/)) continue
+                k = substr(body, 1, RLENGTH - 1); v = substr(body, RLENGTH + 1)
+                sub(/^[ \t]+/, "", v); v = unquote(v)
+                sub(/^[ \t]+/, "", k); sub(/[ \t]+$/, "", k)
+                counts = (sub_ind < 0 || sub_key == "linux")
+                if (v == "") {
+                    #every project has a dot in its name and no platform key
+                    #does, so a key with nothing after it is either a project
+                    #whose value comes next, or a block. Only linux is read
+                    if (index(k, ".")) { pend = k; pend_ind = ind; pend_counts = counts }
+                    else               { sub_key = k; sub_ind = ind }
+                    continue
+                }
+                if (!counts) continue
+                if (k == "linux" || k == "darwin" || k == "windows") continue
+                printf("dep\t%s\t%s\n", project, k)
+            }
+            close(file)
+        }'
+}
+
+_resolve() {
+    #$1 => a program name or a project, $2 => the program asked for. Leaves the
+    #project in project and the program in cmd, and answers 0 for one project,
+    #1 for none, 2 for no index, and 3 when a name belongs to several, which
+    #are left in cands
+    why=""; project=""; cmd=""; cands=""
+    if [ ! -s "${INDEX}" ]; then
+        why="there is no local index yet, run: static-run --index-update"
+        return 2
+    fi
+    cands="$(awk -F'\t' -v n="${1}" '$1 == "cmd" && $2 == n {print $3}' "${INDEX}" | LC_ALL=C sort -u)"
+    case "$(printf "%s\\n" "${cands}" | awk 'NF {n++} END {print n+0}')" in
+        1) project="${cands}"; cmd="${1}"; return 0 ;;
+        0) ;;
+        *) return 3 ;;
+    esac
+
+    #a project, named as pkgx names it. The program run is the one asked for
+    #when the project has it, then the one named after the project, then the
+    #first it provides: typing wat2wasm and running some other program of the
+    #same package with the user's arguments is what this order prevents
+    cmd="$(awk -F'\t' -v p="${1}" -v want="${2}" '
+        $1 == "cmd" && $3 == p {
+            if ($2 == want) { hit = $2 }
+            n = split(p, parts, "/"); if ($2 == parts[n]) own = $2
+            if (first == "") first = $2
+        }
+        $1 == "dep" && $2 == p { known = 1 }
+        $1 == "name" && $2 == p { known = 1 }
+        END {
+            if (hit != "") print hit; else if (own != "") print own
+            else if (first != "") print first; else if (known) print "-"
+        }' "${INDEX}")"
+    [ -z "${cmd}" ] && return 1
+    project="${1}"
+    return 0
+}
+
+_answer_unresolved() {
+    case "${1}" in
+        0) return 0 ;;
+        1) exit 1 ;;
+        2) printf "unreachable=%s\\n" "${why}"; exit 2 ;;
+        3) printf "%s\\n" "${cands}" | awk 'NF {print "candidate=" $0}'; exit 3 ;;
+    esac
+}
+
+_closure() {
+    #$1 => project. The project and everything it depends on, companions
+    #included, as pkgx would hydrate it. Only names: which versions is pkgx's
+    awk -F'\t' -v root="${1}" '
+        $1 == "dep" { n = ++count[$2]; dep[$2, n] = $3 }
+        END {
+            queue[1] = root; seen[root] = 1; head = 1; tail = 1
+            while (head <= tail) {
+                p = queue[head++]; print p
+                for (i = 1; i <= count[p]; i++) {
+                    d = dep[p, i]
+                    if (!(d in seen)) { seen[d] = 1; queue[++tail] = d }
+                }
+            }
+        }' "${INDEX}"
+}
+
+_pkgx() {
+    #pkgx, pointed at this channel's pantry and cellar and forbidden to
+    #download. Everything that reaches the network in here is static-run's
+    PKGX_PANTRY_DIR="${PANTRY}" PKGX_NO_INSTALL=1 "${STATIC_RUN_REQUIRED}" "${@}"
+}
+
+_unsafe_path() {
+    #pkgx prints the environment as KEY="value" lines, meant to be sourced.
+    #A path with a quote, a dollar, a backquote or a backslash in it would be
+    #code in that file and not a path
+    case "${1}" in
+        *'"'*|*'$'*|*'`'*|*'\'*) return 0 ;;
+    esac
+    return 1
+}
+
+case "${1}" in
+    meta)
+        #plan=yes: this channel installs more than one artifact, says which
+        #before any of them is fetched, and has the resolver place them
+        printf "%s\\n" "kind=artifact" "confines=no" "describes=self" "plan=yes"
+        exit 0
+        ;;
+
+    index)
+        _platform >/dev/null || { printf "unreachable=%s\\n" "pkgx builds nothing for $(uname -s)/$(uname -m)"; exit 2; }
+        mkdir -p "${home}/index" 2>/dev/null || exit 1
+        raw="${home}/index/pkgx.pantry.$$.tar.xz"; new="${home}/index/pkgx.pantry.$$"
+        _get "${DIST}/pantry.tar.xz" "${raw}"
+        case "${?}" in
+            0) ;;
+            1) rm -f "${raw}"; printf "unreachable=%s\\n" "dist.pkgx.dev has no pantry.tar.xz"; exit 2 ;;
+            *) rm -f "${raw}"; printf "unreachable=%s\\n" "the pkgx pantry could not be downloaded"; exit 2 ;;
+        esac
+        mkdir -p "${new}" && tar -xJf "${raw}" -C "${new}" 2>/dev/null
+        rc="${?}"; rm -f "${raw}"
+        if [ "${rc}" -ne "0" ] || [ ! -d "${new}/projects" ]; then
+            rm -rf "${new}"
+            printf "unreachable=%s\\n" "the pkgx pantry could not be unpacked, which needs xz"
+            exit 2
+        fi
+        find "${new}/projects" -name package.yml | LC_ALL=C sort | _indexer | LC_ALL=C sort -u > "${new}.tsv"
+
+        #an index that comes out nearly empty is a pantry in a shape this
+        #reader no longer understands, and swapping it in would turn every
+        #name into "not there" without a word
+        if [ "$(awk -F'\t' '$1 == "cmd"' "${new}.tsv" | awk 'END {print NR}')" -lt "100" ]; then
+            rm -rf "${new}" "${new}.tsv"
+            printf "unreachable=%s\\n" "the pkgx pantry came back in a shape this index cannot read, the old index is kept"
+            exit 2
+        fi
+        #the pantry is kept whole: pkgx resolves against it, so the versions
+        #it picks come from the same pantry the names were read from
+        rm -rf "${PANTRY}.old"
+        [ -d "${PANTRY}" ] && mv "${PANTRY}" "${PANTRY}.old"
+        mv "${new}" "${PANTRY}" && mv "${new}.tsv" "${INDEX}"
+        rm -rf "${PANTRY}.old"
+        printf "packages=%s\\n" "$(awk -F'\t' '$1 == "cmd" && !seen[$3]++' "${INDEX}" | awk 'END {print NR}')"
+        printf "names=%s\\n" "$(awk -F'\t' '$1 == "cmd" && !seen[$2]++' "${INDEX}" | awk 'END {print NR}')"
+        exit 0
+        ;;
+
+    search)
+        shift
+        if [ ! -s "${INDEX}" ]; then
+            printf "unreachable=%s\\n" "there is no local index yet, run: static-run --index-update"
+            exit 2
+        fi
+        #the pantry carries no descriptions, so a project is searched by its
+        #name, its display name and the programs it provides. One line each
+        awk -F'\t' -v q="${*}" '
+            BEGIN { n = split(tolower(q), w, " ") }
+            $1 == "cmd"  { hay[$3] = hay[$3] " " $2; if (!($3 in first)) first[$3] = $2 }
+            $1 == "name" { hay[$2] = hay[$2] " " $3; label[$2] = $3 }
+            END {
+                for (p in first) {
+                    h = tolower(p " " hay[p])
+                    for (i = 1; i <= n; i++) if (index(h, w[i]) == 0) break
+                    if (i > n) printf("pkgx:%s\t%s\t%s\n", p, first[p], (p in label) ? label[p] : "provides" hay[p])
+                }
+            }' "${INDEX}" | LC_ALL=C sort
+        exit 0
+        ;;
+
+    probe)
+        [ -z "${2}" ] && exit 1
+        _platform >/dev/null || exit 1
+        _resolve "${2}" "${2}"; _answer_unresolved "${?}"
+        [ X"${cmd}" = X"-" ] && exit 1
+        #nothing here installs without pkgx, and without it there is nothing
+        #this channel can offer
+        [ -n "${STATIC_RUN_NO_MANAGER}" ] && exit 1
+
+        list="$(_versions "${project}")"
+        case "${?}" in
+            0) ;;
+            1) exit 1 ;;
+            *) printf "unreachable=%s\\n" "${why}"; exit 2 ;;
+        esac
+        #a version asked for is found by equality in pkgx's sense, so 2.5 finds
+        #2.5.0, and answered the way pkgx writes it
+        version="$(printf "%s\\n" "${list}" | _newest "${3}")"
+        [ -z "${version}" ] && exit 1
+
+        #the cost is every bottle still missing, not the package alone. Which
+        #version of each dependency pkgx will pick is only known once pkgx is
+        #here, so until then the newest is taken, and the answer says it is
+        #an estimate. The questions go out together
+        work="${META}/probe.$$"; mkdir -p "${work}" 2>/dev/null || exit 1
+        i=0
+        for member in $(_closure "${project}"); do
+            i=$((i + 1))
+            (
+                if [ X"${member}" = X"${project}" ]; then
+                    v="${version}"
+                else
+                    v="$(_versions "${member}" | _newest)"
+                fi
+                [ -z "${v}" ] && { printf "%s\\n" "none" > "${work}/${i}"; exit 0; }
+                [ -d "${CELLAR}/${member}/v${v}" ] && { printf "%s\\n" "0" > "${work}/${i}"; exit 0; }
+                s="$(_size "${member}" "${v}")" || s="unknown"
+                printf "%s\\n" "${s}" > "${work}/${i}"
+            ) &
+            _batch "${i}"
+        done
+        wait
+        bytes="$(cat "${work}"/* 2>/dev/null | awk '
+            /^[0-9]+$/ {t += $1; next}
+            $1 == "unknown" {u = 1}
+            END {if (!u) print t + 0}')"
+        rm -rf "${work}"
+
+        printf "version=%s\\n" "${version}"
+        [ -n "${bytes}" ] && printf "bytes=%s\\n" "${bytes}"
+        printf "estimate=%s\\n" "yes"
+        printf "package=%s\\n" "${project}"
+        printf "requires=%s\\n" "github:pkgxdev/pkgx"
+        exit 0
+        ;;
+
+    locate)
+        [ -z "${2}" ] || [ -z "${3}" ] && exit 1
+        _platform >/dev/null || exit 1
+        _resolve "${2}" "${4}"; _answer_unresolved "${?}"
+        [ X"${cmd}" = X"-" ] && exit 1
+        printf "url=%s\\n" "$(_bottle "${project}" "${3}")"
+        printf "format=%s\\n" "tar.xz"
+        printf "bin=%s\\n" "${cmd}"
+        sum="$(_sum "${project}" "${3}")" && printf "sha256=%s\\n" "${sum}"
+        exit 0
+        ;;
+
+    plan)
+        [ -z "${2}" ] || [ -z "${3}" ] && exit 1
+        _resolve "${2}" "${4}"; _answer_unresolved "${?}"
+        if [ ! -x "${STATIC_RUN_REQUIRED}" ]; then
+            printf "unreachable=%s\\n" "pkgx is not available to resolve ${project}"
+            exit 2
+        fi
+
+        #a cellar where every version the dist has for every project that
+        #could take part is an empty directory. pkgx prefers what is installed,
+        #so it resolves against these without asking the network, and since
+        #they are all there it picks the newest that satisfies each constraint,
+        #which is what it would pick online. Nothing in here is ever run
+        fake="${META}/plan.$$"; rm -rf "${fake}" "${fake}".*; mkdir -p "${fake}" 2>/dev/null || exit 1
+        trap 'rm -rf "${fake}" "${fake}".*' EXIT HUP INT TERM
+        n=0
+        for member in $(_closure "${project}"); do
+            n=$((n + 1))
+            (
+                _versions "${member}" > "${fake}.${n}.v" 2>/dev/null
+                printf "%s %s\\n" "${?}" "${member}" > "${fake}.${n}.rc"
+            ) &
+            _batch "${n}"
+        done
+        wait
+        #a project the dist has nothing of for this machine simply takes no
+        #part; one that could not be asked makes the whole answer unknown
+        unasked="$(cat "${fake}".*.rc 2>/dev/null | awk '$1 == "2" {print $2; exit}')"
+        if [ -n "${unasked}" ]; then
+            printf "unreachable=%s\\n" "dist.pkgx.dev could not be asked for the versions of ${unasked}"
+            exit 2
+        fi
+        i=0
+        while [ "${i}" -lt "${n}" ]; do
+            i=$((i + 1))
+            read -r rc member < "${fake}.${i}.rc"
+            [ X"${rc}" = X"0" ] || continue
+            awk -v m="${member}" 'NF && $1 !~ /[\/ ]/ {print m "/v" $1}' "${fake}.${i}.v"
+        done | (cd "${fake}" && xargs mkdir -p)
+
+        answer="$(PKGX_DIR="${fake}" _pkgx --json=v2 "+${project}=${3}" 2>&1)"
+        if [ "${?}" -ne "0" ]; then
+            printf "failed=%s\\n" "$(printf "%s\\n" "${answer}" | awk 'NF {l = $0} END {print l}')"
+            exit 1
+        fi
+
+        #the answer is json, and only the name and version of each package
+        #under "pkgs" are read. Strings are read as strings and depth is
+        #counted, the way the github channel reads a release
+        printf "%s\\n" "${answer}" | awk '
+            function unesc(v) { gsub(/\\\\/, "\001", v); gsub(/\\"/, "\"", v); gsub(/\\\//, "/", v); gsub("\001", "\\", v); return v }
+            function take(opening,   s, k, rest, v) {
+                s = seg; seg = ""
+                if (s !~ /^[ \t\r]*"/) return
+                sub(/^[ \t\r]*"/, "", s)
+                k = s; sub(/".*$/, "", k)
+                rest = s; sub(/^[^"]*"[ \t\r]*/, "", rest)
+                if (rest !~ /^:/) return
+                if (opening) { key[depth + 1] = k; return }
+                sub(/^:[ \t\r]*/, "", rest); sub(/[ \t\r]+$/, "", rest)
+                v = rest
+                if (v ~ /^".*"$/) v = unesc(substr(v, 2, length(v) - 2))
+                if (depth == 3 && key[2] == "pkgs") {
+                    if (k == "project") proj = v
+                    else if (k == "version") ver = v
+                }
+            }
+            {
+                line = $0; n = length(line)
+                for (i = 1; i <= n; i++) {
+                    c = substr(line, i, 1)
+                    if (instr) {
+                        seg = seg c
+                        if (esc) esc = 0
+                        else if (c == "\\") esc = 1
+                        else if (c == "\"") instr = 0
+                        continue
+                    }
+                    if (c == "\"") { instr = 1; seg = seg c; continue }
+                    if (c == "{" || c == "[") {
+                        take(1); depth++
+                        if (c == "{" && depth == 3 && key[2] == "pkgs") { proj = ""; ver = "" }
+                        continue
+                    }
+                    if (c == "}" || c == "]") {
+                        take(0)
+                        if (c == "}" && depth == 3 && key[2] == "pkgs" && proj != "" && ver != "")
+                            printf("%s\t%s\n", proj, ver)
+                        depth--
+                        continue
+                    }
+                    if (c == ",") { take(0); continue }
+                    seg = seg c
+                }
+                seg = seg " "
+            }' > "${fake}.pkgs"
+        if [ ! -s "${fake}.pkgs" ]; then
+            rm -f "${fake}.pkgs"
+            printf "failed=%s\\n" "pkgx resolved ${project} to nothing this channel could read"
+            exit 1
+        fi
+
+        #one line per bottle: url, published sum, format, size, where it goes
+        #under the resolver's home and what unpacking it creates there. The sum
+        #and the size of every bottle are asked for together: one at a time,
+        #httpie's 26 bottles took 44 seconds of waiting on 52 small answers
+        if awk -F'\t' '($1 "/" $2) ~ /\.\.|^\/|[^A-Za-z0-9._+\/-]/ {bad = 1} END {exit !bad}' "${fake}.pkgs"; then
+            printf "failed=%s\\n" "pkgx named a package this channel will not place"
+            exit 1
+        fi
+        i=0
+        while IFS='	' read -r p v; do
+            i=$((i + 1))
+            (
+                s="$(_sum "${p}" "${v}")" || s="-"
+                b="$(_size "${p}" "${v}")" || b="-"
+                printf "artifact=%s\\t%s\\t%s\\t%s\\t%s\\t%s\\n" "$(_bottle "${p}" "${v}")" "${s}" "tar.xz" "${b}" "pkgx" "${p}/v${v}" > "${fake}.${i}.art"
+            ) &
+            _batch "${i}"
+        done < "${fake}.pkgs"
+        wait
+        j=0
+        while [ "${j}" -lt "${i}" ]; do
+            j=$((j + 1))
+            cat "${fake}.${j}.art"
+        done
+        exit 0
+        ;;
+
+    obtain)
+        [ -z "${2}" ] || [ -z "${3}" ] && exit 1
+        _resolve "${2}" "${4}"; _answer_unresolved "${?}"
+        if [ ! -x "${STATIC_RUN_REQUIRED}" ]; then
+            printf "unreachable=%s\\n" "pkgx is not available to set up ${project}"
+            exit 2
+        fi
+        if _unsafe_path "${home}"; then
+            printf "failed=%s\\n" "${home} has a character that cannot be written into a launcher safely"
+            exit 1
+        fi
+
+        #the environment of what static-run placed, as pkgx works it out. With
+        #PKGX_NO_INSTALL, a bottle static-run did not place is a refusal here
+        #and never a download
+        envfile="${META}/env.$$"; mkdir -p "${META}" 2>/dev/null
+        PKGX_DIR="${CELLAR}" _pkgx "+${project}=${3}" > "${envfile}" 2> "${envfile}.err"
+        if [ "${?}" -ne "0" ]; then
+            printf "failed=%s\\n" "$(awk 'NF {l = $0} END {print l}' "${envfile}.err")"
+            rm -f "${envfile}" "${envfile}.err"; exit 1
+        fi
+        rm -f "${envfile}.err"
+        #a line is KEY="value" and nothing else, and the only expansions a
+        #value may hold are the ones pkgx writes itself: $KEY, ${KEY:+...} and
+        #${KEY:-...}. Anything else - $( above all - would run in the launcher
+        if awk '
+            !/^[A-Z_][A-Z0-9_]*="[^"`\\]*"$/ {bad = 1; exit}
+            {
+                v = $0; sub(/^[^=]*="/, "", v)
+                gsub(/\$\{[A-Za-z_][A-Za-z0-9_]*:[-+]/, "", v)
+                gsub(/\$[A-Za-z_][A-Za-z0-9_]*/, "", v)
+                if (index(v, "$")) {bad = 1; exit}
+            }
+            END {exit !bad}' "${envfile}"; then
+            printf "failed=%s\\n" "pkgx described the environment in a shape this channel does not write into a launcher"
+            rm -f "${envfile}"; exit 1
+        fi
+
+        #the program is looked for where pkgx would look for it: along the
+        #PATH it just described, in that order
+        [ X"${cmd}" = X"-" ] && { printf "failed=%s\\n" "${project} provides no program"; rm -f "${envfile}"; exit 1; }
+        bin="$(awk -F'"' '/^PATH="/ {print $2; exit}' "${envfile}" | sed 's/\${PATH:+:\$PATH}$//' | tr ':' '\n' | \
+            while read -r d; do [ -n "${d}" ] && [ -x "${d}/${cmd}" ] && [ ! -d "${d}/${cmd}" ] && { printf "%s\\n" "${d}/${cmd}"; break; }; done)"
+        if [ -z "${bin}" ]; then
+            printf "failed=%s\\n" "pkgx set up ${project} but no program called ${cmd} is on its PATH"
+            rm -f "${envfile}"; exit 1
+        fi
+
+        #a launcher: the environment, then the program. It is written once and
+        #runs without pkgx, so the second run costs a shell and not a solver
+        run="${home}/run/pkgx/${project}/${3}"
+        mkdir -p "${run}" 2>/dev/null || { rm -f "${envfile}"; exit 1; }
+        {
+            printf "%s\\n" "#!/bin/sh" "#written by static-run from pkgx's account of what ${project} ${3} needs"
+            cat "${envfile}"
+            awk -F= '{printf("export %s\n", $1)}' "${envfile}"
+            printf 'exec "%s" "$@"\n' "${bin}"
+        } > "${run}/${cmd}.$$" && chmod 755 "${run}/${cmd}.$$" && mv "${run}/${cmd}.$$" "${run}/${cmd}"
+        rm -f "${envfile}"
+
+        printf "program=%s\\n" "${run}/${cmd}"
+        printf "asset=%s\\n" "${project}/v${3}"
+        exit 0
+        ;;
+
+    *) printf "%s\\n" "usage: ${0##*/} meta|index|search|probe|locate|plan|obtain" >&2; exit 1 ;;
+esac
