@@ -1,0 +1,12 @@
+#!/bin/sh
+#a channel that cannot reach its catalog. It declines everything except two
+#names, for which it cannot say either way - which is not the same as saying no
+case "${1}" in
+    meta)  printf "%s\n" "kind=artifact" "confines=no" "describes=self" ;;
+    probe|locate)
+           case "${2}" in
+               offline|mixed) printf "%s\n" "unreachable=the fake network is down"; exit 2 ;;
+           esac
+           exit 1 ;;
+    *) exit 1 ;;
+esac

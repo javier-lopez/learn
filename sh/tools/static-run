@@ -268,7 +268,19 @@ _probe_all() {
             [ X"${_probe_all__only}" != X"${_probe_all__c}" ] && continue
 
         _probe_all__out="$("$(_channels_dir)/${_probe_all__c}" probe \
-            "${_probe_all__pkg}" "${_probe_all__ver}" 2>/dev/null)" || continue
+            "${_probe_all__pkg}" "${_probe_all__ver}" 2>/dev/null)"
+        case "${?}" in
+            0) ;;
+            2)  #a channel that could not be asked did not say no, and is kept
+                #apart so it is never reported as one: that is how "the network
+                #is down" reaches the user as "this does not exist"
+                _probe_all__why="$(printf "%s\\n" "${_probe_all__out}" | \
+                    awk '/^unreachable=/ {sub(/^unreachable=/, ""); print; exit}')"
+                printf "~unreachable %s %s\\n" "${_probe_all__c}" \
+                    "${_probe_all__why:-it gave no reason}"
+                continue ;;
+            *) continue ;;
+        esac
 
         _probe_all__v="$(printf "%s\\n" "${_probe_all__out}" | awk -F= '$1=="version"{print $2; exit}')"
         _probe_all__b="$(printf "%s\\n" "${_probe_all__out}" | awk -F= '$1=="bytes"{print $2; exit}')"
@@ -296,7 +308,7 @@ _probe_all() {
             "${_probe_all__class}${_probe_all__key}0" "${_probe_all__c}" \
             "${_probe_all__v}" "${_probe_all__b}" "${_probe_all__g}" \
             "${_probe_all__conf}" "$(_channel_meta "${_probe_all__c}" describes)"
-    done | sort
+    done | LC_ALL=C sort
 }
 
 _confirm() {
@@ -562,7 +574,7 @@ while [ "${#}" -gt "0" ]; do
         -q|--quiet)     quiet="1";     shift ;;
         -n|--dry-run)   dry_run="1";   shift ;;
         -y|--yes)       assume_yes="1"; shift ;;
-        -L|--latest)    latest="1";    shift ;;
+        -L|--latest)    latest="1"; STATIC_RUN_REFRESH="1"; export STATIC_RUN_REFRESH; shift ;;
         -e|--ephemeral) ephemeral="1"; shift ;;
         -l|--list)      list="1";      shift ;;
         -b|--bin)       shift; bin_name="${1}"; [ -n "${1}" ] && shift ;;
@@ -621,11 +633,23 @@ if [ -z "${latest}" ] && [ -z "${dry_run}" ]; then
     fi
 fi
 
-candidates="$(_probe_all "${package}" "${version}" "${channel}")"
+probed="$(_probe_all "${package}" "${version}" "${channel}")"
+candidates="$(printf "%s\\n" "${probed}" | awk 'NF && $1 != "~unreachable"')"
+unreachable="$(printf "%s\\n" "${probed}" | \
+    awk '$1 == "~unreachable" {$1 = ""; sub(/^ /, ""); print}')"
 
 if [ -z "${candidates}" ]; then
     #127 is the shell's word for "nothing ran", and the only status a caller
-    #can tell apart from a program that ran and failed
+    #can tell apart from a program that ran and failed. What is said with it
+    #has to be true, though: with a channel that could not be asked, nobody
+    #knows whether the package exists, and saying it does not is a lie
+    if [ -n "${unreachable}" ]; then
+        printf "%s\\n" "${unreachable}" | while read -r u_ch u_why; do
+            _say "${PROGNAME}: ${u_ch} could not be asked: ${u_why}"
+        done
+        _say "${PROGNAME}: so whether anything provides '${package}' is not known"
+        exit 127
+    fi
     _say "${PROGNAME}: no channel provides '${package}'"
     exit 127
 fi
@@ -658,6 +682,10 @@ if [ -n "${dry_run}" ]; then
             "${d_ch}:${package}@${d_ver}" "$(_human "${d_by}")" "${d_kind}" "${d_bg}" "${d_mark}"
     done
 
+    [ -n "${unreachable}" ] && printf "%s\\n" "${unreachable}" | while read -r u_ch u_why; do
+        _say "  ${u_ch}: could not be asked, ${u_why}"
+    done
+
     reason="${w_kind}"
     [ X"${w_kind}" = X"native" ] && reason="nativo"
     [ X"${w_kind}" = X"confined" ] && reason="confinado"
@@ -674,6 +702,11 @@ fi
 #badge is part of what the user is being asked to agree to, so it happens
 #before the question and not after it
 info="$("$(_channels_dir)/${w_channel}" locate "${package}" "${w_version}" 2>/dev/null)"
+if [ "${?}" -eq "2" ]; then
+    _say "${PROGNAME}: ${w_channel} could not be asked where '${package}' lives: $(printf "%s\\n" "${info}" | \
+        awk '/^unreachable=/ {sub(/^unreachable=/, ""); print; exit}')"
+    exit 127
+fi
 if [ -z "${info}" ]; then
     _say "${PROGNAME}: ${w_channel} knows '${package}' but cannot say where it lives"
     exit 127
@@ -684,6 +717,9 @@ case "${info}" in
 esac
 
 _say "${PROGNAME}: ${package##*/} ${w_version} -> ${w_channel}:${package}  $(_human "${w_bytes}")  [${w_badge}]  ${w_kind}"
+[ -n "${unreachable}" ] && printf "%s\\n" "${unreachable}" | while read -r u_ch u_why; do
+    _say "            (${u_ch} could not be asked, a cheaper path may exist: ${u_why})"
+done
 
 if [ -z "$(_cache_get "${spec}")" ]; then
     _confirm "${PROGNAME}: proceed?" || exit 127

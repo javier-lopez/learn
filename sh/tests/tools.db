@@ -705,6 +705,50 @@ STATIC_RUN_HOME="$(pwd)/home" ../../static-run.d/github probe acme/nix >/dev/nul
 #a bare name is a question for a catalog, and this channel refuses to invent
 #an owner for one rather than write the package recipe this design avoids
 STATIC_RUN_HOME="$(pwd)/home" ../../static-run.d/github probe jq >/dev/null 2>&1; test X"${?}" = X"1"
+#a channel that could not reach its catalog did not say no. When it is the
+#only one that might have had the package, the answer is that nobody knows;
+#"no channel provides" in its place is the lie a rate limit once told about jq
+static-run --yes offline >/dev/null 2>&1; test X"${?}" = X"127"
+test X"$(static-run --yes offline 2>&1 | head -1)" = X"static-run: down could not be asked: the fake network is down"
+test X"$(static-run --yes offline 2>&1 | grep -c 'no channel provides')" = X"0"
+#when another channel serves it, it is served, and the silence is named,
+#because a cheaper path may have been behind it
+test X"$(STATIC_RUN_HOME="$(pwd)/home3" static-run --yes mixed 2>/dev/null | head -1)" = X"alpha"
+STATIC_RUN_HOME="$(pwd)/home4" static-run --yes mixed 2>&1 | grep "(down could not be asked" >/dev/null
+static-run -n mixed 2>&1 | grep "down: could not be asked" >/dev/null
+#and a package nobody has is still reported as exactly that
+test X"$(static-run --yes nobody-serves-this 2>&1)" = X"static-run: no channel provides 'nobody-serves-this'"
+#the github channel itself, against a curl that answers the way github does
+#when it will not answer. A rate limit and a silence are "could not ask", a
+#404 is "not there", and none of it touches the network
+mkdir -p c403 c404 c000 cspy
+printf '%s\n' '#!/bin/sh' 'o=""; while [ $# -gt 0 ]; do [ X"$1" = X"-o" ] && { shift; o="$1"; }; shift; done' 'cat >/dev/null' 'printf "%s" "{\"message\":\"API rate limit exceeded for 1.2.3.4.\"}" > "$o"' 'printf 403' > c403/curl
+printf '%s\n' '#!/bin/sh' 'o=""; while [ $# -gt 0 ]; do [ X"$1" = X"-o" ] && { shift; o="$1"; }; shift; done' 'cat >/dev/null' 'printf "%s" "{\"message\":\"Not Found\"}" > "$o"' 'printf 404' > c404/curl
+printf '%s\n' '#!/bin/sh' 'cat >/dev/null' 'printf 000' 'exit 7' > c000/curl
+chmod 755 c403/curl c404/curl c000/curl
+PATH="$(pwd)/c403:${PATH}" STATIC_RUN_HOME="$(pwd)/g1" ../../static-run.d/github probe acme/thing >/dev/null 2>&1; test X"${?}" = X"2"
+PATH="$(pwd)/c404:${PATH}" STATIC_RUN_HOME="$(pwd)/g2" ../../static-run.d/github probe acme/thing >/dev/null 2>&1; test X"${?}" = X"1"
+PATH="$(pwd)/c000:${PATH}" STATIC_RUN_HOME="$(pwd)/g3" ../../static-run.d/github probe acme/thing >/dev/null 2>&1; test X"${?}" = X"2"
+test X"$(PATH="$(pwd)/c403:${PATH}" STATIC_RUN_HOME="$(pwd)/g1" GITHUB_TOKEN= GH_TOKEN= ../../static-run.d/github probe acme/thing | awk '/limit/ && /GITHUB_TOKEN/ {print "limit"}')" = X"limit"
+#yesterday's answer about "latest" is still a release that exists, and it is
+#used rather than failing when github cannot be asked
+mkdir -p g4/tmp
+printf '%s' '{"tag_name":"0.9","assets":[{"name":"thing-x86_64-linux.tar.gz","size":77,"browser_download_url":"http://example.invalid/t"}]}' > g4/tmp/github.acme_thing_.json
+touch -t 200001010000 g4/tmp/github.acme_thing_.json
+test X"$(PATH="$(pwd)/c403:${PATH}" STATIC_RUN_HOME="$(pwd)/g4" ../../static-run.d/github probe acme/thing | awk -F= '$1=="version"{print $2}')" = X"0.9"
+#a fresh answer is not asked for again, and being told to look again asks at
+#once: without that, --latest would hand back the same release forever
+mkdir -p g5/tmp
+printf '%s' '{"tag_name":"1.0","assets":[{"name":"thing-x86_64-linux.tar.gz","size":88,"browser_download_url":"http://example.invalid/t"}]}' > g5/tmp/github.acme_thing_.json
+PATH="$(pwd)/c404:${PATH}" STATIC_RUN_HOME="$(pwd)/g5" ../../static-run.d/github probe acme/thing >/dev/null 2>&1; test X"${?}" = X"0"
+PATH="$(pwd)/c404:${PATH}" STATIC_RUN_HOME="$(pwd)/g5" STATIC_RUN_REFRESH=1 ../../static-run.d/github probe acme/thing >/dev/null 2>&1; test X"${?}" = X"1"
+#a token goes to the api through curl's stdin and never on its command line,
+#where any other account on the machine could read it out of ps
+printf '%s\n' '#!/bin/sh' 'printf "%s\n" "$@" > argv.txt' 'cat > stdin.txt' 'o=""; while [ $# -gt 0 ]; do [ X"$1" = X"-o" ] && { shift; o="$1"; }; shift; done' 'printf "%s" "{}" > "$o"' 'printf 404' > cspy/curl
+chmod 755 cspy/curl
+PATH="$(pwd)/cspy:${PATH}" STATIC_RUN_HOME="$(pwd)/g6" GITHUB_TOKEN=not-a-real-token ../../static-run.d/github probe acme/thing >/dev/null 2>&1; test X"${?}" = X"1"
+test X"$(grep -c not-a-real-token argv.txt)"  = X"0"
+test X"$(grep -c not-a-real-token stdin.txt)" = X"1"
 @end
 
 @begin{staticus}

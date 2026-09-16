@@ -4,21 +4,21 @@
 
 _program() {
     mkdir -p "${STATIC_RUN_HOME}/tmp" 2>/dev/null
-    printf "%s\n" '#!/bin/sh' \
+    printf "%s\n" '#!/bin/sh' "#serves ${2}" \
                   '[ X"${1}" = X"--cat" ] && { cat; exit 0; }' \
                   '[ X"${1}" = X"--code" ] && exit "${2}"' \
                   'printf "%s\n" "alpha"' \
                   'for _a in "${@}"; do printf "%s\n" "${_a}"; done' \
-        > "${STATIC_RUN_HOME}/tmp/alpha-tiny"
-    printf "%s\n" "${STATIC_RUN_HOME}/tmp/alpha-tiny"
+        > "${STATIC_RUN_HOME}/tmp/alpha-${1}"
+    printf "%s\n" "${STATIC_RUN_HOME}/tmp/alpha-${1}"
 }
 
 case "${1}" in
     meta)   printf "%s\n" "aliases=a,alfa" "kind=artifact" "confines=no" "describes=self" ;;
-    probe)  [ X"${2}" = X"tiny" ] || exit 1
+    probe)  [ X"${2}" = X"tiny" ] || [ X"${2}" = X"mixed" ] || exit 1
             printf "%s\n" "version=1.0" "bytes=2000" "badge=none" ;;
-    locate) [ X"${2}" = X"tiny" ] || exit 1
-            printf "url=%s\n" "$(_program)"
+    locate) [ X"${2}" = X"tiny" ] || [ X"${2}" = X"mixed" ] || exit 1
+            printf "url=%s\n" "$(_program "${2}")"
             printf "%s\n" "format=raw" "bin=tiny" ;;
     *) exit 1 ;;
 esac

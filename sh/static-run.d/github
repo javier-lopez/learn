@@ -1,6 +1,8 @@
 #!/bin/sh
 #description: static-run channel - a program published as a release asset on github
 #usage: github meta | github probe OWNER/REPO [VER] | github locate OWNER/REPO VER
+#probe and locate exit 0 with an answer, 1 when there is none, and 2 when
+#github could not be asked, with the reason on an unreachable= line
 
 #this is a channel, not a command. It never downloads and never installs: it
 #answers what a package is called, what it weighs and where it lives, and the
@@ -10,13 +12,41 @@
 API="https://api.github.com/repos"
 
 _retrieve() {
+    #a plain download, never authenticated: these urls redirect to storage
+    #that is not github's api, and a token has no business travelling there
     if command -v "curl" >/dev/null 2>&1; then
-        curl -fsSL -H "Accept: application/vnd.github+json" "${1}"
+        curl -fsSL "${1}"
     elif command -v "wget" >/dev/null 2>&1; then
-        wget -q -O- --header="Accept: application/vnd.github+json" "${1}"
+        wget -q -O- "${1}"
     else
         return 1
     fi
+}
+
+_api() {
+    #$1 => url, $2 => file for the body. Leaves the status in http_code, and
+    #000 when nothing answered at all. A token the user exported under either
+    #conventional name goes to the api and nowhere else, and it goes through
+    #curl's config on stdin: on the command line any other account on this
+    #machine could read it out of ps
+    http_code=""
+    _api__token="${GITHUB_TOKEN:-${GH_TOKEN}}"
+
+    if command -v "curl" >/dev/null 2>&1; then
+        http_code="$(
+            {
+                printf "%s\\n" 'header = "Accept: application/vnd.github+json"'
+                [ -n "${_api__token}" ] && \
+                    printf 'header = "Authorization: Bearer %s"\n' "${_api__token}"
+            } | curl -sSL -K - -o "${2}" -w '%{http_code}' "${1}" 2>/dev/null
+        )" || http_code="000"
+    elif command -v "wget" >/dev/null 2>&1; then
+        #wget cannot be handed a header except on its command line, so it asks
+        #without a token and lives with sixty questions an hour
+        http_code="$(wget -S -O "${2}" --header="Accept: application/vnd.github+json" \
+            "${1}" 2>&1 | awk '/^ *HTTP\// {c = $2} END {print c}')"
+    fi
+    [ -z "${http_code}" ] && http_code="000"
 }
 
 _cache_file() {
@@ -25,26 +55,65 @@ _cache_file() {
     printf "%s\\n" "${STATIC_RUN_HOME:-/tmp}/tmp/github.$(printf "%s\\n" "${1}@${2}" | tr '/@' '__').json"
 }
 
-_release() {
-    #$1 => owner/repo, $2 => version or empty for the latest one
-    _release__f="$(_cache_file "${1}" "${2}")"
-    [ -s "${_release__f}" ] && { cat "${_release__f}"; return 0; }
+_fetch_release() {
+    #$1 => owner/repo, $2 => version or empty for the latest one. Leaves the
+    #release in release_file and answers 0 when there is one, 1 when github
+    #says there is nothing there, and 2 when github could not be asked, with
+    #the reason in why. Being told no and not being able to ask are different
+    #answers, and a resolver that hears them as one says something false: this
+    #channel was rate limited once and the user was told jq does not exist
+    why=""
+    release_file="$(_cache_file "${1}" "${2}")"
 
-    if [ -z "${2}" ]; then
-        _release__url="${API}/${1}/releases/latest"
-    else
-        _release__url="${API}/${1}/releases/tags/${2}"
+    #a tagged release never changes, so its answer is kept for good. "latest"
+    #is a question whose answer moves: asked again after a day, and at once
+    #when the resolver was told to look again
+    if [ -s "${release_file}" ]; then
+        [ -n "${2}" ] && return 0
+        if [ -z "${STATIC_RUN_REFRESH}" ] && \
+           [ -z "$(find "${release_file}" -mtime +0 2>/dev/null)" ]; then
+            return 0
+        fi
     fi
 
-    _release__body="$(_retrieve "${_release__url}")" || return 1
-    case "${_release__body}" in
-        *'"assets"'*) ;;
-        *) return 1 ;;
-    esac
+    if [ -z "${2}" ]; then
+        _fetch_release__url="${API}/${1}/releases/latest"
+    else
+        _fetch_release__url="${API}/${1}/releases/tags/${2}"
+    fi
 
-    mkdir -p "${_release__f%/*}" 2>/dev/null
-    printf "%s\\n" "${_release__body}" > "${_release__f}" 2>/dev/null
-    printf "%s\\n" "${_release__body}"
+    mkdir -p "${release_file%/*}" 2>/dev/null
+    _fetch_release__tmp="${release_file}.$$"
+    _api "${_fetch_release__url}" "${_fetch_release__tmp}"
+
+    case "${http_code}" in
+        200)
+            if grep '"assets"' "${_fetch_release__tmp}" >/dev/null 2>&1; then
+                mv "${_fetch_release__tmp}" "${release_file}"
+                return 0
+            fi
+            why="github answered with something that is not a release" ;;
+        404)
+            rm -f "${_fetch_release__tmp}"
+            return 1 ;;
+        403|429)
+            case "$(awk -F'"' '/"message"/ {print $4; exit}' "${_fetch_release__tmp}" 2>/dev/null)" in
+                *'rate limit'*)
+                    why="the github api limit for this address is used up"
+                    [ -z "${GITHUB_TOKEN}${GH_TOKEN}" ] && \
+                        why="${why}, exporting GITHUB_TOKEN raises it from 60 to 5000 an hour" ;;
+                *)  why="github refused the request with ${http_code}" ;;
+            esac ;;
+        000) why="api.github.com did not answer" ;;
+        *)   why="github answered ${http_code}" ;;
+    esac
+    rm -f "${_fetch_release__tmp}"
+
+    #an old answer is better than none, and yesterday's "latest" is still a
+    #release that exists. Only with nothing at all to fall back on is the
+    #failure to ask passed on
+    [ -s "${release_file}" ] && return 0
+    return 2
 }
 
 _platform() {
@@ -163,7 +232,13 @@ case "${1}" in
               *) exit 1 ;;
         esac
 
-        body="$(_release "${2}" "${3}")" || exit 1
+        _fetch_release "${2}" "${3}"
+        case "${?}" in
+            0) ;;
+            1) exit 1 ;;
+            *) printf "unreachable=%s\\n" "${why}"; exit 2 ;;
+        esac
+        body="$(cat "${release_file}")"
         asset="$(printf "%s\\n" "${body}" | _assets | _best)"
         #nothing to serve is an answer of 1. Saying 0 with nothing to show for
         #it is how a channel that has quietly broken passes for one that works
@@ -181,7 +256,13 @@ case "${1}" in
 
     locate)
         [ -z "${2}" ] && exit 1
-        body="$(_release "${2}" "${3}")" || exit 1
+        _fetch_release "${2}" "${3}"
+        case "${?}" in
+            0) ;;
+            1) exit 1 ;;
+            *) printf "unreachable=%s\\n" "${why}"; exit 2 ;;
+        esac
+        body="$(cat "${release_file}")"
         asset="$(printf "%s\\n" "${body}" | _assets | _best)"
         [ -z "${asset}" ] && exit 1
 
