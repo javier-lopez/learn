@@ -1,0 +1,31 @@
+#!/bin/sh
+AMVERSION="9.9-1"
+#a stand-in for AM, for the static-run tests. It behaves like AppMan where
+#static-run depends on it and nowhere else: -y -i APP installs APP where
+#appman_location and the XDG variables say, links it in XDG_BIN_HOME, leaves a
+#desktop file and writes a remove script naming all of it, as AM does; nolibfuse
+#APP does nothing. FAKE_AM_LOG, when set, records each call and the HOME it saw
+
+log() { [ -n "${FAKE_AM_LOG}" ] && printf "%s\n" "${*}" >> "${FAKE_AM_LOG}"; }
+
+[ X"${1}" = X"-y" ] && shift
+case "${1}" in
+    -i|install)
+        app="${2}"; apps="${appman_location}"; bin="${XDG_BIN_HOME}"; data="${XDG_DATA_HOME}"
+        [ -n "${app}" ] && [ -n "${apps}" ] && [ -n "${bin}" ] && [ -n "${data}" ] || exit 1
+        mkdir -p "${apps}/${app}" "${bin}" "${data}/applications" || exit 1
+        printf '#!/bin/sh\nprintf "%%s\\n" "%s ran"\n' "${app}" > "${apps}/${app}/${app}"
+        chmod 755 "${apps}/${app}/${app}"
+        printf "%s\n" "1.2.3" > "${apps}/${app}/version"
+        ln -sf "${apps}/${app}/${app}" "${bin}/${app}"
+        : > "${data}/applications/${app}-AM.desktop"
+        printf '#!/bin/sh\nset -e\nrm -f %s/%s\nrm -R -f %s/%s\nrm -f %s/applications/%s-AM.desktop\n' \
+            "${bin}" "${app}" "${apps}" "${app}" "${data}" "${app}" > "${apps}/${app}/remove"
+        chmod 755 "${apps}/${app}/remove"
+        mkdir -p "${apps}/appman/modules" && : > "${apps}/appman/modules/install.am"
+        log "install ${app} HOME=${HOME}"
+        ;;
+    nolibfuse) log "nolibfuse ${2}" ;;
+    *) exit 1 ;;
+esac
+exit 0

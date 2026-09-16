@@ -1,0 +1,335 @@
+#!/bin/sh
+#description: static-run channel - AM's catalog of AppImages and portable programs, installed by AM
+#usage: am meta | am index | am search WORDS...
+#       am probe NAME [VER] | am locate NAME VER [PROGRAM] | am obtain NAME VER [PROGRAM]
+#probe and locate exit 0 with an answer, 1 when there is none, and 2 when the
+#catalog could not be asked, with the reason on an unreachable= line and
+#needs=index when what is missing is the local index
+
+#AM (github.com/ivan-hc/AM) installs AppImages and portable programs, most of
+#them published by nobody else as a package: its catalog is a list of a few
+#thousand names, each with a script of its own that finds the newest release
+#when it runs. So what a program weighs and which version it is are known to
+#AM only while it installs, and this channel does not guess them: probe says
+#latest and no size, and the resolver estimates the time from how long AM has
+#taken here before.
+#
+#AM is a bash script. Run under any name other than am it is AppMan, which
+#installs without root into a directory it is told, and every other place it
+#writes follows HOME and the XDG variables. So the whole of it - the script,
+#its modules, the programs, their launchers, desktop files and icons - lives
+#under this channel's directory, and one rm removes it. The script itself is
+#this channel's tool, am:APP-MANAGER, fetched from AM's repository and kept up
+#to date by the resolver like any other tool.
+#
+#Checking what it downloads is AM's to do. A program that is an AppImage of the
+#old kind needs libfuse2, which a machine may not have; AM can convert those,
+#and on such a machine it is asked to.
+#
+#STATIC_RUN_AM_REPO replaces https://raw.githubusercontent.com/ivan-hc/AM/main,
+#a directory included. STATIC_RUN_LIBFUSE2=yes|no says whether libfuse.so.2 is
+#here instead of looking for it. Both are how the tests run without a network
+
+REPO="${STATIC_RUN_AM_REPO:-https://raw.githubusercontent.com/ivan-hc/AM/main}"
+#everything this channel has lives under one directory, so removing it removes
+#the channel: the catalog, AM itself, and all AM installed
+CH="${STATIC_RUN_HOME:-/tmp}/channels/${0##*/}"
+INDEX="${CH}/index/apps.tsv"
+TOOL_NAME="APP-MANAGER"
+
+_arch() {
+    case "$(uname -m 2>/dev/null)" in
+        x86_64|amd64)  printf "%s\\n" "x86_64" ;;
+        aarch64|arm64) printf "%s\\n" "aarch64" ;;
+        armv7l)        printf "%s\\n" "armv7l" ;;
+        i686|i386)     printf "%s\\n" "i686" ;;
+        *) return 1 ;;
+    esac
+}
+
+_is_local() {
+    case "${1}" in
+        file://*|/*|./*) return 0 ;;
+    esac
+    return 1
+}
+
+_fetch_resumable() {
+    #$1 => url or path, $2 => a partial file. A download that is stopped keeps
+    #what arrived, and the next call goes on from there: that is how a catalog
+    #left paused, because another one already had the answer, is picked up
+    #later. Answers 0 when it is complete, 1 when it is not there, 2 when it
+    #could not be had
+    if _is_local "${1}"; then
+        [ -f "${1#file://}" ] || return 1
+        cp "${1#file://}" "${2}" 2>/dev/null || return 2
+        return 0
+    fi
+    if command -v "curl" >/dev/null 2>&1; then
+        _fr__tool="curl"
+        curl -sSL -C - -o "${2}" -w '%{http_code}' "${1}" > "${2}.code" 2>/dev/null &
+    elif command -v "wget" >/dev/null 2>&1; then
+        _fr__tool="wget"
+        wget -q -c -O "${2}" "${1}" 2>/dev/null &
+    else
+        return 2
+    fi
+    _fr__pid="${!}"
+    #stopped from outside, the download stops with it and what arrived stays
+    trap 'kill "${_fr__pid}" 2>/dev/null; exit 143' TERM INT HUP
+    wait "${_fr__pid}"; _fr__rc="${?}"
+    trap - TERM INT HUP
+    if [ X"${_fr__tool}" = X"wget" ]; then
+        case "${_fr__rc}" in
+            0) return 0 ;;
+            8) rm -f "${2}"; return 1 ;;
+        esac
+        return 2
+    fi
+    _fr__code="$(cat "${2}.code" 2>/dev/null)"; rm -f "${2}.code"
+    case "${_fr__code}" in
+        200|206) [ "${_fr__rc}" -eq "0" ] && [ -s "${2}" ] && return 0 ;;
+        #asked to go on past the end: there was nothing left to fetch
+        416) [ -s "${2}" ] && return 0 ;;
+        403|404|410) rm -f "${2}"; return 1 ;;
+    esac
+    return 2
+}
+
+_head_size() {
+    #bytes a url would transfer, asked without transferring them
+    if _is_local "${1}"; then
+        [ -f "${1#file://}" ] && wc -c < "${1#file://}" | awk '{print $1}'
+        return 0
+    fi
+    if command -v "curl" >/dev/null 2>&1; then
+        curl -sSIL "${1}" 2>/dev/null
+    elif command -v "wget" >/dev/null 2>&1; then
+        wget -S --spider "${1}" 2>&1
+    fi | tr -d '\r' | awk 'tolower($1) ~ /^content-length:$/ && $2 ~ /^[0-9]+$/ {n = $2} END {if (n != "") print n}'
+}
+
+_tool_version() {
+    #the version AM's script says it is, read from its first lines and kept for
+    #a day, or at once when the resolver was told to look again
+    _tv__f="${CH}/cache/${TOOL_NAME}.version"
+    if [ -s "${_tv__f}" ] && [ -z "${STATIC_RUN_REFRESH}" ] && \
+       [ -n "$(find "${_tv__f}" -mmin -1440 2>/dev/null)" ]; then
+        cat "${_tv__f}"
+        return 0
+    fi
+    mkdir -p "${_tv__f%/*}" 2>/dev/null
+    if _is_local "${REPO}"; then
+        _tv__head="$(head -20 "${REPO#file://}/${TOOL_NAME}" 2>/dev/null)"
+    elif command -v "curl" >/dev/null 2>&1; then
+        _tv__head="$(curl -fsSL -r 0-1023 "${REPO}/${TOOL_NAME}" 2>/dev/null | head -20)"
+    else
+        _tv__head="$(wget -q -O- "${REPO}/${TOOL_NAME}" 2>/dev/null | head -20)"
+    fi
+    _tv__v="$(printf "%s\\n" "${_tv__head}" | awk -F'"' '/^AMVERSION=/ {print $2; exit}')"
+    case "${_tv__v}" in
+        ''|*[!A-Za-z0-9._-]*)
+            [ -s "${_tv__f}" ] && { cat "${_tv__f}"; return 0; }
+            return 1 ;;
+    esac
+    printf "%s\\n" "${_tv__v}" > "${_tv__f}"
+    printf "%s\\n" "${_tv__v}"
+}
+
+_appman() {
+    #AM, told where everything it writes goes. HOME is the channel's too: AM
+    #leaves files in it, and the programs it installs run with the user's own
+    #HOME later, not this one
+    mkdir -p "${CH}/home" 2>/dev/null
+    env HOME="${CH}/home" XDG_BIN_HOME="${CH}/bin" XDG_DATA_HOME="${CH}/share" \
+        XDG_CONFIG_HOME="${CH}/config" XDG_CACHE_HOME="${CH}/cache/am" \
+        appman_location="${CH}/apps" PATH="${CH}/bin:${PATH}" \
+        "${STATIC_RUN_REQUIRED}" "${@}"
+}
+
+_libfuse2() {
+    case "${STATIC_RUN_LIBFUSE2}" in
+        yes) return 0 ;;
+        no)  return 1 ;;
+    esac
+    for _lf__d in /lib /lib64 /usr/lib /usr/lib64 /lib/*-linux-gnu /usr/lib/*-linux-gnu; do
+        [ -e "${_lf__d}/libfuse.so.2" ] && return 0
+    done
+    return 1
+}
+
+_answer_no_index() {
+    printf "%s\\n" "unreachable=there is no local index yet, run: static-run --index-update" "needs=index"
+    exit 2
+}
+
+case "${1}" in
+    meta)
+        #manager= names the tool this channel installs through, which the
+        #resolver keeps present and up to date. Here it is AM's own script,
+        #which this channel answers for as well
+        printf "%s\\n" "kind=artifact" "confines=no" "describes=self" "manager=am:${TOOL_NAME}"
+        exit 0
+        ;;
+
+    index)
+        _arch >/dev/null || { printf "unreachable=%s\\n" "AM has no catalog for $(uname -m)"; exit 2; }
+        mkdir -p "${CH}/index" 2>/dev/null || exit 1
+        part="${CH}/index/apps.part"; new="${INDEX}.$$"
+        _fetch_resumable "${REPO}/programs/$(_arch)-apps" "${part}"
+        case "${?}" in
+            0) ;;
+            1) printf "unreachable=%s\\n" "AM has no list of programs for $(_arch)"; exit 2 ;;
+            *) printf "unreachable=%s\\n" "AM's list of programs could not be downloaded; what arrived is kept, and the next try goes on from there"; exit 2 ;;
+        esac
+        bytes="$(wc -c < "${part}" | awk '{print $1}')"
+        #from here on it is quick, and it is not cut short: stopped now, the old
+        #index could be left half replaced
+        trap '' TERM INT HUP
+        #"◆ name : description #tags". A name is what AM installs and what it
+        #links in its bin, so it is the command
+        awk '
+            /^◆ [a-z0-9][a-z0-9._+-]* : / {
+                name = $2; desc = $0
+                sub(/^◆ [^ ]+ : /, "", desc); sub(/[ \t]*#[a-z].*$/, "", desc)
+                printf("%s\t%s\n", name, desc)
+            }' "${part}" | LC_ALL=C sort -u > "${new}"
+        rm -f "${part}"
+        #a list that comes out nearly empty is not a small catalog, it is one in
+        #a shape this reader no longer understands
+        if [ "$(awk 'END {print NR}' "${new}")" -lt "100" ]; then
+            rm -f "${new}"
+            printf "unreachable=%s\\n" "AM's list came back in a shape this index cannot read, the old index is kept"
+            exit 2
+        fi
+        mv "${new}" "${INDEX}"
+        printf "packages=%s\\n" "$(awk 'END {print NR}' "${INDEX}")"
+        printf "bytes=%s\\n" "${bytes}"
+        exit 0
+        ;;
+
+    search)
+        shift
+        [ -s "${INDEX}" ] || _answer_no_index
+        awk -F'\t' -v q="${*}" '
+            BEGIN { n = split(tolower(q), w, " ") }
+            {
+                hay = tolower($1 " " $2)
+                for (i = 1; i <= n; i++) if (index(hay, w[i]) == 0) next
+                printf("am:%s\t%s\t%s\n", $1, $1, $2)
+            }' "${INDEX}"
+        exit 0
+        ;;
+
+    probe)
+        [ -z "${2}" ] && exit 1
+        command -v bash >/dev/null 2>&1 || exit 1
+        if [ X"${2}" = X"${TOOL_NAME}" ]; then
+            #AM itself, which this channel installs through
+            version="$(_tool_version)" || {
+                printf "unreachable=%s\\n" "the version of AM could not be read from its repository"
+                exit 2
+            }
+            printf "version=%s\\n" "${version}"
+            bytes="$(_head_size "${REPO}/${TOOL_NAME}")"
+            [ -n "${bytes}" ] && printf "bytes=%s\\n" "${bytes}"
+            exit 0
+        fi
+        _arch >/dev/null || exit 1
+        [ -s "${INDEX}" ] || _answer_no_index
+        awk -F'\t' -v n="${2}" '$1 == n {f = 1; exit} END {exit !f}' "${INDEX}" || exit 1
+        #which version and how big is only known to AM's script while it runs
+        printf "%s\\n" "version=latest" "requires=am:${TOOL_NAME}"
+        exit 0
+        ;;
+
+    locate)
+        [ -z "${2}" ] && exit 1
+        if [ X"${2}" = X"${TOOL_NAME}" ]; then
+            printf "url=%s\\n" "${REPO}/${TOOL_NAME}"
+            printf "%s\\n" "format=raw" "bin=appman"
+            exit 0
+        fi
+        [ -s "${INDEX}" ] || _answer_no_index
+        awk -F'\t' -v n="${2}" '$1 == n {f = 1; exit} END {exit !f}' "${INDEX}" || exit 1
+        #the script AM runs to install it, which is where it lives as far as
+        #anyone can say before AM runs it
+        printf "url=%s\\n" "${REPO}/programs/$(_arch)/${2}"
+        printf "%s\\n" "format=raw" "bin=${2}"
+        exit 0
+        ;;
+
+    obtain)
+        [ -z "${2}" ] && exit 1
+        [ -s "${INDEX}" ] || _answer_no_index
+        awk -F'\t' -v n="${2}" '$1 == n {f = 1; exit} END {exit !f}' "${INDEX}" || exit 1
+        if [ ! -x "${STATIC_RUN_REQUIRED}" ]; then
+            printf "unreachable=%s\\n" "AM is not available to install ${2}"
+            exit 2
+        fi
+        app="${2}"
+
+        #AM keeps its modules beside the programs and fetches the ones it lacks
+        #from its repository. When AM itself was updated they are the old
+        #version's, so they go, and the new AM fetches its own
+        tool_version="$(readlink "${STATIC_RUN_REQUIRED}" 2>/dev/null)"
+        tool_version="${tool_version%/*}"; tool_version="${tool_version##*/}"
+        modules="${CH}/apps/appman/modules"
+        if [ -d "${modules}" ] && [ X"$(cat "${modules}/.static-run-version" 2>/dev/null)" != X"${tool_version}" ]; then
+            rm -rf "${modules}"
+        fi
+        mkdir -p "${modules}" 2>/dev/null && printf "%s\\n" "${tool_version}" > "${modules}/.static-run-version"
+
+        #AM installs. What it says while it works goes to the terminal, which is
+        #where a wait gets explained, and never to what this channel answers.
+        #With no terminal to show progress on, AM's download counters are
+        #hundreds of lines: they go to a log in this channel instead, and only
+        #its end is told when AM fails
+        mkdir -p "${CH}/log" 2>/dev/null
+        log="${CH}/log/${app}.log"
+        if [ -t 2 ]; then
+            _appman -y -i "${app}" </dev/null >&2
+        else
+            _appman -y -i "${app}" </dev/null > "${log}" 2>&1
+        fi
+        if [ "${?}" -ne "0" ]; then
+            printf "failed=%s\\n" "AM could not install ${app}$( [ -t 2 ] || printf ", its account is in %s" "${log}")"
+            exit 1
+        fi
+        if [ ! -x "${CH}/bin/${app}" ]; then
+            printf "failed=%s\\n" "AM installed ${app} but left no program called ${app}"
+            exit 1
+        fi
+        #an AppImage of the old kind needs libfuse2, and AM can convert it into
+        #one that does not. On a machine without libfuse2 it is asked to; on
+        #anything that is not such an AppImage AM does nothing
+        if ! _libfuse2; then
+            if [ -t 2 ]; then
+                _appman -y nolibfuse "${app}" </dev/null >&2 || :
+            else
+                _appman -y nolibfuse "${app}" </dev/null >> "${log}" 2>&1 || :
+            fi
+        fi
+
+        #a launcher of its own for each program, so a placement names this
+        #program and not the directory every program of AM shares
+        run="${CH}/run/${app}"
+        mkdir -p "${run}" 2>/dev/null || exit 1
+        rm -f "${run}/${app}" && ln -s "${CH}/bin/${app}" "${run}/${app}" || exit 1
+
+        printf "program=%s\\n" "${run}/${app}"
+        printf "asset=%s\\n" "$(head -1 "${CH}/apps/${app}/version" 2>/dev/null | awk '{print $1}')"
+        #what AM holds for this program is what AM's own remove script would
+        #remove, relative to this channel's directory
+        awk -v ch="${CH}/" '
+            {
+                for (i = 1; i <= NF; i++) {
+                    p = $i; gsub(/"/, "", p)
+                    if (index(p, ch) == 1) print "member=" substr(p, length(ch) + 1)
+                }
+            }' "${CH}/apps/${app}/remove" 2>/dev/null | LC_ALL=C sort -u
+        exit 0
+        ;;
+
+    *) printf "%s\\n" "usage: ${0##*/} meta|index|search|probe|locate|obtain" >&2; exit 1 ;;
+esac

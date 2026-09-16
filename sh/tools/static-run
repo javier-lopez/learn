@@ -286,14 +286,18 @@ _now_ms() {
 
 _timing_add() {
     #$1 => channel, $2 => what was timed: index, tool, fetch or install,
-    #$3 => bytes, $4 => milliseconds. Kept in the channel's own directory
-    case "${3}${4}" in
-        ''|*[!0-9]*) return 0 ;;
-    esac
-    [ "${3}" -gt "0" ] || return 0
+    #$3 => bytes, or nothing when nobody could say, $4 => milliseconds. Kept in
+    #the channel's own directory. A step whose bytes are unknown is still worth
+    #its time: AM cannot say what it will download, and how long it took is all
+    #there is to go on the next time
+    _is_number "${4}" || return 0
+    _ta__bytes="${3}"
+    if ! _is_number "${_ta__bytes}" || [ "${_ta__bytes}" -eq "0" ]; then
+        _ta__bytes="-"
+    fi
     _ta__home="$(_channel_home "${1}")"
     _mkdir_p "${_ta__home}" || return 0
-    printf "%s\\t%s\\t%s\\n" "${2}" "${3}" "${4}" >> "${_ta__home}/timings"
+    printf "%s\\t%s\\t%s\\n" "${2}" "${_ta__bytes}" "${4}" >> "${_ta__home}/timings"
 }
 
 _speed() {
@@ -304,7 +308,7 @@ _speed() {
     _sp__f="$(_channel_home "${1}")/timings"
     _sp__v=""
     [ -f "${_sp__f}" ] && _sp__v="$(awk -F'\t' -v s="${2}" '
-        $1 == s && $2 > 0 { b[++n] = $2; m[n] = $3 }
+        $1 == s && $2 ~ /^[0-9]+$/ && $2 > 0 { b[++n] = $2; m[n] = $3 }
         END {
             k = (n > 10) ? n - 9 : 1
             for (i = k; i <= n; i++) { tb += b[i]; tm += m[i] }
@@ -315,10 +319,22 @@ _speed() {
 
 _est_us() {
     #$1 => bytes, $2 => channel, $3 => what. Microseconds it should take here:
-    #whole milliseconds tie two small downloads that are not the same size
-    case "${1}" in
-        ''|*[!0-9]*) printf "%s\\n" "-"; return 0 ;;
-    esac
+    #whole milliseconds tie two small downloads that are not the same size.
+    #With no bytes to go by, it is how long that step of that channel took here
+    #over the last ten times, and with no record either, nobody knows
+    if ! _is_number "${1}"; then
+        _eu__f="$(_channel_home "${2}")/timings"
+        [ -f "${_eu__f}" ] || { printf "%s\\n" "-"; return 0; }
+        awk -F'\t' -v s="${3}" '
+            $1 == s && $3 ~ /^[0-9]+$/ { m[++n] = $3 }
+            END {
+                if (!n) { print "-"; exit }
+                k = (n > 10) ? n - 9 : 1
+                for (i = k; i <= n; i++) t += m[i]
+                printf("%d\n", t * 1000 / (n - k + 1))
+            }' "${_eu__f}"
+        return 0
+    fi
     awk -v b="${1}" -v s="$(_speed "${2}" "${3}")" 'BEGIN { printf("%d\n", b * 1000000 / s) }'
 }
 
@@ -419,9 +435,12 @@ _probe_emit() {
                   *) _pe__key="$(awk -v t="${_pe__ms}" 'BEGIN {printf("%014d", t)}')" ;;
     esac
 
+    #every field is written, a dash standing for nothing: the line is read back
+    #by position, and an empty field would slide every field after it one to
+    #the left - a channel that knows no size had its package read as its tool
     printf "%s %s %s %s %s %s %s %s %s %s %s %s\\n" \
         "${_pe__class}${_pe__key}${_pe__hops}" "${_pe__c}" \
-        "${_pe__v}" "${_pe__b}" "${_pe__g}" \
+        "${_pe__v}" "${_pe__b:--}" "${_pe__g}" \
         "${_pe__conf}" "$(_channel_meta "${_pe__c}" describes)" \
         "${_pe__p}" "${_pe__r}" "${_pe__e}" "${_pe__marginal:--}" "${_pe__ms:--}"
     return 0
@@ -917,7 +936,8 @@ _purge() {
                 _purge__kept="$((${_purge__kept} + 1))"
                 continue
             fi
-            [ -d "${_purge__mh}/${_purge__m}" ] || continue
+            #a member may be a directory, a file or a link: AM holds all three
+            [ -e "${_purge__mh}/${_purge__m}" ] || [ -L "${_purge__mh}/${_purge__m}" ] || continue
             _purge__size="$(du -sk "${_purge__mh}/${_purge__m}" 2>/dev/null | awk '{print $1*1024; exit}')"
             _purge__freed="$((${_purge__freed} + ${_purge__size:-0}))"
             rm -rf "${_purge__mh}/${_purge__m}"
@@ -1384,7 +1404,11 @@ w_bin="$(printf "%s\\n" "${info}" | awk -F= '$1=="bin"{print $2; exit}')"
 
 #the line names the repository and not only the word typed: a catalog that
 #maps a name somewhere unexpected is caught here, by a person, or not at all
-w_size="$(_human "${w_bytes}")"; [ -n "${w_estimate}" ] && w_size="about ${w_size}"
+if _is_number "${w_bytes}"; then
+    w_size="$(_human "${w_bytes}")"; [ -n "${w_estimate}" ] && w_size="about ${w_size}"
+else
+    w_size="size unknown"
+fi
 w_step="fetch"; [ -n "${w_requires}" ] && w_step="install"
 w_step_ms="$(_est_us "${w_bytes}" "${w_channel}" "${w_step}")"
 _say "${PROGNAME}: ${w_bin} ${w_version} -> ${w_channel}:${w_package}  ${w_size}, $(_human_us "${w_step_ms}")  [${w_badge}]  ${w_kind}"
@@ -1397,18 +1421,19 @@ if [ -n "${w_requires}" ] && [ -z "${req_program}" ]; then
     #what is being agreed to is the sum of the two, so the sum is written out
     #rather than left for the reader to add up. Unknown plus anything is
     #unknown, and an estimate plus anything is still an estimate
-    w_total="unknown"
-    case "${w_bytes}" in
-        ''|*[!0-9]*) ;;
-        *) case "${req_bytes}" in
-               ''|*[!0-9]*) ;;
-               *) w_total="$(_human "$((${w_bytes} + ${req_bytes}))")"
-                  [ -n "${w_estimate}" ] && w_total="about ${w_total}"
-                  if _is_number "${w_step_ms}" && _is_number "${req_ms}"; then
-                      w_total="${w_total}, $(_human_us "$((${w_step_ms} + ${req_ms}))")"
-                  fi ;;
-           esac ;;
-    esac
+    #and the size and the time are each summed on their own: AM can say how
+    #long it usually takes and never what it will download
+    if _is_number "${w_bytes}" && _is_number "${req_bytes}"; then
+        w_total="$(_human "$((${w_bytes} + ${req_bytes}))")"
+        [ -n "${w_estimate}" ] && w_total="about ${w_total}"
+    else
+        w_total="size unknown"
+    fi
+    if _is_number "${w_step_ms}" && _is_number "${req_ms}"; then
+        w_total="${w_total}, $(_human_us "$((${w_step_ms} + ${req_ms}))")"
+    else
+        w_total="${w_total}, time unknown"
+    fi
     _say "            total ${w_total}"
 fi
 

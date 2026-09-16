@@ -639,6 +639,13 @@ static-run --nonsense x >/dev/null 2>&1; test X"${?}" = X"1"
 #variable is the whole reason this block does not depend on anybody's uptime
 STATIC_RUN_CHANNELS="$(cd .. && pwd)/static-run.d"; export STATIC_RUN_CHANNELS
 STATIC_RUN_HOME="$(pwd)/home"; export STATIC_RUN_HOME
+#AM's catalog comes from a repository here and not from github, for every
+#command below that uses the real channels: the first time, a channel with no
+#catalog fetches it, and that must never mean a network
+amarch="$(uname -m | sed 's/^amd64$/x86_64/; s/^arm64$/aarch64/')"
+mkdir -p amrepo/programs && cp ../static-run.fake-appman amrepo/APP-MANAGER
+{ printf '%s\n' 'some header line that is not a program' '◆ amtool : A tool for the tests. #itsdesktopapp' '◆ amother : Another one.'; i=0; while [ ${i} -lt 110 ]; do printf '◆ amfill%s : filler\n' "${i}"; i=$((i+1)); done; } > "amrepo/programs/${amarch}-apps"
+STATIC_RUN_AM_REPO="$(pwd)/amrepo"; export STATIC_RUN_AM_REPO
 #nothing to serve is 127 and nothing on stdout, so that a caller can tell
 #"nothing ran" from a program that ran and failed
 static-run --yes nobody-serves-this >/dev/null 2>&1; test X"${?}" = X"127"
@@ -1057,7 +1064,7 @@ pxb="$(pwd)/pxb"; regf="$(pwd)/reg.yaml"; c403="$(pwd)/c403"
 mkdir -p pxb/channels/github/cache && cp pxh/channels/github/cache/pkgxdev_pkgx_.json pxb/channels/github/cache/
 PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${pxb}" STATIC_RUN_AQUA_REGISTRY="${regf}" STATIC_RUN_PKGX_DIST="${pxdist}" FAKE_PKGX_GRAPH="acme.org/extra=1.0.0" static-run --yes extra > pxout 2> pxerr
 test X"$(cat pxout)" = X"extra ran"
-grep "no catalog here has 'extra'; fetching aqua and pkgx at once" pxerr >/dev/null
+grep "no catalog here has 'extra'; fetching am, aqua and pkgx at once" pxerr >/dev/null
 grep 'pkgx: 1[0-9][0-9] packages' pxerr >/dev/null
 #and once one channel has the name, the catalogs after it are left for later
 pxb2="$(pwd)/pxb2"; mkdir -p pxb2/channels/github/cache && cp am/channels/github/cache/aquaproj_aqua_.json am/channels/github/cache/acme_jqx_.json pxb2/channels/github/cache/
@@ -1110,6 +1117,57 @@ test ! -e pxh/channels/pkgx/cellar/acme.org
 rm -rf pxh/channels/pkgx
 test X"$(find pxh -name '*pkgx*' ! -path 'pxh/channels/github/*')" = X""
 test X"$(PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${pxh}" STATIC_RUN_PKGX_DIST="${pxdist}" STATIC_RUN_AQUA_REGISTRY="${regf}" FAKE_PKGX_GRAPH="acme.org/extra=1.0.0" static-run --yes extra 2>/dev/null)" = X"extra ran"
+#AM: AppImages and portable programs, installed by AM itself in AppMan mode,
+#the whole of it under the channel's directory. Its catalog is a list of names;
+#what a program weighs and which version it is, AM's script finds out while it
+#installs, so the question says so instead of inventing either
+amh="$(pwd)/amh"; amlog="$(pwd)/amlog"
+STATIC_RUN_HOME="${amh}" ../../tools/static-run.d/am probe amtool | grep -x 'needs=index' >/dev/null
+STATIC_RUN_HOME="${amh}" ../../tools/static-run.d/am index >/dev/null
+test X"$(awk -F'\t' '$1 == "amtool" {print $2}' amh/channels/am/index/apps.tsv)" = X"A tool for the tests."
+test X"$(awk 'END {print NR}' amh/channels/am/index/apps.tsv)" = X"112"
+test X"$(STATIC_RUN_HOME="${amh}" ../../tools/static-run.d/am probe amtool | tr '\n' ' ')" = X"version=latest requires=am:APP-MANAGER "
+test X"$(STATIC_RUN_HOME="${amh}" ../../tools/static-run.d/am probe APP-MANAGER | tr '\n' ' ')" = X"version=9.9-1 bytes=$(wc -c < ../static-run.fake-appman | awk '{print $1}') "
+STATIC_RUN_HOME="${amh}" ../../tools/static-run.d/am probe nosuchapp >/dev/null 2>&1; test X"${?}" = X"1"
+PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${amh}" STATIC_RUN_LIBFUSE2=no FAKE_AM_LOG="${amlog}" static-run --yes amtool > amout 2> amerr
+test X"$(cat amout)" = X"amtool ran"
+grep 'amtool latest -> am:amtool  size unknown, time unknown  \[via am\]  native' amerr >/dev/null
+grep 'first am:APP-MANAGER 9.9-1' amerr >/dev/null
+grep 'total size unknown, time unknown' amerr >/dev/null
+test X"$(readlink amh/channels/am/tool/current)" = X"${amh}/channels/am/tool/9.9-1/appman"
+#AM ran with the channel's HOME, and on a machine without libfuse2 it was asked
+#to convert what may be an AppImage of the old kind
+test X"$(tr '\n' ' ' < amlog)" = X"install amtool HOME=${amh}/channels/am/home nolibfuse amtool "
+test -L amh/channels/am/run/amtool/amtool
+test X"$(LC_ALL=C sort amh/channels/am/members/amtool/latest | tr '\n' ' ')" = X"apps/amtool bin/amtool share/applications/amtool-AM.desktop "
+#nothing of it outside the channel's directory
+test X"$(find amh -mindepth 1 -maxdepth 1 ! -name channels ! -name cache ! -name tmp)" = X""
+test X"$(find amh/channels -mindepth 1 -maxdepth 1 ! -name am ! -name github)" = X""
+#how long AM took is kept with no bytes, and the next program's time is
+#estimated from it; with libfuse2 here nothing is converted
+PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${amh}" STATIC_RUN_LIBFUSE2=yes FAKE_AM_LOG="${amlog}" static-run --yes amother > amout 2> amerr
+test X"$(cat amout)" = X"amother ran"
+grep 'amother latest -> am:amother  size unknown, <1 s  \[via am\]' amerr >/dev/null
+test X"$(awk -F'\t' '$1 == "install" && $2 == "-"' amh/channels/am/timings | awk 'END {print NR}')" = X"2"
+test X"$(grep -c 'nolibfuse amother' amlog)" = X"0"
+#purging a program takes what AM's remove script names, files and links too
+STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${amh}" static-run --purge amtool >/dev/null 2>&1
+test ! -e amh/channels/am/apps/amtool
+test ! -e amh/channels/am/bin/amtool
+test ! -e amh/channels/am/share/applications/amtool-AM.desktop
+test ! -e amh/channels/am/run/amtool
+test -x amh/channels/am/bin/amother
+#a newer AM takes the old one's place, and the modules the old one kept go
+sed 's/^AMVERSION="9.9-1"/AMVERSION="9.9-2"/' ../static-run.fake-appman > amrepo/APP-MANAGER
+STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${amh}" static-run --index-update am 2>&1 | grep 'am: APP-MANAGER 9.9-1 -> 9.9-2' >/dev/null
+test X"$(readlink amh/channels/am/tool/current)" = X"${amh}/channels/am/tool/9.9-2/appman"
+test ! -e amh/channels/am/tool/9.9-1
+test X"$(cat amh/channels/am/apps/appman/modules/.static-run-version)" = X"9.9-1"
+: > amh/channels/am/apps/appman/modules/left-by-the-old-am
+PATH="${c404}:${PATH}" STATIC_RUN_CHANNELS="${realch}" STATIC_RUN_HOME="${amh}" STATIC_RUN_LIBFUSE2=yes static-run --yes amtool >/dev/null 2>&1
+test X"$(cat amh/channels/am/apps/appman/modules/.static-run-version)" = X"9.9-2"
+test ! -e amh/channels/am/apps/appman/modules/left-by-the-old-am
+cp ../static-run.fake-appman amrepo/APP-MANAGER
 @end
 
 @begin{staticus}
