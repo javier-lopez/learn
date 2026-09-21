@@ -5,7 +5,9 @@
 #tools.sh is not a tool, so the thing that runs every block was the one thing
 #here nobody ran. What is tested below is the part of it that would be silent
 #when wrong - a run told to stop at a section, which has to stop where it says
-#it stopped and has to be impossible to read as a run of the whole block
+#it stopped and has to be impossible to read as a run of the whole block, and
+#a name it has no block for, which it has to refuse rather than run as the
+#empty script that name extracts
 #
 #the runner is run as it is really run, against a tools directory and a
 #tools.db of three tools built here: it takes its paths relative to itself, so
@@ -196,6 +198,41 @@ t_prefix_unknown() {
     return 1
 }
 
+#a name the database has no block for is refused before anything is run: it
+#would extract an empty script, and an empty script is one that exits 0, so a
+#typo would be read as a tool that ran and passed
+t_unknown_tool() {
+    run nosuchtool                                                     || return 1
+    is status "${rc}" "1"                                              || return 1
+    has said "${err}" "^Error - .* has no test for 'nosuchtool'"       || return 1
+    is nothing_said "${out}" ""                                        || return 1
+    hasnt ok "${out}" 'ok'                                             || return 1
+    [ ! -d "${sd}/tests/test.sd" ] && return 0
+    why="${why}${why:+; }unknown: a sandbox was made for a run that never happened"
+    return 1
+}
+
+#what is given is a list and every name in it is checked, with the one that is
+#wrong named and the ones that are right left out of it and not run either
+t_unknown_tool_in_list() {
+    run "alpha nosuchtool"                                             || return 1
+    is status "${rc}" "1"                                              || return 1
+    has said "${err}" "^Error - .* has no test for 'nosuchtool'"       || return 1
+    hasnt alpha "${err}" "'alpha'"                                     || return 1
+    is nothing_ran "$(reached)" ""
+}
+
+#a run nobody gave a name to is every block the database has, in its order
+t_all() {
+    run                                                                || return 1
+    is status "${rc}" "1"                                              || return 1
+    is reached "$(reached)" "head one two three beta "                 || return 1
+    has alpha "${out}" '^alpha \.* ok$'                                || return 1
+    has beta "${out}" '^beta \.* ok$'                                  || return 1
+    has gamma "${out}" '^gamma \.* FAILED$'                            || return 1
+    is result "$(line '$')" "FAILED: passed: 2/3, failed: 1/3"
+}
+
 #and a stop is one block's: two tools, or none, is nothing to stop
 t_prefix_one_tool() {
     upto="two"; run "alpha beta"                                       || return 1
@@ -212,7 +249,8 @@ printf "%s\\n\\n" "Info - running ${runner} tests:"
 
 for t in t_whole t_whole_unmarked t_list t_list_unmarked t_prefix \
          t_prefix_first t_prefix_last t_prefix_says_so t_prefix_failure \
-         t_prefix_unknown t_prefix_one_tool; do
+         t_prefix_unknown t_unknown_tool t_unknown_tool_in_list t_all \
+         t_prefix_one_tool; do
     why=""
     upto=""
     printf "%s\\n" "${t} ........................" | awk '{ printf("%s ", substr($0, 0, 25)); }'

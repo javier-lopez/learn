@@ -77,6 +77,16 @@ if [ -n "${TOOLS_WITHOUT_TEST}" ]; then
     printf "%s\\n\\n" "${TOOLS_WITHOUT_TEST}"
 fi
 
+#a name given here has to be one the database has a block for: a name it has
+#none for extracts an empty script, and an empty script is one that exits 0,
+#so a typo would be read as a tool that ran and passed. It comes before the
+#section a run stops at, so one mistake is said once and not twice
+for tool in ${1}; do
+    printf "%s\\n" "${TESTS}" | grep -q -x -F -e "${tool}" && continue
+    printf "%s\\n" "Error - ${tools_db} has no test for '${tool}', grep '^@begin' ${tools_db} says which tools it has" >&2
+    exit 1
+done
+
 #a run that stops early stops one block at a section that block has, and both
 #are settled before a sandbox is made, so a name nobody has does nothing at all
 if [ -n "${TESTS_UPTO}" ]; then
