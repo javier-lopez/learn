@@ -9,8 +9,9 @@
 #     - eval $(gpg-agent --daemon)
 #   script: (cd python/tests/ && sh tools.sh) && (cd sh/tests/ && sh lib.sh && xvfb-run sh tools.sh)
 #
-# The script line is reproduced character for character. Three things about the
-# translation, because Travis and Actions do not run steps the same way:
+# The script line is reproduced character for character, with one script added
+# to it since; that addition is the last thing said below. Three things about
+# the translation, because Travis and Actions do not run steps the same way:
 #
 #   - Travis ran before_install and script in one shell, so what
 #     `eval $(gpg-agent --daemon)` exported was still set when the tests ran.
@@ -46,6 +47,12 @@
 #
 # The third part of the line, xvfb-run sh tools.sh, could not be run there at
 # all: that machine has no xvfb.
+#
+# sh/tests/prefix.sh is the one thing in that line Travis never ran. It tests
+# the runner and not a tool, which tools.db has no way to key a block by, and
+# this is the only place the sh suite is run from; it goes first because it
+# takes under a second and because a runner that cut a block wrong would make
+# every failure after it hard to read.
 #
 # act runs this job.
 
@@ -83,4 +90,4 @@ jobs:
           rm -f gpg-agent.env
 
       - name: Run the suites
-        run: (cd python/tests/ && sh tools.sh) && (cd sh/tests/ && sh lib.sh && xvfb-run sh tools.sh)
+        run: (cd python/tests/ && sh tools.sh) && (cd sh/tests/ && sh prefix.sh && sh lib.sh && xvfb-run sh tools.sh)
