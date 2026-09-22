@@ -2,9 +2,9 @@ Usage
 -----
 
    ```sh
+   $ sh meta.sh
    $ sh lib.sh
    $ sh tools.sh
-   $ sh prefix.sh
    ```
 
 One tool's block:

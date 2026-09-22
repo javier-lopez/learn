@@ -19,7 +19,7 @@ runner="./tools.sh"
 
 #a block writes the sections it reached into a file outside the sandbox the
 #runner wipes, which is how a stop is seen to have stopped where it says
-sd="$(pwd)/prefix.sd"
+sd="$(pwd)/meta.sd"
 PREFIX_TEST_OUT="${sd}/reached"; export PREFIX_TEST_OUT
 
 rm -rf "${sd}" || (sleep 1; rm -rf "${sd}")

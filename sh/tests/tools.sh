@@ -83,7 +83,7 @@ fi
 #section a run stops at, so one mistake is said once and not twice
 for tool in ${1}; do
     printf "%s\\n" "${TESTS}" | grep -q -x -F -e "${tool}" && continue
-    printf "%s\\n" "Error - ${tools_db} has no test for '${tool}', grep '^@begin' ${tools_db} says which tools it has" >&2
+    printf "%s\\n" "Error - ${tools_db} has no test for '${tool}'" >&2
     exit 1
 done
 

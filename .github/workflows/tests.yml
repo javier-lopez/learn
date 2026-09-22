@@ -48,7 +48,7 @@
 # The third part of the line, xvfb-run sh tools.sh, could not be run there at
 # all: that machine has no xvfb.
 #
-# sh/tests/prefix.sh is the one thing in that line Travis never ran. It tests
+# sh/tests/meta.sh is the one thing in that line Travis never ran. It tests
 # the runner and not a tool, which tools.db has no way to key a block by, and
 # this is the only place the sh suite is run from; it goes first because it
 # takes under a second and because a runner that cut a block wrong would make
@@ -90,4 +90,4 @@ jobs:
           rm -f gpg-agent.env
 
       - name: Run the suites
-        run: (cd python/tests/ && sh tools.sh) && (cd sh/tests/ && sh prefix.sh && sh lib.sh && xvfb-run sh tools.sh)
+        run: (cd python/tests/ && sh tools.sh) && (cd sh/tests/ && sh meta.sh && sh lib.sh && xvfb-run sh tools.sh)
