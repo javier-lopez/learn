@@ -49,7 +49,7 @@ on:
 jobs:
 
   suite:
-    name: 'python and sh test suites'
+    name: 'test suites'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     # Comes out the day this job first comes out green. Until a runner has said
