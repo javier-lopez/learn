@@ -1233,10 +1233,10 @@ test X"$(cd one && "${cf}" --coverage | grep '^rules:')" = X"rules: 2 functions,
 #approved function somebody changed turns this suite red the same day. The
 #sandbox is inside the working tree, so git finds the repository by walking up,
 #and the sweep is the one every test above ran over a repository of its own - no
-#path given, every shell file git tracks. Today nothing carries a tag, so there
-#is nothing to compare and the answer is a clean pass. A pass on nothing is only
-#worth having if the sweep did read the repository, so what it read is asked for
-#as well. Each of the two is asked once, because reading it is what it costs
+#path given, every shell file git tracks. A clean pass says no tagged function
+#changed. It is only worth having if the sweep did read the repository - with no
+#tags at all it would pass on nothing - so what it read is asked for as well.
+#Each of the two is asked once, because reading it is what it costs
 repocheck="$(code-freeze --check)"; test X"${?}" = X"0"
 test X"${repocheck}" = X""
 repocov="$(code-freeze --coverage)"
