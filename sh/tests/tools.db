@@ -1148,6 +1148,21 @@ test X"$(cd one && "${cf}" --reviewed prog _ninguna --yes 2>&1 >/dev/null | head
 printf '%s\n' '#!/bin/sh' '' '_hd() {' '    cat <<EOF' '{' '}' 'EOF' '}' '' '_after() {' '    printf "x\n"' '}' > one/prog
 (cd one && git add prog && git commit -q -m heredoc)
 test X"$(cd one && "${cf}" --reviewed prog _hd --yes 2>&1 >/dev/null | head -1)" = X"code-freeze: prog does not say where _hd ends, or defines it more than once"
+#@section{repository}
+#and here, over this repository, which is the reason this block exists: an
+#approved function somebody changed turns this suite red the same day. The
+#sandbox is inside the working tree, so git finds the repository by walking up,
+#and the sweep is the one every test above ran over a repository of its own - no
+#path given, every shell file git tracks. Today nothing carries a tag, so there
+#is nothing to compare and the answer is a clean pass. A pass on nothing is only
+#worth having if the sweep did read the repository, so what it read is asked for
+#as well. Each of the two is asked once, because reading it is what it costs
+repocheck="$(code-freeze --check)"; test X"${?}" = X"0"
+test X"${repocheck}" = X""
+repocov="$(code-freeze --coverage)"
+test X"$(printf "%s\n" "${repocov}" | awk -F'[:,] *' '$1 == "sh/lib" && $2 + 0 > 50 {print "read"}')" = X"read"
+test X"$(printf "%s\n" "${repocov}" | awk -F'[:,] *' '$1 == "sh/tools/code-freeze" {print "read"}')" = X"read"
+test X"$(printf "%s\n" "${repocov}" | awk 'END {print (NR > 100) ? "many" : "few"}')" = X"many"
 @end
 
 # vim: set ts=8 sw=4 tw=0 ft=sh :
