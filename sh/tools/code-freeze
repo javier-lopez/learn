@@ -4,7 +4,7 @@
 #       code-freeze --reviewed FILE FUNCTION [--frozen]
 
 #example: code-freeze --check sh/tools/fuck
-#code-freeze: fuck _hook changed since 7638adf (frozen, reviewed 2026-09-18 by m@javier.io)
+#code-freeze: fuck _hook changed since 7638adf (frozen 2026-09-18 by m@javier.io)
 
 VERSION="2026.09.21-19:30"
 
@@ -28,10 +28,11 @@ _usage() {
     printf "%s\\n" "With no PATH, every shell file the repository tracks and every file it tracks"
     printf "%s\\n" "with a tag in it, and the same inside a directory named. A file named is read"
     printf "%s\\n" "whatever it looks like. A tag is one line, on the line that defines the"
-    printf "%s\\n" "function or the first line inside it, and names the day, who read it, the"
-    printf "%s\\n" "commit that was read and whether it is reviewed or frozen:"
+    printf "%s\\n" "function or the first line inside it. Its word says whether the function"
+    printf "%s\\n" "is reviewed or frozen, and it names the day, who read it and the commit"
+    printf "%s\\n" "that was read:"
     printf "\\n"
-    printf "%s\\n" "    _f() { #@reviewed 2026-09-18 you@example.com 7638adf frozen"
+    printf "%s\\n" "    _f() { #@frozen 2026-09-18 you@example.com 7638adf"
 }
 
 _die() {
@@ -191,10 +192,12 @@ tag_awk='
     function isdef(s) { return (s ~ /^[A-Za-z_][A-Za-z0-9_]*\(\)[ \t]*\{/) }
     function isclose(s) { return (s ~ /^\}([ \t]*#.*)?$/) }
     function nameof(s) { sub(/\(\).*/, "", s); return s }
-    function istag(s) { return (s ~ /^[ \t]*#@reviewed([ \t]|$)/) }
-    function deftag(s) { return (isdef(s) && s ~ /\{[ \t]*#@reviewed([ \t]|$)/) }
-    function tagof(s) { sub(/^.*#@reviewed/, "#@reviewed", s); return trim(s) }
-    function untag(s) { sub(/[ \t]*#@reviewed.*$/, "", s); return s }
+    #the word of a tag is its state, and one of the two words, whole, is what tells
+    #a tag from any other comment that begins #@, as #@section{name} does
+    function istag(s) { return (s ~ /^[ \t]*#@(reviewed|frozen)([ \t]|$)/) }
+    function deftag(s) { return (isdef(s) && s ~ /\{[ \t]*#@(reviewed|frozen)([ \t]|$)/) }
+    function tagof(s) { match(s, /#@(reviewed|frozen)([ \t]|$)/); return trim(substr(s, RSTART)) }
+    function untag(s) { sub(/[ \t]*#@(reviewed|frozen)([ \t].*)?$/, "", s); return s }
     #a definition that carries its own } is the whole function: the tag comes off
     #first, so a one-liner that was tagged is still read as one
     function whole(s) { return (trim(untag(s)) ~ /\}$/) }
@@ -213,8 +216,8 @@ tag_awk='
     }
 
     #a line a tag can be, anywhere in the file: what tells a file with a tag in it
-    #from one that only quotes the word, as the test block of this tool does.
-    #Asking for the word alone would sweep that block and count it as read
+    #from one that only quotes the words, as the test block of this tool does.
+    #Asking for a word alone would sweep that block and count it as read
     function carries(   i, l) {
         for (i = 1; i <= nl; i++) {
             l = trim(L[i])
@@ -271,17 +274,19 @@ tag_awk='
         return 0
     }
 
-    #the five words of a tag, checked one by one: what does not parse is said as
-    #it was written, since guessing at a field is how a tag stops meaning anything
+    #the four words of a tag, checked one by one: what does not parse is said as
+    #it was written, since guessing at a field is how a tag stops meaning anything.
+    #The form with five, the word always reviewed and the state at the end, is one
+    #that does not parse: read the old way, it would be a second way to say it
     function fields(t,   n, a) {
         tdate = ""; temail = ""; tsha = ""; tstate = ""
         n = split(t, a, "[ \t]+")
-        if (n != 5) return 0
+        if (n != 4) return 0
+        if (a[1] != "#@reviewed" && a[1] != "#@frozen") return 0
         if (a[2] !~ /^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/) return 0
         if (a[3] !~ /^[^@ \t]+@[^@ \t]+$/) return 0
         if (a[4] !~ /^[0-9a-f][0-9a-f][0-9a-f][0-9a-f]+$/ || length(a[4]) > 40) return 0
-        if (a[5] != "reviewed" && a[5] != "frozen") return 0
-        tdate = a[2]; temail = a[3]; tsha = a[4]; tstate = a[5]
+        tstate = substr(a[1], 3); tdate = a[2]; temail = a[3]; tsha = a[4]
         return 1
     }
 
@@ -345,7 +350,7 @@ tag_awk='
         return 0
     }
 
-    #a line is a word, a tab and a path. mention is a file the tag word is written
+    #a line is a word, a tab and a path. mention is a file a tag word is written
     #in, and is only remembered. named is read whatever it looks like, because
     #whoever named it said it is shell. swept is read when it is a shell file, and
     #when it is not but carries a line a tag can be: the rules a program sources
@@ -413,7 +418,7 @@ _verify() {
 
     _v__then="$(git show "${tsha}:${_v__was}" 2>/dev/null | awk -v want="${func}" "${tag_awk}")"
     case "${?}" in
-        1) _found "${_v__name} ${func} is not in ${tsha} (${tstate}, reviewed ${tdate} by ${temail})"
+        1) _found "${_v__name} ${func} is not in ${tsha} (${tstate} ${tdate} by ${temail})"
            return 1 ;;
         2) _found "${_v__name} ${func} has no end this can find in ${tsha}"
            return 1 ;;
@@ -421,7 +426,7 @@ _verify() {
 
     _v__now="$(awk -v want="${func}" "${tag_awk}" "${file}")"
     [ X"${_v__then}" = X"${_v__now}" ] && return 0
-    _found "${_v__name} ${func} changed since ${tsha} (${tstate}, reviewed ${tdate} by ${temail})"
+    _found "${_v__name} ${func} changed since ${tsha} (${tstate} ${tdate} by ${temail})"
     return 1
 }
 
@@ -430,13 +435,16 @@ _scan() {
 #sweeps every file the repository tracks. They reach awk on stdin and not as
 #arguments, so the command line never grows with the repository. A path git
 #tracks that the working tree no longer has is left out: there is nothing there
-#to read. Ahead of them go the files the tag word is written in, found by git in
-#one pass so that awk opens no file it will not read. git is asked for the word
-#and not for the shape of a tag: the word is in every tag, and the shape is said
-#once, in the awk, which is where a mention is told from a tag. --no-color is
-#not noise: under color.ui=always every name comes back wrapped in escapes, it
-#matches no path, and a tagged file that is not shell goes unread
-    { git grep --no-color -l -F -e '#@reviewed' | sed -e 's/^/mention	/'
+#to read. Ahead of them go the files a tag word is written in, found by git in
+#one pass so that awk opens no file it will not read. git is asked for the words
+#and not for the shape of a tag: one of them is in every tag, and the shape is
+#said once, in the awk, which is where a mention is told from a tag. It is asked
+#for both: a file whose only tags are frozen has no #@reviewed in it, and when
+#that file is not shell nothing else opens it, and its tags go unchecked in
+#silence. --no-color is not noise: under color.ui=always every name comes back
+#wrapped in escapes, it matches no path, and a tagged file that is not shell
+#goes unread
+    { git grep --no-color -l -F -e '#@reviewed' -e '#@frozen' | sed -e 's/^/mention	/'
       if [ -z "${1}" ]; then
           git ls-files | sed -e 's/^/swept	/'
       else
@@ -495,7 +503,7 @@ _reviewed() {
     _r__head="$(git rev-parse --short HEAD 2>/dev/null)"
     [ -z "${_r__head}" ] && { _say "${PROGNAME}: this repository has no commit for a tag to name"; return 1; }
 
-    _r__tag="#@reviewed $(date +%Y-%m-%d) ${_r__email} ${_r__head} ${state}"
+    _r__tag="#@${state} $(date +%Y-%m-%d) ${_r__email} ${_r__head}"
 
 #the write is rehearsed before anything is written, so that a name nobody has, a
 #function nobody can bound and a definition with no room for a tag are said
