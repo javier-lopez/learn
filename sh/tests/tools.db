@@ -1129,21 +1129,23 @@ test X"$(cd one && "${cf}" --coverage | awk -F: '{printf("%s ", $1)}')" = X"othe
 test X"$(cd one && "${cf}" --coverage . | awk -F: '{printf("%s ", $1)}')" = X"other prog "
 #@section{reviewed}
 #a tag is written with today, the email git is configured with and the short
-#HEAD, as the first line inside the function: inside, so that whoever opens the
-#function reads it, and so that it travels with the function if it moves
+#HEAD, on the line that defines the function and one space after its {: that
+#line already names the function, and a tag there spends no line of its own
 (cd one && "${cf}" --reviewed prog _alpha --yes) >/dev/null 2>&1; test X"${?}" = X"0"
-test X"$(awk 'NR == 4' one/prog)" = X"    #@reviewed $(date +%Y-%m-%d) m@javier.io ${threesha} reviewed"
+test X"$(awk 'NR == 3' one/prog)" = X"_alpha() { #@reviewed $(date +%Y-%m-%d) m@javier.io ${threesha} reviewed"
+test X"$(awk 'NR == 4' one/prog)" = X'    printf "a\n"'
+test X"$(grep -c '' one/prog)" = X"13"
 #and what was just written is what --check reads back, since a tag is no part of
 #the body it vouches for
 test X"$(cd one && "${cf}" --check prog)" = X""
 test X"$(cd one && "${cf}" --coverage prog)" = X"prog: 3 functions, 1 reviewed, 0 frozen, 0 changed, 2 untagged"
-#--frozen is the other state, and a function that already carries a tag has that
-#one replaced where it sits and not a second one added
+#--frozen is the other state, and a function that already carries a tag on the
+#line that defines it has that one replaced there and not a second one added
 (cd one && git add prog && git commit -q -m tagged)
 headsha="$(cd one && git rev-parse --short HEAD)"
 (cd one && "${cf}" --reviewed prog _alpha --frozen --yes) >/dev/null 2>&1; test X"${?}" = X"0"
 test X"$(grep -c '@reviewed' one/prog)" = X"1"
-test X"$(awk 'NR == 4' one/prog)" = X"    #@reviewed $(date +%Y-%m-%d) m@javier.io ${headsha} frozen"
+test X"$(awk 'NR == 3' one/prog)" = X"_alpha() { #@reviewed $(date +%Y-%m-%d) m@javier.io ${headsha} frozen"
 #a tag on the line that defines the function is replaced on that line
 printf '%s\n' '#!/bin/sh' '' '_alpha() { #@reviewed 2020-01-01 viejo@ninguna.parte ffff frozen' '    printf "a\n"' '}' > one/prog
 (cd one && git add prog && git commit -q -m defline)
@@ -1151,6 +1153,22 @@ deflinesha="$(cd one && git rev-parse --short HEAD)"
 (cd one && "${cf}" --reviewed prog _alpha --yes) >/dev/null 2>&1; test X"${?}" = X"0"
 test X"$(awk 'NR == 3' one/prog)" = X"_alpha() { #@reviewed $(date +%Y-%m-%d) m@javier.io ${deflinesha} reviewed"
 test X"$(grep -c '@reviewed' one/prog)" = X"1"
+#a tag on the first line inside, where tags used to be written, is moved: that
+#line goes and the new tag is written on the line that defines the function
+printf '%s\n' '#!/bin/sh' '' '_alpha() {' '    #@reviewed 2020-01-01 viejo@ninguna.parte ffff frozen' '    printf "a\n"' '}' > one/prog
+(cd one && git add prog && git commit -q -m inside)
+insidesha="$(cd one && git rev-parse --short HEAD)"
+(cd one && "${cf}" --reviewed prog _alpha --yes) >/dev/null 2>&1; test X"${?}" = X"0"
+#and the tag that moved still vouches for the body: the commit it names has the
+#tag inside the function and the file has it on the definition, and neither is
+#body, so moving it is no change
+movedcheck="$(cd one && "${cf}" --check prog)"; test X"${?}" = X"0"
+test X"${movedcheck}" = X""
+#and the function is left with one tag, on its definition, and nothing else in
+#the file is touched
+test X"$(grep -c '@reviewed' one/prog)" = X"1"
+printf '%s\n' '#!/bin/sh' '' "_alpha() { #@reviewed $(date +%Y-%m-%d) m@javier.io ${insidesha} reviewed" '    printf "a\n"' '}' > movedref
+cmp one/prog movedref >/dev/null
 #the commit a tag records has to describe the code that was read, so a file with
 #changes nobody committed is refused and nothing is written
 cp one/prog dirtyref
@@ -1180,11 +1198,22 @@ test X"$(cd one && "${cf}" --reviewed prog _ninguna --yes 2>&1 >/dev/null | head
 printf '%s\n' '#!/bin/sh' '' '_hd() {' '    cat <<EOF' '{' '}' 'EOF' '}' '' '_after() {' '    printf "x\n"' '}' > one/prog
 (cd one && git add prog && git commit -q -m heredoc)
 test X"$(cd one && "${cf}" --reviewed prog _hd --yes 2>&1 >/dev/null | head -1)" = X"code-freeze: prog does not say where _hd ends, or defines it more than once"
+#and so is a function with something after the { that opens it, a comment or
+#the body of a one-liner: a tag written after that is not where a tag is read,
+#and what is there is not this tool's to move
+printf '%s\n' '#!/bin/sh' '' '_noted() { #a note somebody wrote here' '    printf "n\n"' '}' '' '_one() { printf "1\n"; }' > one/prog
+(cd one && git add prog && git commit -q -m noted)
+cp one/prog notedref
+notedmsg="$(cd one && "${cf}" --reviewed prog _noted < /dev/null 2>&1 >/dev/null)"; test X"${?}" = X"1"
+test X"${notedmsg}" = X"code-freeze: prog has something after the { that opens _noted, and a tag has to be the only thing after that {"
+onemsg="$(cd one && "${cf}" --reviewed prog _one --yes 2>&1 >/dev/null)"; test X"${?}" = X"1"
+test X"${onemsg}" = X"code-freeze: prog has something after the { that opens _one, and a tag has to be the only thing after that {"
+cmp one/prog notedref >/dev/null
 #the rules a program sources are tagged the same way, and what was written there
 #is what the sweep reads back
 rulesha="$(cd one && git rev-parse --short HEAD)"
 (cd one && "${cf}" --reviewed rules _rule_two --yes) >/dev/null 2>&1; test X"${?}" = X"0"
-test X"$(awk 'NR == 8' one/rules)" = X"    #@reviewed $(date +%Y-%m-%d) m@javier.io ${rulesha} reviewed"
+test X"$(awk 'NR == 7' one/rules)" = X"_rule_two() { #@reviewed $(date +%Y-%m-%d) m@javier.io ${rulesha} reviewed"
 test X"$(cd one && "${cf}" --coverage | grep '^rules:')" = X"rules: 2 functions, 1 reviewed, 0 frozen, 0 changed, 1 untagged"
 #@section{repository}
 #and here, over this repository, which is the reason this block exists: an

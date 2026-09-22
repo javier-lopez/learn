@@ -176,8 +176,8 @@ _update() { #replace this file with the one in the repo, when that one is newer
 #                    the body of that function comes back, the tag line dropped
 #                    and trailing blanks off every line, which is what the two
 #                    sides of a comparison are
-#  want=F tag=TEXT   the same file comes back whole with that tag written or
-#                    replaced, which is what --reviewed writes
+#  want=F tag=TEXT   the same file comes back whole with that tag on the line
+#                    that defines the function, which is what --reviewed writes
 #
 #the shape of a function is the one sh/guideline.md asks for and the one the
 #900-odd functions of this repository have: the name and () begin a line, and a
@@ -323,26 +323,24 @@ tag_awk='
         return 0
     }
 
-    #the tag is written where the function already carries one, and as the first
-    #line inside it when it carries none: inside, so that whoever opens the
-    #function reads it, and so that it travels with the function if it moves
-    function writeout(   k, i, l, pos, lead) {
+    #the tag is written on the line that defines the function, one space after
+    #its {, and one on the first line inside is dropped: a function carries one
+    #tag, on the line that names it, and spends no line of its own on it. A {
+    #with anything else after it - a comment, the body of a one-liner - has no
+    #room: a tag written after that is not where a tag is read, and what is there
+    #is not for this tool to move
+    function writeout(   k, i, d) {
         k = 0
         for (i = 1; i <= nd; i++) if (dname[i] == want) { k = i; break }
         if (k == 0) return 1
         if (dfault[k] != "") return 2
-        pos = "none"
-        if (deftag(trim(L[dstart[k]]))) pos = "def"
-        else if (dstart[k] + 1 <= dend[k] && istag(L[dstart[k] + 1])) pos = "first"
+        d = trim(L[dstart[k]])
+        if (deftag(d)) d = trim(untag(d))
+        if (d !~ /^[A-Za-z_][A-Za-z0-9_]*\(\)[ \t]*\{$/) return 3
         for (i = 1; i <= nl; i++) {
-            l = L[i]
-            if (i == dstart[k]) {
-                if (pos == "def") print trim(untag(l)) " " tag
-                else if (pos == "first") print l
-                else { print l; print "    " tag }
-            } else if (pos == "first" && i == dstart[k] + 1) {
-                lead = l; sub(/#@reviewed.*$/, "", lead); print lead tag
-            } else print l
+            if (i == dstart[k]) print d " " tag
+            else if (i == dstart[k] + 1 && istag(L[i])) continue
+            else print L[i]
         }
         return 0
     }
@@ -497,15 +495,18 @@ _reviewed() {
     _r__head="$(git rev-parse --short HEAD 2>/dev/null)"
     [ -z "${_r__head}" ] && { _say "${PROGNAME}: this repository has no commit for a tag to name"; return 1; }
 
-#the body is asked for before anything is written, so that a name nobody has
-#and a function nobody can bound are said before the question and not after it
-    awk -v want="${2}" "${tag_awk}" "${1}" >/dev/null
+    _r__tag="#@reviewed $(date +%Y-%m-%d) ${_r__email} ${_r__head} ${state}"
+
+#the write is rehearsed before anything is written, so that a name nobody has, a
+#function nobody can bound and a definition with no room for a tag are said
+#before the question and not after it
+    awk -v want="${2}" -v tag="${_r__tag}" "${tag_awk}" "${1}" >/dev/null
     case "${?}" in
         1) _say "${PROGNAME}: ${1} has no function called ${2}"; return 1 ;;
         2) _say "${PROGNAME}: ${1} does not say where ${2} ends, or defines it more than once"; return 1 ;;
+        3) _say "${PROGNAME}: ${1} has something after the { that opens ${2}, and a tag has to be the only thing after that {"; return 1 ;;
     esac
 
-    _r__tag="#@reviewed $(date +%Y-%m-%d) ${_r__email} ${_r__head} ${state}"
     _confirm "${PROGNAME}: tag ${2} in ${1##*/} as ${state}, read at ${_r__head}?" || {
         _say "${PROGNAME}: nothing written"; return 1; }
 
