@@ -1,0 +1,558 @@
+#!/bin/sh
+#description: check that a function somebody reviewed still is the one that was read
+#usage: code-freeze --check|--coverage [PATH]...
+#       code-freeze --reviewed FILE FUNCTION [--frozen]
+
+#example: code-freeze --check sh/tools/fuck
+#code-freeze: fuck _hook changed since 7638adf (frozen, reviewed 2026-09-18 by m@javier.io)
+
+VERSION="2026.09.21-19:30"
+
+PROGNAME="$(expr "${0}" : '.*/\([^/]*\)')"
+[ -z "${PROGNAME}" ] && PROGNAME="code-freeze"
+
+_usage() {
+    printf "%s\\n" "Usage: ${PROGNAME} --check|--coverage [PATH]..."
+    printf "%s\\n" "       ${PROGNAME} --reviewed FILE FUNCTION [--frozen]"
+    printf "%s\\n" "Check that a function somebody reviewed still is the one that was read."
+    printf "\\n"
+    printf "%s\\n" "  -c, --check     verify every tag, exit 1 if one changed or does not parse"
+    printf "%s\\n" "  -o, --coverage  per file, how many functions carry a tag and how many changed"
+    printf "%s\\n" "  -r, --reviewed  write or update the tag of FUNCTION in FILE"
+    printf "%s\\n" "  -f, --frozen    with --reviewed, write the tag as frozen"
+    printf "%s\\n" "  -y, --yes       do not confirm"
+    printf "%s\\n" "  -U, --update    update this program to latest version"
+    printf "%s\\n" "  -V, --version   display version"
+    printf "%s\\n" "  -h, --help      show this message and exit"
+    printf "\\n"
+    printf "%s\\n" "With no PATH, every shell file the repository tracks. A tag is one line, on"
+    printf "%s\\n" "the line that defines the function or the first line inside it, and names the"
+    printf "%s\\n" "day, who read it, the commit that was read and whether it is reviewed or frozen:"
+    printf "\\n"
+    printf "%s\\n" "    _f() { #@reviewed 2026-09-18 you@example.com 7638adf frozen"
+}
+
+_die() {
+    [ -z "${1}" ] || printf "%s\\n" "${*}" >&2
+    _usage >&2; exit 1
+}
+
+_say() {
+    printf "%s\\n" "${*}" >&2
+}
+
+_found() {
+#a finding is what --check is for and goes to stdout. --coverage answers in
+#counts and says nothing here: a tag it could not read leaves its function
+#among the untagged, and --check is the mode that says why. What is wrong with
+#this tool, and not with the code it read, goes to stderr through _say
+    [ X"${mode}" = X"check" ] && printf "%s\\n" "${PROGNAME}: ${*}"
+    found_one="1"
+}
+
+_confirm() {
+#this tool runs no program, so stdin is free and the question is asked there.
+#With nobody to answer - a test suite, cron, a pipeline - the read ends at once
+#and nothing is written, which is the answer a no would have given
+    [ -n "${assume_yes}" ] && return 0
+    printf "%s" "${1} [y/N] " >&2
+    read -r _confirm__answer || { printf "\\n" >&2; return 1; }
+    case "${_confirm__answer}" in
+        y|Y|s|S|yes|YES|si|SI) return 0 ;;
+    esac
+    return 1
+}
+
+_update() { #replace this file with the one in the repo, when that one is newer
+    _u__current_file="$(cd "$(dirname "${0}")" && pwd)/${PROGNAME}"
+
+    #a link into a checkout is not ours to overwrite: mv would put a regular
+    #file where the link was and quietly detach it from the repo that owns it,
+    #leaving a copy nobody updates again
+    if [ -L "${_u__current_file}" ]; then
+        _u__target="$(readlink "${_u__current_file}" 2>/dev/null)"
+        printf "%s\\n" "ERROR: ${_u__current_file} is a link to ${_u__target:-somewhere else}" >&2
+        #naming shundle here is duplication, and it is worth it: this branch is
+        #only ever reached when the file already is a link inside a bundle, so
+        #shundle is there by definition. Anyone who downloaded this script on
+        #its own never gets here, and never reads about a tool they lack
+        case "${_u__target}" in
+            "${SHUNDLE_HOME:-/dev/null}"/bundle/*|*/.shundle/bundle/*)
+                printf "%s\\n" "INFO : shundle update ${PROGNAME}" >&2 ;;
+            *)  printf "%s\\n" "INFO : update the file it points at, replacing the link would orphan it" >&2 ;;
+        esac
+        return 1
+    fi
+
+    _u__current_version_long="$(awk -F\" \
+        '/VERSION=/{print $2;exit}' "${_u__current_file}" 2>/dev/null)"
+    _u__current_version="$(printf "%s\\n" "${_u__current_version_long}" | \
+        awk '{gsub(/[\.:]/,"");gsub(/-/,"");print;exit}' 2>/dev/null)"
+    [ -z "${_u__current_version}" ] && printf "%s\\n%s\\n%s\\n"           \
+        "ERROR: Failed to detect current version, please update manually" \
+        "${PROGNAME}         = ${_u__current_file}"                       \
+        "${PROGNAME} version = ${_u__current_version}" >&2 && return 1
+
+    command -v "wget" >/dev/null 2>&1 || command -v "curl" >/dev/null 2>&1 || \
+        { printf "%s\\n" "ERROR: Install either 'wget' or 'curl' to upgrade" >&2; return 1; }
+
+    _u__url="https://raw.githubusercontent.com/javier-lopez/learn/master/sh/tools/${PROGNAME}"
+
+    #it never lands in /tmp. A predictable name in a world writable directory
+    #is a file somebody else can turn into a link before we write through it,
+    #and this one gets chmod +x and becomes the program. It is held in a
+    #variable, and only written next to the file it is going to replace, where
+    #the rename is atomic because it never crosses a filesystem. The
+    #certificate is checked and curl is told to fail on a 404 instead of
+    #handing over the error page. stderr is left alone so you read why it failed
+    _u__new="$(wget -q -O- "${_u__url}" || curl -fsS "${_u__url}")" || { \
+        printf "%s\\n" \
+        "ERROR: Failed to fetch update, please try later or update manually" >&2
+        return 1; }
+
+    #and what came down has to look like the program, not like a web page
+    case "${_u__new}" in
+        "#!"*) ;;
+        *) printf "%s\\n" "ERROR: what came down is not a script, not touching ${PROGNAME}" >&2
+           return 1 ;;
+    esac
+
+    _u__update_version_long="$(printf "%s\\n" "${_u__new}" | awk -F\" \
+        '/VERSION=/{print $2;exit}' 2>/dev/null)"
+    _u__update_version="$(printf "%s" "${_u__update_version_long}" | awk \
+        '{gsub(/[\.:]/,"");gsub(/-/,"");print;exit}' 2>/dev/null)"
+    #no VERSION upstream is not the same as being current, and saying
+    #up-to-date there is the most expensive kind of lie: the one you believe
+    [ -z "${_u__update_version}" ] && printf "%s\\n" \
+        "ERROR: the copy upstream carries no VERSION, cannot tell if it is newer" >&2 && return 1
+
+    if [ "${_u__current_version}" -lt "${_u__update_version}" ]; then
+        printf "%s %s\\n" "Updating from version" \
+            "${_u__current_version_long} to ${_u__update_version_long} ..."
+
+        #checked again, right here: between the check at the top and this line
+        #the file could have become a link, and this is the moment it matters
+        [ -L "${_u__current_file}" ] && printf "%s\\n" \
+            "ERROR: ${_u__current_file} became a link, not replacing it" >&2 && return 1
+
+        _u__tmpfile="${_u__current_file}.update"
+        if printf "%s\\n" "${_u__new}" > "${_u__tmpfile}" 2>/dev/null; then
+            chmod +x "${_u__tmpfile}"
+            mv -f "${_u__tmpfile}" "${_u__current_file}" 2>/dev/null || { \
+                rm -f "${_u__tmpfile}"
+                printf "%s\\n" "ERROR: cannot replace ${_u__current_file}" >&2
+                return 1; }
+        else
+            #no write permission in that directory, so the file has to be
+            #staged somewhere we do own, and mktemp is what makes that name
+            #unguessable and the file ours alone
+            printf "%s\\n" "ERROR: no write permissions on ${_u__current_file}" >&2
+            printf "%s\\n" "INFO : trying with sudo ..." >&2
+            command -v "sudo" >/dev/null 2>&1 || { \
+                printf "%s\\n" "ERROR: sudo isn't available, exiting ..." >&2; return 1; }
+            _u__tmpfile="$(mktemp "${TMPDIR:-/tmp}/${PROGNAME}.XXXXXX")" || return 1
+            printf "%s\\n" "${_u__new}" > "${_u__tmpfile}" || { \
+                rm -f "${_u__tmpfile}"; return 1; }
+            chmod +x "${_u__tmpfile}"
+            sudo mv "${_u__tmpfile}" "${_u__current_file}" || { \
+                rm -f "${_u__tmpfile}"; return 1; }
+        fi
+        printf "%s\\n" "${PROGNAME} is up-to-date (${_u__update_version_long})"
+        return 0
+    fi
+    printf "%s\\n" "${PROGNAME} is up-to-date (${_u__current_version_long})"
+}
+
+#one awk does all the reading, in three modes, so that a whole repository is
+#scanned by one process and not by one for each of its files:
+#
+#  no want           the paths arrive on stdin and a record comes back for every
+#                    tag and for every file, which is what --check and
+#                    --coverage read
+#  want=FUNCTION     the lines of one file arrive on stdin or as an argument and
+#                    the body of that function comes back, the tag line dropped
+#                    and trailing blanks off every line, which is what the two
+#                    sides of a comparison are
+#  want=F tag=TEXT   the same file comes back whole with that tag written or
+#                    replaced, which is what --reviewed writes
+#
+#the shape of a function is the one sh/guideline.md asks for and the one the
+#900-odd functions of this repository have: the name and () begin a line, and a
+#line that is } and nothing else but a comment closes it. Where that rule cannot
+#tell - a } at the start of a line inside a here-doc or an embedded awk program,
+#or one name defined twice in a file - the answer is "unbounded" or "twice" and
+#never a body, because a body cut short would compare equal to itself and say a
+#function nobody changed when the change is past the cut
+tag_awk='
+    function trim(s) { sub(/[ \t]+$/, "", s); return s }
+    function isdef(s) { return (s ~ /^[A-Za-z_][A-Za-z0-9_]*\(\)[ \t]*\{/) }
+    function isclose(s) { return (s ~ /^\}([ \t]*#.*)?$/) }
+    function nameof(s) { sub(/\(\).*/, "", s); return s }
+    function istag(s) { return (s ~ /^[ \t]*#@reviewed([ \t]|$)/) }
+    function deftag(s) { return (isdef(s) && s ~ /\{[ \t]*#@reviewed([ \t]|$)/) }
+    function tagof(s) { sub(/^.*#@reviewed/, "#@reviewed", s); return trim(s) }
+    function untag(s) { sub(/[ \t]*#@reviewed.*$/, "", s); return s }
+    #a definition that carries its own } is the whole function: the tag comes off
+    #first, so a one-liner that was tagged is still read as one
+    function whole(s) { return (trim(untag(s)) ~ /\}$/) }
+
+    #a file is a shell file when it is named .sh or when its first line asks for
+    #a shell: nothing in a name tells sh/tools/fuck from js/bitaddress.org.html
+    function shellish(p, l,   w, n, a) {
+        if (p ~ /\.sh$/) return 1
+        if (l !~ /^#!/) return 0
+        sub(/^#![ \t]*/, "", l)
+        n = split(l, a, "[ \t]+")
+        w = a[1]; sub(/.*\//, "", w)
+        if (w == "env" && n > 1) { w = a[2]; sub(/.*\//, "", w) }
+        return (w == "sh" || w == "bash" || w == "dash" || w == "ash" || \
+                w == "ksh" || w == "zsh")
+    }
+
+    function reset() {
+        split("", L, " "); split("", dname, " "); split("", dstart, " ")
+        split("", dend, " "); split("", dfault, " "); split("", dseen, " ")
+        nl = 0; nd = 0
+    }
+
+    function analyse(   i, k, j, l, e, why) {
+        for (i = 1; i <= nl; i++) {
+            l = trim(L[i])
+            if (!isdef(l)) continue
+            nd++; dstart[nd] = i; dname[nd] = nameof(l); dfault[nd] = ""
+            dseen[dname[nd]]++
+            dend[nd] = whole(l) ? i : 0
+        }
+        for (k = 1; k <= nd; k++) {
+            if (dend[k] != 0) continue
+            e = 0; why = ""
+            for (j = dstart[k] + 1; j <= nl; j++) {
+                l = trim(L[j])
+                if (isdef(l) && !whole(l)) { why = "unbounded"; break }
+                if (isclose(l)) { e = j; break }
+            }
+            if (why == "" && e == 0) why = "unbounded"
+            #a second close before the next definition is the rule saying it
+            #cannot tell which of the two ends this function
+            if (why == "") {
+                for (j = e + 1; j <= nl; j++) {
+                    l = trim(L[j])
+                    if (isdef(l) && !whole(l)) break
+                    if (isclose(l)) { why = "unbounded"; break }
+                }
+            }
+            dend[k] = e; dfault[k] = why
+        }
+        for (k = 1; k <= nd; k++) if (dseen[dname[k]] > 1) dfault[k] = "twice"
+    }
+
+    function idxat(i,   k) { for (k = 1; k <= nd; k++) if (dstart[k] == i) return k; return 0 }
+    #a field a record has nothing for is written -, never left empty: tab is one
+    #of the characters the shell splits words on wherever it reads them, so two
+    #tabs beside each other are read as one and every field after them shifts
+    function said(s) { return (s == "") ? "-" : s }
+    function encl(i,   k) {
+        for (k = 1; k <= nd; k++)
+            if (dend[k] > 0 && dstart[k] <= i && i <= dend[k]) return k
+        return 0
+    }
+
+    #the five words of a tag, checked one by one: what does not parse is said as
+    #it was written, since guessing at a field is how a tag stops meaning anything
+    function fields(t,   n, a) {
+        tdate = ""; temail = ""; tsha = ""; tstate = ""
+        n = split(t, a, "[ \t]+")
+        if (n != 5) return 0
+        if (a[2] !~ /^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/) return 0
+        if (a[3] !~ /^[^@ \t]+@[^@ \t]+$/) return 0
+        if (a[4] !~ /^[0-9a-f][0-9a-f][0-9a-f][0-9a-f]+$/ || length(a[4]) > 40) return 0
+        if (a[5] != "reviewed" && a[5] != "frozen") return 0
+        tdate = a[2]; temail = a[3]; tsha = a[4]; tstate = a[5]
+        return 1
+    }
+
+    function emit(p,   i, l, pos, k, tg, flt) {
+        for (i = 1; i <= nl; i++) {
+            l = trim(L[i]); tg = ""; pos = ""
+            if (deftag(l)) { pos = "def"; tg = tagof(l) }
+            else if (istag(l)) {
+                tg = tagof(l)
+                pos = (i > 1 && isdef(trim(L[i-1])) && !whole(trim(L[i-1]))) \
+                      ? "first" : "inner"
+            }
+            if (tg == "") continue
+            if (pos == "def") k = idxat(i)
+            else if (pos == "first") k = idxat(i - 1)
+            else { k = encl(i); if (k == 0) pos = "out" }
+            #fields() is called first and on its own: it answers through tdate
+            #and the three beside it, and nothing says in which order awk would
+            #have read the arguments of one printf
+            flt = fields(tg) ? (k ? dfault[k] : "") : "malformed"
+            printf("T\t%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", p, i, pos, \
+                said(k ? dname[k] : ""), said(flt), said(tdate), said(temail), \
+                said(tsha), said(tstate), tg)
+        }
+        printf("F\t%s\t%d\n", p, nd)
+    }
+
+    function body(   k, i, l) {
+        k = 0
+        for (i = 1; i <= nd; i++) if (dname[i] == want) { k = i; break }
+        if (k == 0) return 1
+        if (dfault[k] != "") return 2
+        for (i = dstart[k]; i <= dend[k]; i++) {
+            l = L[i]
+            if (i == dstart[k]) l = untag(l)
+            else if (istag(l)) continue
+            print trim(l)
+        }
+        return 0
+    }
+
+    #the tag is written where the function already carries one, and as the first
+    #line inside it when it carries none: inside, so that whoever opens the
+    #function reads it, and so that it travels with the function if it moves
+    function writeout(   k, i, l, pos, lead) {
+        k = 0
+        for (i = 1; i <= nd; i++) if (dname[i] == want) { k = i; break }
+        if (k == 0) return 1
+        if (dfault[k] != "") return 2
+        pos = "none"
+        if (deftag(trim(L[dstart[k]]))) pos = "def"
+        else if (dstart[k] + 1 <= dend[k] && istag(L[dstart[k] + 1])) pos = "first"
+        for (i = 1; i <= nl; i++) {
+            l = L[i]
+            if (i == dstart[k]) {
+                if (pos == "def") print trim(untag(l)) " " tag
+                else if (pos == "first") print l
+                else { print l; print "    " tag }
+            } else if (pos == "first" && i == dstart[k] + 1) {
+                lead = l; sub(/#@reviewed.*$/, "", lead); print lead tag
+            } else print l
+        }
+        return 0
+    }
+
+    want == "" {
+        reset()
+        if ((getline line < $0) <= 0) { close($0); next }
+        if (!shellish($0, line)) { close($0); next }
+        L[++nl] = line
+        while ((getline line < $0) > 0) L[++nl] = line
+        close($0)
+        analyse(); emit($0); next
+    }
+    { L[++nl] = $0 }
+    END {
+        if (want == "") exit 0
+        analyse()
+        rc = (tag == "") ? body() : writeout()
+        exit rc
+    }'
+
+_path_at() {
+#$1 => commit, $2 => the path the file has now. Prints the path it had at that
+#commit: a tag has to survive a rename of the file it is in. What git is asked for is the net rename between the two ends,
+#which is the answer however many times the file moved in between
+    git cat-file -e "${1}:${2}" 2>/dev/null && { printf "%s\\n" "${2}"; return 0; }
+    git diff --name-status -M "${1}" HEAD 2>/dev/null | awk -F'\t' -v p="${2}" '
+        $1 ~ /^R/ && $3 == p { print $2; found = 1; exit } END { exit !found }'
+}
+
+_verify() {
+#one tag, read out of the variables the loop below filled from its record.
+#Returns 0 with nothing said when the body still is the one that was approved,
+#and 1 having said what is wrong otherwise. A finding names the file the way a
+#reviewer speaks of it, by the name the function lives under and not the path
+    _v__name="${file##*/}"
+    case "${pos}" in
+        out)   _found "${file}:${line} has a tag outside a function"; return 1 ;;
+        inner) _found "${file}:${line} has a tag inside ${func} that is neither on its definition nor its first line"; return 1 ;;
+    esac
+    case "${fault}" in
+        malformed) _found "${file}:${line} has a tag that does not parse: ${raw}"; return 1 ;;
+        unbounded) _found "${_v__name} does not say where ${func} ends, a } begins a line inside it"; return 1 ;;
+        twice)     _found "${_v__name} defines ${func} more than once, so a tag there names no one body"; return 1 ;;
+    esac
+
+#a commit this repository never had and one it had before some other branch are
+#told apart, and only on the way out: a clone of one commit - which is what a
+#checkout in CI is by default - has none of the commits a tag would name, and
+#that reads as a missing history and not as a function somebody rewrote
+    git merge-base --is-ancestor "${tsha}" HEAD 2>/dev/null || {
+        git rev-parse --verify --quiet "${tsha}^{commit}" >/dev/null 2>&1 || {
+            _found "${_v__name} ${func} names ${tsha}, which this repository does not have"
+            return 1; }
+        _found "${_v__name} ${func} names ${tsha}, which is not an ancestor of HEAD"
+        return 1; }
+
+    _v__was="$(_path_at "${tsha}" "${file}")" || {
+        _found "${_v__name} ${func} names ${tsha}, which has no ${file}"
+        return 1; }
+
+    _v__then="$(git show "${tsha}:${_v__was}" 2>/dev/null | awk -v want="${func}" "${tag_awk}")"
+    case "${?}" in
+        1) _found "${_v__name} ${func} is not in ${tsha} (${tstate}, reviewed ${tdate} by ${temail})"
+           return 1 ;;
+        2) _found "${_v__name} ${func} has no end this can find in ${tsha}"
+           return 1 ;;
+    esac
+
+    _v__now="$(awk -v want="${func}" "${tag_awk}" "${file}")"
+    [ X"${_v__then}" = X"${_v__now}" ] && return 0
+    _found "${_v__name} ${func} changed since ${tsha} (${tstate}, reviewed ${tdate} by ${temail})"
+    return 1
+}
+
+_scan() {
+#$1 => the paths to read, one a line, empty for every file the repository
+#tracks. They reach awk on stdin and not as arguments, so the command line
+#never grows with the repository. A path git tracks that the working tree no
+#longer has is left out: there is nothing there to read
+    if [ -z "${1}" ]; then git ls-files; else printf "%s" "${1}"; fi | \
+    { while IFS= read -r _scan__f; do
+        [ -f "${_scan__f}" ] && printf "%s\\n" "${_scan__f}"
+      done; } | awk "${tag_awk}"
+}
+
+_sweep() {
+#$1 => the paths, as _scan takes them. Verifies every tag, and under --coverage
+#counts per file as well. One pass over the records does both: the tags of a
+#file come before the line that closes it, which is the line with its count
+    _sweep__records="$(_scan "${1}")"
+    [ -z "${_sweep__records}" ] && { _say "${PROGNAME}: no shell file to read"; return 1; }
+
+    printf "%s\\n" "${_sweep__records}" | { found_one=""; nrv="0"; nfz="0"; nch="0"
+        while IFS="	" read -r kind file line pos func fault tdate temail tsha tstate raw; do
+            case "${kind}" in
+                T)  _verify; ok="${?}"
+#a tag this could read counts for the state it was approved in, whether or not
+#the body moved on. One that could not - it does not parse, it is not on a
+#function - counts for nothing, and leaves its function among the untagged
+                    case "${pos}" in
+                        def|first) ;;
+                        *) continue ;;
+                    esac
+                    [ X"${fault}" = X"-" ] || continue
+                    [ "${ok}" -ne "0" ] && nch="$((${nch} + 1))"
+                    case "${tstate}" in
+                        frozen)   nfz="$((${nfz} + 1))" ;;
+                        reviewed) nrv="$((${nrv} + 1))" ;;
+                    esac ;;
+                F)  [ X"${mode}" = X"coverage" ] && printf \
+                        "%s: %s functions, %s reviewed, %s frozen, %s changed, %s untagged\\n" \
+                        "${file}" "${line}" "${nrv}" "${nfz}" "${nch}" \
+                        "$((${line} - ${nrv} - ${nfz}))"
+                    nrv="0"; nfz="0"; nch="0" ;;
+            esac
+        done
+#--coverage is a report and answers for having been written, --check is a gate
+#and answers for what it found
+        [ X"${mode}" = X"coverage" ] && exit 0
+        [ -z "${found_one}" ]; }
+}
+
+_reviewed() {
+#$1 => the file, $2 => the function
+    _r__email="$(git config user.email)"
+    [ -z "${_r__email}" ] && { _say "${PROGNAME}: git config user.email names nobody, and a tag records who read the code"; return 1; }
+
+#the commit a tag records has to describe the code that was read, and a file
+#with changes nobody committed is not that code
+    [ -n "$(git status --porcelain -- "${1}")" ] && { _say "${PROGNAME}: ${1} has changes that are not committed, and the commit a tag names has to be the code that was read"; return 1; }
+
+    _r__head="$(git rev-parse --short HEAD 2>/dev/null)"
+    [ -z "${_r__head}" ] && { _say "${PROGNAME}: this repository has no commit for a tag to name"; return 1; }
+
+#the body is asked for before anything is written, so that a name nobody has
+#and a function nobody can bound are said before the question and not after it
+    awk -v want="${2}" "${tag_awk}" "${1}" >/dev/null
+    case "${?}" in
+        1) _say "${PROGNAME}: ${1} has no function called ${2}"; return 1 ;;
+        2) _say "${PROGNAME}: ${1} does not say where ${2} ends, or defines it more than once"; return 1 ;;
+    esac
+
+    _r__tag="#@reviewed $(date +%Y-%m-%d) ${_r__email} ${_r__head} ${state}"
+    _confirm "${PROGNAME}: tag ${2} in ${1##*/} as ${state}, read at ${_r__head}?" || {
+        _say "${PROGNAME}: nothing written"; return 1; }
+
+#written beside the file and moved over it, which is a rename inside one
+#directory and so never leaves half a program behind. The copy goes first for
+#its mode: the file is a program and has to stay one
+    _r__tmp="$(mktemp "${1}.XXXXXX" 2>/dev/null)" || { _say "${PROGNAME}: could not make a file beside ${1}"; return 1; }
+    if cp -p "${1}" "${_r__tmp}" && awk -v want="${2}" -v tag="${_r__tag}" \
+        "${tag_awk}" "${1}" > "${_r__tmp}" && mv -f "${_r__tmp}" "${1}"; then
+        _say "${PROGNAME}: ${1} ${2} ${_r__tag}"
+        return 0
+    fi
+    rm -f "${_r__tmp}"
+    _say "${PROGNAME}: could not write ${1}"
+    return 1
+}
+
+###############################################################################
+#################################### main #####################################
+###############################################################################
+
+_mode() {
+    [ -n "${mode}" ] && _die "${PROGNAME}: --check, --coverage and --reviewed are one at a time"
+    mode="${1}"
+}
+
+#the arguments are read in one rotation: an option is taken and dropped, and
+#anything else goes to the back. So --frozen is read wherever it is written, and
+#--reviewed FILE FUNCTION --frozen is the sentence it reads like
+args_left="${#}"
+while [ "${args_left}" -gt "0" ]; do
+    args_left="$((${args_left} - 1))"
+    case "${1}" in
+        -h|--help)     _usage; exit 0 ;;
+        -V|--version)  printf "%s\\n" "${PROGNAME} ${VERSION}"; exit 0 ;;
+        -U|--update)   _update; exit "${?}" ;;
+        -c|--check)    _mode "check" ;;
+        -o|--coverage) _mode "coverage" ;;
+        -r|--reviewed) _mode "reviewed" ;;
+        -f|--frozen)   state="frozen" ;;
+        -y|--yes)      assume_yes="1" ;;
+        -*)            _die "${PROGNAME}: unrecognized option '${1}'" ;;
+        *)             set -- "${@}" "${1}" ;;
+    esac
+    shift
+done
+
+[ -z "${mode}" ] && _die "${PROGNAME}: say what to do: --check, --coverage or --reviewed"
+[ -n "${state}" ] && [ X"${mode}" != X"reviewed" ] && \
+    _die "${PROGNAME}: --frozen says how --reviewed writes a tag, and there is no --reviewed here"
+
+root="$(git rev-parse --show-toplevel 2>/dev/null)"
+[ -z "${root}" ] && _die "${PROGNAME}: not inside a git repository, and a tag names a commit in one"
+
+#a path is resolved where it was typed and then named the way the repository
+#names it, because the commit a tag points at is asked about a path from the
+#root. The tool moves there once, and every path from here is the repository's
+if [ X"${mode}" = X"reviewed" ]; then
+    [ "${#}" -eq "2" ] || _die "${PROGNAME}: --reviewed takes one file and one function"
+    rfile="$(git ls-files --full-name -- "${1}" 2>/dev/null)"
+    [ -z "${rfile}" ] && _die "${PROGNAME}: git tracks no '${1}', and a tag needs a commit to compare with"
+    case "${rfile}" in
+        *"
+"*) _die "${PROGNAME}: '${1}' names more than one file" ;;
+    esac
+    rfunc="${2}"
+    state="${state:-reviewed}"
+    cd "${root}" || _die "${PROGNAME}: cannot reach ${root}"
+    _reviewed "${rfile}" "${rfunc}"
+    exit "${?}"
+fi
+
+paths=""
+while [ "${#}" -gt "0" ]; do
+    got="$(git ls-files --full-name -- "${1}" 2>/dev/null)"
+    [ -z "${got}" ] && _die "${PROGNAME}: git tracks no '${1}', and a tag needs a commit to compare with"
+    paths="${paths}${got}
+"
+    shift
+done
+cd "${root}" || _die "${PROGNAME}: cannot reach ${root}"
+
+_sweep "${paths}"

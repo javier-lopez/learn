@@ -952,4 +952,202 @@ test X"$(whats --cui | head -1)"                    = X""
 test X"$(whats --cui 2>&1|head -1)"                 = X"whats: unrecognized option '--cui'"
 @end
 
+@begin{code-freeze}
+#@section{setup}
+#nothing here is written in the home of whoever runs it and nothing outside the
+#sandbox: every repository read below is one this block makes here, and the
+#identity git commits with arrives in the environment, so no file of the user is
+#written for it and none is read either
+HOME="${PWD}/userhome"; export HOME; mkdir -p "${HOME}"
+unset XDG_CONFIG_HOME XDG_CACHE_HOME XDG_DATA_HOME GIT_DIR GIT_WORK_TREE GIT_CONFIG GIT_CONFIG_GLOBAL GIT_CONFIG_SYSTEM GIT_INDEX_FILE GIT_OBJECT_DIRECTORY
+GIT_CONFIG_NOSYSTEM="1"; GIT_AUTHOR_NAME="Test"; GIT_AUTHOR_EMAIL="t@test.invalid"; GIT_COMMITTER_NAME="Test"; GIT_COMMITTER_EMAIL="t@test.invalid"
+export GIT_CONFIG_NOSYSTEM GIT_AUTHOR_NAME GIT_AUTHOR_EMAIL GIT_COMMITTER_NAME GIT_COMMITTER_EMAIL
+#the tool is named by an absolute path wherever a test steps into a repository of
+#its own: the PATH this runner writes is ../../tools/, which is relative and
+#points somewhere else from inside a subdirectory of the sandbox
+cf="$(cd ../../tools && pwd)/code-freeze"
+code-freeze -h >/dev/null; test X"${?}"          = X"0"
+code-freeze --help >/dev/null; test X"${?}"      = X"0"
+code-freeze -V | grep "code-freeze" >/dev/null
+test X"$(code-freeze -h | head -1)"              = X"Usage: code-freeze --check|--coverage [PATH]..."
+code-freeze >/dev/null 2>&1; test X"${?}"        = X"1"
+test X"$(code-freeze 2>&1 >/dev/null | head -1)" = X"code-freeze: say what to do: --check, --coverage or --reviewed"
+code-freeze --nonsense >/dev/null 2>&1; test X"${?}"         = X"1"
+code-freeze --check --coverage >/dev/null 2>&1; test X"${?}" = X"1"
+code-freeze --check --frozen >/dev/null 2>&1; test X"${?}"   = X"1"
+code-freeze --reviewed x >/dev/null 2>&1; test X"${?}"       = X"1"
+#@section{fixtures}
+#one repository, one program, two functions, committed: that commit is the one
+#the tags below name. Its user.email is the one --reviewed writes down
+mkdir -p one && (cd one && git init -q . && git config user.email m@javier.io && git config user.name Reviewer)
+printf '%s\n' '#!/bin/sh' '' '_alpha() {' '    printf "a\n"' '}' '' '_beta() {' '    printf "b\n"' '}' > one/prog
+(cd one && git add prog && git commit -q -m "one program, two functions")
+onesha="$(cd one && git rev-parse --short HEAD)"
+#a repository with nothing tagged in it answers cleanly and says nothing, which
+#is the state this repository is in today: a pass on an empty set is a pass
+test X"$(cd one && "${cf}" --check)" = X""
+(cd one && "${cf}" --check); test X"${?}" = X"0"
+#@section{tags}
+#both places a tag may sit are read: on the line that defines the function, and
+#as the first line inside it
+printf '%s\n' '#!/bin/sh' '' "_alpha() { #@reviewed 2026-09-18 m@javier.io ${onesha} frozen" '    printf "a\n"' '}' '' '_beta() {' "    #@reviewed 2026-09-19 m@javier.io ${onesha} reviewed" '    printf "b\n"' '}' > one/prog
+test X"$(cd one && "${cf}" --check)" = X""
+(cd one && "${cf}" --check); test X"${?}" = X"0"
+#a body that moved on is named, with the commit that was read, the state it was
+#approved in, and the day and the person that approved it
+printf '%s\n' '#!/bin/sh' '' "_alpha() { #@reviewed 2026-09-18 m@javier.io ${onesha} frozen" '    printf "otra cosa\n"' '}' '' '_beta() {' "    #@reviewed 2026-09-19 m@javier.io ${onesha} reviewed" '    printf "b\n"' '}' > one/prog
+(cd one && "${cf}" --check) >/dev/null 2>&1; test X"${?}" = X"1"
+test X"$(cd one && "${cf}" --check)" = X"code-freeze: prog _alpha changed since ${onesha} (frozen, reviewed 2026-09-18 by m@javier.io)"
+#and the one beside it, which nobody touched, is not named
+test X"$(cd one && "${cf}" --check | grep -c '_beta')" = X"0"
+#a tag on the first line inside vouches for its body just the same
+printf '%s\n' '#!/bin/sh' '' "_alpha() { #@reviewed 2026-09-18 m@javier.io ${onesha} frozen" '    printf "a\n"' '}' '' '_beta() {' "    #@reviewed 2026-09-19 m@javier.io ${onesha} reviewed" '    printf "b, cambiado\n"' '}' > one/prog
+test X"$(cd one && "${cf}" --check)" = X"code-freeze: prog _beta changed since ${onesha} (reviewed, reviewed 2026-09-19 by m@javier.io)"
+#the tag line is no part of the body and neither is what trails a line: the same
+#function with its tag moved from one place to the other, and with blanks at the
+#end of a line, is the function that was approved
+printf '%s\n' '#!/bin/sh' '' '_alpha() {' "    #@reviewed 2026-09-18 m@javier.io ${onesha} frozen" '    printf "a\n"   ' '}' '' "_beta() { #@reviewed 2026-09-19 m@javier.io ${onesha} reviewed" '    printf "b\n"' '}' > one/prog
+test X"$(cd one && "${cf}" --check)" = X""
+#what a tag says about one function says nothing about the next: a function that
+#carries none is compared with nothing, changed or not
+printf '%s\n' '#!/bin/sh' '' '_alpha() {' "    #@reviewed 2026-09-18 m@javier.io ${onesha} frozen" '    printf "a\n"' '}' '' '_beta() {' '    printf "todo otro cuerpo\n"' '}' > one/prog
+test X"$(cd one && "${cf}" --check)" = X""
+#@section{broken}
+#a tag that does not parse is said as it was written, with the line it sits on: a
+#field guessed at is how a tag stops meaning anything
+printf '%s\n' '#!/bin/sh' '' '_alpha() {' "    #@reviewed 2026-09-18 m@javier.io ${onesha}" '    printf "a\n"' '}' > one/prog
+test X"$(cd one && "${cf}" --check)" = X"code-freeze: prog:4 has a tag that does not parse: #@reviewed 2026-09-18 m@javier.io ${onesha}"
+(cd one && "${cf}" --check) >/dev/null 2>&1; test X"${?}" = X"1"
+printf '%s\n' '#!/bin/sh' '' '_alpha() {' "    #@reviewed 2026-09-18 m@javier.io ${onesha} derretido" '    printf "a\n"' '}' > one/prog
+test X"$(cd one && "${cf}" --check | awk '{print $NF}')" = X"derretido"
+printf '%s\n' '#!/bin/sh' '' '_alpha() {' "    #@reviewed 18-09-2026 m@javier.io ${onesha} frozen" '    printf "a\n"' '}' > one/prog
+test X"$(cd one && "${cf}" --check | grep -c 'does not parse')" = X"1"
+printf '%s\n' '#!/bin/sh' '' '_alpha() {' "    #@reviewed 2026-09-18 nadie ${onesha} frozen" '    printf "a\n"' '}' > one/prog
+test X"$(cd one && "${cf}" --check | grep -c 'does not parse')" = X"1"
+#a commit this repository never had reads as a history that is not here, which
+#is what a clone of one commit hands a tag, and not as a function somebody wrote
+printf '%s\n' '#!/bin/sh' '' '_alpha() {' '    #@reviewed 2026-09-18 m@javier.io deadbeef frozen' '    printf "a\n"' '}' > one/prog
+test X"$(cd one && "${cf}" --check)" = X"code-freeze: prog _alpha names deadbeef, which this repository does not have"
+(cd one && "${cf}" --check) >/dev/null 2>&1; test X"${?}" = X"1"
+#and a commit it does have that this HEAD does not is the other half of that
+#answer: code approved on a branch nobody merged
+(cd one && git checkout -q -b aside && printf '%s\n' '#!/bin/sh' '' '_alpha() {' '    printf "en la rama\n"' '}' > prog && git add prog && git commit -q -m aside)
+asidesha="$(cd one && git rev-parse --short HEAD)"
+(cd one && git checkout -q - && git checkout -q -- prog)
+printf '%s\n' '#!/bin/sh' '' '_alpha() {' "    #@reviewed 2026-09-18 m@javier.io ${asidesha} frozen" '    printf "a\n"' '}' > one/prog
+test X"$(cd one && "${cf}" --check)" = X"code-freeze: prog _alpha names ${asidesha}, which is not an ancestor of HEAD"
+#a tag on no function at all, and one inside a function that is neither on its
+#definition nor on its first line
+printf '%s\n' '#!/bin/sh' '' "#@reviewed 2026-09-18 m@javier.io ${onesha} frozen" '_alpha() {' '    printf "a\n"' '}' > one/prog
+test X"$(cd one && "${cf}" --check)" = X"code-freeze: prog:3 has a tag outside a function"
+printf '%s\n' '#!/bin/sh' '' '_alpha() {' '    printf "a\n"' "    #@reviewed 2026-09-18 m@javier.io ${onesha} frozen" '}' > one/prog
+test X"$(cd one && "${cf}" --check)" = X"code-freeze: prog:5 has a tag inside _alpha that is neither on its definition nor its first line"
+#a line that only quotes the word is no tag: this tool carries it in its help and
+#in the awk it reads files with, and reads neither of those as one
+printf '%s\n' '#!/bin/sh' '' '_quoting() {' '    printf "%s\n" "a tag reads #@reviewed DAY WHO COMMIT STATE"' '    re="#@reviewed"' '}' > one/prog
+test X"$(cd one && "${cf}" --check)" = X""
+test X"$(cd one && "${cf}" --coverage prog)" = X"prog: 1 functions, 0 reviewed, 0 frozen, 0 changed, 1 untagged"
+#a } at the start of a line inside a function - a here-doc, an embedded awk
+#program - leaves the rule unable to say where the function ends, and is refused:
+#a body cut short compares equal to itself and swears nothing changed past the cut
+printf '%s\n' '#!/bin/sh' '' '_hd() {' "    #@reviewed 2026-09-18 m@javier.io ${onesha} frozen" '    cat <<EOF' 'static void f()' '{' '    nada;' '}' 'EOF' '}' '' '_after() {' '    printf "x\n"' '}' > one/prog
+test X"$(cd one && "${cf}" --check)" = X"code-freeze: prog does not say where _hd ends, a } begins a line inside it"
+#and one name defined twice in a file leaves a tag there naming no one body
+printf '%s\n' '#!/bin/sh' '' '_two() {' "    #@reviewed 2026-09-18 m@javier.io ${onesha} frozen" '    printf "1\n"' '}' '' '_two() {' '    printf "2\n"' '}' > one/prog
+test X"$(cd one && "${cf}" --check)" = X"code-freeze: prog defines _two more than once, so a tag there names no one body"
+(cd one && git checkout -q -- prog)
+#@section{renamed}
+#a tag has to survive a rename: a tag written before one names a commit where the file had the other name
+mkdir -p two && (cd two && git init -q . && git config user.email m@javier.io)
+printf '%s\n' '#!/bin/sh' '' '_moved() {' '    printf "m\n"' '}' > two/before
+(cd two && git add before && git commit -q -m before)
+twosha="$(cd two && git rev-parse --short HEAD)"
+(cd two && git mv before after && git commit -q -m "before becomes after")
+printf '%s\n' '#!/bin/sh' '' '_moved() {' "    #@reviewed 2026-09-18 m@javier.io ${twosha} frozen" '    printf "m\n"' '}' > two/after
+test X"$(cd two && "${cf}" --check)" = X""
+(cd two && "${cf}" --check); test X"${?}" = X"0"
+#and the rename is followed to compare and not to excuse: the same file, moved,
+#with a body that moved on as well, is still named
+printf '%s\n' '#!/bin/sh' '' '_moved() {' "    #@reviewed 2026-09-18 m@javier.io ${twosha} frozen" '    printf "se movio y cambio\n"' '}' > two/after
+test X"$(cd two && "${cf}" --check)" = X"code-freeze: after _moved changed since ${twosha} (frozen, reviewed 2026-09-18 by m@javier.io)"
+(cd two && git checkout -q -- after)
+#@section{coverage}
+#per file: how many functions it has, how many carry a tag of each state, how
+#many of those moved on, and how many carry none
+printf '%s\n' '#!/bin/sh' '' '_alpha() {' '    printf "a\n"' '}' '' '_beta() {' '    printf "b\n"' '}' '' '_gamma() {' '    printf "g\n"' '}' > one/prog
+printf '%s\n' '#!/bin/sh' '' '_uno() {' '    :' '}' '' '_dos() {' '    :' '}' > one/other
+(cd one && git add prog other && git commit -q -m three)
+threesha="$(cd one && git rev-parse --short HEAD)"
+test X"$(cd one && "${cf}" --coverage prog)" = X"prog: 3 functions, 0 reviewed, 0 frozen, 0 changed, 3 untagged"
+printf '%s\n' '#!/bin/sh' '' "_alpha() { #@reviewed 2026-09-18 m@javier.io ${threesha} frozen" '    printf "a\n"' '}' '' '_beta() {' "    #@reviewed 2026-09-19 m@javier.io ${threesha} reviewed" '    printf "b\n"' '}' '' '_gamma() {' '    printf "g\n"' '}' > one/prog
+test X"$(cd one && "${cf}" --coverage prog)" = X"prog: 3 functions, 1 reviewed, 1 frozen, 0 changed, 1 untagged"
+printf '%s\n' '#!/bin/sh' '' "_alpha() { #@reviewed 2026-09-18 m@javier.io ${threesha} frozen" '    printf "cambiado\n"' '}' '' '_beta() {' "    #@reviewed 2026-09-19 m@javier.io ${threesha} reviewed" '    printf "b\n"' '}' '' '_gamma() {' '    printf "g\n"' '}' > one/prog
+test X"$(cd one && "${cf}" --coverage prog)" = X"prog: 3 functions, 1 reviewed, 1 frozen, 1 changed, 1 untagged"
+#and each file counts for itself: the one read after a file full of tags starts
+#from none of them
+test X"$(cd one && "${cf}" --coverage prog other | tail -1)" = X"other: 2 functions, 0 reviewed, 0 frozen, 0 changed, 2 untagged"
+#a report answers for having been written and not for what it found: the status
+#of the gate belongs to --check, and so do the findings
+(cd one && "${cf}" --coverage prog) >/dev/null 2>&1; test X"${?}" = X"0"
+test X"$(cd one && "${cf}" --coverage prog | grep -c 'changed since')" = X"0"
+#a tag it could not read leaves its function among the untagged, and the report
+#says that in counts, which is the whole of what it says
+printf '%s\n' '#!/bin/sh' '' '_alpha() {' '    #@reviewed nada' '    printf "a\n"' '}' '' '_beta() {' '    printf "b\n"' '}' '' '_gamma() {' '    printf "g\n"' '}' > one/prog
+test X"$(cd one && "${cf}" --coverage prog)" = X"prog: 3 functions, 0 reviewed, 0 frozen, 0 changed, 3 untagged"
+(cd one && git checkout -q -- prog)
+#@section{reviewed}
+#a tag is written with today, the email git is configured with and the short
+#HEAD, as the first line inside the function: inside, so that whoever opens the
+#function reads it, and so that it travels with the function if it moves
+(cd one && "${cf}" --reviewed prog _alpha --yes) >/dev/null 2>&1; test X"${?}" = X"0"
+test X"$(awk 'NR == 4' one/prog)" = X"    #@reviewed $(date +%Y-%m-%d) m@javier.io ${threesha} reviewed"
+#and what was just written is what --check reads back, since a tag is no part of
+#the body it vouches for
+test X"$(cd one && "${cf}" --check prog)" = X""
+test X"$(cd one && "${cf}" --coverage prog)" = X"prog: 3 functions, 1 reviewed, 0 frozen, 0 changed, 2 untagged"
+#--frozen is the other state, and a function that already carries a tag has that
+#one replaced where it sits and not a second one added
+(cd one && git add prog && git commit -q -m tagged)
+headsha="$(cd one && git rev-parse --short HEAD)"
+(cd one && "${cf}" --reviewed prog _alpha --frozen --yes) >/dev/null 2>&1; test X"${?}" = X"0"
+test X"$(grep -c '@reviewed' one/prog)" = X"1"
+test X"$(awk 'NR == 4' one/prog)" = X"    #@reviewed $(date +%Y-%m-%d) m@javier.io ${headsha} frozen"
+#a tag on the line that defines the function is replaced on that line
+printf '%s\n' '#!/bin/sh' '' '_alpha() { #@reviewed 2020-01-01 viejo@ninguna.parte ffff frozen' '    printf "a\n"' '}' > one/prog
+(cd one && git add prog && git commit -q -m defline)
+deflinesha="$(cd one && git rev-parse --short HEAD)"
+(cd one && "${cf}" --reviewed prog _alpha --yes) >/dev/null 2>&1; test X"${?}" = X"0"
+test X"$(awk 'NR == 3' one/prog)" = X"_alpha() { #@reviewed $(date +%Y-%m-%d) m@javier.io ${deflinesha} reviewed"
+test X"$(grep -c '@reviewed' one/prog)" = X"1"
+#the commit a tag records has to describe the code that was read, so a file with
+#changes nobody committed is refused and nothing is written
+cp one/prog dirtyref
+(cd one && "${cf}" --reviewed prog _alpha --yes) >/dev/null 2>&1; test X"${?}" = X"1"
+test X"$(cd one && "${cf}" --reviewed prog _alpha --yes 2>&1 >/dev/null | head -1)" = X"code-freeze: prog has changes that are not committed, and the commit a tag names has to be the code that was read"
+cmp one/prog dirtyref >/dev/null
+#it asks before writing, and with nobody there to answer it writes nothing
+(cd one && git add prog && git commit -q -m clean)
+cp one/prog askref
+(cd one && "${cf}" --reviewed prog _alpha) < /dev/null >/dev/null 2>&1; test X"${?}" = X"1"
+cmp one/prog askref >/dev/null
+test X"$(cd one && "${cf}" --reviewed prog _alpha < /dev/null 2>&1 >/dev/null | head -1 | awk '{print $NF}')" = X"[y/N]"
+#a no writes nothing either, and a yes writes
+printf 'n\n' > answer-no && (cd one && "${cf}" --reviewed prog _alpha --frozen < ../answer-no) >/dev/null 2>&1; test X"${?}" = X"1"
+cmp one/prog askref >/dev/null
+printf 'y\n' > answer-yes && (cd one && "${cf}" --reviewed prog _alpha --frozen < ../answer-yes) >/dev/null 2>&1; test X"${?}" = X"0"
+test X"$(awk 'NR == 3' one/prog | awk '{print $NF}')" = X"frozen"
+#a name the file has no function for, and arguments that are not one file and
+#one function
+(cd one && git add prog && git commit -q -m yes)
+test X"$(cd one && "${cf}" --reviewed prog _ninguna --yes 2>&1 >/dev/null | head -1)" = X"code-freeze: prog has no function called _ninguna"
+(cd one && "${cf}" --reviewed prog _ninguna --yes) >/dev/null 2>&1; test X"${?}" = X"1"
+(cd one && "${cf}" --reviewed prog) >/dev/null 2>&1; test X"${?}" = X"1"
+(cd one && "${cf}" --reviewed no-tal-fichero _alpha --yes) >/dev/null 2>&1; test X"${?}" = X"1"
+#and a function whose end the rule cannot find is refused before the question is
+#asked, not after it
+printf '%s\n' '#!/bin/sh' '' '_hd() {' '    cat <<EOF' '{' '}' 'EOF' '}' '' '_after() {' '    printf "x\n"' '}' > one/prog
+(cd one && git add prog && git commit -q -m heredoc)
+test X"$(cd one && "${cf}" --reviewed prog _hd --yes 2>&1 >/dev/null | head -1)" = X"code-freeze: prog does not say where _hd ends, or defines it more than once"
+@end
+
 # vim: set ts=8 sw=4 tw=0 ft=sh :
