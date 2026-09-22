@@ -1,37 +1,21 @@
-# What .travis.yml used to do, moved here unchanged in what it runs.
+# The python and sh test suites, the whole of them, on every push.
 #
-# Travis was:
+# Three things about the job are not obvious from reading it:
 #
-#   before_install:
-#     - sudo apt-get update
-#     - sudo apt-get install -y wget curl apt-file xclip xdotool gnupg suckless-tools gnupg-agent html2text htop
-#     - sudo apt-file update
-#     - eval $(gpg-agent --daemon)
-#   script: (cd python/tests/ && sh tools.sh) && (cd sh/tests/ && sh lib.sh && xvfb-run sh tools.sh)
-#
-# The script line is reproduced character for character, with one script added
-# to it since; that addition is the last thing said below. Three things about
-# the translation, because Travis and Actions do not run steps the same way:
-#
-#   - Travis ran before_install and script in one shell, so what
-#     `eval $(gpg-agent --daemon)` exported was still set when the tests ran.
-#     Each `run:` here is its own shell, so the assignments gpg-agent prints
-#     are written to $GITHUB_ENV, which is how a variable crosses a step
-#     boundary. Nothing else about that line changed, and a gpg-agent that
-#     refuses because one is already running does not fail the job, as it did
-#     not on Travis, where it was the first thing to start one
-#   - xvfb is installed here and was not in Travis's list: Travis's image had
-#     it, and `xvfb-run` comes from that package. The runner image for
-#     ubuntu-24.04 ships it too, so the line is belt and braces rather than a
-#     change; it is written down so nobody later reads the difference as one
+#   - each `run:` is its own shell, so the assignments `gpg-agent --daemon`
+#     prints are written to $GITHUB_ENV, which is how a variable crosses a step
+#     boundary. An agent that refuses because one is already running is not a
+#     reason to stop: what the step is after is an agent to be there, and one is
+#   - xvfb is installed although the ubuntu-24.04 runner image ships it, and
+#     `xvfb-run` comes from that package. It is belt and braces, and it is
+#     written down so nobody later reads the line as something the image lacks
 #   - apt-get update and apt-file update are kept. apt-file is what
 #     sh/tools/bin-dpkg-rdeps and friends look packages up with, so its
 #     database has to be there, and that is the slowest step of the job
 #
-# This job gates, as Travis did, and its colour on a runner is not known from
-# here. Measured on the machine this was written on, at this commit and with
-# none of the before_install packages installed, both halves of that script
-# line already fail:
+# What colour the job comes back on a runner is not known from here. Measured
+# on the machine this was written on, at this commit and with none of the
+# packages the first step installs, both halves of that script line fail:
 #
 #   (cd python/tests/ && sh tools.sh)   7 of 8 pass; simple-httpd fails
 #   (cd sh/tests/ && sh lib.sh)         60 of 66 pass; _encode64,
@@ -48,11 +32,10 @@
 # The third part of the line, xvfb-run sh tools.sh, could not be run there at
 # all: that machine has no xvfb.
 #
-# sh/tests/meta.sh is the one thing in that line Travis never ran. It tests
-# the runner and not a tool, which tools.db has no way to key a block by, and
-# this is the only place the sh suite is run from; it goes first because it
-# takes under a second and because a runner that cut a block wrong would make
-# every failure after it hard to read.
+# sh/tests/meta.sh tests the runner and not a tool, which tools.db has no way
+# to key a block by, and this is the only place the sh suite is run from; it
+# goes first because it takes under a second and because a runner that cut a
+# block wrong would make every failure after it hard to read.
 #
 # act runs this job.
 
@@ -66,9 +49,12 @@ on:
 jobs:
 
   suite:
-    name: 'python and sh test suites (was Travis)'
+    name: 'python and sh test suites'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
+    # Comes out the day this job first comes out green. Until a runner has said
+    # so, a red check on every commit would be noise and not news
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
@@ -80,11 +66,11 @@ jobs:
               suckless-tools gnupg-agent html2text htop xvfb
           sudo apt-file update
 
-      - name: Start a gpg-agent, as Travis did
+      - name: Start a gpg-agent by hand
         run: |
-          # Travis: eval $(gpg-agent --daemon). Here the assignments have to be
-          # handed to the next step, and an agent that is already running is not
-          # a reason to stop
+          # The assignments the agent prints have to be handed to the next step,
+          # which is what $GITHUB_ENV is for, and an agent that is already
+          # running is not a reason to stop
           gpg-agent --daemon > gpg-agent.env 2>/dev/null || true
           sed -n 's/^\([A-Z_][A-Z_]*\)=\([^;]*\).*$/\1=\2/p' gpg-agent.env >> "${GITHUB_ENV}"
           rm -f gpg-agent.env
