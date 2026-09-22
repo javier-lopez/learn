@@ -25,9 +25,11 @@ _usage() {
     printf "%s\\n" "  -V, --version   display version"
     printf "%s\\n" "  -h, --help      show this message and exit"
     printf "\\n"
-    printf "%s\\n" "With no PATH, every shell file the repository tracks. A tag is one line, on"
-    printf "%s\\n" "the line that defines the function or the first line inside it, and names the"
-    printf "%s\\n" "day, who read it, the commit that was read and whether it is reviewed or frozen:"
+    printf "%s\\n" "With no PATH, every shell file the repository tracks and every file it tracks"
+    printf "%s\\n" "with a tag in it, and the same inside a directory named. A file named is read"
+    printf "%s\\n" "whatever it looks like. A tag is one line, on the line that defines the"
+    printf "%s\\n" "function or the first line inside it, and names the day, who read it, the"
+    printf "%s\\n" "commit that was read and whether it is reviewed or frozen:"
     printf "\\n"
     printf "%s\\n" "    _f() { #@reviewed 2026-09-18 you@example.com 7638adf frozen"
 }
@@ -166,9 +168,10 @@ _update() { #replace this file with the one in the repo, when that one is newer
 #one awk does all the reading, in three modes, so that a whole repository is
 #scanned by one process and not by one for each of its files:
 #
-#  no want           the paths arrive on stdin and a record comes back for every
-#                    tag and for every file, which is what --check and
-#                    --coverage read
+#  no want           the paths arrive on stdin, each after the word that says how
+#                    it was reached, and a record comes back for every tag and
+#                    for every file read, which is what --check and --coverage
+#                    read
 #  want=FUNCTION     the lines of one file arrive on stdin or as an argument and
 #                    the body of that function comes back, the tag line dropped
 #                    and trailing blanks off every line, which is what the two
@@ -207,6 +210,17 @@ tag_awk='
         if (w == "env" && n > 1) { w = a[2]; sub(/.*\//, "", w) }
         return (w == "sh" || w == "bash" || w == "dash" || w == "ash" || \
                 w == "ksh" || w == "zsh")
+    }
+
+    #a line a tag can be, anywhere in the file: what tells a file with a tag in it
+    #from one that only quotes the word, as the test block of this tool does.
+    #Asking for the word alone would sweep that block and count it as read
+    function carries(   i, l) {
+        for (i = 1; i <= nl; i++) {
+            l = trim(L[i])
+            if (deftag(l) || istag(l)) return 1
+        }
+        return 0
     }
 
     function reset() {
@@ -333,14 +347,23 @@ tag_awk='
         return 0
     }
 
+    #a line is a word, a tab and a path. mention is a file the tag word is written
+    #in, and is only remembered. named is read whatever it looks like, because
+    #whoever named it said it is shell. swept is read when it is a shell file, and
+    #when it is not but carries a line a tag can be: the rules a program sources
+    #have no #! and no .sh, and they are checked the moment somebody tags them
     want == "" {
+        t = index($0, "\t"); how = substr($0, 1, t - 1); p = substr($0, t + 1)
+        if (how == "mention") { mentioned[p] = 1; next }
         reset()
-        if ((getline line < $0) <= 0) { close($0); next }
-        if (!shellish($0, line)) { close($0); next }
+        if ((getline line < p) <= 0) { close(p); next }
+        shell = (how == "named" || shellish(p, line))
+        if (!shell && !(p in mentioned)) { close(p); next }
         L[++nl] = line
-        while ((getline line < $0) > 0) L[++nl] = line
-        close($0)
-        analyse(); emit($0); next
+        while ((getline line < p) > 0) L[++nl] = line
+        close(p)
+        if (!shell && !carries()) next
+        analyse(); emit(p); next
     }
     { L[++nl] = $0 }
     END {
@@ -405,14 +428,24 @@ _verify() {
 }
 
 _scan() {
-#$1 => the paths to read, one a line, empty for every file the repository
-#tracks. They reach awk on stdin and not as arguments, so the command line
-#never grows with the repository. A path git tracks that the working tree no
-#longer has is left out: there is nothing there to read
-    if [ -z "${1}" ]; then git ls-files; else printf "%s" "${1}"; fi | \
-    { while IFS= read -r _scan__f; do
-        [ -f "${_scan__f}" ] && printf "%s\\n" "${_scan__f}"
-      done; } | awk "${tag_awk}"
+#$1 => the paths to read, one a line, each after named or swept and a tab; empty
+#sweeps every file the repository tracks. They reach awk on stdin and not as
+#arguments, so the command line never grows with the repository. A path git
+#tracks that the working tree no longer has is left out: there is nothing there
+#to read. Ahead of them go the files the tag word is written in, found by git in
+#one pass so that awk opens no file it will not read. git is asked for the word
+#and not for the shape of a tag: the word is in every tag, and the shape is said
+#once, in the awk, which is where a mention is told from a tag. --no-color is
+#not noise: under color.ui=always every name comes back wrapped in escapes, it
+#matches no path, and a tagged file that is not shell goes unread
+    { git grep --no-color -l -F -e '#@reviewed' | sed -e 's/^/mention	/'
+      if [ -z "${1}" ]; then
+          git ls-files | sed -e 's/^/swept	/'
+      else
+          printf "%s" "${1}"
+      fi | { while IFS="	" read -r _scan__how _scan__f; do
+          [ -f "${_scan__f}" ] && printf "%s\\t%s\\n" "${_scan__how}" "${_scan__f}"
+      done; }; } | awk "${tag_awk}"
 }
 
 _sweep() {
@@ -545,11 +578,15 @@ if [ X"${mode}" = X"reviewed" ]; then
     exit "${?}"
 fi
 
+#a file named is read whatever it looks like: whoever named it said it is shell.
+#A directory says nothing of each file in it, so what it holds is swept the way
+#the whole repository is
 paths=""
 while [ "${#}" -gt "0" ]; do
     got="$(git ls-files --full-name -- "${1}" 2>/dev/null)"
     [ -z "${got}" ] && _die "${PROGNAME}: git tracks no '${1}', and a tag needs a commit to compare with"
-    paths="${paths}${got}
+    if [ -f "${1}" ]; then how="named"; else how="swept"; fi
+    paths="${paths}$(printf "%s\\n" "${got}" | sed -e "s/^/${how}	/")
 "
     shift
 done

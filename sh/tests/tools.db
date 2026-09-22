@@ -977,11 +977,14 @@ code-freeze --check --coverage >/dev/null 2>&1; test X"${?}" = X"1"
 code-freeze --check --frozen >/dev/null 2>&1; test X"${?}"   = X"1"
 code-freeze --reviewed x >/dev/null 2>&1; test X"${?}"       = X"1"
 #@section{fixtures}
-#one repository, one program, two functions, committed: that commit is the one
-#the tags below name. Its user.email is the one --reviewed writes down
+#one repository, one program, two functions and the rules it sources,
+#committed: that commit is the one the tags below name. Its user.email is the
+#one --reviewed writes down. A file that is sourced is never run, so it has
+#neither a #! nor a .sh, and nothing in how it looks says that it is shell
 mkdir -p one && (cd one && git init -q . && git config user.email m@javier.io && git config user.name Reviewer)
 printf '%s\n' '#!/bin/sh' '' '_alpha() {' '    printf "a\n"' '}' '' '_beta() {' '    printf "b\n"' '}' > one/prog
-(cd one && git add prog && git commit -q -m "one program, two functions")
+printf '%s\n' '#usage: . rules, from a program that sources it' '' '_rule_one() {' '    printf "1\n"' '}' '' '_rule_two() {' '    printf "2\n"' '}' > one/rules
+(cd one && git add prog rules && git commit -q -m "one program, two functions and the rules it sources")
 onesha="$(cd one && git rev-parse --short HEAD)"
 #a repository with nothing tagged in it answers cleanly and says nothing, which
 #is the state this repository is in today: a pass on an empty set is a pass
@@ -1012,6 +1015,17 @@ test X"$(cd one && "${cf}" --check)" = X""
 #carries none is compared with nothing, changed or not
 printf '%s\n' '#!/bin/sh' '' '_alpha() {' "    #@reviewed 2026-09-18 m@javier.io ${onesha} frozen" '    printf "a\n"' '}' '' '_beta() {' '    printf "todo otro cuerpo\n"' '}' > one/prog
 test X"$(cd one && "${cf}" --check)" = X""
+#the rules a program sources have no #! and no .sh, and a tag there is read all
+#the same: named, because whoever named the file said it is shell, and in the
+#sweep, because a file with a tag in it is read whatever it looks like. So the
+#sweep counts it, verifies it, and fails the day its body moves on
+printf '%s\n' '#usage: . rules, from a program that sources it' '' '_rule_one() {' "    #@reviewed 2026-09-18 m@javier.io ${onesha} frozen" '    printf "1\n"' '}' '' '_rule_two() {' '    printf "2\n"' '}' > one/rules
+test X"$(cd one && "${cf}" --coverage | grep '^rules:')" = X"rules: 2 functions, 0 reviewed, 1 frozen, 0 changed, 1 untagged"
+printf '%s\n' '#usage: . rules, from a program that sources it' '' '_rule_one() {' "    #@reviewed 2026-09-18 m@javier.io ${onesha} frozen" '    printf "1, cambiado\n"' '}' '' '_rule_two() {' '    printf "2\n"' '}' > one/rules
+test X"$(cd one && "${cf}" --check rules)" = X"code-freeze: rules _rule_one changed since ${onesha} (frozen, reviewed 2026-09-18 by m@javier.io)"
+rulescheck="$(cd one && "${cf}" --check)"; test X"${?}" = X"1"
+test X"${rulescheck}" = X"code-freeze: rules _rule_one changed since ${onesha} (frozen, reviewed 2026-09-18 by m@javier.io)"
+(cd one && git checkout -q -- rules)
 #@section{broken}
 #a tag that does not parse is said as it was written, with the line it sits on: a
 #field guessed at is how a tag stops meaning anything
@@ -1047,6 +1061,16 @@ test X"$(cd one && "${cf}" --check)" = X"code-freeze: prog:5 has a tag inside _a
 printf '%s\n' '#!/bin/sh' '' '_quoting() {' '    printf "%s\n" "a tag reads #@reviewed DAY WHO COMMIT STATE"' '    re="#@reviewed"' '}' > one/prog
 test X"$(cd one && "${cf}" --check)" = X""
 test X"$(cd one && "${cf}" --coverage prog)" = X"prog: 1 functions, 0 reviewed, 0 frozen, 0 changed, 1 untagged"
+#and a file with no #! that only quotes the word - in a string, a comment, a
+#here-doc, the way this block does - is not swept for it: a file of that shape
+#is read when it has a line a tag can be, and the word alone is not one. Named,
+#it is read, and the word is no tag there either
+printf '%s\n' '#notes nobody sources' '_help() {' '    printf "%s\n" "a tag reads #@reviewed DAY WHO COMMIT STATE"' '    #the word #@reviewed alone is no tag' '    cat <<EOF' '    _f() { #@reviewed 2026-09-18 you@example.com 7638adf frozen' 'EOF' '}' > one/notes
+(cd one && git add notes)
+test X"$(cd one && "${cf}" --coverage)" = X"prog: 1 functions, 0 reviewed, 0 frozen, 0 changed, 1 untagged"
+notesnamed="$(cd one && "${cf}" --check notes)"; test X"${?}" = X"0"
+test X"${notesnamed}" = X""
+(cd one && git rm -q -f notes)
 #a } at the start of a line inside a function - a here-doc, an embedded awk
 #program - leaves the rule unable to say where the function ends, and is refused:
 #a body cut short compares equal to itself and swears nothing changed past the cut
@@ -1095,6 +1119,14 @@ test X"$(cd one && "${cf}" --coverage prog | grep -c 'changed since')" = X"0"
 printf '%s\n' '#!/bin/sh' '' '_alpha() {' '    #@reviewed nada' '    printf "a\n"' '}' '' '_beta() {' '    printf "b\n"' '}' '' '_gamma() {' '    printf "g\n"' '}' > one/prog
 test X"$(cd one && "${cf}" --coverage prog)" = X"prog: 3 functions, 0 reviewed, 0 frozen, 0 changed, 3 untagged"
 (cd one && git checkout -q -- prog)
+#a file with no #! and no .sh is counted when it is named, and left out of the
+#sweep while nothing in it carries a tag, as it is when what was named is the
+#directory it sits in: a directory says nothing of each file in it. The sweep
+#reads the shell files and the tagged ones, and not the completions and the
+#test databases beside them
+test X"$(cd one && "${cf}" --coverage rules)" = X"rules: 2 functions, 0 reviewed, 0 frozen, 0 changed, 2 untagged"
+test X"$(cd one && "${cf}" --coverage | awk -F: '{printf("%s ", $1)}')" = X"other prog "
+test X"$(cd one && "${cf}" --coverage . | awk -F: '{printf("%s ", $1)}')" = X"other prog "
 #@section{reviewed}
 #a tag is written with today, the email git is configured with and the short
 #HEAD, as the first line inside the function: inside, so that whoever opens the
@@ -1148,6 +1180,12 @@ test X"$(cd one && "${cf}" --reviewed prog _ninguna --yes 2>&1 >/dev/null | head
 printf '%s\n' '#!/bin/sh' '' '_hd() {' '    cat <<EOF' '{' '}' 'EOF' '}' '' '_after() {' '    printf "x\n"' '}' > one/prog
 (cd one && git add prog && git commit -q -m heredoc)
 test X"$(cd one && "${cf}" --reviewed prog _hd --yes 2>&1 >/dev/null | head -1)" = X"code-freeze: prog does not say where _hd ends, or defines it more than once"
+#the rules a program sources are tagged the same way, and what was written there
+#is what the sweep reads back
+rulesha="$(cd one && git rev-parse --short HEAD)"
+(cd one && "${cf}" --reviewed rules _rule_two --yes) >/dev/null 2>&1; test X"${?}" = X"0"
+test X"$(awk 'NR == 8' one/rules)" = X"    #@reviewed $(date +%Y-%m-%d) m@javier.io ${rulesha} reviewed"
+test X"$(cd one && "${cf}" --coverage | grep '^rules:')" = X"rules: 2 functions, 1 reviewed, 0 frozen, 0 changed, 1 untagged"
 #@section{repository}
 #and here, over this repository, which is the reason this block exists: an
 #approved function somebody changed turns this suite red the same day. The
@@ -1163,6 +1201,10 @@ repocov="$(code-freeze --coverage)"
 test X"$(printf "%s\n" "${repocov}" | awk -F'[:,] *' '$1 == "sh/lib" && $2 + 0 > 50 {print "read"}')" = X"read"
 test X"$(printf "%s\n" "${repocov}" | awk -F'[:,] *' '$1 == "sh/tools/code-freeze" {print "read"}')" = X"read"
 test X"$(printf "%s\n" "${repocov}" | awk 'END {print (NR > 100) ? "many" : "few"}')" = X"many"
+#and what it left out is asked from the same report: this block quotes the tag
+#word in its comments and in every fixture it writes, and a file that only
+#quotes it is not swept for it
+test X"$(printf "%s\n" "${repocov}" | awk -F'[:,] *' '$1 == "sh/tests/tools.db" {print "read"}')" = X""
 @end
 
 # vim: set ts=8 sw=4 tw=0 ft=sh :
