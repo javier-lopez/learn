@@ -47,15 +47,20 @@ upto_cut() {
 TOOLS="$(find "${tools}". ! -name . -prune -type f -exec basename '{}' ';')"
 TESTS="$(grep '^@begin' "${tools_db}" | sed -e 's/^@begin{//' -e 's/}.*$//')"
 
-#-l says where a run may be told to stop, for one tool or for every tool that
-#has anywhere to stop, and runs nothing
+#what to run is every name given and not the first of them: a name may arrive
+#as its own argument or inside one that is a list of them, so the list is
+#${*}, which is every argument with the ones that are lists still lists
+#
+#-l says where a run may be told to stop, for the tools named or for every
+#tool that has anywhere to stop, and runs nothing
 if [ X"${1}" = X"-l" ]; then
-    for tool in ${2:-${TESTS}}; do
+    shift
+    for tool in ${*:-${TESTS}}; do
         tool_sections="$(sections "${tool}")"
         if [ -n "${tool_sections}" ]; then
             printf "%s\\n" "${tool}: TESTS_UPTO=<section> sh tools.sh ${tool} stops the block at the end of"
             printf "%s\\n" "${tool_sections}" | awk '{ printf("  %2d %s\n", NR, $0) }'
-        elif [ -n "${2}" ]; then
+        elif [ -n "${*}" ]; then
             printf "%s\\n" "${tool}: no sections, so the whole block is the only thing to run"
         fi
     done
@@ -81,7 +86,7 @@ fi
 #none for extracts an empty script, and an empty script is one that exits 0,
 #so a typo would be read as a tool that ran and passed. It comes before the
 #section a run stops at, so one mistake is said once and not twice
-for tool in ${1}; do
+for tool in ${*}; do
     printf "%s\\n" "${TESTS}" | grep -q -x -F -e "${tool}" && continue
     printf "%s\\n" "Error - ${tools_db} has no test for '${tool}'" >&2
     exit 1
@@ -90,7 +95,7 @@ done
 #a run that stops early stops one block at a section that block has, and both
 #are settled before a sandbox is made, so a name nobody has does nothing at all
 if [ -n "${TESTS_UPTO}" ]; then
-    set -- ${1}
+    set -- ${*}
     if [ "${#}" -ne "1" ]; then
         printf "%s\\n" "Error - TESTS_UPTO stops one block: TESTS_UPTO=${TESTS_UPTO} sh tools.sh <tool>" >&2
         exit 1
@@ -118,7 +123,7 @@ else
     printf "%s\\n\\n" "Info - running ${tools} tests: ${1} down to the end of section '${TESTS_UPTO}' (${upto_nth} of ${upto_of}), a prefix of its block and not the block:"
 fi
 
-[ -z "${1}" ] || TOOLS_WITH_TEST="${1}"
+[ -z "${*}" ] || TOOLS_WITH_TEST="${*}"
 
 for tool in ${TOOLS_WITH_TEST}; do
     rm -rf ./* || (sleep 1; rm -rf ./*)

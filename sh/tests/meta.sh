@@ -122,6 +122,26 @@ t_whole_unmarked() {
     is result "$(line '$')" "OK: passed: 1/1"
 }
 
+#what to run is every name given, in the order given: two names are two
+#arguments, and the order is theirs and not the one the database has them in
+t_several() {
+    run beta alpha                                                     || return 1
+    is status "${rc}" "0"                                              || return 1
+    is reached "$(reached)" "beta head one two three "                 || return 1
+    has beta "${out}" '^beta \.* ok$'                                  || return 1
+    has alpha "${out}" '^alpha \.* ok$'                                || return 1
+    is result "$(line '$')" "OK: passed: 2/2"
+}
+
+#and one argument may be a list of its own, which is the form the suite is
+#called with and the one people have in their fingers
+t_several_one_argument() {
+    run "beta alpha"                                                   || return 1
+    is status "${rc}" "0"                                              || return 1
+    is reached "$(reached)" "beta head one two three "                 || return 1
+    is result "$(line '$')" "OK: passed: 2/2"
+}
+
 #-l says where a run may be told to stop, in the order the block has them
 t_list() {
     run -l alpha                                                       || return 1
@@ -142,6 +162,17 @@ t_list_unmarked() {
     has alpha "${out}" '^alpha:'                                       || return 1
     hasnt beta "${out}" '^beta:'                                       || return 1
     has gamma "${out}" '^gamma:'
+}
+
+#-l reads the same list the run does, so two names list the sections of both
+t_list_several() {
+    run -l alpha gamma                                                 || return 1
+    is status "${rc}" "0"                                              || return 1
+    has alpha "${out}" '^alpha:'                                       || return 1
+    has gamma "${out}" '^gamma:'                                       || return 1
+    is names "$(printf "%s\\n" "${out}" | awk '$1 ~ /^[0-9]+$/ { print $2 }' | tr '\n' ' ')" \
+        "one two three good bad "                                      || return 1
+    is nothing_ran "$(reached)" ""
 }
 
 #told to stop at a section, the run is everything from the top of the block to
@@ -222,6 +253,16 @@ t_unknown_tool_in_list() {
     is nothing_ran "$(reached)" ""
 }
 
+#and the same wherever the wrong name sits when the list is several arguments,
+#which is the reading that drops everything after the first if it is not taken
+t_unknown_among_several() {
+    run alpha nosuchtool beta                                          || return 1
+    is status "${rc}" "1"                                              || return 1
+    has said "${err}" "^Error - .* has no test for 'nosuchtool'"       || return 1
+    is nothing_said "${out}" ""                                        || return 1
+    is nothing_ran "$(reached)" ""
+}
+
 #a run nobody gave a name to is every block the database has, in its order
 t_all() {
     run                                                                || return 1
@@ -245,12 +286,22 @@ t_prefix_one_tool() {
     is none_ran "$(reached)" ""
 }
 
+#the two it counts are the two given, whether they arrived as one argument or
+#as two: counting only the first would read two tools as the one it stops
+t_prefix_several_tools() {
+    upto="two"; run alpha beta                                         || return 1
+    is status "${rc}" "1"                                              || return 1
+    has said "${err}" '^Error - TESTS_UPTO stops one block'            || return 1
+    is nothing_ran "$(reached)" ""
+}
+
 printf "%s\\n\\n" "Info - running ${runner} tests:"
 
-for t in t_whole t_whole_unmarked t_list t_list_unmarked t_prefix \
-         t_prefix_first t_prefix_last t_prefix_says_so t_prefix_failure \
-         t_prefix_unknown t_unknown_tool t_unknown_tool_in_list t_all \
-         t_prefix_one_tool; do
+for t in t_whole t_whole_unmarked t_several t_several_one_argument t_list \
+         t_list_unmarked t_list_several t_prefix t_prefix_first t_prefix_last \
+         t_prefix_says_so t_prefix_failure t_prefix_unknown t_unknown_tool \
+         t_unknown_tool_in_list t_unknown_among_several t_all \
+         t_prefix_one_tool t_prefix_several_tools; do
     why=""
     upto=""
     printf "%s\\n" "${t} ........................" | awk '{ printf("%s ", substr($0, 0, 25)); }'
