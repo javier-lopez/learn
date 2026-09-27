@@ -400,12 +400,12 @@ FUCK_HOOK=1 bash --norc -i -c '. ./hook.sh; nosuchcommand' >/dev/null 2>&1; test
 #the not found path must not read stdin: those bytes belong to the command
 #being resolved, and reading them here loses the data and turns it into
 #arguments. touch names what it is given, so three extra files is the proof
-printf "%s\n" 'PALABRAS DEL PIPE' | fuck -c touch marca
+printf "%s\n" 'DOWN THE PIPE' | fuck -c touch mark
 #the touch is detached with setsid, so it gets waited for and not slept on
-i=0; while [ ! -e marca ] && [ ${i} -lt 40 ]; do sleep 0.02; i=$((i+1)); done
-test -e marca
-test ! -e PALABRAS
-test ! -e DEL
+i=0; while [ ! -e mark ] && [ ${i} -lt 40 ]; do sleep 0.02; i=$((i+1)); done
+test -e mark
+test ! -e DOWN
+test ! -e THE
 test ! -e PIPE
 #options still arrive through stdin, which is what the pipes above all assume
 test X"$(printf "%s" '--hook' | fuck | head -1)"   = X"command_not_found_handle() {"
@@ -1013,7 +1013,7 @@ printf '%s\n' '#!/bin/sh' '' '_alpha() {' "    #@frozen 2026-09-18 m@javier.io $
 test X"$(cd one && "${cf}" --check)" = X""
 #what a tag says about one function says nothing about the next: a function that
 #carries none is compared with nothing, changed or not
-printf '%s\n' '#!/bin/sh' '' '_alpha() {' "    #@frozen 2026-09-18 m@javier.io ${onesha}" '    printf "a\n"' '}' '' '_beta() {' '    printf "todo otro cuerpo\n"' '}' > one/prog
+printf '%s\n' '#!/bin/sh' '' '_alpha() {' "    #@frozen 2026-09-18 m@javier.io ${onesha}" '    printf "a\n"' '}' '' '_beta() {' '    printf "a different body\n"' '}' > one/prog
 test X"$(cd one && "${cf}" --check)" = X""
 #the rules a program sources have no #! and no .sh, and a tag there is read all
 #the same: named, because whoever named the file said it is shell, and in the
@@ -1087,7 +1087,7 @@ test X"${notesnamed}" = X""
 #a } at the start of a line inside a function - a here-doc, an embedded awk
 #program - leaves the rule unable to say where the function ends, and is refused:
 #a body cut short compares equal to itself and swears nothing changed past the cut
-printf '%s\n' '#!/bin/sh' '' '_hd() {' "    #@frozen 2026-09-18 m@javier.io ${onesha}" '    cat <<EOF' 'static void f()' '{' '    nada;' '}' 'EOF' '}' '' '_after() {' '    printf "x\n"' '}' > one/prog
+printf '%s\n' '#!/bin/sh' '' '_hd() {' "    #@frozen 2026-09-18 m@javier.io ${onesha}" '    cat <<EOF' 'static void f()' '{' '    nothing;' '}' 'EOF' '}' '' '_after() {' '    printf "x\n"' '}' > one/prog
 test X"$(cd one && "${cf}" --check)" = X"code-freeze: prog does not say where _hd ends, a } begins a line inside it"
 #and one name defined twice in a file leaves a tag there naming no one body
 printf '%s\n' '#!/bin/sh' '' '_two() {' "    #@frozen 2026-09-18 m@javier.io ${onesha}" '    printf "1\n"' '}' '' '_two() {' '    printf "2\n"' '}' > one/prog
@@ -1129,7 +1129,7 @@ test X"$(cd one && "${cf}" --coverage prog other | tail -1)" = X"other: 2 functi
 test X"$(cd one && "${cf}" --coverage prog | grep -c 'changed since')" = X"0"
 #a tag it could not read leaves its function among the untagged, and the report
 #says that in counts, which is the whole of what it says
-printf '%s\n' '#!/bin/sh' '' '_alpha() {' '    #@reviewed nada' '    printf "a\n"' '}' '' '_beta() {' '    printf "b\n"' '}' '' '_gamma() {' '    printf "g\n"' '}' > one/prog
+printf '%s\n' '#!/bin/sh' '' '_alpha() {' '    #@reviewed junk' '    printf "a\n"' '}' '' '_beta() {' '    printf "b\n"' '}' '' '_gamma() {' '    printf "g\n"' '}' > one/prog
 test X"$(cd one && "${cf}" --coverage prog)" = X"prog: 3 functions, 0 reviewed, 0 frozen, 0 changed, 3 untagged"
 (cd one && git checkout -q -- prog)
 #a file with no #! and no .sh is counted when it is named, and left out of the
