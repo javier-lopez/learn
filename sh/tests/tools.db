@@ -1094,7 +1094,8 @@ printf '%s\n' '#!/bin/sh' '' '_two() {' "    #@frozen 2026-09-18 m@javier.io ${o
 test X"$(cd one && "${cf}" --check)" = X"code-freeze: prog defines _two more than once, so a tag there names no one body"
 (cd one && git checkout -q -- prog)
 #@section{renamed}
-#a tag has to survive a rename: a tag written before one names a commit where the file had the other name
+#a tag has to survive a rename: a tag written before one names a commit where
+#the file had the other name
 mkdir -p two && (cd two && git init -q . && git config user.email m@javier.io)
 printf '%s\n' '#!/bin/sh' '' '_moved() {' '    printf "m\n"' '}' > two/before
 (cd two && git add before && git commit -q -m before)

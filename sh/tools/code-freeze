@@ -378,8 +378,9 @@ tag_awk='
 
 _path_at() {
 #$1 => commit, $2 => the path the file has now. Prints the path it had at that
-#commit: a tag has to survive a rename of the file it is in. What git is asked for is the net rename between the two ends,
-#which is the answer however many times the file moved in between
+#commit: a tag has to survive a rename of the file it is in. What git is asked
+#for is the net rename between the two ends, which is the answer however many
+#times the file moved in between
     git cat-file -e "${1}:${2}" 2>/dev/null && { printf "%s\\n" "${2}"; return 0; }
     git diff --name-status -M "${1}" HEAD 2>/dev/null | awk -F'\t' -v p="${2}" '
         $1 ~ /^R/ && $3 == p { print $2; found = 1; exit } END { exit !found }'
