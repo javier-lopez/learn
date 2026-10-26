@@ -41,9 +41,8 @@ upto_cut() {
 
 #test tools
 #a tool is a file directly in the tools directory. What sits in a directory
-#next to one supports that
-#tool and is not a command, so the search does not descend. -maxdepth is not
-#posix; pruning everything below the starting point is
+#next to one supports that tool and is not a command, so the search does not
+#descend. -maxdepth is not posix; pruning everything below the starting point is
 TOOLS="$(find "${tools}". ! -name . -prune -type f -exec basename '{}' ';')"
 TESTS="$(grep '^@begin' "${tools_db}" | sed -e 's/^@begin{//' -e 's/}.*$//')"
 
