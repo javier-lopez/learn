@@ -351,6 +351,11 @@ test X"$(printf "%s" '-cui' | fu-search  2>&1|head -1)" = X"fu-search: unrecogni
 
 @begin{fuck}
 #review tests after rewriting fuck
+#a missing program goes to cmdfound when there is one: this stand-in writes
+#down what it was handed and answers CFSTUB_RC, or 127 as cmdfound does when no
+#channel has it, so no test here resolves anything for real
+mkdir -p cfstub && printf '%s\n' '#!/bin/sh' "printf '[%s]' \"\$@\" >> '$(pwd)/cfstub/args'" 'exit "${CFSTUB_RC:-127}"' > cfstub/cmdfound && chmod 755 cfstub/cmdfound
+PATH="$(pwd)/cfstub:${PATH}"
 #fuck; test X"${?}"                                 = X"1"
 fuck -h; test X"${?}"                              = X"0"
 printf "%s" '-h' | fuck; test X"${?}"              = X"0"
@@ -420,6 +425,13 @@ fuck -c nosuchcmdxyz >/dev/null 2>&1; test X"${?}"  = X"127"
 test X"$(fuck -c '2+2')"                           = X"4"
 fuck -c '2+2' >/dev/null 2>&1; test X"${?}"        = X"0"
 test X"$(bash --norc -i -c '. ./hook.sh; 7*6' 2>&1 | tail -1)" = X"42"
+#cmdfound is handed the command with its arguments whole, and what it ran
+#answers for fuck
+rm -f cfstub/args
+CFSTUB_RC=3 fuck -c nosuchcmdxyz "a b" c >/dev/null 2>&1; test X"${?}" = X"3"
+test X"$(cat cfstub/args)" = X"[--][nosuchcmdxyz][a b][c]"
+#and arithmetic is still fuck's own
+rm -f cfstub/args; fuck -c '2+2' >/dev/null 2>&1; test ! -e cfstub/args
 @end
 
 @begin{governator}

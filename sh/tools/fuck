@@ -288,6 +288,14 @@ _fuck_command_not_found() {
            if [ -x "$(command -v "${_fucking__1st_word}" 2>/dev/null)" ]; then
                _exec ${_fucking__cmd}
            else
+               #a missing program goes to cmdfound, with its arguments as typed; a url
+               #or a path that exists is _open's. cmdfound's status is the program's,
+               #or 127 when no channel has it
+               case "${_fucking__1st_word}" in
+                   http://*|https://*|ftp://*) ;;
+                   *) [ ! -e "${_fucking__1st_word}" ] && command -v cmdfound >/dev/null 2>&1 && \
+                          exec cmdfound -- "${@}" ;;
+               esac
                _open ${_fucking__cmd}
            fi
            ;;
