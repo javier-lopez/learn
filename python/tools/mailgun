@@ -121,13 +121,24 @@ def send_email(
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="mailgun",
-        description="Send emails via AWS SES SMTP.",
+        description="Send emails via AWS SES SMTP (credentials: SES_ACCESS_KEY_ID, "
+        "SES_SECRET_ACCESS_KEY, optional SES_SMTP_PORT in the config file).",
+        epilog="""examples:
+  mailgun hello@domain.tld "message body"
+  echo "message" | mailgun hello@domain.tld
+  mailgun -s "Subject" --html hello@domain.tld "<h1>Report</h1>"
+  mailgun -s "Two files" -a a.pdf -a b.png hello@domain.tld "See attached"
+""",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("to", help="Recipient email address")
-    parser.add_argument("message", nargs="*", help="Message body")
-    parser.add_argument("-f", "--from", dest="from_addr", default=DEFAULTS["from_addr"])
-    parser.add_argument("-s", "--subject", default=DEFAULTS["subject"])
-    parser.add_argument("-c", "--config", default=DEFAULTS["config"])
+    parser.add_argument("message", nargs="*", help="Message body (read from stdin when omitted)")
+    parser.add_argument("-f", "--from", dest="from_addr", default=DEFAULTS["from_addr"],
+                        help="From address (default: %(default)s)")
+    parser.add_argument("-s", "--subject", default=DEFAULTS["subject"],
+                        help="Subject line (default: %(default)s)")
+    parser.add_argument("-c", "--config", default=DEFAULTS["config"],
+                        help="Credentials file (default: %(default)s)")
     parser.add_argument("--html", action="store_true", help="Treat body as HTML")
     parser.add_argument(
         "-a", "--attach",
