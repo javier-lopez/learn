@@ -64,12 +64,10 @@ _notify() {
     if [ X"${TERM}" = X"linux" ] || [ -z "${TERM}" ]; then
         kill -9 $(pgrep notify-osd) >/dev/null 2>&1
         if ! DISPLAY=${DISPLAY:-:0} notify-send -t 1000 "${1}" "${3}"; then
-            if command -v "gxmessage" 2>/dev/null; then
-                font="Monaco 9"
-                DISPLAY=${DISPLAY:-:0} gxmessage "${font:+-fn "$font"}" "${1}" "ok"
-            elif command -v "xmessage" 2>/dev/null; then
-                font="fixed"
-                DISPLAY=${DISPLAY:-:0}  xmessage "${font:+-fn "$font"}" "${1}" "ok"
+            if command -v gxmessage >/dev/null 2>&1; then
+                DISPLAY=${DISPLAY:-:0} gxmessage -fn "Monaco 9" -buttons OK "${1}${3:+: ${3}}"
+            elif command -v xmessage >/dev/null 2>&1; then
+                DISPLAY=${DISPLAY:-:0} LC_ALL=C.UTF-8 xmessage -xrm '*international: true' -xrm '*fontSet: -misc-fixed-medium-r-normal--13-*-*-*-*-*-*-*' -bg black -fg '#c7c1cc' -buttons OK "${1}${3:+: ${3}}"
             fi
         fi
     else

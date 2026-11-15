@@ -35,12 +35,10 @@ _notify() {
     if [ X"${TERM}" = X"linux" ] || [ -z "${TERM}" ]; then
         kill -9 $(pgrep notify-osd) >/dev/null 2>&1
         if ! DISPLAY=${DISPLAY:-:0} notify-send -t 1000 "${1}"  "${2}"; then
-            if command -v "gxmessage" 2>/dev/null; then
-                font="Monaco 9"
-                gxmessage "${font:+-fn "$font"}" "${1} ${2}" "ok"
+            if command -v gxmessage >/dev/null 2>&1; then
+                DISPLAY=${DISPLAY:-:0} gxmessage -fn "Monaco 9" -buttons OK "${1}${2:+: ${2}}"
             else
-                font="fixed"
-                xmessage "${font:+-fn "$font"}" "${1} ${2}" "ok"
+                DISPLAY=${DISPLAY:-:0} LC_ALL=C.UTF-8 xmessage -xrm '*international: true' -xrm '*fontSet: -misc-fixed-medium-r-normal--13-*-*-*-*-*-*-*' -bg black -fg '#c7c1cc' -buttons OK "${1}${2:+: ${2}}"
             fi
         fi
     else

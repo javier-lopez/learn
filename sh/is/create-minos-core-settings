@@ -58,10 +58,14 @@ _create_minos_default_core_settings() {
     if _file_or_directory_exist ~/.bashrc; then
         echo
         _cmd "printf \"%s\\n\\n\" \"#${file_header}\" > \"${1}\"/etc##profile.d##minos-bash.sh"
-        _cmd "sed -n '/^#===/,/^#}1/p;/^#}1/q' ~/.bashrc | head -n -1 >> ${1}/etc##profile.d##minos-bash.sh"
-        _cmd "sed -n '/{2/,/^#}2/p;/^#}2/q' ~/.bashrc  | head -n -1 | sed 1d >> ${1}/etc##profile.d##minos-bash.sh"
-        _cmd "echo >> ${1}/etc##profile.d##minos-bash.sh"
-        _cmd "sed -n '/{3/,/^#}3/p;/^#}3/q' ~/.bashrc | head -n -1 | sed 1d >> ${1}/etc##profile.d##minos-bash.sh"
+        #~/.bashrc is cut at its banners: what comes before "Plugins" goes to /etc/profile.d, the
+        #plugins to shundle.sh. A paragraph that only makes sense on the author's machine (the WSL
+        #hack, node, the identity used to package for Ubuntu, tokens) is dropped by its heading
+        #comment, from that line to the next blank one
+        _cmd "awk '/^#=+ *Plugins *=+\$/ {exit} {print}' ~/.bashrc | sed '\$d' >> ${1}/etc##profile.d##minos-bash.sh"
+        for paragraph in '#WSL performance hack START' '# ruby dev' '# node' '#ubuntu dev' '# claude'; do
+            _cmd "sed -i '/^${paragraph}/,/^\$/d' ${1}/etc##profile.d##minos-bash.sh"
+        done
         _cmd "sed -i 's:^#export _JAVA:export _JAVA:' ${1}/etc##profile.d##minos-bash.sh"
         _cmd "sed -i '/tmux/d' ${1}/etc##profile.d##minos-bash.sh"
         _cmd "sed -i '/GPGKEY/d' ${1}/etc##profile.d##minos-bash.sh"
@@ -92,6 +96,7 @@ _create_minos_default_core_settings() {
         _cmd "printf \"%s\\n\\n\" \"#${file_header}\" > \"${1}\"/etc##skel##.profile.d##shundle.sh"
         _cmd "printf \"%s\\n\\n\" \"#http://github.com/javier-lopez/shundle\" >> \"${1}\"/etc##skel##.profile.d##shundle.sh"
         _cmd "sed -n '/shundle/,\$p' ~/.bashrc >> ${1}/etc##skel##.profile.d##shundle.sh"
+        _cmd "sed -i '/^#wsl performance hack END/,/^\$/d' ${1}/etc##skel##.profile.d##shundle.sh"
     fi
 
     if _file_or_directory_exist ~/.tmux.conf; then
@@ -104,6 +109,9 @@ _create_minos_default_core_settings() {
         echo
         _cmd "printf \"%s\\n\\n\" \"\\\"${file_header}\" > \"${1}\"/etc##skel##.vimrc"
         _cmd "cat ~/.vimrc >> ${1}/etc##skel##.vimrc"
+        _cmd "sed -i '/g:snips_author/d' ${1}/etc##skel##.vimrc" #the author's name and email, for his snippets
+        #jedi-vim is python completion for the author; its typeshed and submodules are ~100 MB in every home
+        _cmd "sed -i -e \"/if has('python3')/{N;/jedi-vim/{:a;N;/endif/!ba;d}}\" ${1}/etc##skel##.vimrc"
     fi
 
     if _file_or_directory_exist ~/.ssh/config; then
@@ -115,15 +123,19 @@ _create_minos_default_core_settings() {
     echo
     _cmd "printf \"%s\\n\\n\" \"#${file_header}\" > \"${1}\"/etc##sudoers.d##minos-core"
     _cmd "printf \"%s\\n\" \"Defaults	insults,timestamp_timeout=60\" >> \"${1}\"/etc##sudoers.d##minos-core"
-    _cmd "printf \"%s\\n\" \"Defaults	!tty_tickets\" >> \"${1}\"/etc##sudoers.d##minos-core"
     _cmd "echo >> ${1}/etc##sudoers.d##minos-core"
-    _cmd "printf \"%s\\n\" \"Cmnd_Alias MINOS_SESSION=/usr/sbin/pm-suspend,/usr/sbin/pm-hibernate,/sbin/shutdown\" >> \"${1}\"/etc##sudoers.d##minos-core"
     _cmd "printf \"%s\\n\" \"Cmnd_Alias MINOS_BACKUP=/usr/bin/backup_remote_rsync\" >> \"${1}\"/etc##sudoers.d##minos-core"
     _cmd "printf \"%s\\n\" \"Cmnd_Alias WAKEUP=/usr/sbin/rtcwake\" >> \"${1}\"/etc##sudoers.d##minos-core"
     _cmd "echo >> ${1}/etc##sudoers.d##minos-core"
     _cmd "printf \"%s\\n\" \"#Members of the sudo group can use these commands without passwd\" >> \"${1}\"/etc##sudoers.d##minos-core"
-    _cmd "printf \"%s\\n\" \"%sudo ALL=(root) NOPASSWD:MINOS_SESSION,MINOS_BACKUP\" >> \"${1}\"/etc##sudoers.d##minos-core"
+    _cmd "printf \"%s\\n\" \"%sudo ALL=(root) NOPASSWD:MINOS_BACKUP\" >> \"${1}\"/etc##sudoers.d##minos-core"
     _cmd "printf \"%s\\n\" \"%sudo ALL=(root) NOPASSWD:WAKEUP\" >> \"${1}\"/etc##sudoers.d##minos-core"
+
+    #one credential for every terminal, in a file of its own: sudo-rs, the default sudo from 25.10
+    #on, keeps one per terminal always and complains about this line on every call, so the
+    #package links it only where the sudo in use is the classic one
+    _cmd "printf \"%s\\n\\n\" \"#${file_header}\" > \"${1}\"/etc##sudoers.d##minos-tty-tickets"
+    _cmd "printf \"%s\\n\" \"Defaults	!tty_tickets\" >> \"${1}\"/etc##sudoers.d##minos-tty-tickets"
 
     echo
     _cmd "printf \"%s\\n\\n\" \"Minos LTS \n \l\" > \"${1}\"/etc##issue"
@@ -245,12 +257,58 @@ EOF
     _cmd "printf \"%s\\n\\n\" \"// ${file_header}\" > \"${1}\"/etc##apt##apt.conf.d##05disable-suggests"
     _cmd "printf \"%s\\n\" \"APT::Install-Suggests \\\"false\\\";\" >> \"${1}\"/etc##apt##apt.conf.d##05disable-suggests"
 
+    #the kernel: swap only under real pressure, and keep the console free of all but serious messages
+    echo
+    cat > "${1}"/etc##sysctl.d##99-swappiness.conf <<EOF
+#${file_header}
+
+#https://www.kernel.org/doc/Documentation/sysctl/vm.txt
+#This control is used to define how aggressive the kernel will swap
+#memory pages.  Higher values will increase aggressiveness, lower values
+#decrease the amount of swap.  A value of 0 instructs the kernel not to
+#initiate swap until the amount of free and file-backed pages is less
+#than the high water mark in a zone.
+
+#The default value is 60.
+vm.swappiness = 10
+EOF
+    echo
+    cat > "${1}"/etc##sysctl.d##99-printk.conf <<EOF
+#${file_header}
+
+#https://www.kernel.org/doc/Documentation/sysctl/kernel.txt
+#The four values in printk denote: console_loglevel,
+#default_message_loglevel, minimum_console_loglevel and
+#default_console_loglevel respectively.
+
+#These values influence printk() behavior when printing or
+#logging error messages. See 'man 2 syslog' for more info on
+#the different loglevels.
+
+#- console_loglevel: messages with a higher priority than
+#   this will be printed to the console
+#- default_message_loglevel: messages without an explicit priority
+#   will be printed with this priority
+#- minimum_console_loglevel: minimum (highest) value to which
+#   console_loglevel can be set
+#- default_console_loglevel: default value for console_loglevel
+kernel.printk = 4 4 1 7
+EOF
+
     if _file_or_directory_exist ~/.gitconfig; then
         echo
         _cmd "printf \"%s\\n\\n\" \";${file_header}\" > \"${1}\"/etc##gitconfig"
         _cmd "cat ~/.gitconfig                        >>    ${1}/etc##gitconfig"
-        _cmd "sed -i '/^\[user\]$/,/^$/d'                   ${1}/etc##gitconfig"
-        _cmd "sed -i '/^\[github\]$/,/^$/d'                 ${1}/etc##gitconfig"
+        #sections of the author's machine, whole, blank lines or not: his identity, his github
+        #account, the directories he trusts and the credentials of his gh login
+        _cmd "awk '/^[[]/ {skip = (\$0 ~ /^[[](user|github|safe|credential \"[^\"]+\")[]]\$/)} !skip' ${1}/etc##gitconfig > ${1}/etc##gitconfig.new"
+        _cmd "mv ${1}/etc##gitconfig.new ${1}/etc##gitconfig"
+        #what suits the author's machine is not the default for every user: credentials stay in memory
+        #for an hour, never in a plain text file, and the pager works without diff-so-fancy, which shundle
+        #installs per user (root, a new user, an install without network), and without less, which a
+        #minimal install lacks: more comes with util-linux, essential everywhere
+        _cmd "sed -i '/^\[credential\]\$/,/^\[/ s:^\([[:space:]]*helper[[:space:]]*=\).*:\1 cache --timeout=3600:' ${1}/etc##gitconfig"
+        _cmd "sed -i 's:^\([[:space:]]*pager[[:space:]]*=\)[[:space:]]*diff-so-fancy.*:\1 \"if command -v diff-so-fancy >/dev/null; then diff-so-fancy; else cat; fi | if command -v less >/dev/null; then less --tabs=4 -RFX; else more; fi\":' ${1}/etc##gitconfig"
     fi
 
     cat > "${1}/usr##share##debconf##confmodule" << 'E=O=F'
@@ -308,7 +366,7 @@ This repository provides minimal settings which gives to minos its identity. It'
 - Sudo settings:
  - turn on sudo insults
  - set a longer (1hr) timeout
- - bypass password authentication for shutdown/hibernate/wakeup
+ - bypass password authentication for rtcwake and the remote backup
 
 - Ssh:
  - connection sharing, improve performance and general resiliance

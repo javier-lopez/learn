@@ -66,6 +66,11 @@ _create_minos_default_desktop_settings() {
         _cmd "cat ~/.minos/config >> ${1}/etc##minos##config"
         _cmd "sed -i '/HOME/d'       ${1}/etc##minos##config"
         _cmd "sed -i '/connman/d'    ${1}/etc##minos##config"
+        _cmd "sed -i '/^app-desktop.*mozilla/d' ${1}/etc##minos##config"
+        #wicd left ubuntu in 20.04; minos-desktop brings connman through cmst, its interface
+        _cmd "sed -i 's:^network-manager .*:network-manager  cmst -d:' ${1}/etc##minos##config"
+        #the author's irssi reads his encrypted config; anyone else's starts plain
+        _cmd "sed -i 's:^im .*:im               irssi\:terminal:' ${1}/etc##minos##config"
         #_cmd "sed -i '/^m-battery-config/d' ${1}/etc##minos##config"
         _cmd "sed -i '/^#m-battery-config/d' ${1}/etc##minos##config"
         _cmd "sed -i '/^#wallpaper/d'        ${1}/etc##minos##config"
@@ -98,18 +103,180 @@ _create_minos_default_desktop_settings() {
         _cmd "cat ~/.i3status.conf                    >>    ${1}/etc##i3status.conf"
     fi
 
-    if _file_or_directory_exist ~/.local/share/applications/defaults.list; then
-        echo
-        _cmd cp ~/.local/share/applications/defaults.list "${1}/usr##share##applications##defaults.list"
-    fi
+    #which application opens which type: the author's own lists live in ~/.local/share/applications, where
+    #the desktop rewrites them, and the dotfiles do not track them, so minos' lists are written here
+    echo
+    echo  "${1}/usr##share##applications##defaults.list"
+    cat > "${1}/usr##share##applications##defaults.list" << 'E=O=F'
+[Default Applications]
+text/plain=gvim.desktop
+text/x-csrc=gvim.desktop
+application/pdf=zathura.desktop
+application/eps=zathura.desktop;
+application/postscript=zathura.desktop;
+application/x-eps=zathura.desktop;
+image/bmp=vw.desktop;
+image/cgm=vw.desktop;
+image/jpeg=vw.desktop
+image/png=vw.desktop
+audio/mpeg=mplayer.desktop
+audio/ogg=mplayer.desktop
+video/x-msvideo=mplayer.desktop
+video/mp4=mplayer.desktop
+image/svg+xml=inkscape.desktop
+image/jpeg=vw.desktop
+image/png=vw.desktop
+image/gif=vw.desktop
+audio/mpeg=mplayer.desktop
+audio/ogg=mplayer.desktop
+video/x-msvideo=mplayer.desktop
+video/mp4=mplayer.desktop
+video/dv=mplayer.desktop
+video/mpeg=mplayer.desktop
+video/x-mpeg=mplayer.desktop
+video/msvideo=mplayer.desktop
+video/quicktime=mplayer.desktop
+video/x-anim=mplayer.desktop
+video/x-avi=mplayer.desktop
+video/x-ms-asf=mplayer.desktop
+video/x-ms-wmv=mplayer.desktop
+video/x-msvideo=mplayer.desktop
+video/x-nsv=mplayer.desktop
+video/x-flc=mplayer.desktop
+video/x-fli=mplayer.desktop
+application/ogg=mplayer.desktop
+application/x-ogg=mplayer.desktop
+video/x-ogm+ogg=mplayer.desktop
+audio/x-vorbis+ogg=mplayer.desktop
+application/x-matroska=mplayer.desktop
+audio/x-matroska=mplayer.desktop
+video/x-matroska=mplayer.desktop
+video/webm=mplayer.desktop
+audio/webm=mplayer.desktop
+audio/x-mp3=mplayer.desktop
+audio/x-mpeg=mplayer.desktop
+audio/mpeg=mplayer.desktop
+audio/x-wav=mplayer.desktop
+audio/x-mpegurl=mplayer.desktop
+audio/x-scpls=mplayer.desktop
+audio/x-m4a=mplayer.desktop
+audio/x-ms-asf=mplayer.desktop
+audio/x-ms-asx=mplayer.desktop
+audio/x-ms-wax=mplayer.desktop
+application/vnd.rn-realmedia=mplayer.desktop
+audio/x-real-audio=mplayer.desktop
+audio/x-pn-realaudio=mplayer.desktop
+application/x-flac=mplayer.desktop
+audio/x-flac=mplayer.desktop
+application/x-shockwave-flash=mplayer.desktop
+application/x-flash-video=mplayer.desktop;
+misc/ultravox=mplayer.desktop
+audio/vnd.rn-realaudio=mplayer.desktop
+audio/x-pn-aiff=mplayer.desktop
+audio/x-pn-au=mplayer.desktop
+audio/x-pn-wav=mplayer.desktop
+audio/x-pn-windows-acm=mplayer.desktop
+image/vnd.rn-realpix=mplayer.desktop
+video/vnd.rn-realvideo=mplayer.desktop
+audio/x-pn-realaudio-plugin=mplayer.desktop
+application/x-extension-mp4=mplayer.desktop
+audio/mp4=mplayer.desktop
+video/mp4=mplayer.desktop
+video/mp4v-es=mplayer.desktop
+x-content/video-vcd=mplayer.desktop
+x-content/video-svcd=mplayer.desktop
+x-content/video-dvd=mplayer.desktop
+x-content/audio-cdda=mplayer.desktop
+x-content/audio-player=mplayer.desktop
+video/x-flv=mplayer.desktop
+application/xspf+xml=mplayer.desktop
+E=O=F
 
-    if _file_or_directory_exist ~/.local/share/applications/mimeapps.list; then
-        echo
-        _cmd cp ~/.local/share/applications/mimeapps.list "${1}/usr##share##applications##mimeapps.list"
-        _cmd "sed -i 's:;userapp-.*::'  ${1}/usr##share##applications##mimeapps.list"
-        _cmd "sed -i 's:=userapp-.*:=:' ${1}/usr##share##applications##mimeapps.list"
-        _cmd "sed -i '/=$/d' ${1}/usr##share##applications##mimeapps.list"
-    fi
+    echo
+    echo  "${1}/usr##share##applications##mimeapps.list"
+    cat > "${1}/usr##share##applications##mimeapps.list" << 'E=O=F'
+[Added Associations]
+application/x-font-vfont=gvim.desktop
+video/mp4=mplayer.desktop
+image/svg+xml=inkscape.desktop
+image/x-xbitmap=display.desktop;
+image/jpeg=feh.desktop;
+image/png=feh.desktop;
+application/msword=gvim.desktop;
+inode/socket=gvim.desktop;
+
+[Default Applications]
+image/svg+xml=inkscape.desktop
+text/plain=gvim.desktop
+text/x-csrc=gvim.desktop
+application/pdf=zathura.desktop
+image/jpeg=vw.desktop
+image/png=vw.desktop
+image/gif=vw.desktop
+audio/mpeg=mplayer.desktop
+audio/ogg=mplayer.desktop
+video/x-msvideo=mplayer.desktop
+video/mp4=mplayer.desktop
+video/dv=mplayer.desktop
+video/mpeg=mplayer.desktop
+video/x-mpeg=mplayer.desktop
+video/msvideo=mplayer.desktop
+video/quicktime=mplayer.desktop
+video/x-anim=mplayer.desktop
+video/x-avi=mplayer.desktop
+video/x-ms-asf=mplayer.desktop
+video/x-ms-wmv=mplayer.desktop
+video/x-msvideo=mplayer.desktop
+video/x-nsv=mplayer.desktop
+video/x-flc=mplayer.desktop
+video/x-fli=mplayer.desktop
+application/ogg=mplayer.desktop
+application/x-ogg=mplayer.desktop
+video/x-ogm+ogg=mplayer.desktop
+audio/x-vorbis+ogg=mplayer.desktop
+application/x-matroska=mplayer.desktop
+audio/x-matroska=mplayer.desktop
+video/x-matroska=mplayer.desktop
+video/webm=mplayer.desktop
+audio/webm=mplayer.desktop
+audio/x-mp3=mplayer.desktop
+audio/x-mpeg=mplayer.desktop
+audio/mpeg=mplayer.desktop
+audio/x-wav=mplayer.desktop
+audio/x-mpegurl=mplayer.desktop
+audio/x-scpls=mplayer.desktop
+audio/x-m4a=mplayer.desktop
+audio/x-ms-asf=mplayer.desktop
+audio/x-ms-asx=mplayer.desktop
+audio/x-ms-wax=mplayer.desktop
+application/vnd.rn-realmedia=mplayer.desktop
+audio/x-real-audio=mplayer.desktop
+audio/x-pn-realaudio=mplayer.desktop
+application/x-flac=mplayer.desktop
+audio/x-flac=mplayer.desktop
+application/x-shockwave-flash=mplayer.desktop
+misc/ultravox=mplayer.desktop
+audio/vnd.rn-realaudio=mplayer.desktop
+audio/x-pn-aiff=mplayer.desktop
+audio/x-pn-au=mplayer.desktop
+audio/x-pn-wav=mplayer.desktop
+audio/x-pn-windows-acm=mplayer.desktop
+image/vnd.rn-realpix=mplayer.desktop
+video/vnd.rn-realvideo=mplayer.desktop
+audio/x-pn-realaudio-plugin=mplayer.desktop
+application/x-extension-mp4=mplayer.desktop
+audio/mp4=mplayer.desktop
+video/mp4=mplayer.desktop
+video/mp4v-es=mplayer.desktop
+x-content/video-vcd=mplayer.desktop
+x-content/video-svcd=mplayer.desktop
+x-content/video-dvd=mplayer.desktop
+x-content/audio-cdda=mplayer.desktop
+x-content/audio-player=mplayer.desktop
+video/x-flv=mplayer.desktop
+application/xspf+xml=mplayer.desktop
+inode/directory=pcmanfm.desktop
+E=O=F
 
     if _file_or_directory_exist ~/.Xdefaults; then
         echo
@@ -133,6 +300,8 @@ _create_minos_default_desktop_settings() {
         echo
         _cmd "printf \"%s\\n\\n\" \"# ${file_header}\"    > \"${1}\"/etc##xdg##pcmanfm##default##pcmanfm.conf"
         _cmd "cat ~/.config/pcmanfm/default/pcmanfm.conf >>     ${1}/etc##xdg##pcmanfm##default##pcmanfm.conf"
+        #pcmanfm saves the width of its side pane when it closes: the author's last one is no default
+        _cmd "sed -i 's:^splitter_pos=.*:splitter_pos=125:' ${1}/etc##xdg##pcmanfm##default##pcmanfm.conf"
     fi
 
     if _file_or_directory_exist ~/.config/pcmanfm/main; then
@@ -148,16 +317,58 @@ _create_minos_default_desktop_settings() {
         _cmd "sed -i 's:^include.*:include \"/home/muser/.gtkrc-2.0.mine\":' ${1}/etc##skel##.gtkrc-2.0"
     fi
 
-    if _file_or_directory_exist ~/.config/gtk-3.0/settings.ini; then
-        echo
-        _cmd "printf \"%s\\n\\n\" \"# ${file_header}\" > \"${1}\"/etc##skel##.config##gtk-3.0##settings.ini"
-        _cmd "cat ~/.config/gtk-3.0/settings.ini       >>    ${1}/etc##skel##.config##gtk-3.0##settings.ini"
-    fi
+    #gtk 3's theme, icons and font; ~/.config/gtk-3.0, which the desktop rewrites, is not in the dotfiles
+    echo
+    echo  "${1}/etc##skel##.config##gtk-3.0##settings.ini"
+    cat > "${1}/etc##skel##.config##gtk-3.0##settings.ini" << E=O=F
+# ${file_header}
 
+[Settings]
+gtk-theme-name=minos
+gtk-icon-theme-name=laga
+gtk-font-name=Bahamas 9
+gtk-cursor-theme-size=0
+gtk-toolbar-style=GTK_TOOLBAR_ICONS
+gtk-toolbar-icon-size=GTK_ICON_SIZE_LARGE_TOOLBAR
+gtk-button-images=0
+gtk-menu-images=1
+gtk-enable-event-sounds=1
+gtk-enable-input-feedback-sounds=1
+gtk-xft-antialias=1
+gtk-xft-hinting=1
+gtk-xft-hintstyle=hintfull
+gtk-xft-rgba=rgb
+E=O=F
+
+    #Qt 4 writes its plugin caches and the file dialog's last folders into Trolltech.conf as it runs: the
+    #settings, the [Qt] section without the dialog's state, are the only part of it that is minos'
     if _file_or_directory_exist ~/.config/Trolltech.conf; then
         echo
-        _cmd cp -r ~/.config/Trolltech.conf "${1}/etc##xdg##Trolltech.conf"
+        _cmd "awk '/^\\[/ {keep = (\$0 == \"[Qt]\")} keep && !/^filedialog=/' ~/.config/Trolltech.conf > ${1}/etc##xdg##Trolltech.conf"
     fi
+
+    #Qt 5 and 6 read no Trolltech.conf: qt5ct and qt6ct give them minos' palette (minos-artwork's), font and
+    #icons, drawn with the Windows style, whose frames show on black. qt5ct's own Xsession.d/99qt5ct sets
+    #QT_QPA_PLATFORMTHEME=qt5ct, a name qt6ct answers to as well
+    for qtct in qt5ct qt6ct; do
+        echo
+        echo  "${1}/etc##skel##.config##${qtct}##${qtct}.conf"
+        cat > "${1}/etc##skel##.config##${qtct}##${qtct}.conf" << E=O=F
+;${file_header}
+
+[Appearance]
+color_scheme_path=/usr/share/themes/minos/qt5ct/minos.conf
+custom_palette=true
+icon_theme=laga
+style=Windows
+
+[Fonts]
+general="Bahamas,9,-1,5,50,0,0,0,0,0"
+
+[Interface]
+buttonbox_layout=3
+E=O=F
+    done
 
     if _file_or_directory_exist ~/.config/redshift.conf; then
         echo
@@ -182,6 +393,7 @@ _create_minos_default_desktop_settings() {
         _cmd "printf \"%s\\n\\n\" \"#${file_header}\" > \"${1}\"/etc##i3##config"
         _cmd "cat ~/.i3/config >> ${1}/etc##i3##config"
         _cmd "sed -i 's:dmenu-alarm.*:dmenu-alarm:' ${1}/etc##i3##config"
+        _cmd "sed -i '/class=\"Firefox\"/d' ${1}/etc##i3##config"
     fi
 
     if _file_or_directory_exist ~/.irssi/; then
@@ -196,6 +408,10 @@ _create_minos_default_desktop_settings() {
         echo
         _cmd "printf \"%s\\n\\n\" \"#${file_header}\" > \"${1}\"/etc##mplayer##mplayer.conf"
         _cmd "cat ~/.mplayer/config                   >>    ${1}/etc##mplayer##mplayer.conf"
+        #the fifo mplayer reads player-ctrl's commands from is each user's, in the user's runtime
+        #directory (the autostart makes it and names it in ~/.mplayer/config): mplayer takes the path
+        #as written, so a file for every user cannot name it
+        _cmd "sed -i '/^input=file=/d; /fifo player-ctrl sends commands to/d' ${1}/etc##mplayer##mplayer.conf"
     fi
 
     if _file_or_directory_exist ~/.mpd.conf; then
@@ -225,8 +441,6 @@ _create_minos_default_desktop_settings() {
         _cmd "sed -i 's,my_.*,my_1st_accountATdomainDOTltd,'       ${1}/etc##skel##.mutt/accounts/1st_account@domain.tld/account"
         _cmd "sed -i '/^set status_format/d'                       ${1}/etc##skel##.mutt/accounts/1st_account@domain.tld/account"
         _cmd "sed -i 's:^#set status_format:set status_format:'    ${1}/etc##skel##.mutt/accounts/1st_account@domain.tld/account"
-        _cmd "sed -i 's,index 2,index 1,'                          ${1}/etc##skel##.mutt/muttrc"
-        _cmd "sed -i 's,index 3,index 2,'                          ${1}/etc##skel##.mutt/muttrc"
         _cmd "sed -i 's,set pgp_sign_as.*,#set pgp_sign_as             = 0xFFFFFF,' ${1}/etc##skel##.mutt/muttrc"
 
         _cmd "sed -i 's:set from.*:set from             = \"Joe Foobar <2nd_account@domain.tld>\":' ${1}/etc##skel##.mutt/accounts/2nd_account@domain.tld/account"
@@ -266,6 +480,7 @@ _create_minos_default_desktop_settings() {
         echo
         _cmd "printf \"%s\\n\\n\" \"#${file_header}\" > \"${1}\"/etc##xdg##compton.conf"
         _cmd "cat ~/.compton.conf                     >>    ${1}/etc##xdg##compton.conf"
+        _cmd "sed -i '/Firefox/d'                           ${1}/etc##xdg##compton.conf"
     fi
 
     if _file_or_directory_exist ~/.slim.conf; then
@@ -318,57 +533,32 @@ db_stop ()               { return 0; }
 E=O=F
 
     echo
-    echo  "${1}/etc##polkit-1##localauthority##50-local.d##org.freedesktop.consolekit.pkla"
-    cat > "${1}/etc##polkit-1##localauthority##50-local.d##org.freedesktop.consolekit.pkla" << E=O=F
-#${file_header}
-
-[Restart]
-Identity=unix-group:sudo
-Action=org.freedesktop.consolekit.system.restart
-ResultAny=yes
-ResultInactive=yes
-ResultActive=yes
-
-[Shutdown]
-Identity=unix-group:sudo
-Action=org.freedesktop.consolekit.system.stop
-ResultAny=yes
-ResultInactive=yes
-ResultActive=yes
-E=O=F
-
-    echo
-    echo  "${1}/etc##systemd##logind.conf"
-    cat>> "${1}/etc##systemd##logind.conf" << E=O=F
+    echo  "${1}/etc##systemd##logind.conf.d##minos-ignore-lid.conf"
+    cat > "${1}/etc##systemd##logind.conf.d##minos-ignore-lid.conf" << E=O=F
 # ${file_header}
 #
-# Defaults can be restored by deleting this file.
-#
-# See logind.conf(5) for details.
+# Closing the lid does not suspend the machine. logind reads this after Ubuntu's /etc/systemd/logind.conf,
+# which stays as Ubuntu ships it; see logind.conf(5). dpkg-reconfigure minos-desktop-settings, without the
+# logind-ignore-lid module, takes it away again.
 
 [Login]
-#NAutoVTs=6
-#ReserveVT=6
-#KillUserProcesses=no
-#KillOnlyUsers=
-#KillExcludeUsers=root
-#InhibitDelayMaxSec=5
-#HandlePowerKey=poweroff
-#HandleSuspendKey=suspend
-#HandleHibernateKey=hibernate
-#HandleLidSwitch=suspend
 HandleLidSwitch=ignore
-#HandleLidSwitchDocked=ignore
-#PowerKeyIgnoreInhibited=no
-#SuspendKeyIgnoreInhibited=no
-#HibernateKeyIgnoreInhibited=no
-#LidSwitchIgnoreInhibited=yes
-#HoldoffTimeoutSec=30s
-#IdleAction=ignore
-#IdleActionSec=30min
-#RuntimeDirectorySize=10%
-#RemoveIPC=yes
-#UserTasksMax=12288
+E=O=F
+
+    #connman manages the network and keeps the name servers it learns in a DNS proxy of its own, on
+    #127.0.0.1:53, while systemd-resolved, behind Ubuntu's /etc/resolv.conf, learns them only from networkd:
+    #with connman alone on the link, nothing resolved names
+    echo
+    echo  "${1}/etc##systemd##resolved.conf.d##minos-connman.conf"
+    cat > "${1}/etc##systemd##resolved.conf.d##minos-connman.conf" << E=O=F
+# ${file_header}
+#
+# systemd-resolved asks connman's DNS proxy, which knows the name servers of the network connman manages;
+# /etc/resolv.conf stays Ubuntu's link to resolved. See resolved.conf(5). dpkg-reconfigure
+# minos-desktop-settings, without the connman module, takes it away again.
+
+[Resolve]
+DNS=127.0.0.1
 E=O=F
 
     echo
@@ -396,16 +586,51 @@ fi
 E=O=F
 
     echo
-    echo  "${1}/etc##polkit-1##localauthority##50-local.d##55-storage.pkla"
-    cat>> "${1}/etc##polkit-1##localauthority##50-local.d##55-storage.pkla" << E=O=F
+    echo  "${1}/etc##default##grub.d##minos-splash.cfg"
+    cat > "${1}/etc##default##grub.d##minos-splash.cfg" << E=O=F
+# ${file_header}
+#
+E=O=F
+    cat>> "${1}/etc##default##grub.d##minos-splash.cfg" << 'E=O=F'
+# GRUB reads this file after /etc/default/grub (update-grub). Plymouth shows minos' boot animation only when
+# the kernel's command line says "splash", and Ubuntu's server installer leaves the default options empty:
+# "quiet splash" goes after whatever the files read before this one say, each word once.
+# dpkg-reconfigure minos-desktop-settings, without the splash module, takes it away again.
+
+for _minos_splash__word in quiet splash; do
+    case " ${GRUB_CMDLINE_LINUX_DEFAULT} " in
+        *" ${_minos_splash__word} "*) : ;;
+        *) GRUB_CMDLINE_LINUX_DEFAULT="${GRUB_CMDLINE_LINUX_DEFAULT:+${GRUB_CMDLINE_LINUX_DEFAULT} }${_minos_splash__word}" ;;
+    esac
+done
+unset _minos_splash__word
+E=O=F
+
+    #udisks2 mounts, ejects, powers off and unlocks removable drives for the user of the session at
+    #the machine, and asks for an administrator's password for the machine's own disks (-system) and
+    #to unmount what another user mounted; the group sudo goes through, in the two forms polkit
+    #reads: .pkla for polkit 0.105 (22.04), JavaScript for polkit 121 and later (24.04 on)
+    echo
+    echo  "${1}/etc##polkit-1##localauthority##50-local.d##55-minos-storage.pkla"
+    cat > "${1}/etc##polkit-1##localauthority##50-local.d##55-minos-storage.pkla" << E=O=F
 #${file_header}
 
-[Storage Permissions]
-Identity=unix-group:plugdev
-Action=org.freedesktop.udisks.filesystem-mount;org.freedesktop.udisks.drive-eject;org.freedesktop.udisks.drive-detach;org.freedesktop.udisks.luks-unlock;org.freedesktop.udisks.inhibit-polling;org.freedesktop.udisks.drive-set-spindown
-ResultAny=yes
+[Storage]
+Identity=unix-group:sudo
+Action=org.freedesktop.udisks2.filesystem-mount;org.freedesktop.udisks2.filesystem-mount-system;org.freedesktop.udisks2.filesystem-unmount-others;org.freedesktop.udisks2.eject-media;org.freedesktop.udisks2.eject-media-system;org.freedesktop.udisks2.power-off-drive;org.freedesktop.udisks2.power-off-drive-system;org.freedesktop.udisks2.encrypted-unlock;org.freedesktop.udisks2.encrypted-unlock-system
 ResultActive=yes
-ResultInactive=no
+E=O=F
+
+    echo
+    echo  "${1}/etc##polkit-1##rules.d##55-minos-storage.rules"
+    printf "%s\\n\\n" "//${file_header}" > "${1}/etc##polkit-1##rules.d##55-minos-storage.rules"
+    cat>> "${1}/etc##polkit-1##rules.d##55-minos-storage.rules" << 'E=O=F'
+polkit.addRule(function(action, subject) {
+    if (/^org\.freedesktop\.udisks2\.(filesystem-mount(-system)?|filesystem-unmount-others|eject-media(-system)?|power-off-drive(-system)?|encrypted-unlock(-system)?)$/.test(action.id) &&
+        subject.local && subject.active && subject.isInGroup("sudo")) {
+        return polkit.Result.YES;
+    }
+});
 E=O=F
 
     _cmd "find ${1} -type f -exec sed -i '/local_changes$/d' {} +"
@@ -426,6 +651,7 @@ This repository contain the settings that give to minos its identify, it targets
  - `.xsession`: i3 session
  - `.config/redshift.conf`: redshift template
  - `.config/Trolltech.conf`: default qt theme
+ - `.config/qt5ct/qt5ct.conf`, `.config/qt6ct/qt6ct.conf`: default qt 5 and 6 theme
  - `.gtkrc-2.0`: default gtk theme
  - `.config/user-dirs.dirs`: stop autocreation of ~/Video, ~/Audio, etc folders
 
@@ -433,13 +659,16 @@ This repository contain the settings that give to minos its identify, it targets
  - `git`: default theme plus aliases
  - `i3`: default theme, shortcuts, statusbar, etc
  - `compton`: performance oriented settings
- - `mplayer`: fifo controller
+ - `mplayer`: default settings; the fifo `player-ctrl` drives is each user's, made at login by the autostart
  - `ncmpcpp`: default theme
  - `pcmanfm`: default settings
  - `irssi`: default theme
  - `mutt`: multiple account email settings template
  - `urxvt`: common plugins and default theme
  - `minos`: autostart/statusbar/help settings
+ - `grub`: "quiet splash" on the kernel's command line, so the boot shows minos' plymouth theme
+ - `systemd-resolved`: names resolved through connman's DNS proxy
+ - `logind`: closing the lid does not suspend
 
 ## Quick start
 
